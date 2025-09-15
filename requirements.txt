@@ -1,0 +1,13 @@
+# Core
+flwr
+torch
+torchvision
+numpy
+pandas
+scikit-learn
+
+# Networking / parsing
+scapy
+
+# Crypto (for future robust/privacy features)
+pycryptodome
