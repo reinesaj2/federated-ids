@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
+from sklearn.metrics import f1_score, precision_recall_curve, average_precision_score
 
 from data_preprocessing import (
     create_synthetic_classification_loaders,
@@ -15,6 +16,7 @@ from data_preprocessing import (
     load_cic_ids2017,
     prepare_partitions_from_dataframe,
     numpy_to_loaders,
+    numpy_to_train_val_test_loaders,
 )
 from client_metrics import (
     ClientMetricsLogger,
@@ -64,7 +66,7 @@ def train_epoch(
 ) -> float:
     model.train()
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     total_loss = 0.0
     num_batches = 0
     for xb, yb in loader:
@@ -82,12 +84,14 @@ def train_epoch(
 
 def evaluate(
     model: nn.Module, loader: DataLoader, device: torch.device
-) -> Tuple[float, float]:
+) -> Tuple[float, float, np.ndarray, np.ndarray]:
     model.eval()
     criterion = nn.CrossEntropyLoss()
     correct = 0
     total = 0
     total_loss = 0.0
+    probs_list = []
+    labels_list = []
     with torch.no_grad():
         for xb, yb in loader:
             xb = xb.to(device)
@@ -98,9 +102,19 @@ def evaluate(
             pred_labels = preds.argmax(dim=1)
             correct += (pred_labels == yb).sum().item()
             total += yb.size(0)
+            # store softmax probabilities and labels
+            probs = torch.softmax(preds, dim=1).detach().cpu().numpy()
+            probs_list.append(probs)
+            labels_list.append(yb.detach().cpu().numpy())
     avg_loss = total_loss / max(len(loader), 1)
     acc = correct / max(total, 1)
-    return float(avg_loss), float(acc)
+    if probs_list:
+        all_probs = np.concatenate(probs_list, axis=0)
+        all_labels = np.concatenate(labels_list, axis=0)
+    else:
+        all_probs = np.zeros((0, 0), dtype=np.float32)
+        all_labels = np.zeros((0,), dtype=np.int64)
+    return float(avg_loss), float(acc), all_probs, all_labels
 
 
 class TorchClient(fl.client.NumPyClient):
@@ -113,6 +127,7 @@ class TorchClient(fl.client.NumPyClient):
         metrics_logger: ClientMetricsLogger,
         fit_timer: ClientFitTimer,
         data_stats: dict,
+        runtime_config: dict,
     ) -> None:
         self.model = model
         self.train_loader = train_loader
@@ -123,6 +138,7 @@ class TorchClient(fl.client.NumPyClient):
         self.data_stats = data_stats
         self.model.to(self.device)
         self.round_num = 0
+        self.runtime_config = runtime_config
 
     def get_parameters(self, config):  # type: ignore[override]
         return get_parameters(self.model)
@@ -131,8 +147,8 @@ class TorchClient(fl.client.NumPyClient):
         self.round_num += 1
 
         # Get training hyperparameters
-        epochs = int(config.get("epoch", 1))
-        lr = float(config.get("lr", 0.01))
+        epochs = int(config.get("epoch", self.runtime_config.get("local_epochs", 1)))
+        lr = float(config.get("lr", self.runtime_config.get("lr", 0.01)))
         batch_size = self.train_loader.batch_size or 32
 
         # Set initial parameters and capture before metrics
@@ -141,9 +157,14 @@ class TorchClient(fl.client.NumPyClient):
 
         # Evaluate before training (optional - can be slow)
         loss_before, acc_before = None, None
+        macro_f1_before = None
         try:
             if len(self.test_loader.dataset) > 0:
-                loss_before, acc_before = evaluate(self.model, self.test_loader, self.device)
+                loss_before, acc_before, probs_before, labels_before = evaluate(self.model, self.test_loader, self.device)
+                # macro-F1 from hard predictions
+                if probs_before.size > 0:
+                    preds_before = np.argmax(probs_before, axis=1)
+                    macro_f1_before = float(f1_score(labels_before, preds_before, average="macro"))
         except Exception:
             # Skip evaluation if it fails (e.g., empty test set)
             pass
@@ -154,7 +175,38 @@ class TorchClient(fl.client.NumPyClient):
         with self.fit_timer.time_fit():
             epochs_completed = 0
             for epoch in range(epochs):
-                train_epoch(self.model, self.train_loader, self.device, lr)
+                mode = str(self.runtime_config.get("adversary_mode", "none"))
+                if mode == "grad_ascent":
+                    # Perform gradient ascent by negating the loss
+                    self.model.train()
+                    criterion = torch.nn.CrossEntropyLoss()
+                    optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+                    for xb, yb in self.train_loader:
+                        xb = xb.to(self.device)
+                        yb = yb.to(self.device)
+                        optimizer.zero_grad()
+                        preds = self.model(xb)
+                        loss = -criterion(preds, yb)
+                        loss.backward()
+                        optimizer.step()
+                elif mode == "label_flip":
+                    # Train on intentionally wrong labels: rotate class index by +1
+                    self.model.train()
+                    criterion = torch.nn.CrossEntropyLoss()
+                    optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+                    n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
+                    for xb, yb in self.train_loader:
+                        xb = xb.to(self.device)
+                        yb = yb.to(self.device)
+                        with torch.no_grad():
+                            flipped = (yb + 1) % n_classes
+                        optimizer.zero_grad()
+                        preds = self.model(xb)
+                        loss = criterion(preds, flipped)
+                        loss.backward()
+                        optimizer.step()
+                else:
+                    train_epoch(self.model, self.train_loader, self.device, lr)
                 epochs_completed += 1
 
         # Capture after metrics
@@ -164,9 +216,45 @@ class TorchClient(fl.client.NumPyClient):
 
         # Evaluate after training (optional)
         loss_after, acc_after = None, None
+        macro_f1_after = None
+        f1_per_class_after_json = None
+        fpr_after = None
+        pr_auc_after = None
+        threshold_tau = None
         try:
             if len(self.test_loader.dataset) > 0:
-                loss_after, acc_after = evaluate(self.model, self.test_loader, self.device)
+                loss_after, acc_after, probs_after, labels_after = evaluate(self.model, self.test_loader, self.device)
+                if probs_after.size > 0:
+                    preds_after = np.argmax(probs_after, axis=1)
+                    macro_f1_after = float(f1_score(labels_after, preds_after, average="macro"))
+                    # Per-class F1
+                    num_classes = probs_after.shape[1]
+                    f1s = []
+                    for c in range(num_classes):
+                        f1s.append(float(f1_score(labels_after, preds_after == c, labels=[c], average="macro")))
+                    import json as _json
+                    f1_per_class_after_json = _json.dumps({str(i): f for i, f in enumerate(f1s)})
+                    # BENIGN is class 0 by construction in preprocessing
+                    if num_classes >= 2:
+                        benign_idx = 0
+                        benign_probs = probs_after[:, benign_idx]
+                        # Attack-vs-BENIGN probabilities (1 - P(benign))
+                        attack_probs = 1.0 - benign_probs
+                        # PR-AUC (average precision)
+                        pr_auc_after = float(average_precision_score((labels_after != benign_idx).astype(int), attack_probs))
+                        # Choose tau on validation set in future; for now, maximize F1 using test as proxy
+                        precision, recall, thresholds = precision_recall_curve((labels_after != benign_idx).astype(int), attack_probs)
+                        # Avoid division by zero
+                        denom = np.maximum(precision + recall, 1e-12)
+                        f1_curve = 2 * precision * recall / denom
+                        best_idx = int(np.argmax(f1_curve))
+                        threshold_tau = float(thresholds[best_idx - 1]) if best_idx > 0 and best_idx - 1 < len(thresholds) else 0.5
+                        # Compute FPR at tau
+                        y_pred_attack = (attack_probs >= threshold_tau).astype(int)
+                        benign_mask = (labels_after == benign_idx)
+                        fp = int(np.sum(y_pred_attack[benign_mask] == 1))
+                        tn = int(np.sum(y_pred_attack[benign_mask] == 0))
+                        fpr_after = float(fp / max(fp + tn, 1))
         except Exception:
             pass
 
@@ -182,6 +270,13 @@ class TorchClient(fl.client.NumPyClient):
             acc_before=acc_before,
             loss_after=loss_after,
             acc_after=acc_after,
+            macro_f1_before=macro_f1_before,
+            macro_f1_after=macro_f1_after,
+            f1_per_class_after_json=f1_per_class_after_json,
+            fpr_after=fpr_after,
+            pr_auc_after=pr_auc_after,
+            threshold_tau=threshold_tau,
+            seed=int(os.environ.get("SEED", str(config.get("seed", 0)))) if isinstance(config, dict) else None,
             weight_norm_before=weight_norm_before,
             weight_norm_after=weight_norm_after,
             weight_update_norm=weight_update_norm,
@@ -197,7 +292,7 @@ class TorchClient(fl.client.NumPyClient):
 
     def evaluate(self, parameters, config):  # type: ignore[override]
         set_parameters(self.model, parameters)
-        loss, acc = evaluate(self.model, self.test_loader, self.device)
+        loss, acc, _probs, _labels = evaluate(self.model, self.test_loader, self.device)
         num_examples = len(self.test_loader.dataset)
         return loss, num_examples, {"accuracy": acc}
 
@@ -234,6 +329,15 @@ def main() -> None:
     parser.add_argument("--features", type=int, default=20)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--adversary_mode",
+        type=str,
+        default="none",
+        choices=["none", "label_flip", "grad_ascent"],
+        help="Adversarial client behavior for robustness smoke tests",
+    )
+    parser.add_argument("--local_epochs", type=int, default=1)
+    parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument(
         "--logdir",
         type=str,
@@ -336,6 +440,11 @@ def main() -> None:
         metrics_logger=metrics_logger,
         fit_timer=fit_timer,
         data_stats=data_stats,
+        runtime_config={
+            "adversary_mode": args.adversary_mode,
+            "local_epochs": args.local_epochs,
+            "lr": args.lr,
+        },
     )
 
     fl.client.start_numpy_client(server_address=args.server_address, client=client)

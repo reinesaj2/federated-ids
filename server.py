@@ -74,6 +74,18 @@ def main() -> None:
         default=2,
         help="Minimum number of available clients required",
     )
+    parser.add_argument(
+        "--fraction_fit",
+        type=float,
+        default=1.0,
+        help="Fraction of clients participating in fit per round",
+    )
+    parser.add_argument(
+        "--fraction_eval",
+        type=float,
+        default=1.0,
+        help="Fraction of clients participating in evaluation per round",
+    )
     args = parser.parse_args()
 
     seed = int(os.environ.get("SEED", "42"))
@@ -152,7 +164,9 @@ def main() -> None:
             metrics = {}
             return parameters, metrics
 
-        def _estimate_benign_mean(self, client_weights: List[List[np.ndarray]]) -> List[np.ndarray]:
+        def _estimate_benign_mean(
+            self, client_weights: List[List[np.ndarray]]
+        ) -> List[np.ndarray]:
             """Estimate benign mean by using simple average (placeholder for research)."""
             if not client_weights:
                 return []
@@ -160,9 +174,11 @@ def main() -> None:
             # Simple approach: use median aggregation as benign estimate
             # This assumes majority of clients are benign
             from robust_aggregation import _median_aggregate
+
             return _median_aggregate(client_weights)
 
     def _on_fit_config(rnd: int):
+        # Pass through seed and default hyperparameters; rounds can adjust epochs if desired
         return {"epoch": 1, "lr": 0.01, "seed": seed}
 
     def _eval_metrics_agg(results: List[Tuple[int, dict]]):
@@ -176,18 +192,21 @@ def main() -> None:
         return {"accuracy": float(mean_accuracy)}
 
     strategy = RobustStrategy(
-        fraction_fit=1.0,
+        fraction_fit=args.fraction_fit,
         min_fit_clients=args.min_fit_clients,
         min_eval_clients=args.min_eval_clients,
         min_available_clients=args.min_available_clients,
         on_fit_config_fn=_on_fit_config,
         evaluate_metrics_aggregation_fn=_eval_metrics_agg,
+        fraction_evaluate=args.fraction_eval,
     )
 
     print(f"[Server] Strategy configuration:")
     print(f"  min_fit_clients: {args.min_fit_clients}")
     print(f"  min_eval_clients: {args.min_eval_clients}")
     print(f"  min_available_clients: {args.min_available_clients}")
+    print(f"  fraction_fit: {args.fraction_fit}")
+    print(f"  fraction_eval: {args.fraction_eval}")
 
     fl.server.start_server(
         server_address=args.server_address,

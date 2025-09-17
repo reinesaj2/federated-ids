@@ -12,10 +12,15 @@ import numpy as np
 class ClientMetricsLogger:
     """Handles CSV logging of client-side federated learning metrics."""
 
-    def __init__(self, csv_path: str, client_id: int) -> None:
+    def __init__(self, csv_path: str, client_id: int, extended: Optional[bool] = None) -> None:
         """Initialize the client metrics logger with a CSV file path and client ID."""
         self.csv_path = Path(csv_path)
         self.client_id = client_id
+        if extended is None:
+            import os as _os
+            self.extended = _os.environ.get("D2_EXTENDED_METRICS", "0").lower() not in ("0", "false", "no", "")
+        else:
+            self.extended = bool(extended)
         self._ensure_csv_exists()
 
     def _ensure_csv_exists(self) -> None:
@@ -25,12 +30,22 @@ class ClientMetricsLogger:
 
         # Create file with headers if it doesn't exist
         if not self.csv_path.exists():
-            headers = [
-                "client_id", "round", "dataset_size", "n_classes",
-                "loss_before", "acc_before", "loss_after", "acc_after",
-                "weight_norm_before", "weight_norm_after", "weight_update_norm",
-                "t_fit_ms", "epochs_completed", "lr", "batch_size"
-            ]
+            if self.extended:
+                headers = [
+                    "client_id", "round", "dataset_size", "n_classes",
+                    "loss_before", "acc_before", "loss_after", "acc_after",
+                    "macro_f1_before", "macro_f1_after", "f1_per_class_after",
+                    "fpr_after", "pr_auc_after", "threshold_tau", "seed",
+                    "weight_norm_before", "weight_norm_after", "weight_update_norm",
+                    "t_fit_ms", "epochs_completed", "lr", "batch_size"
+                ]
+            else:
+                headers = [
+                    "client_id", "round", "dataset_size", "n_classes",
+                    "loss_before", "acc_before", "loss_after", "acc_after",
+                    "weight_norm_before", "weight_norm_after", "weight_update_norm",
+                    "t_fit_ms", "epochs_completed", "lr", "batch_size"
+                ]
             with open(self.csv_path, 'w', newline='') as f:
                 writer = csv.writer(f)
                 writer.writerow(headers)
@@ -44,32 +59,65 @@ class ClientMetricsLogger:
         acc_before: Optional[float],
         loss_after: Optional[float],
         acc_after: Optional[float],
-        weight_norm_before: Optional[float],
-        weight_norm_after: Optional[float],
-        weight_update_norm: Optional[float],
-        t_fit_ms: Optional[float],
-        epochs_completed: int,
-        lr: float,
-        batch_size: int,
+        macro_f1_before: Optional[float] = None,
+        macro_f1_after: Optional[float] = None,
+        f1_per_class_after_json: Optional[str] = None,
+        fpr_after: Optional[float] = None,
+        pr_auc_after: Optional[float] = None,
+        threshold_tau: Optional[float] = None,
+        seed: Optional[int] = None,
+        weight_norm_before: Optional[float] = None,
+        weight_norm_after: Optional[float] = None,
+        weight_update_norm: Optional[float] = None,
+        t_fit_ms: Optional[float] = None,
+        epochs_completed: int = 0,
+        lr: float = 0.0,
+        batch_size: int = 0,
     ) -> None:
         """Log metrics for a single client training round."""
-        row = [
-            str(self.client_id),
-            str(round_num),
-            str(dataset_size),
-            str(n_classes),
-            str(loss_before) if loss_before is not None else "",
-            str(acc_before) if acc_before is not None else "",
-            str(loss_after) if loss_after is not None else "",
-            str(acc_after) if acc_after is not None else "",
-            str(weight_norm_before) if weight_norm_before is not None else "",
-            str(weight_norm_after) if weight_norm_after is not None else "",
-            str(weight_update_norm) if weight_update_norm is not None else "",
-            str(t_fit_ms) if t_fit_ms is not None else "",
-            str(epochs_completed),
-            str(lr),
-            str(batch_size),
-        ]
+        if self.extended:
+            row = [
+                str(self.client_id),
+                str(round_num),
+                str(dataset_size),
+                str(n_classes),
+                str(loss_before) if loss_before is not None else "",
+                str(acc_before) if acc_before is not None else "",
+                str(loss_after) if loss_after is not None else "",
+                str(acc_after) if acc_after is not None else "",
+                str(macro_f1_before) if macro_f1_before is not None else "",
+                str(macro_f1_after) if macro_f1_after is not None else "",
+                f1_per_class_after_json or "",
+                str(fpr_after) if fpr_after is not None else "",
+                str(pr_auc_after) if pr_auc_after is not None else "",
+                str(threshold_tau) if threshold_tau is not None else "",
+                str(seed) if seed is not None else "",
+                str(weight_norm_before) if weight_norm_before is not None else "",
+                str(weight_norm_after) if weight_norm_after is not None else "",
+                str(weight_update_norm) if weight_update_norm is not None else "",
+                str(t_fit_ms) if t_fit_ms is not None else "",
+                str(epochs_completed),
+                str(lr),
+                str(batch_size),
+            ]
+        else:
+            row = [
+                str(self.client_id),
+                str(round_num),
+                str(dataset_size),
+                str(n_classes),
+                str(loss_before) if loss_before is not None else "",
+                str(acc_before) if acc_before is not None else "",
+                str(loss_after) if loss_after is not None else "",
+                str(acc_after) if acc_after is not None else "",
+                str(weight_norm_before) if weight_norm_before is not None else "",
+                str(weight_norm_after) if weight_norm_after is not None else "",
+                str(weight_update_norm) if weight_update_norm is not None else "",
+                str(t_fit_ms) if t_fit_ms is not None else "",
+                str(epochs_completed),
+                str(lr),
+                str(batch_size),
+            ]
 
         with open(self.csv_path, 'a', newline='') as f:
             writer = csv.writer(f)

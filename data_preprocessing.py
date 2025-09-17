@@ -176,7 +176,7 @@ def build_preprocessor(
 
 
 def _encode_labels_to_ints(labels: pd.Series) -> np.ndarray:
-    # If labels are already numeric, cast to int64; otherwise factorize to ints
+    # If labels are already numeric, cast to int64; otherwise map strings to ints
     if pd.api.types.is_integer_dtype(labels) or pd.api.types.is_bool_dtype(labels):
         return labels.astype(np.int64).to_numpy()
     if pd.api.types.is_float_dtype(labels):
@@ -187,7 +187,16 @@ def _encode_labels_to_ints(labels: pd.Series) -> np.ndarray:
                 "Label column contains non-integer floats; please map labels explicitly"
             )
         return labels.astype(np.int64).to_numpy()
-    codes, _ = pd.factorize(labels.astype(str))
+    # String-like: normalize and enforce BENIGN maps to index 0 when present
+    str_labels = labels.astype(str).str.strip().str.upper()
+    uniques = list(pd.unique(str_labels))
+    if "BENIGN" in uniques:
+        # Put BENIGN first, keep order of the rest
+        ordered = ["BENIGN"] + [u for u in uniques if u != "BENIGN"]
+        cat = pd.Categorical(str_labels, categories=ordered)
+        codes = cat.codes
+    else:
+        codes, _ = pd.factorize(str_labels)
     return codes.astype(np.int64)
 
 
@@ -228,6 +237,42 @@ def numpy_to_loaders(
     return train_loader, test_loader
 
 
+def numpy_to_train_val_test_loaders(
+    X: np.ndarray,
+    y: np.ndarray,
+    batch_size: int,
+    seed: int = 42,
+    splits: Tuple[float, float, float] = (0.7, 0.15, 0.15),
+) -> Tuple[DataLoader, DataLoader, DataLoader]:
+    """Create stratified train/val/test loaders from numpy arrays.
+
+    Default splits are 70/15/15. The splits tuple must sum to 1.0.
+    """
+    train_frac, val_frac, test_frac = splits
+    if not math.isclose(train_frac + val_frac + test_frac, 1.0, rel_tol=1e-6):
+        raise ValueError("splits must sum to 1.0")
+
+    # First split off test
+    X_train_val, X_test, y_train_val, y_test = train_test_split(
+        X, y, test_size=test_frac, random_state=seed, stratify=y
+    )
+    # Compute validation proportion relative to remaining train_val
+    denom = max(train_frac + val_frac, 1e-12)
+    val_relative = val_frac / denom
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_train_val, y_train_val, test_size=val_relative, random_state=seed, stratify=y_train_val
+    )
+
+    train_ds = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train))
+    val_ds = TensorDataset(torch.from_numpy(X_val), torch.from_numpy(y_val))
+    test_ds = TensorDataset(torch.from_numpy(X_test), torch.from_numpy(y_test))
+
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+    return train_loader, val_loader, test_loader
+
+
 def load_csv_dataset(
     csv_path: str,
     label_col: str,
@@ -259,6 +304,10 @@ def load_unsw_nb15(csv_path: str) -> Tuple[pd.DataFrame, str, Optional[str]]:
         raise ValueError(
             "Could not find label column in UNSW-NB15. Tried: 'label', 'Label', 'class', 'Class'"
         )
+    # Normalize negative/benign label naming to BENIGN for consistency
+    df[label_col] = df[label_col].astype(str).str.strip().str.upper()
+    df[label_col] = df[label_col].replace({"NORMAL": "BENIGN"})
+
     # Protocol column often 'proto'
     proto_col = "proto" if "proto" in df.columns else None
     # Basic cleanup
@@ -284,6 +333,10 @@ def load_cic_ids2017(csv_path: str) -> Tuple[pd.DataFrame, str, Optional[str]]:
         raise ValueError(
             "Could not find label column in CIC-IDS2017. Tried: 'Label', 'label', 'Attack', 'attack'"
         )
+    # Normalize negative/benign label naming to BENIGN for consistency
+    df[label_col] = df[label_col].astype(str).str.strip().str.upper()
+    df[label_col] = df[label_col].replace({"NORMAL": "BENIGN"})
+
     # Protocol column may be 'Protocol', 'ProtocolName', or 'proto'
     proto_col_candidates = ["Protocol", "ProtocolName", "proto"]
     proto_col = next((c for c in proto_col_candidates if c in df.columns), None)
