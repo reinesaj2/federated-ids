@@ -36,7 +36,7 @@ def main() -> None:
         type=str,
         default="fedavg",
         choices=["fedavg", "median", "krum", "bulyan"],
-        help="Aggregation rule (baseline FedAvg; others are stubs)",
+        help="Aggregation rule (FedAvg uses sample-weighted mean; median/krum/bulyan implemented, experimental)",
     )
     parser.add_argument(
         "--byzantine_f",
