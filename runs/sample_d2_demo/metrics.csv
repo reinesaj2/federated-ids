@@ -1,0 +1,4 @@
+round,agg_method,n_clients,byzantine_f,l2_to_benign_mean,cos_to_benign_mean,coord_median_agree_pct,update_norm_mean,update_norm_std,t_aggregate_ms,t_round_ms
+1,krum,2,1,0.0,1.0,100.0,5.8147430419921875,0.0,0.8859579975251108,6953.45429200097
+2,krum,2,1,0.0,1.0,100.0,5.818140029907227,0.0,0.11287498637102544,70.74075000127777
+3,krum,2,1,0.0,1.0,100.0,5.822922229766846,0.0,0.10233299690298736,75.18562499899417

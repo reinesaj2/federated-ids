@@ -56,6 +56,24 @@ def main() -> None:
         default="./logs",
         help="Directory for metrics logging",
     )
+    parser.add_argument(
+        "--min_fit_clients",
+        type=int,
+        default=2,
+        help="Minimum number of clients for fit rounds",
+    )
+    parser.add_argument(
+        "--min_eval_clients",
+        type=int,
+        default=2,
+        help="Minimum number of clients for evaluation rounds",
+    )
+    parser.add_argument(
+        "--min_available_clients",
+        type=int,
+        default=2,
+        help="Minimum number of available clients required",
+    )
     args = parser.parse_args()
 
     seed = int(os.environ.get("SEED", "42"))
@@ -159,11 +177,17 @@ def main() -> None:
 
     strategy = RobustStrategy(
         fraction_fit=1.0,
-        min_fit_clients=2,
-        min_available_clients=2,
+        min_fit_clients=args.min_fit_clients,
+        min_eval_clients=args.min_eval_clients,
+        min_available_clients=args.min_available_clients,
         on_fit_config_fn=_on_fit_config,
         evaluate_metrics_aggregation_fn=_eval_metrics_agg,
     )
+
+    print(f"[Server] Strategy configuration:")
+    print(f"  min_fit_clients: {args.min_fit_clients}")
+    print(f"  min_eval_clients: {args.min_eval_clients}")
+    print(f"  min_available_clients: {args.min_available_clients}")
 
     fl.server.start_server(
         server_address=args.server_address,

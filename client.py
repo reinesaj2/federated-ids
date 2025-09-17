@@ -22,6 +22,7 @@ from client_metrics import (
     calculate_weight_norms,
     calculate_weight_update_norm,
     analyze_data_distribution,
+    create_label_histogram_json,
 )
 
 
@@ -266,6 +267,8 @@ def main() -> None:
         # Analyze data distribution for synthetic data
         synthetic_labels = np.random.randint(0, 2, size=args.samples)  # Approximate for metrics
         data_stats = analyze_data_distribution(synthetic_labels)
+        label_hist_json = create_label_histogram_json(synthetic_labels)
+        num_classes_global = 2
     else:
         if not args.data_path:
             raise SystemExit("--data_path is required for dataset unsw/cic")
@@ -297,6 +300,33 @@ def main() -> None:
         model = SimpleNet(num_features=num_features, num_classes=num_classes_global)
         # Analyze actual data distribution
         data_stats = analyze_data_distribution(y_client)
+        label_hist_json = create_label_histogram_json(y_client)
+
+    # Model validation guard: assert output features match global num_classes
+    model_output_features = None
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Linear) and "net.4" in name:  # Last layer of SimpleNet
+            model_output_features = module.out_features
+            break
+
+    if model_output_features is None:
+        # Fallback: inspect the last layer
+        last_layer = list(model.modules())[-1]
+        if isinstance(last_layer, torch.nn.Linear):
+            model_output_features = last_layer.out_features
+
+    if model_output_features is not None:
+        assert model_output_features == num_classes_global, (
+            f"Model output features ({model_output_features}) must match "
+            f"global num_classes ({num_classes_global}). "
+            f"Label distribution: {label_hist_json}"
+        )
+        print(f"[Client {args.client_id}] Model validation passed: "
+              f"out_features={model_output_features}, num_classes_global={num_classes_global}")
+        print(f"[Client {args.client_id}] Label histogram: {label_hist_json}")
+    else:
+        print(f"[Client {args.client_id}] Warning: Could not validate model output features")
+        print(f"[Client {args.client_id}] Label histogram: {label_hist_json}")
 
     client = TorchClient(
         model=model,

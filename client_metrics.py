@@ -123,3 +123,11 @@ def analyze_data_distribution(labels: np.ndarray) -> dict[str, int]:
         "dataset_size": len(labels),
         "n_classes": len(unique_labels),
     }
+
+
+def create_label_histogram_json(labels: np.ndarray) -> str:
+    """Create a JSON representation of label distribution histogram."""
+    import json
+    unique_labels, counts = np.unique(labels, return_counts=True)
+    label_hist = {str(label): int(count) for label, count in zip(unique_labels, counts)}
+    return json.dumps(label_hist, sort_keys=True)
