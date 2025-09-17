@@ -16,6 +16,13 @@ from data_preprocessing import (
     prepare_partitions_from_dataframe,
     numpy_to_loaders,
 )
+from client_metrics import (
+    ClientMetricsLogger,
+    ClientFitTimer,
+    calculate_weight_norms,
+    calculate_weight_update_norm,
+    analyze_data_distribution,
+)
 
 
 def set_global_seed(seed: int) -> None:
@@ -102,25 +109,90 @@ class TorchClient(fl.client.NumPyClient):
         train_loader: DataLoader,
         test_loader: DataLoader,
         device: torch.device,
+        metrics_logger: ClientMetricsLogger,
+        fit_timer: ClientFitTimer,
+        data_stats: dict,
     ) -> None:
         self.model = model
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.device = device
+        self.metrics_logger = metrics_logger
+        self.fit_timer = fit_timer
+        self.data_stats = data_stats
         self.model.to(self.device)
+        self.round_num = 0
 
     def get_parameters(self, config):  # type: ignore[override]
         return get_parameters(self.model)
 
     def fit(self, parameters, config):  # type: ignore[override]
-        set_parameters(self.model, parameters)
+        self.round_num += 1
+
+        # Get training hyperparameters
         epochs = int(config.get("epoch", 1))
         lr = float(config.get("lr", 0.01))
-        for _ in range(epochs):
-            train_epoch(self.model, self.train_loader, self.device, lr)
+        batch_size = self.train_loader.batch_size or 32
+
+        # Set initial parameters and capture before metrics
+        set_parameters(self.model, parameters)
+        weights_before = get_parameters(self.model)
+
+        # Evaluate before training (optional - can be slow)
+        loss_before, acc_before = None, None
+        try:
+            if len(self.test_loader.dataset) > 0:
+                loss_before, acc_before = evaluate(self.model, self.test_loader, self.device)
+        except Exception:
+            # Skip evaluation if it fails (e.g., empty test set)
+            pass
+
+        weight_norm_before = calculate_weight_norms(weights_before)
+
+        # Time the training
+        with self.fit_timer.time_fit():
+            epochs_completed = 0
+            for epoch in range(epochs):
+                train_epoch(self.model, self.train_loader, self.device, lr)
+                epochs_completed += 1
+
+        # Capture after metrics
+        weights_after = get_parameters(self.model)
+        weight_norm_after = calculate_weight_norms(weights_after)
+        weight_update_norm = calculate_weight_update_norm(weights_before, weights_after)
+
+        # Evaluate after training (optional)
+        loss_after, acc_after = None, None
+        try:
+            if len(self.test_loader.dataset) > 0:
+                loss_after, acc_after = evaluate(self.model, self.test_loader, self.device)
+        except Exception:
+            pass
+
+        # Get timing
+        t_fit_ms = self.fit_timer.get_last_fit_time_ms()
+
+        # Log metrics
+        self.metrics_logger.log_round_metrics(
+            round_num=self.round_num,
+            dataset_size=self.data_stats["dataset_size"],
+            n_classes=self.data_stats["n_classes"],
+            loss_before=loss_before,
+            acc_before=acc_before,
+            loss_after=loss_after,
+            acc_after=acc_after,
+            weight_norm_before=weight_norm_before,
+            weight_norm_after=weight_norm_after,
+            weight_update_norm=weight_update_norm,
+            t_fit_ms=t_fit_ms,
+            epochs_completed=epochs_completed,
+            lr=lr,
+            batch_size=batch_size,
+        )
+
         num_examples = len(self.train_loader.dataset)
         metrics = {}
-        return get_parameters(self.model), num_examples, metrics
+        return weights_after, num_examples, metrics
 
     def evaluate(self, parameters, config):  # type: ignore[override]
         set_parameters(self.model, parameters)
@@ -161,6 +233,12 @@ def main() -> None:
     parser.add_argument("--features", type=int, default=20)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--logdir",
+        type=str,
+        default="./logs",
+        help="Directory for metrics logging",
+    )
     args = parser.parse_args()
 
     set_global_seed(args.seed)
@@ -171,6 +249,12 @@ def main() -> None:
         else ("cuda" if torch.cuda.is_available() else "cpu")
     )
 
+    # Initialize metrics logging
+    client_metrics_path = os.path.join(args.logdir, f"client_{args.client_id}_metrics.csv")
+    metrics_logger = ClientMetricsLogger(client_metrics_path, args.client_id)
+    fit_timer = ClientFitTimer()
+    print(f"[Client {args.client_id}] Logging metrics to: {client_metrics_path}")
+
     if args.dataset == "synthetic":
         train_loader, test_loader = create_synthetic_classification_loaders(
             num_samples=args.samples,
@@ -179,6 +263,9 @@ def main() -> None:
             seed=args.seed,
         )
         model = SimpleNet(num_features=args.features, num_classes=2)
+        # Analyze data distribution for synthetic data
+        synthetic_labels = np.random.randint(0, 2, size=args.samples)  # Approximate for metrics
+        data_stats = analyze_data_distribution(synthetic_labels)
     else:
         if not args.data_path:
             raise SystemExit("--data_path is required for dataset unsw/cic")
@@ -208,9 +295,17 @@ def main() -> None:
         )
         num_features = X_client.shape[1]
         model = SimpleNet(num_features=num_features, num_classes=num_classes_global)
+        # Analyze actual data distribution
+        data_stats = analyze_data_distribution(y_client)
 
     client = TorchClient(
-        model=model, train_loader=train_loader, test_loader=test_loader, device=device
+        model=model,
+        train_loader=train_loader,
+        test_loader=test_loader,
+        device=device,
+        metrics_logger=metrics_logger,
+        fit_timer=fit_timer,
+        data_stats=data_stats,
     )
 
     fl.client.start_numpy_client(server_address=args.server_address, client=client)

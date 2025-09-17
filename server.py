@@ -1,6 +1,7 @@
 import argparse
 import os
 import random
+import time
 from typing import Literal, List, Optional, Tuple
 
 import flwr as fl
@@ -11,6 +12,11 @@ from robust_aggregation import (
     AggregationMethod,
     aggregate_weights,
     aggregate_weighted_mean,
+)
+from server_metrics import (
+    ServerMetricsLogger,
+    AggregationTimer,
+    calculate_robustness_metrics,
 )
 
 
@@ -44,6 +50,12 @@ def main() -> None:
         default="0.0.0.0:8080",
         help="Host:port for the Flower server",
     )
+    parser.add_argument(
+        "--logdir",
+        type=str,
+        default="./logs",
+        help="Directory for metrics logging",
+    )
     args = parser.parse_args()
 
     seed = int(os.environ.get("SEED", "42"))
@@ -52,10 +64,26 @@ def main() -> None:
     agg_method = AggregationMethod.from_string(args.aggregation)
     print(f"[Server] Using aggregation method: {agg_method.value}")
 
+    # Initialize metrics logging
+    metrics_path = os.path.join(args.logdir, "metrics.csv")
+    metrics_logger = ServerMetricsLogger(metrics_path)
+    agg_timer = AggregationTimer()
+    print(f"[Server] Logging metrics to: {metrics_path}")
+
     class RobustStrategy(fl.server.strategy.FedAvg):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.round_start_time: Optional[float] = None
+
+        def configure_fit(self, server_round: int, parameters, client_manager):
+            # Track round start time
+            self.round_start_time = time.perf_counter()
+            return super().configure_fit(server_round, parameters, client_manager)
+
         def aggregate_fit(self, rnd, results, failures):  # type: ignore[override]
             if len(results) == 0:
                 return None, {}
+
             # Convert client parameters to numpy lists per client
             client_weights: List[List[np.ndarray]] = []
             sample_counts: List[int] = []
@@ -63,18 +91,58 @@ def main() -> None:
                 nds = parameters_to_ndarrays(fit_res.parameters)
                 client_weights.append(nds)
                 sample_counts.append(int(fit_res.num_examples))
-            # Aggregate
-            f_arg = args.byzantine_f if args.byzantine_f >= 0 else None
-            if agg_method == AggregationMethod.FED_AVG:
-                aggregated = aggregate_weighted_mean(client_weights, sample_counts)
-            else:
-                aggregated = aggregate_weights(
-                    client_weights, agg_method, byzantine_f=f_arg
-                )
+
+            # Time the aggregation
+            with agg_timer.time_aggregation():
+                f_arg = args.byzantine_f if args.byzantine_f >= 0 else None
+                if agg_method == AggregationMethod.FED_AVG:
+                    aggregated = aggregate_weighted_mean(client_weights, sample_counts)
+                else:
+                    aggregated = aggregate_weights(
+                        client_weights, agg_method, byzantine_f=f_arg
+                    )
+
+            # Calculate metrics
+            t_aggregate_ms = agg_timer.get_last_aggregation_time_ms()
+            t_round_ms = None
+            if self.round_start_time is not None:
+                t_round_ms = (time.perf_counter() - self.round_start_time) * 1000.0
+
+            # For research metrics, estimate benign mean as simple average (excluding outliers)
+            # This is a simplified approach for demo purposes
+            benign_mean = self._estimate_benign_mean(client_weights)
+            robustness_metrics = calculate_robustness_metrics(
+                client_weights, benign_mean, aggregated
+            )
+
+            # Log metrics
+            metrics_logger.log_round_metrics(
+                round_num=rnd,
+                agg_method=agg_method,
+                n_clients=len(client_weights),
+                byzantine_f=f_arg,
+                l2_to_benign_mean=robustness_metrics["l2_to_benign_mean"],
+                cos_to_benign_mean=robustness_metrics["cos_to_benign_mean"],
+                coord_median_agree_pct=robustness_metrics["coord_median_agree_pct"],
+                update_norm_mean=robustness_metrics["update_norm_mean"],
+                update_norm_std=robustness_metrics["update_norm_std"],
+                t_aggregate_ms=t_aggregate_ms,
+                t_round_ms=t_round_ms,
+            )
+
             parameters = ndarrays_to_parameters(aggregated)
-            # Optionally aggregate metrics (e.g., mean)
             metrics = {}
             return parameters, metrics
+
+        def _estimate_benign_mean(self, client_weights: List[List[np.ndarray]]) -> List[np.ndarray]:
+            """Estimate benign mean by using simple average (placeholder for research)."""
+            if not client_weights:
+                return []
+
+            # Simple approach: use median aggregation as benign estimate
+            # This assumes majority of clients are benign
+            from robust_aggregation import _median_aggregate
+            return _median_aggregate(client_weights)
 
     def _on_fit_config(rnd: int):
         return {"epoch": 1, "lr": 0.01, "seed": seed}
