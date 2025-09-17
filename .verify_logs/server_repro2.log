@@ -13,12 +13,12 @@
             entirely in future versions of Flower.
         
 [92mINFO [0m:      Starting Flower server, config: num_rounds=2, no round_timeout
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1757973397.265023 7561458 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Flower ECE: gRPC server running (2 rounds), SSL is disabled
 [92mINFO [0m:      [INIT]
 [92mINFO [0m:      Requesting initial parameters from one random client
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1757972520.700291 7463377 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-I0000 00:00:1757972520.706618 7463377 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1757973397.270663 7561458 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Received initial parameters from one random client
 [92mINFO [0m:      Starting evaluation of initial global parameters
 [92mINFO [0m:      Evaluation returned no results (`None`)
@@ -38,7 +38,7 @@ I0000 00:00:1757972520.706618 7463377 fork_posix.cc:71] Other threads are curren
 [92mINFO [0m:      aggregate_evaluate: received 2 results and 0 failures
 [92mINFO [0m:      
 [92mINFO [0m:      [SUMMARY]
-[92mINFO [0m:      Run finished 2 round(s) in 0.84s
+[92mINFO [0m:      Run finished 2 round(s) in 0.81s
 [92mINFO [0m:      	History (loss, distributed):
 [92mINFO [0m:      		round 1: 0.6798731088638306
 [92mINFO [0m:      		round 2: 0.6600066423416138

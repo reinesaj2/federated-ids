@@ -24,21 +24,21 @@
             entirely in future versions of Flower.
         
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1757972522.553114 7463623 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-I0000 00:00:1757972522.587263 7463623 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1757973399.090588 7561692 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1757973399.104063 7561692 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message f78422ef-adff-4736-a0f8-36fc54eee6ac
+[92mINFO [0m:      Received: train message 057cbb75-fc7f-4861-99b0-42af31a305d4
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message 098a17a2-a2c6-4c35-bc2f-f178d3206d03
+[92mINFO [0m:      Received: evaluate message 12042d6b-9899-455d-a667-dbd2b7d64feb
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 72e62b17-c9ea-4549-9bbb-d14fc4fc4841
+[92mINFO [0m:      Received: train message 0edf715a-0fa7-4854-9d21-0dd4f762d557
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message 9fe88512-199b-4c0d-9bf3-434d462fb3c0
+[92mINFO [0m:      Received: evaluate message b766cfbd-72dd-4efd-beee-64fd8048ee1b
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message 806d817e-422c-4d48-8ce9-ea3563e48c32
+[92mINFO [0m:      Received: reconnect message e6ca8799-4257-4adf-9e29-38c1bb09280c
 [92mINFO [0m:      Disconnect and shut down
 [Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}

@@ -11,3 +11,6 @@ scapy
 
 # Crypto (for future robust/privacy features)
 pycryptodome
+
+# Testing
+pytest

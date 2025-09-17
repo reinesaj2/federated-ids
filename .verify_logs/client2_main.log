@@ -23,25 +23,22 @@
             This is a deprecated feature. It will be removed
             entirely in future versions of Flower.
         
-[92mINFO [0m:      
-[92mINFO [0m:      Received: get_parameters message a4aa30d7-2968-4743-907d-34a83caa59d2
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1757972504.975306 7460893 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1757973382.278113 7558832 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message da9fce09-4cb7-46c4-ab40-cf1d5584ab84
+I0000 00:00:1757973382.290657 7558832 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 674d9a3d-a371-4df5-a3fd-d4ad6fd2f389
-I0000 00:00:1757972504.987455 7460893 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+[92mINFO [0m:      Received: evaluate message 4ea9010a-be9c-412c-a1c2-ab64971a6976
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message 5817d4e3-d5e2-4bff-aaea-6fa0f35c83d6
+[92mINFO [0m:      Received: train message bb9d810a-188a-4c91-b95e-0c13317ff6e9
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 9bc98535-0632-4406-aa9f-0dbeade77a87
+[92mINFO [0m:      Received: evaluate message e4dd93cb-601a-4cf4-9247-cc3e5558b353
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message d10d28f3-ed02-4434-9435-1869d137baa3
-[92mINFO [0m:      Sent reply
-[92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message 1db1596e-34c5-48ad-8436-8cb55c3a79ee
+[92mINFO [0m:      Received: reconnect message e1882de6-f47d-415e-aafe-d5487d5c7085
 [92mINFO [0m:      Disconnect and shut down
 [Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}

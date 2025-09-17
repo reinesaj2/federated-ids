@@ -23,25 +23,36 @@
             This is a deprecated feature. It will be removed
             entirely in future versions of Flower.
         
-[92mINFO [0m:      
-[92mINFO [0m:      Received: get_parameters message 514e57e3-6877-4e5a-bf86-654335dbc9f1
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1757973399.091360 7561691 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-[92mINFO [0m:      Sent reply
-I0000 00:00:1757973399.103832 7561691 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758071836.693225 6675424 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758071836.706727 6675424 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 5cc589a6-7d2c-4d2b-9a34-67a994157701
-[92mINFO [0m:      Sent reply
-[92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message fe4659fb-a55a-4fd2-88a6-2ceb3eeb9228
+[92mINFO [0m:      Received: evaluate message 4614448f-8b2b-42ad-a0d5-4d0845bbf2e7
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 55180aee-9d49-4af9-a3d2-1b4401216b19
+[92mINFO [0m:      Received: train message 20af931a-a0a1-48f6-a1dd-ebe9d64b281a
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message f7c3f315-2e81-44cd-90d9-093d84203b02
+[92mINFO [0m:      Received: evaluate message 58095dfe-9829-4a15-8589-59ce57b24007
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message 3004100b-faad-40d2-a2e1-53a1ec92ba5e
+[92mINFO [0m:      Received: train message 0105aadc-7b38-4c65-ac01-3f36fc2fc6d9
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 434f5677-a781-4279-8916-3dcb52bf5ea6
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message ef418cd0-7d62-49be-b5be-a8b8cdd6aebb
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 41349be4-3bfb-4379-88ec-9559b38b9ab5
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 859f99fd-410f-4c7d-a354-bf6b576e5f9a
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 87fc31ba-445e-4087-a4be-7e6cee0dbac7
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message 14a876fa-8673-4a53-8ee0-18b4c2e3d7ce
 [92mINFO [0m:      Disconnect and shut down
-[Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}

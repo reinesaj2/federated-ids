@@ -24,24 +24,21 @@
             entirely in future versions of Flower.
         
 [92mINFO [0m:      
-[92mINFO [0m:      Received: get_parameters message 514e57e3-6877-4e5a-bf86-654335dbc9f1
+[92mINFO [0m:      Received: train message 8d2b41a4-526d-40b9-b5f0-ce71bd9b399e
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1757973399.091360 7561691 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-[92mINFO [0m:      Sent reply
-I0000 00:00:1757973399.103832 7561691 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-[92mINFO [0m:      
-[92mINFO [0m:      Received: train message 5cc589a6-7d2c-4d2b-9a34-67a994157701
+I0000 00:00:1757972842.045623 7498056 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1757972842.058239 7498056 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message fe4659fb-a55a-4fd2-88a6-2ceb3eeb9228
+[92mINFO [0m:      Received: evaluate message fecc92cf-e489-4a30-a872-cfb2eaf05872
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 55180aee-9d49-4af9-a3d2-1b4401216b19
+[92mINFO [0m:      Received: train message fd05d10e-cf43-4bf7-9b5e-849deb887e74
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message f7c3f315-2e81-44cd-90d9-093d84203b02
+[92mINFO [0m:      Received: evaluate message e9f9ab67-5a22-45a5-abe3-3bf811c01a58
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message 3004100b-faad-40d2-a2e1-53a1ec92ba5e
+[92mINFO [0m:      Received: reconnect message 1d3574d8-c6eb-43a1-b40a-75f9a9a27c34
 [92mINFO [0m:      Disconnect and shut down
 [Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}
