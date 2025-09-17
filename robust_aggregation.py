@@ -56,17 +56,27 @@ def _guess_f_byzantine(n: int) -> int:
 
 def _krum_candidate_indices(vectors: np.ndarray, f: int, multi: bool) -> List[int]:
     n = vectors.shape[0]
+
+    # Handle edge case: single client
+    if n <= 1:
+        return [0] if n == 1 else []
+
     dists = _pairwise_sq_dists(vectors)
     # For each client, sum the distances to its closest n - f - 2 others
-    m = max(1, n - f - 2)  # number of neighbors considered
+    m = max(1, min(n - f - 2, n - 1))  # Ensure m doesn't exceed available neighbors
     scores = []
     for i in range(n):
-        neighbors = np.partition(dists[i], m)[:m]
-        scores.append((float(np.sum(neighbors)), i))
+        # Handle case where we have fewer neighbors than needed
+        available_neighbors = min(m, n - 1)  # Exclude self
+        if available_neighbors > 0:
+            neighbors = np.partition(dists[i], available_neighbors)[:available_neighbors]
+            scores.append((float(np.sum(neighbors)), i))
+        else:
+            scores.append((0.0, i))
     scores.sort(key=lambda x: x[0])
     if multi:
-        # Select top m candidates (Multi-Krum), average their updates
-        k = max(1, n - f - 2)
+        # Select top k candidates (Multi-Krum), average their updates
+        k = max(1, min(n - f - 2, n))
         return [idx for _, idx in scores[:k]]
     # Krum: select single best
     return [scores[0][1]]
