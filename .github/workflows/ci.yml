@@ -1,0 +1,143 @@
+name: ci
+
+on:
+  push:
+    branches: [ "feat/**", "chore/**", "fix/**", "d2-training-setup" ]
+  pull_request:
+    branches: [ "d2-training-setup", "main" ]
+  schedule:
+    - cron: "0 7 * * *"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Lint & unit tests
+        run: |
+          if command -v flake8 >/dev/null 2>&1; then flake8 ; fi
+          pytest -q
+
+      - name: Smoke FL (only on feature branches)
+        if: startsWith(github.ref, 'refs/heads/feat/')
+        env:
+          D2_EXTENDED_METRICS: "1"
+        run: |
+          python scripts/run_fl.py --clients 2 --rounds 3 --alpha 0.1 --preset smoke_feat_iid --partition_strategy iid --leakage_safe
+          python scripts/run_fl.py --clients 2 --rounds 3 --alpha 0.1 --preset smoke_feat_dirichlet --partition_strategy dirichlet --leakage_safe
+
+      - name: Upload smoke artifacts
+        if: startsWith(github.ref, 'refs/heads/feat/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-artifacts-${{ github.sha }}
+          path: |
+            runs/**/metrics.csv
+            runs/**/client_*_metrics.csv
+            runs/**/client_metrics_plot.png
+            runs/**/server_metrics_plot.png
+
+  d2_quick:
+    if: github.ref == 'refs/heads/d2-training-setup' || (github.event_name == 'pull_request' && github.base_ref == 'd2-training-setup')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+      - run: |
+          pip install -r requirements.txt
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Benign quick
+        env:
+          D2_EXTENDED_METRICS: "1"
+        run: python scripts/run_fl.py --clients 5 --rounds 10 --alpha 0.1 --preset d2_quick_benign --partition_strategy dirichlet --leakage_safe
+      - name: Adversarial quick
+        env:
+          D2_EXTENDED_METRICS: "1"
+        run: python scripts/run_fl.py --clients 5 --rounds 10 --alpha 0.1 --preset d2_quick_adv --partition_strategy dirichlet --adversary_mode label_flip --leakage_safe
+
+      - name: Schema/metric checks
+        run: python scripts/ci_checks.py --runs_dir runs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d2-quick-artifacts-${{ github.sha }}
+          path: runs/**
+
+  nightly_full:
+    if: github.event_name == 'schedule' && github.ref == 'refs/heads/d2-training-setup'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        alpha: [0.05, 0.1, 0.5]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+      - run: pip install -r requirements.txt
+
+      - name: Full benign sweep (10c×30r)
+        env:
+          D2_EXTENDED_METRICS: "1"
+        run: python scripts/run_fl.py --clients 10 --rounds 30 --alpha ${{ matrix.alpha }} --preset d2_full_${{ matrix.alpha }} --partition_strategy dirichlet --leakage_safe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d2-full-${{ matrix.alpha }}-${{ github.sha }}
+          path: runs/**
+
+  release_on_tag:
+    if: startsWith(github.ref, 'refs/tags/D2-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub Release with gh
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --notes-from-tag \
+            --title "Deliverable 2 – ${GITHUB_REF_NAME}" \
+            runs/**/client_metrics_plot.png runs/**/server_metrics_plot.png runs/**/metrics.csv
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
