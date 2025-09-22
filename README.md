@@ -103,3 +103,8 @@ python scripts/prepare_unsw_sample.py \
 ```
 
 Use the sampled CSV in client commands via `--data_path`.
+
+## D2 Privacy & Robustness Disclosure
+
+- Differential Privacy (scaffold): client-side clipping with Gaussian noise applied to the model update before sending. This is not DP-SGD and does not include privacy accounting; provided to enable early toggling and future experiments.
+- Secure Aggregation (stub): a toggle is provided and status is logged, but updates are not cryptographically masked in D2. Integration of secure summation/masking is planned for later milestones.
