@@ -241,6 +241,14 @@ class TorchClient(fl.client.NumPyClient):
             pass
         weight_norm_after = calculate_weight_norms(weights_after)
         weight_update_norm = calculate_weight_update_norm(weights_before, weights_after)
+        # Compute a simple gradient norm proxy: norm of (weights_after - weights_before) / lr
+        grad_norm_l2 = None
+        try:
+            if lr > 0:
+                scaled = [ (wa - wb) / lr for wb, wa in zip(weights_before, weights_after) ]
+                grad_norm_l2 = calculate_weight_norms(scaled)
+        except Exception:
+            pass
 
         # Evaluate after training (optional)
         loss_after, acc_after = None, None
@@ -332,6 +340,7 @@ class TorchClient(fl.client.NumPyClient):
             weight_norm_before=weight_norm_before,
             weight_norm_after=weight_norm_after,
             weight_update_norm=weight_update_norm,
+            grad_norm_l2=grad_norm_l2,
             t_fit_ms=t_fit_ms,
             epochs_completed=epochs_completed,
             lr=lr,
