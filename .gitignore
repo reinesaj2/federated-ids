@@ -12,3 +12,6 @@ __pycache__/
 
 # Data
 /data/
+
+# Run artifacts
+/runs/

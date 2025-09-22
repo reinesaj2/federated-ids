@@ -245,16 +245,29 @@ class TorchClient(fl.client.NumPyClient):
         # Evaluate after training (optional)
         loss_after, acc_after = None, None
         macro_f1_after = None
+        macro_f1_argmax = None
+        benign_fpr_argmax = None
         f1_per_class_after_json = None
         fpr_after = None
         pr_auc_after = None
         threshold_tau = None
+        f1_bin_tau = None
+        benign_fpr_bin_tau = None
+        tau_bin = None
         try:
             if len(self.test_loader.dataset) > 0:
                 loss_after, acc_after, probs_after, labels_after = evaluate(self.model, self.test_loader, self.device)
                 if probs_after.size > 0:
                     preds_after = np.argmax(probs_after, axis=1)
                     macro_f1_after = float(f1_score(labels_after, preds_after, average="macro"))
+                    # Argmax metrics
+                    macro_f1_argmax = macro_f1_after
+                    benign_idx = 0
+                    if np.sum(labels_after == benign_idx) > 0:
+                        benign_recall = float(
+                            np.sum((labels_after == benign_idx) & (preds_after == benign_idx))
+                        ) / float(np.sum(labels_after == benign_idx))
+                        benign_fpr_argmax = float(max(0.0, 1.0 - benign_recall))
                     # Per-class F1
                     num_classes = probs_after.shape[1]
                     f1s = []
@@ -269,20 +282,26 @@ class TorchClient(fl.client.NumPyClient):
                         # Attack-vs-BENIGN probabilities (1 - P(benign))
                         attack_probs = 1.0 - benign_probs
                         # PR-AUC (average precision)
-                        pr_auc_after = float(average_precision_score((labels_after != benign_idx).astype(int), attack_probs))
+                        y_true_bin = (labels_after != benign_idx).astype(int)
+                        pr_auc_after = float(average_precision_score(y_true_bin, attack_probs))
                         # Choose tau on validation set in future; for now, maximize F1 using test as proxy
-                        precision, recall, thresholds = precision_recall_curve((labels_after != benign_idx).astype(int), attack_probs)
+                        precision, recall, thresholds = precision_recall_curve(y_true_bin, attack_probs)
                         # Avoid division by zero
                         denom = np.maximum(precision + recall, 1e-12)
                         f1_curve = 2 * precision * recall / denom
                         best_idx = int(np.argmax(f1_curve))
                         threshold_tau = float(thresholds[best_idx - 1]) if best_idx > 0 and best_idx - 1 < len(thresholds) else 0.5
+                        tau_bin = threshold_tau
                         # Compute FPR at tau
                         y_pred_attack = (attack_probs >= threshold_tau).astype(int)
                         benign_mask = (labels_after == benign_idx)
                         fp = int(np.sum(y_pred_attack[benign_mask] == 1))
                         tn = int(np.sum(y_pred_attack[benign_mask] == 0))
                         fpr_after = float(fp / max(fp + tn, 1))
+                        benign_fpr_bin_tau = fpr_after
+                        # Binary F1 at tau
+                        from sklearn.metrics import f1_score as _f1_bin
+                        f1_bin_tau = float(_f1_bin(y_true_bin, y_pred_attack))
         except Exception:
             pass
 
@@ -300,10 +319,15 @@ class TorchClient(fl.client.NumPyClient):
             acc_after=acc_after,
             macro_f1_before=macro_f1_before,
             macro_f1_after=macro_f1_after,
+            macro_f1_argmax=macro_f1_argmax,
+            benign_fpr_argmax=benign_fpr_argmax,
             f1_per_class_after_json=f1_per_class_after_json,
             fpr_after=fpr_after,
             pr_auc_after=pr_auc_after,
             threshold_tau=threshold_tau,
+            f1_bin_tau=f1_bin_tau,
+            benign_fpr_bin_tau=benign_fpr_bin_tau,
+            tau_bin=tau_bin,
             seed=int(os.environ.get("SEED", str(config.get("seed", 0)))) if isinstance(config, dict) else None,
             weight_norm_before=weight_norm_before,
             weight_norm_after=weight_norm_after,

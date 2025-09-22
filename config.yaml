@@ -1,9 +1,0 @@
-dataset: unsw
-data_path: data/unsw/UNSW_NB15_training-set.sample.csv
-partition_strategy: dirichlet
-num_clients: 5
-rounds: 10
-alpha: 0.1
-seed: 42
-logdir: runs/benign_5c10r_ext
-
