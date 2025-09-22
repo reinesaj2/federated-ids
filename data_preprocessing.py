@@ -227,12 +227,8 @@ def numpy_to_loaders(
     seed: int = 42,
     test_size: float = 0.2,
 ) -> Tuple[DataLoader, DataLoader]:
-    # Use stratified split when each class has at least two samples; otherwise fall back to non-stratified
-    unique, counts = np.unique(y, return_counts=True)
-    can_stratify = bool(len(unique) > 1 and np.all(counts >= 2))
-    stratify_arg = y if can_stratify else None
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=seed, stratify=stratify_arg
+        X, y, test_size=test_size, random_state=seed, stratify=y
     )
     train_ds = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train))
     test_ds = TensorDataset(torch.from_numpy(X_test), torch.from_numpy(y_test))
