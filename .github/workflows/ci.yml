@@ -64,6 +64,8 @@ jobs:
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
       - name: Lint & unit tests
+        env:
+          D2_EXTENDED_METRICS: "1"
         run: |
           if command -v flake8 >/dev/null 2>&1; then flake8 ; fi
           pytest -q
@@ -181,47 +183,15 @@ jobs:
     needs: nightly_full
     runs-on: ubuntu-latest
     if: always() && needs.nightly_full.result == 'failure'
-    permissions:
-      issues: write
     steps:
-      - name: Create issue on nightly failure
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const title = `Nightly CI Failed - ${new Date().toISOString().split('T')[0]}`;
-            const body = `🚨 **Nightly CI Pipeline Failed**
-
-            **Workflow Run:** [${context.runId}](${context.payload.repository.html_url}/actions/runs/${context.runId})
-            **Branch:** ${context.ref}
-            **Commit:** ${context.sha}
-            **Failed Jobs:** Check the workflow run for details
-
-            Please investigate and fix the failing tests.
-
-            _This issue was automatically created by the CI system._`;
-
-            // Check if similar issue already exists
-            const existingIssues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              labels: ['nightly-failure', 'automated']
-            });
-
-            const today = new Date().toISOString().split('T')[0];
-            const todayIssue = existingIssues.data.find(issue =>
-              issue.title.includes(today)
-            );
-
-            if (!todayIssue) {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: title,
-                body: body,
-                labels: ['nightly-failure', 'automated', 'bug']
-              });
-            }
+      - name: Log nightly failure (issues disabled)
+        run: |
+          echo "🚨 Nightly CI Pipeline Failed"
+          echo "Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Failed at: $(date)"
+          echo "Check the workflow run for details"
 
   manual_testing:
     if: github.event_name == 'workflow_dispatch'
