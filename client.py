@@ -66,7 +66,7 @@ def train_epoch(
 ) -> float:
     model.train()
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     total_loss = 0.0
     num_batches = 0
     for xb, yb in loader:
@@ -180,7 +180,7 @@ class TorchClient(fl.client.NumPyClient):
                     # Perform gradient ascent by negating the loss
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr, weight_decay=1e-4)
+                    optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
                         yb = yb.to(self.device)
@@ -193,7 +193,7 @@ class TorchClient(fl.client.NumPyClient):
                     # Train on intentionally wrong labels: rotate class index by +1
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr, weight_decay=1e-4)
+                    optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
                     n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
