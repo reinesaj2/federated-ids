@@ -7,7 +7,28 @@ on:
     branches: [ "d2-training-setup", "main" ]
   schedule:
     - cron: "0 7 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      run_comprehensive:
+        description: 'Run comprehensive testing (includes d2_quick and extended nightly)'
+        required: false
+        default: 'false'
+        type: boolean
+      alpha_values:
+        description: 'Alpha values for testing (comma-separated, e.g., "0.05,0.1,0.5")'
+        required: false
+        default: '0.1'
+        type: string
+      client_count:
+        description: 'Number of clients for manual runs'
+        required: false
+        default: '5'
+        type: string
+      round_count:
+        description: 'Number of rounds for manual runs'
+        required: false
+        default: '10'
+        type: string
 
 permissions:
   contents: read
@@ -67,7 +88,7 @@ jobs:
             runs/**/server_metrics_plot.png
 
   d2_quick:
-    if: github.ref == 'refs/heads/d2-training-setup' || (github.event_name == 'pull_request' && github.base_ref == 'd2-training-setup')
+    if: github.ref == 'refs/heads/d2-training-setup' || (github.event_name == 'pull_request' && github.base_ref == 'd2-training-setup') || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_comprehensive == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -104,13 +125,15 @@ jobs:
 
   nightly_full:
     runs-on: ubuntu-latest
+    timeout-minutes: 240  # 4 hours
     strategy:
+      fail-fast: false
       matrix:
         alpha: [0.05, 0.1, 0.5]
+        scenario: ["benign", "adversarial"]
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: d2-training-setup
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
@@ -120,17 +143,144 @@ jobs:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: pip-${{ runner.os }}-
-      - run: pip install -r requirements.txt
+      - name: Install dependencies with retry
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: |
+            pip install -r requirements.txt
+            if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
-      - name: Full benign sweep (10c×30r)
-        env:
-          D2_EXTENDED_METRICS: "1"
-        run: python scripts/run_fl.py --clients 10 --rounds 30 --alpha ${{ matrix.alpha }} --preset d2_full_${{ matrix.alpha }} --partition_strategy dirichlet --leakage_safe
+      - name: Full sweep (10c×30r) - ${{ matrix.scenario }}
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 200
+          max_attempts: 2
+          retry_on: error
+          command: |
+            export D2_EXTENDED_METRICS="1"
+            if [ "${{ matrix.scenario }}" = "benign" ]; then
+              python scripts/run_fl.py --clients 10 --rounds 30 --alpha ${{ matrix.alpha }} --preset d2_full_${{ matrix.alpha }}_benign --partition_strategy dirichlet --leakage_safe
+            else
+              python scripts/run_fl.py --clients 10 --rounds 30 --alpha ${{ matrix.alpha }} --preset d2_full_${{ matrix.alpha }}_adv --partition_strategy dirichlet --adversary_mode label_flip --leakage_safe
+            fi
+
+      - name: Validate results
+        run: python scripts/ci_checks.py --runs_dir runs
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: d2-full-${{ matrix.alpha }}-${{ github.sha }}
+          name: d2-full-${{ matrix.alpha }}-${{ matrix.scenario }}-${{ github.sha }}
           path: runs/**
+          retention-days: 30
+
+  nightly_notify:
+    needs: nightly_full
+    runs-on: ubuntu-latest
+    if: always() && needs.nightly_full.result == 'failure'
+    steps:
+      - name: Create issue on nightly failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Nightly CI Failed - ${new Date().toISOString().split('T')[0]}`;
+            const body = `🚨 **Nightly CI Pipeline Failed**
+
+            **Workflow Run:** [${context.runId}](${context.payload.repository.html_url}/actions/runs/${context.runId})
+            **Branch:** ${context.ref}
+            **Commit:** ${context.sha}
+            **Failed Jobs:** Check the workflow run for details
+
+            Please investigate and fix the failing tests.
+
+            _This issue was automatically created by the CI system._`;
+
+            // Check if similar issue already exists
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['nightly-failure', 'automated']
+            });
+
+            const today = new Date().toISOString().split('T')[0];
+            const todayIssue = existingIssues.data.find(issue =>
+              issue.title.includes(today)
+            );
+
+            if (!todayIssue) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['nightly-failure', 'automated', 'bug']
+              });
+            }
+
+  manual_testing:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: ["benign", "adversarial"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Parse alpha values and run tests
+        env:
+          D2_EXTENDED_METRICS: "1"
+        run: |
+          IFS=',' read -ra ALPHAS <<< "${{ github.event.inputs.alpha_values }}"
+          for alpha in "${ALPHAS[@]}"; do
+            alpha=$(echo "$alpha" | xargs)  # trim whitespace
+            if [ "${{ matrix.scenario }}" = "benign" ]; then
+              python scripts/run_fl.py \
+                --clients ${{ github.event.inputs.client_count }} \
+                --rounds ${{ github.event.inputs.round_count }} \
+                --alpha "$alpha" \
+                --preset "manual_${alpha}_benign" \
+                --partition_strategy dirichlet \
+                --leakage_safe
+            else
+              python scripts/run_fl.py \
+                --clients ${{ github.event.inputs.client_count }} \
+                --rounds ${{ github.event.inputs.round_count }} \
+                --alpha "$alpha" \
+                --preset "manual_${alpha}_adv" \
+                --partition_strategy dirichlet \
+                --adversary_mode label_flip \
+                --leakage_safe
+            fi
+          done
+
+      - name: Validate results
+        run: python scripts/ci_checks.py --runs_dir runs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: manual-test-${{ matrix.scenario }}-${{ github.sha }}
+          path: runs/**
+          retention-days: 7
 
   release_on_tag:
     if: startsWith(github.ref, 'refs/tags/D2-')
