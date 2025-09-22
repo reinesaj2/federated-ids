@@ -19,45 +19,58 @@ def plot_server_metrics(metrics_path: str, output_path: str):
     fig.suptitle('Federated Learning Server Metrics - D2 Demo', fontsize=16)
 
     # Plot 1: Aggregation timing
-    axes[0, 0].plot(df['round'], df['t_aggregate_ms'], 'o-', color='blue', label='Aggregation Time')
+    axes[0, 0].plot(df['round'], df['t_aggregate_ms'], 'o-', color='blue', label='Aggregation Time (ms)')
     axes[0, 0].set_xlabel('Round')
     axes[0, 0].set_ylabel('Time (ms)')
     axes[0, 0].set_title('Aggregation Time per Round')
     axes[0, 0].grid(True, alpha=0.3)
     axes[0, 0].legend()
 
+    # Compute timing footer stats in seconds
+    try:
+        agg_s = pd.to_numeric(df['t_aggregate_ms'], errors='coerce') / 1000.0
+        mean_s = agg_s.mean()
+        std_s = agg_s.std()
+        fig.text(0.5, 0.02, f"Aggregation time: {mean_s:.3f}±{std_s:.3f} s", ha='center')
+    except Exception:
+        pass
+
     # Plot 2: Robustness metrics
-    axes[0, 1].plot(df['round'], df['l2_to_benign_mean'], 'o-', color='red', label='L2 to Benign Mean')
-    axes[0, 1].plot(df['round'], df['cos_to_benign_mean'], 'o-', color='green', label='Cosine Similarity')
-    axes[0, 1].set_xlabel('Round')
-    axes[0, 1].set_ylabel('Metric Value')
-    axes[0, 1].set_title('Robustness Metrics')
-    axes[0, 1].grid(True, alpha=0.3)
-    axes[0, 1].legend()
+    if 'l2_to_benign_mean' in df.columns and 'cos_to_benign_mean' in df.columns:
+        axes[0, 1].plot(df['round'], df['l2_to_benign_mean'], 'o-', color='red', label='L2 to Benign Mean')
+        axes[0, 1].plot(df['round'], df['cos_to_benign_mean'], 'o-', color='green', label='Cosine Similarity')
+        axes[0, 1].set_xlabel('Round')
+        axes[0, 1].set_ylabel('Metric Value')
+        axes[0, 1].set_title('Robustness Metrics')
+        axes[0, 1].grid(True, alpha=0.3)
+        axes[0, 1].legend()
 
     # Plot 3: Update norms
-    axes[1, 0].plot(df['round'], df['update_norm_mean'], 'o-', color='purple', label='Mean Update Norm')
-    axes[1, 0].set_xlabel('Round')
-    axes[1, 0].set_ylabel('Norm Value')
-    axes[1, 0].set_title('Update Norms')
-    axes[1, 0].grid(True, alpha=0.3)
-    axes[1, 0].legend()
+    if 'update_norm_mean' in df.columns:
+        axes[1, 0].plot(df['round'], df['update_norm_mean'], 'o-', color='purple', label='Mean Update Norm')
+        axes[1, 0].set_xlabel('Round')
+        axes[1, 0].set_ylabel('Norm Value')
+        axes[1, 0].set_title('Update Norms')
+        axes[1, 0].grid(True, alpha=0.3)
+        axes[1, 0].legend()
 
-    # Plot 4: Coordinate agreement
-    axes[1, 1].plot(df['round'], df['coord_median_agree_pct'], 'o-', color='orange', label='Coordinate Agreement %')
-    axes[1, 1].set_xlabel('Round')
-    axes[1, 1].set_ylabel('Agreement (%)')
-    axes[1, 1].set_title('Coordinate-wise Median Agreement')
-    axes[1, 1].grid(True, alpha=0.3)
-    axes[1, 1].legend()
+    # Plot 4: Pairwise dispersion (if present)
+    if 'pairwise_cosine_mean' in df.columns and 'l2_dispersion_mean' in df.columns:
+        axes[1, 1].plot(df['round'], df['pairwise_cosine_mean'], 'o-', color='orange', label='Pairwise Cosine Mean')
+        axes[1, 1].plot(df['round'], df['l2_dispersion_mean'], 's-', color='brown', label='L2 Dispersion Mean')
+        axes[1, 1].set_xlabel('Round')
+        axes[1, 1].set_ylabel('Value')
+        axes[1, 1].set_title('Pairwise Dispersion')
+        axes[1, 1].grid(True, alpha=0.3)
+        axes[1, 1].legend()
 
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0.04, 1, 1])
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
 
 
 def plot_client_metrics(client_metrics_paths: list, output_path: str):
-    """Plot client training metrics."""
+    """Plot client training metrics with argmax vs binary@tau overlays if present."""
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle('Federated Learning Client Metrics - D2 Demo', fontsize=16)
 
@@ -77,8 +90,12 @@ def plot_client_metrics(client_metrics_paths: list, output_path: str):
         # Plot 3: Weight norms
         axes[1, 0].plot(df['round'], df['weight_norm_after'], 'o-', color=color, label=f'Client {client_id}')
 
-        # Plot 4: Training time
-        axes[1, 1].plot(df['round'], df['t_fit_ms'], 'o-', color=color, label=f'Client {client_id}')
+        # Plot 4: Binary overlays if available
+        if {'macro_f1_argmax','f1_bin_tau'}.issubset(df.columns):
+            axes[1, 1].plot(df['round'], df['macro_f1_argmax'], 'o-', color=color, alpha=0.7, label=f'Argmax F1 C{client_id}')
+            axes[1, 1].plot(df['round'], df['f1_bin_tau'], 'x--', color=color, alpha=0.7, label=f'Bin@τ F1 C{client_id}')
+        else:
+            axes[1, 1].plot(df['round'], df['acc_after'], 'o-', color=color, alpha=0.7, label=f'Acc C{client_id}')
 
     # Configure subplots
     axes[0, 0].set_xlabel('Round')
@@ -100,8 +117,8 @@ def plot_client_metrics(client_metrics_paths: list, output_path: str):
     axes[1, 0].legend()
 
     axes[1, 1].set_xlabel('Round')
-    axes[1, 1].set_ylabel('Time (ms)')
-    axes[1, 1].set_title('Training Time per Round')
+    axes[1, 1].set_ylabel('Score')
+    axes[1, 1].set_title('Argmax vs Binary@τ (if available)')
     axes[1, 1].grid(True, alpha=0.3)
     axes[1, 1].legend()
 
