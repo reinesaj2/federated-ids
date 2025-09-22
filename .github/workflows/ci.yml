@@ -13,6 +13,10 @@ permissions:
   contents: read
   actions: read
 
+defaults:
+  run:
+    working-directory: federated-ids
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -22,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Python setup
         uses: actions/setup-python@v5
@@ -59,16 +65,18 @@ jobs:
         with:
           name: smoke-artifacts-${{ github.sha }}
           path: |
-            runs/**/metrics.csv
-            runs/**/client_*_metrics.csv
-            runs/**/client_metrics_plot.png
-            runs/**/server_metrics_plot.png
+            federated-ids/runs/**/metrics.csv
+            federated-ids/runs/**/client_*_metrics.csv
+            federated-ids/runs/**/client_metrics_plot.png
+            federated-ids/runs/**/server_metrics_plot.png
 
   d2_quick:
     if: github.ref == 'refs/heads/d2-training-setup' || (github.event_name == 'pull_request' && github.base_ref == 'd2-training-setup')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -96,7 +104,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: d2-quick-artifacts-${{ github.sha }}
-          path: runs/**
+          path: federated-ids/runs/**
 
   nightly_full:
     runs-on: ubuntu-latest
@@ -107,6 +115,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: d2-training-setup
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -125,7 +134,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: d2-full-${{ matrix.alpha }}-${{ github.sha }}
-          path: runs/**
+          path: federated-ids/runs/**
 
   release_on_tag:
     if: startsWith(github.ref, 'refs/tags/D2-')
@@ -134,11 +143,22 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Create GitHub Release with gh
+        with:
+          fetch-depth: 0
+      - name: Create GitHub Release
         run: |
-          gh release create "${GITHUB_REF_NAME}" --notes-from-tag \
-            --title "Deliverable 2 – ${GITHUB_REF_NAME}" \
-            runs/**/client_metrics_plot.png runs/**/server_metrics_plot.png runs/**/metrics.csv
+          gh release create "${GITHUB_REF_NAME}" --notes-from-tag --title "Deliverable 2 – ${GITHUB_REF_NAME}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Optionally upload run artifacts if present
+        run: |
+          set -e
+          FILES=$(ls runs/**/client_metrics_plot.png runs/**/server_metrics_plot.png runs/**/metrics.csv 2>/dev/null || true)
+          if [ -n "$FILES" ]; then
+            gh release upload "${GITHUB_REF_NAME}" $FILES
+          else
+            echo "No run artifacts found; skipping upload."
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
