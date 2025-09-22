@@ -377,6 +377,11 @@ def main() -> None:
         default="",
         help="Protocol column for protocol partitioning",
     )
+    parser.add_argument(
+        "--leakage_safe",
+        action="store_true",
+        help="Fit preprocessor on train-only and drop identifier/time-like columns",
+    )
     parser.add_argument("--samples", type=int, default=2000)
     parser.add_argument("--features", type=int, default=20)
     parser.add_argument("--batch_size", type=int, default=64)
@@ -469,6 +474,7 @@ def main() -> None:
             seed=args.seed,
             alpha=args.alpha,
             protocol_col=chosen_proto_col if chosen_proto_col else None,
+            leakage_safe=bool(args.leakage_safe),
         )
         if args.client_id < 0 or args.client_id >= len(X_parts):
             raise SystemExit(f"client_id must be in [0, {len(X_parts)})")
