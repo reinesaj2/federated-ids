@@ -41,11 +41,13 @@ jobs:
         run: |
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+        working-directory: federated-ids
 
       - name: Lint & unit tests
         run: |
           if command -v flake8 >/dev/null 2>&1; then flake8 ; fi
           pytest -q
+        working-directory: federated-ids
 
       - name: Smoke FL (only on feature branches)
         if: startsWith(github.ref, 'refs/heads/feat/')
@@ -54,6 +56,7 @@ jobs:
         run: |
           python scripts/run_fl.py --clients 2 --rounds 3 --alpha 0.1 --preset smoke_feat_iid --partition_strategy iid --leakage_safe
           python scripts/run_fl.py --clients 2 --rounds 3 --alpha 0.1 --preset smoke_feat_dirichlet --partition_strategy dirichlet --leakage_safe
+        working-directory: federated-ids
 
       - name: Upload smoke artifacts
         if: startsWith(github.ref, 'refs/heads/feat/')
@@ -61,10 +64,10 @@ jobs:
         with:
           name: smoke-artifacts-${{ github.sha }}
           path: |
-            runs/**/metrics.csv
-            runs/**/client_*_metrics.csv
-            runs/**/client_metrics_plot.png
-            runs/**/server_metrics_plot.png
+            federated-ids/runs/**/metrics.csv
+            federated-ids/runs/**/client_*_metrics.csv
+            federated-ids/runs/**/client_metrics_plot.png
+            federated-ids/runs/**/server_metrics_plot.png
 
   d2_quick:
     if: github.ref == 'refs/heads/d2-training-setup' || (github.event_name == 'pull_request' && github.base_ref == 'd2-training-setup')
@@ -84,23 +87,27 @@ jobs:
       - run: |
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+        working-directory: federated-ids
 
       - name: Benign quick
         env:
           D2_EXTENDED_METRICS: "1"
         run: python scripts/run_fl.py --clients 5 --rounds 10 --alpha 0.1 --preset d2_quick_benign --partition_strategy dirichlet --leakage_safe
+        working-directory: federated-ids
       - name: Adversarial quick
         env:
           D2_EXTENDED_METRICS: "1"
         run: python scripts/run_fl.py --clients 5 --rounds 10 --alpha 0.1 --preset d2_quick_adv --partition_strategy dirichlet --adversary_mode label_flip --leakage_safe
+        working-directory: federated-ids
 
       - name: Schema/metric checks
         run: python scripts/ci_checks.py --runs_dir runs
+        working-directory: federated-ids
 
       - uses: actions/upload-artifact@v4
         with:
           name: d2-quick-artifacts-${{ github.sha }}
-          path: runs/**
+          path: federated-ids/runs/**
 
   nightly_full:
     runs-on: ubuntu-latest
@@ -121,16 +128,18 @@ jobs:
           key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: pip-${{ runner.os }}-
       - run: pip install -r requirements.txt
+        working-directory: federated-ids
 
       - name: Full benign sweep (10c×30r)
         env:
           D2_EXTENDED_METRICS: "1"
         run: python scripts/run_fl.py --clients 10 --rounds 30 --alpha ${{ matrix.alpha }} --preset d2_full_${{ matrix.alpha }} --partition_strategy dirichlet --leakage_safe
+        working-directory: federated-ids
 
       - uses: actions/upload-artifact@v4
         with:
           name: d2-full-${{ matrix.alpha }}-${{ github.sha }}
-          path: runs/**
+          path: federated-ids/runs/**
 
   release_on_tag:
     if: startsWith(github.ref, 'refs/tags/D2-')
@@ -149,7 +158,7 @@ jobs:
       - name: Optionally upload run artifacts if present
         run: |
           set -e
-          FILES=$(ls runs/**/client_metrics_plot.png runs/**/server_metrics_plot.png runs/**/metrics.csv 2>/dev/null || true)
+          FILES=$(ls federated-ids/runs/**/client_metrics_plot.png federated-ids/runs/**/server_metrics_plot.png federated-ids/runs/**/metrics.csv 2>/dev/null || true)
           if [ -n "$FILES" ]; then
             gh release upload "${GITHUB_REF_NAME}" $FILES
           else
