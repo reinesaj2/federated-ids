@@ -14,6 +14,16 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 
 
+# Drop silently if missing; helps avoid leakage/time proxies in IDS datasets
+DEFAULT_DROP_COLS: List[str] = [
+    "Flow ID",
+    "Timestamp",
+    "Src IP",
+    "Dst IP",
+    "Src Port",
+    "Dst Port",
+]
+
 @dataclass
 class DatasetStats:
     num_samples: int
@@ -345,6 +355,34 @@ def load_cic_ids2017(csv_path: str) -> Tuple[pd.DataFrame, str, Optional[str]]:
     return df, label_col, proto_col
 
 
+def fit_preprocessor_train_only_and_transform_all(
+    df: pd.DataFrame,
+    label_col: str,
+    drop_cols: Optional[List[str]] = None,
+    seed: int = 42,
+) -> Tuple[ColumnTransformer, np.ndarray, np.ndarray]:
+    """Split first; fit preprocessor on train only; transform all rows.
+
+    Returns (pre, X_all, y_all) where pre is fitted on the train subset.
+    """
+    drop_cols = drop_cols or DEFAULT_DROP_COLS
+    df_ = df.drop(columns=drop_cols, errors="ignore").reset_index(drop=True)
+    y_all = _encode_labels_to_ints(df_[label_col])
+    # Stratified split to get train indices only
+    idx = np.arange(len(df_))
+    _, idx_train = train_test_split(
+        idx, test_size=0.3, random_state=seed, stratify=y_all
+    )
+    # Infer columns after drops
+    numeric_cols, categorical_cols = infer_feature_columns(df_, label_col, drop_cols=[])
+    pre = build_preprocessor(numeric_cols, categorical_cols)
+    # Fit on train subset
+    pre.fit(df_.iloc[idx_train])
+    # Transform all
+    X_all = pre.transform(df_).astype(np.float32)
+    return pre, X_all, y_all
+
+
 def prepare_partitions_from_dataframe(
     df: pd.DataFrame,
     label_col: str,
@@ -353,8 +391,16 @@ def prepare_partitions_from_dataframe(
     seed: int = 42,
     alpha: float = 0.1,
     protocol_col: Optional[str] = None,
+    leakage_safe: bool = False,
 ) -> Tuple[ColumnTransformer, List[np.ndarray], List[np.ndarray], int]:
-    pre, X_all, y_all = fit_preprocessor_global(df, label_col)
+    # Drop default identifiers/time proxies if leakage_safe
+    drop_cols = DEFAULT_DROP_COLS if leakage_safe else None
+    if leakage_safe:
+        pre, X_all, y_all = fit_preprocessor_train_only_and_transform_all(
+            df, label_col, drop_cols=drop_cols, seed=seed
+        )
+    else:
+        pre, X_all, y_all = fit_preprocessor_global(df.drop(columns=(drop_cols or []), errors="ignore"), label_col)
     num_classes_global = int(len(np.unique(y_all)))
     if partition_strategy == "iid":
         shards = iid_partition(num_samples=len(df), num_clients=num_clients, seed=seed)
