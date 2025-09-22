@@ -7,6 +7,7 @@ on:
     branches: [ "d2-training-setup", "main" ]
   schedule:
     - cron: "0 7 * * *"
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -98,13 +99,14 @@ jobs:
           path: runs/**
 
   nightly_full:
-    if: github.event_name == 'schedule' && github.ref == 'refs/heads/d2-training-setup'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         alpha: [0.05, 0.1, 0.5]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: d2-training-setup
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
