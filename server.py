@@ -154,6 +154,29 @@ def main() -> None:
                 client_weights, benign_mean, aggregated
             )
 
+            # Compute pairwise dispersion metrics
+            def _flatten(update: List[np.ndarray]) -> np.ndarray:
+                return np.concatenate([u.reshape(-1) for u in update])
+
+            pairwise_cos = []
+            l2_disp = []
+            try:
+                flats = [_flatten(u) for u in client_weights]
+                if len(flats) >= 2:
+                    import numpy as _np
+                    # pairwise cosine
+                    norms = [_np.linalg.norm(v) for v in flats]
+                    for i in range(len(flats)):
+                        for j in range(i + 1, len(flats)):
+                            denom = max(norms[i] * norms[j], 1e-12)
+                            pairwise_cos.append(float(_np.dot(flats[i], flats[j]) / denom))
+                    # l2 dispersion: distance to mean
+                    mean_vec = sum(flats) / len(flats)
+                    for v in flats:
+                        l2_disp.append(float(_np.linalg.norm(v - mean_vec)))
+            except Exception:
+                pass
+
             # Log metrics
             metrics_logger.log_round_metrics(
                 round_num=rnd,
@@ -167,6 +190,10 @@ def main() -> None:
                 update_norm_std=robustness_metrics["update_norm_std"],
                 t_aggregate_ms=t_aggregate_ms,
                 t_round_ms=t_round_ms,
+                pairwise_cosine_mean=(float(sum(pairwise_cos) / len(pairwise_cos)) if pairwise_cos else None),
+                pairwise_cosine_std=(float(_np.array(pairwise_cos).std()) if pairwise_cos else None),
+                l2_dispersion_mean=(float(sum(l2_disp) / len(l2_disp)) if l2_disp else None),
+                l2_dispersion_std=(float(_np.array(l2_disp).std()) if l2_disp else None),
             )
 
             parameters = ndarrays_to_parameters(aggregated)
