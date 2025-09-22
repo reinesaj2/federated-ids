@@ -121,6 +121,37 @@ def main() -> None:
     preds_test = np.argmax(test_probs, axis=1)
     macro_f1 = float(f1_score(test_labels, preds_test, average="macro")) if test_probs.size > 0 else 0.0
 
+    # Per-class support and F1
+    labels_unique, counts = np.unique(test_labels, return_counts=True)
+    support = counts / counts.sum() if counts.sum() > 0 else counts
+    per_class_f1 = []
+    for c in labels_unique:
+      mask = (test_labels == c)
+      f1_c = float(f1_score(test_labels, preds_test == c, labels=[c], average="macro")) if mask.sum() > 0 else 0.0
+      per_class_f1.append((int(c), f1_c))
+
+    os.makedirs(args.logdir, exist_ok=True)
+    # Write class-level CSVs
+    sup_path = os.path.join(args.logdir, "per_class_support.csv")
+    with open(sup_path, "w") as f:
+      f.write("label,support_fraction\n")
+      for c, frac in zip(labels_unique, support):
+        f.write(f"{int(c)},{float(frac)}\n")
+
+    f1_path = os.path.join(args.logdir, "per_class_f1.csv")
+    with open(f1_path, "w") as f:
+      f.write("label,f1\n")
+      for c, f1c in per_class_f1:
+        f.write(f"{c},{f1c}\n")
+
+    rare_path = os.path.join(args.logdir, "rare_classes_f1.csv")
+    with open(rare_path, "w") as f:
+      f.write("label,f1\n")
+      for c, frac in zip(labels_unique, support):
+        if float(frac) <= 0.05:
+          f1c = next((v for k,v in per_class_f1 if k == int(c)), 0.0)
+          f.write(f"{int(c)},{f1c}\n")
+
     # Binary BENIGN vs attack metrics
     benign_idx = 0 if num_classes >= 2 else 0
     attack_probs_val = 1.0 - val_probs[:, benign_idx]
