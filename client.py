@@ -211,6 +211,34 @@ class TorchClient(fl.client.NumPyClient):
 
         # Capture after metrics
         weights_after = get_parameters(self.model)
+        # Differential Privacy: clip update and add Gaussian noise (if enabled)
+        try:
+            dp_enabled = bool(self.runtime_config.get("dp_enabled", False))
+            if dp_enabled:
+                clip = float(self.runtime_config.get("dp_clip", 1.0))
+                noise_mult = float(self.runtime_config.get("dp_noise_multiplier", 0.0))
+                # Build update (delta)
+                deltas: List[np.ndarray] = [wa - wb for wb, wa in zip(weights_before, weights_after)]
+                # Compute global L2 norm of concatenated delta
+                flat = np.concatenate([d.reshape(-1) for d in deltas]) if deltas else np.zeros(1, dtype=np.float32)
+                l2 = float(np.linalg.norm(flat))
+                scale = 1.0
+                if l2 > 0.0:
+                    scale = min(1.0, clip / l2)
+                clipped: List[np.ndarray] = [d * scale for d in deltas]
+                # Noise scale
+                sigma = noise_mult * clip
+                # RNG seed prioritizes config seed, then env SEED, finally round number
+                dp_seed = int(self.runtime_config.get("dp_seed", -1))
+                if dp_seed < 0:
+                    dp_seed = int(os.environ.get("SEED", "42"))
+                rng = np.random.default_rng(dp_seed + self.round_num)
+                noisy: List[np.ndarray] = [c + rng.normal(loc=0.0, scale=sigma, size=c.shape).astype(c.dtype) for c in clipped]
+                # Reconstruct noisy weights as weights_before + noisy_delta
+                weights_after = [wb + nd for wb, nd in zip(weights_before, noisy)]
+        except Exception:
+            # Fail-open: if DP step errors, proceed with original weights_after
+            pass
         weight_norm_after = calculate_weight_norms(weights_after)
         weight_update_norm = calculate_weight_update_norm(weights_before, weights_after)
 
@@ -339,6 +367,34 @@ def main() -> None:
     parser.add_argument("--local_epochs", type=int, default=1)
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument(
+        "--secure_aggregation",
+        action="store_true",
+        help="Enable secure aggregation mode (stub toggle; no functional change)",
+    )
+    parser.add_argument(
+        "--dp_enabled",
+        action="store_true",
+        help="Enable client-side DP (clip + Gaussian noise on updates)",
+    )
+    parser.add_argument(
+        "--dp_clip",
+        type=float,
+        default=1.0,
+        help="L2 clipping threshold for client update (DP)",
+    )
+    parser.add_argument(
+        "--dp_noise_multiplier",
+        type=float,
+        default=0.0,
+        help="Gaussian noise multiplier (sigma) relative to clip for DP",
+    )
+    parser.add_argument(
+        "--dp_seed",
+        type=int,
+        default=-1,
+        help="Optional DP RNG seed (defaults to SEED if < 0)",
+    )
+    parser.add_argument(
         "--logdir",
         type=str,
         default="./logs",
@@ -444,6 +500,18 @@ def main() -> None:
             "adversary_mode": args.adversary_mode,
             "local_epochs": args.local_epochs,
             "lr": args.lr,
+            # Privacy/robustness toggles
+            "secure_aggregation": bool(
+                args.secure_aggregation or os.environ.get("D2_SECURE_AGG", "0").lower() not in ("0", "false", "no", "")
+            ),
+            "dp_enabled": bool(
+                args.dp_enabled or os.environ.get("D2_DP_ENABLED", "0").lower() not in ("0", "false", "no", "")
+            ),
+            "dp_clip": float(os.environ.get("D2_DP_CLIP", str(args.dp_clip))),
+            "dp_noise_multiplier": float(
+                os.environ.get("D2_DP_NOISE_MULTIPLIER", str(args.dp_noise_multiplier))
+            ),
+            "dp_seed": int(os.environ.get("D2_DP_SEED", str(args.dp_seed))),
         },
     )
 

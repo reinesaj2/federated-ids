@@ -12,13 +12,21 @@ import numpy as np
 class ClientMetricsLogger:
     """Handles CSV logging of client-side federated learning metrics."""
 
-    def __init__(self, csv_path: str, client_id: int, extended: Optional[bool] = None) -> None:
+    def __init__(
+        self, csv_path: str, client_id: int, extended: Optional[bool] = None
+    ) -> None:
         """Initialize the client metrics logger with a CSV file path and client ID."""
         self.csv_path = Path(csv_path)
         self.client_id = client_id
         if extended is None:
             import os as _os
-            self.extended = _os.environ.get("D2_EXTENDED_METRICS", "0").lower() not in ("0", "false", "no", "")
+
+            self.extended = _os.environ.get("D2_EXTENDED_METRICS", "0").lower() not in (
+                "0",
+                "false",
+                "no",
+                "",
+            )
         else:
             self.extended = bool(extended)
         self._ensure_csv_exists()
@@ -32,21 +40,48 @@ class ClientMetricsLogger:
         if not self.csv_path.exists():
             if self.extended:
                 headers = [
-                    "client_id", "round", "dataset_size", "n_classes",
-                    "loss_before", "acc_before", "loss_after", "acc_after",
-                    "macro_f1_before", "macro_f1_after", "f1_per_class_after",
-                    "fpr_after", "pr_auc_after", "threshold_tau", "seed",
-                    "weight_norm_before", "weight_norm_after", "weight_update_norm",
-                    "t_fit_ms", "epochs_completed", "lr", "batch_size"
+                    "client_id",
+                    "round",
+                    "dataset_size",
+                    "n_classes",
+                    "loss_before",
+                    "acc_before",
+                    "loss_after",
+                    "acc_after",
+                    "macro_f1_before",
+                    "macro_f1_after",
+                    "f1_per_class_after",
+                    "fpr_after",
+                    "pr_auc_after",
+                    "threshold_tau",
+                    "seed",
+                    "weight_norm_before",
+                    "weight_norm_after",
+                    "weight_update_norm",
+                    "t_fit_ms",
+                    "epochs_completed",
+                    "lr",
+                    "batch_size",
                 ]
             else:
                 headers = [
-                    "client_id", "round", "dataset_size", "n_classes",
-                    "loss_before", "acc_before", "loss_after", "acc_after",
-                    "weight_norm_before", "weight_norm_after", "weight_update_norm",
-                    "t_fit_ms", "epochs_completed", "lr", "batch_size"
+                    "client_id",
+                    "round",
+                    "dataset_size",
+                    "n_classes",
+                    "loss_before",
+                    "acc_before",
+                    "loss_after",
+                    "acc_after",
+                    "weight_norm_before",
+                    "weight_norm_after",
+                    "weight_update_norm",
+                    "t_fit_ms",
+                    "epochs_completed",
+                    "lr",
+                    "batch_size",
                 ]
-            with open(self.csv_path, 'w', newline='') as f:
+            with open(self.csv_path, "w", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow(headers)
 
@@ -119,7 +154,7 @@ class ClientMetricsLogger:
                 str(batch_size),
             ]
 
-        with open(self.csv_path, 'a', newline='') as f:
+        with open(self.csv_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(row)
 
@@ -176,6 +211,7 @@ def analyze_data_distribution(labels: np.ndarray) -> dict[str, int]:
 def create_label_histogram_json(labels: np.ndarray) -> str:
     """Create a JSON representation of label distribution histogram."""
     import json
+
     unique_labels, counts = np.unique(labels, return_counts=True)
     label_hist = {str(label): int(count) for label, count in zip(unique_labels, counts)}
     return json.dumps(label_hist, sort_keys=True)

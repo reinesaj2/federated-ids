@@ -57,6 +57,11 @@ def main() -> None:
         help="Directory for metrics logging",
     )
     parser.add_argument(
+        "--secure_aggregation",
+        action="store_true",
+        help="Enable secure aggregation mode (stub; placeholder for crypto/masking)",
+    )
+    parser.add_argument(
         "--min_fit_clients",
         type=int,
         default=2,
@@ -93,6 +98,10 @@ def main() -> None:
 
     agg_method = AggregationMethod.from_string(args.aggregation)
     print(f"[Server] Using aggregation method: {agg_method.value}")
+    secure_agg_enabled = bool(
+        args.secure_aggregation or os.environ.get("D2_SECURE_AGG", "0").lower() not in ("0", "false", "no", "")
+    )
+    print(f"[Server] Secure aggregation mode: {'ON' if secure_agg_enabled else 'OFF'} (stub)")
 
     # Initialize metrics logging
     metrics_path = os.path.join(args.logdir, "metrics.csv")
@@ -194,7 +203,7 @@ def main() -> None:
     strategy = RobustStrategy(
         fraction_fit=args.fraction_fit,
         min_fit_clients=args.min_fit_clients,
-        min_eval_clients=args.min_eval_clients,
+        min_evaluate_clients=args.min_eval_clients,
         min_available_clients=args.min_available_clients,
         on_fit_config_fn=_on_fit_config,
         evaluate_metrics_aggregation_fn=_eval_metrics_agg,
