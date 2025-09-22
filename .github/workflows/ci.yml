@@ -13,10 +13,6 @@ permissions:
   contents: read
   actions: read
 
-defaults:
-  run:
-    working-directory: federated-ids
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -65,10 +61,10 @@ jobs:
         with:
           name: smoke-artifacts-${{ github.sha }}
           path: |
-            federated-ids/runs/**/metrics.csv
-            federated-ids/runs/**/client_*_metrics.csv
-            federated-ids/runs/**/client_metrics_plot.png
-            federated-ids/runs/**/server_metrics_plot.png
+            runs/**/metrics.csv
+            runs/**/client_*_metrics.csv
+            runs/**/client_metrics_plot.png
+            runs/**/server_metrics_plot.png
 
   d2_quick:
     if: github.ref == 'refs/heads/d2-training-setup' || (github.event_name == 'pull_request' && github.base_ref == 'd2-training-setup')
@@ -104,7 +100,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: d2-quick-artifacts-${{ github.sha }}
-          path: federated-ids/runs/**
+          path: runs/**
 
   nightly_full:
     runs-on: ubuntu-latest
@@ -134,7 +130,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: d2-full-${{ matrix.alpha }}-${{ github.sha }}
-          path: federated-ids/runs/**
+          path: runs/**
 
   release_on_tag:
     if: startsWith(github.ref, 'refs/tags/D2-')
