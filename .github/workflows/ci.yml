@@ -2,32 +2,32 @@ name: ci
 
 on:
   push:
-    branches: [ "feat/**", "chore/**", "fix/**", "d2-training-setup" ]
+    branches: ["feat/**", "chore/**", "fix/**", "d2-training-setup"]
   pull_request:
-    branches: [ "d2-training-setup", "main" ]
+    branches: ["d2-training-setup", "main"]
   schedule:
     - cron: "0 7 * * *"
   workflow_dispatch:
     inputs:
       run_comprehensive:
-        description: 'Run comprehensive testing (includes d2_quick and extended nightly)'
+        description: "Run comprehensive testing (includes d2_quick and extended nightly)"
         required: false
-        default: 'false'
+        default: "false"
         type: boolean
       alpha_values:
         description: 'Alpha values for testing (comma-separated, e.g., "0.05,0.1,0.5")'
         required: false
-        default: '0.1'
+        default: "0.1"
         type: string
       client_count:
-        description: 'Number of clients for manual runs'
+        description: "Number of clients for manual runs"
         required: false
-        default: '5'
+        default: "5"
         type: string
       round_count:
-        description: 'Number of rounds for manual runs'
+        description: "Number of rounds for manual runs"
         required: false
-        default: '10'
+        default: "10"
         type: string
 
 permissions:
@@ -125,7 +125,7 @@ jobs:
 
   nightly_full:
     runs-on: ubuntu-latest
-    timeout-minutes: 240  # 4 hours
+    timeout-minutes: 240 # 4 hours
     strategy:
       fail-fast: false
       matrix:
@@ -181,6 +181,8 @@ jobs:
     needs: nightly_full
     runs-on: ubuntu-latest
     if: always() && needs.nightly_full.result == 'failure'
+    permissions:
+      issues: write
     steps:
       - name: Create issue on nightly failure
         uses: actions/github-script@v7
@@ -307,5 +309,3 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
