@@ -14,11 +14,11 @@
         
 [92mINFO [0m:      Starting Flower server, config: num_rounds=2, no round_timeout
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1758643701.816553 8696036 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758647191.079918 9083713 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Flower ECE: gRPC server running (2 rounds), SSL is disabled
 [92mINFO [0m:      [INIT]
 [92mINFO [0m:      Requesting initial parameters from one random client
-I0000 00:00:1758643701.841729 8696036 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758647191.085240 9083713 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Received initial parameters from one random client
 [92mINFO [0m:      Starting evaluation of initial global parameters
 [92mINFO [0m:      Evaluation returned no results (`None`)
@@ -36,7 +36,7 @@ I0000 00:00:1758643701.841729 8696036 fork_posix.cc:71] Other threads are curren
 [92mINFO [0m:      aggregate_evaluate: received 2 results and 0 failures
 [92mINFO [0m:      
 [92mINFO [0m:      [SUMMARY]
-[92mINFO [0m:      Run finished 2 round(s) in 0.98s
+[92mINFO [0m:      Run finished 2 round(s) in 0.90s
 [92mINFO [0m:      	History (loss, distributed):
 [92mINFO [0m:      		round 1: 0.06503532081842422
 [92mINFO [0m:      		round 2: 0.08836180716753006
@@ -52,3 +52,25 @@ I0000 00:00:1758643701.841729 8696036 fork_posix.cc:71] Other threads are curren
   min_available_clients: 2
   fraction_fit: 1.0
   fraction_eval: 1.0
+Exception ignored in: <module 'threading' from '/Users/abrahamreines/.pyenv/versions/3.12.3/lib/python3.12/threading.py'>
+Traceback (most recent call last):
+  File "/Users/abrahamreines/.pyenv/versions/3.12.3/lib/python3.12/threading.py", line 1592, in _shutdown
+    atexit_call()
+  File "/Users/abrahamreines/.pyenv/versions/3.12.3/lib/python3.12/concurrent/futures/thread.py", line 31, in _python_exit
+    t.join()
+  File "/Users/abrahamreines/.pyenv/versions/3.12.3/lib/python3.12/threading.py", line 1147, in join
+    self._wait_for_tstate_lock()
+  File "/Users/abrahamreines/.pyenv/versions/3.12.3/lib/python3.12/threading.py", line 1167, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abrahamreines/Documents/Thesis/federated-ids/.venv/lib/python3.12/site-packages/flwr/common/exit/signal_handler.py", line 93, in graceful_exit_handler
+    flwr_exit(
+  File "/Users/abrahamreines/Documents/Thesis/federated-ids/.venv/lib/python3.12/site-packages/flwr/common/exit/exit.py", line 79, in flwr_exit
+    event(event_type, event_details).result()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abrahamreines/Documents/Thesis/federated-ids/.venv/lib/python3.12/site-packages/flwr/common/telemetry.py", line 211, in event
+    result = executor.submit(create_event, event_type, event_details)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abrahamreines/.pyenv/versions/3.12.3/lib/python3.12/concurrent/futures/thread.py", line 172, in submit
+    raise RuntimeError('cannot schedule new futures after '
+RuntimeError: cannot schedule new futures after interpreter shutdown
