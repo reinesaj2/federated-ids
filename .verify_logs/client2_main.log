@@ -23,22 +23,26 @@
             This is a deprecated feature. It will be removed
             entirely in future versions of Flower.
         
+[92mINFO [0m:      
+[92mINFO [0m:      Received: get_parameters message c66acd68-ce86-4d42-8984-1e6691f1350c
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1758643690.251549 8694155 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-[92mINFO [0m:      
-[92mINFO [0m:      Received: train message dea4b5cb-627a-4fc9-b947-5e5dec415412
+I0000 00:00:1758647181.809447 9081872 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message 9b0b8c4e-bf84-443e-903c-7633a06c0814
+[92mINFO [0m:      Received: train message 4d32ffd9-1bf3-4bb8-b817-1b238d1da01d
+I0000 00:00:1758647181.820564 9081872 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message f7e96a78-8b8b-44db-94ca-14d15ef0700a
+[92mINFO [0m:      Received: evaluate message 92203fde-106a-4ea0-905a-8398defe6e8e
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message 687f60fe-fe7b-4086-8854-c1670ecb4f5c
+[92mINFO [0m:      Received: train message a50c31b9-9220-4d22-a90a-ad39682cfb12
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message 2e42992f-11af-4f2d-a12c-b77a594d9437
+[92mINFO [0m:      Received: evaluate message e517da9e-2f0e-4fd5-965c-060d82bd49d1
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message 5c128265-9056-4c7e-9f7e-4d819a1d4e52
 [92mINFO [0m:      Disconnect and shut down
 [Client 0] Logging metrics to: ./logs/client_0_metrics.csv
 [Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}

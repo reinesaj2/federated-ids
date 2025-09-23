@@ -17,8 +17,7 @@
 [92mINFO [0m:      [INIT]
 [92mINFO [0m:      Requesting initial parameters from one random client
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1758643687.719947 8693757 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-I0000 00:00:1758643687.727480 8693757 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758647179.918571 9081523 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Received initial parameters from one random client
 [92mINFO [0m:      Starting evaluation of initial global parameters
 [92mINFO [0m:      Evaluation returned no results (`None`)
@@ -36,7 +35,7 @@ I0000 00:00:1758643687.727480 8693757 fork_posix.cc:71] Other threads are curren
 [92mINFO [0m:      aggregate_evaluate: received 2 results and 0 failures
 [92mINFO [0m:      
 [92mINFO [0m:      [SUMMARY]
-[92mINFO [0m:      Run finished 2 round(s) in 3.09s
+[92mINFO [0m:      Run finished 2 round(s) in 1.02s
 [92mINFO [0m:      	History (loss, distributed):
 [92mINFO [0m:      		round 1: 0.06503532081842422
 [92mINFO [0m:      		round 2: 0.08836180716753006
