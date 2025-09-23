@@ -23,26 +23,23 @@
             This is a deprecated feature. It will be removed
             entirely in future versions of Flower.
         
-[92mINFO [0m:      
-[92mINFO [0m:      Received: get_parameters message c66acd68-ce86-4d42-8984-1e6691f1350c
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1758647181.809447 9081872 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758647654.673592 9135264 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758647654.684358 9135264 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message f9d330c8-7c5f-4cea-aa50-fcaae0be28a6
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 4d32ffd9-1bf3-4bb8-b817-1b238d1da01d
-I0000 00:00:1758647181.820564 9081872 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+[92mINFO [0m:      Received: evaluate message efe3a974-7faa-4d5a-ae5b-b2db74947280
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message 92203fde-106a-4ea0-905a-8398defe6e8e
+[92mINFO [0m:      Received: train message 8d1151e1-9c32-4441-ae43-f59aadc14d9b
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message a50c31b9-9220-4d22-a90a-ad39682cfb12
+[92mINFO [0m:      Received: evaluate message 78b4e8d1-fabd-4f98-b46d-ca14ec9caf6a
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message e517da9e-2f0e-4fd5-965c-060d82bd49d1
-[92mINFO [0m:      Sent reply
-[92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message 5c128265-9056-4c7e-9f7e-4d819a1d4e52
+[92mINFO [0m:      Received: reconnect message 6fede013-c68a-4a7e-b327-c5377ae233d9
 [92mINFO [0m:      Disconnect and shut down
 [Client 0] Logging metrics to: ./logs/client_0_metrics.csv
 [Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}

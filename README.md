@@ -4,8 +4,6 @@ Federated learning demo using [Flower](https://flower.dev) for orchestration and
 Supports synthetic and real IDS datasets (CIC-IDS2017, UNSW-NB15) with preprocessing (scaling and one‑hot encoding)
 and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregation implementations (Median, Krum, simplified Bulyan).
 
-This README is intentionally beginner‑proof and very explicit.
-
 ## Table of Contents
 
 1. Prerequisites (what you need installed)

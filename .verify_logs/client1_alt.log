@@ -23,23 +23,23 @@
             This is a deprecated feature. It will be removed
             entirely in future versions of Flower.
         
-[92mINFO [0m:      
-[92mINFO [0m:      Received: train message 0560de0d-f247-4723-bc17-de8acc8365f9
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1758647187.362920 9082892 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-I0000 00:00:1758647187.373494 9082892 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758647660.208333 9136385 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758647660.218377 9136385 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message cc308ed2-c4e1-465e-9e48-f92c36e0fc34
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message a789081d-b527-4c25-b01f-5bca6b8a03a7
+[92mINFO [0m:      Received: evaluate message 6f42b845-b3a2-4338-a8de-52a2edad1c89
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 05dde5ab-fe5b-42bf-9148-9cddc8cf3c4d
+[92mINFO [0m:      Received: train message f9249fc4-c313-470f-b097-99cb0f44b502
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message b991f44b-f760-4913-84b8-bf9ed6db7f32
+[92mINFO [0m:      Received: evaluate message f3b7bdf4-eb9a-4737-a479-3ce6761c3081
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message a53f52de-74eb-414c-a6e4-ded5a4ea4417
+[92mINFO [0m:      Received: reconnect message f1df7d80-5a5b-45ac-94fa-0e318248ffc2
 [92mINFO [0m:      Disconnect and shut down
 [Client 0] Logging metrics to: ./logs/client_0_metrics.csv
 [Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}
