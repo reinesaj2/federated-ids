@@ -32,7 +32,8 @@ def test_server_metrics_csv_creation():
             expected = [
                 "round", "agg_method", "n_clients", "byzantine_f",
                 "l2_to_benign_mean", "cos_to_benign_mean", "coord_median_agree_pct",
-                "update_norm_mean", "update_norm_std", "t_aggregate_ms", "t_round_ms"
+                "update_norm_mean", "update_norm_std", "t_aggregate_ms", "t_round_ms",
+                "pairwise_cosine_mean", "pairwise_cosine_std", "l2_dispersion_mean", "l2_dispersion_std"
             ]
             assert headers == expected
 
@@ -69,7 +70,7 @@ def test_server_metrics_logging_complete_record():
 
             expected_row = [
                 "1", "krum", "5", "1", "0.1234", "0.9876", "85.5",
-                "1.5", "0.25", "15.5", "1250.0"
+                "1.5", "0.25", "15.5", "1250.0", "", "", "", ""
             ]
             assert row == expected_row
 
@@ -149,7 +150,7 @@ def test_server_metrics_with_none_values():
             # None values should be empty strings in CSV
             expected_row = [
                 "1", "median", "2", "", "", "", "",
-                "2.0", "0.5", "20.0", "2000.0"
+                "2.0", "0.5", "20.0", "2000.0", "", "", "", ""
             ]
             assert row == expected_row
 

@@ -2,6 +2,7 @@ import argparse
 import os
 import random
 from typing import List, Tuple
+from model_utils import save_client_model
 
 import flwr as fl
 import numpy as np
@@ -347,9 +348,43 @@ class TorchClient(fl.client.NumPyClient):
             batch_size=batch_size,
         )
 
+        # Save client model if enabled
+        self._save_client_model_if_needed()
+
         num_examples = len(self.train_loader.dataset)
         metrics = {}
         return weights_after, num_examples, metrics
+
+    def _save_client_model_if_needed(self) -> None:
+        """Save client model based on save_models strategy."""
+        save_models = self.runtime_config.get("save_models", "none")
+        if save_models == "none":
+            return
+
+        # For clients, we only save when save_models is "all"
+        # Final model saving is handled by the server
+        if save_models != "all":
+            return
+
+        try:
+            logdir = self.runtime_config.get("logdir", "./logs")
+            client_id = self.runtime_config.get("client_id", 0)
+
+            save_client_model(
+                self.model,
+                logdir,
+                client_id,
+                self.round_num,
+                metadata={
+                    'save_strategy': save_models,
+                    'dataset_size': self.data_stats.get('dataset_size', 0),
+                    'n_classes': self.data_stats.get('n_classes', 2)
+                }
+            )
+            print(f"[Client {client_id}] Saved model for round {self.round_num}: {logdir}/client_{client_id}_model_round_{self.round_num}.pth")
+        except Exception as e:
+            client_id = self.runtime_config.get("client_id", 0)
+            print(f"[Client {client_id}] Warning: Failed to save model for round {self.round_num}: {e}")
 
     def evaluate(self, parameters, config):  # type: ignore[override]
         set_parameters(self.model, parameters)
@@ -437,6 +472,13 @@ def main() -> None:
         type=str,
         default="./logs",
         help="Directory for metrics logging",
+    )
+    parser.add_argument(
+        "--save_models",
+        type=str,
+        default="final",
+        choices=["none", "final", "all"],
+        help="Model saving strategy: none (no models), final (only final model), all (every round)",
     )
     args = parser.parse_args()
 
@@ -551,6 +593,10 @@ def main() -> None:
                 os.environ.get("D2_DP_NOISE_MULTIPLIER", str(args.dp_noise_multiplier))
             ),
             "dp_seed": int(os.environ.get("D2_DP_SEED", str(args.dp_seed))),
+            # Model persistence
+            "save_models": args.save_models,
+            "logdir": args.logdir,
+            "client_id": args.client_id,
         },
     )
 

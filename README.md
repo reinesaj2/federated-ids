@@ -41,6 +41,7 @@ python client.py --dataset cic --data_path /path/to/CIC-IDS2017.csv --partition_
 You should see two clients connect, local training per round, and the server complete two rounds.
 
 Note:
+
 - Flower may print deprecation warnings about start_server/start_numpy_client. These commands are tested with flwr 1.21.0 and work; migration to SuperLink/SuperNode CLI will be handled later.
 - If port 8080 is in use, choose another (e.g., 8081) and pass it to both server and clients.
 
@@ -84,6 +85,7 @@ scripts/verify_readme.sh
 ```
 
 What it checks:
+
 - Server + two clients complete ROUNDS on `127.0.0.1:$PORT_MAIN` within `TIMEOUT_SECS`.
 - Same on `127.0.0.1:$PORT_ALT`.
 - Two same-seed runs produce matching histories (basic reproducibility).
@@ -103,6 +105,52 @@ python scripts/prepare_unsw_sample.py \
 ```
 
 Use the sampled CSV in client commands via `--data_path`.
+
+## CI/CD Training Pipeline
+
+The repository includes automated training pipelines that run comprehensive federated learning experiments:
+
+### Daily Nightly Training
+
+- **Schedule:** 7 AM UTC daily (`cron: "0 7 * * *"`)
+- **Configuration:** 10 clients × 30 rounds
+- **Scenarios:** 6 total training runs
+  - 3 alpha values (0.05, 0.1, 0.5) for Dirichlet data heterogeneity
+  - 2 scenarios each: benign and adversarial (label flip attacks)
+- **Timeout:** 4 hours per job
+- **Artifacts:** Results saved for 30 days with metrics, plots, and model checkpoints
+
+### Manual Training Runs
+
+Trigger via GitHub Actions workflow dispatch with customizable parameters:
+
+- Alpha values (comma-separated)
+- Client count (default: 5)
+- Round count (default: 10)
+
+### Quick CI Tests
+
+- **d2_quick:** 5 clients × 10 rounds (benign + adversarial)
+- **fast:** Smoke tests on feature branches (2 clients × 3 rounds)
+
+### Training Command Structure
+
+```bash
+# Nightly full training example
+python scripts/run_fl.py --clients 10 --rounds 30 --alpha 0.1 \
+  --preset d2_full_0.1_benign --partition_strategy dirichlet --leakage_safe
+
+# Adversarial training with label flip attacks
+python scripts/run_fl.py --clients 10 --rounds 30 --alpha 0.1 \
+  --preset d2_full_0.1_adv --partition_strategy dirichlet \
+  --adversary_mode label_flip --leakage_safe
+```
+
+### Monitoring
+
+- Results validated via `scripts/ci_checks.py`
+- Failed nightly runs trigger notifications
+- All artifacts uploaded to GitHub Actions with retention policies
 
 ## D2 Privacy & Robustness Disclosure
 

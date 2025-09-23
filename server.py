@@ -6,6 +6,7 @@ from typing import Literal, List, Optional, Tuple
 
 import flwr as fl
 import numpy as np
+import torch
 from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
 
 from robust_aggregation import (
@@ -18,6 +19,8 @@ from server_metrics import (
     AggregationTimer,
     calculate_robustness_metrics,
 )
+from model_utils import save_global_model, save_final_model
+from client import SimpleNet
 
 
 AggregationChoice = Literal["fedavg", "median", "krum", "bulyan"]
@@ -91,6 +94,25 @@ def main() -> None:
         default=1.0,
         help="Fraction of clients participating in evaluation per round",
     )
+    parser.add_argument(
+        "--save_models",
+        type=str,
+        default="final",
+        choices=["none", "final", "all"],
+        help="Model saving strategy: none (no models), final (only final model), all (every round)",
+    )
+    parser.add_argument(
+        "--num_features",
+        type=int,
+        default=20,
+        help="Number of input features for model architecture",
+    )
+    parser.add_argument(
+        "--num_classes",
+        type=int,
+        default=2,
+        help="Number of output classes for model architecture",
+    )
     args = parser.parse_args()
 
     seed = int(os.environ.get("SEED", "42"))
@@ -110,9 +132,15 @@ def main() -> None:
     print(f"[Server] Logging metrics to: {metrics_path}")
 
     class RobustStrategy(fl.server.strategy.FedAvg):
-        def __init__(self, *args, **kwargs):
+        def __init__(self, save_models: str, logdir: str, num_rounds: int,
+                     num_features: int, num_classes: int, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.round_start_time: Optional[float] = None
+            self.save_models = save_models
+            self.logdir = logdir
+            self.num_rounds = num_rounds
+            self.num_features = num_features
+            self.num_classes = num_classes
 
         def configure_fit(self, server_round: int, parameters, client_manager):
             # Track round start time
@@ -197,8 +225,67 @@ def main() -> None:
             )
 
             parameters = ndarrays_to_parameters(aggregated)
+
+            # Save global model if enabled
+            if self.save_models != "none":
+                self._save_global_model_if_needed(aggregated, rnd)
+
             metrics = {}
             return parameters, metrics
+
+        def _save_global_model_if_needed(self, aggregated_weights: List[np.ndarray], round_num: int) -> None:
+            """Save global model based on save_models strategy."""
+            should_save = False
+
+            if self.save_models == "all":
+                should_save = True
+            elif self.save_models == "final" and round_num == self.num_rounds:
+                should_save = True
+
+            if not should_save:
+                return
+
+            try:
+                # Create model and set weights
+                model = SimpleNet(num_features=self.num_features, num_classes=self.num_classes)
+
+                # Convert aggregated weights back to state dict format
+                state_dict = model.state_dict()
+                new_state_dict = {}
+                for (name, _), param in zip(state_dict.items(), aggregated_weights):
+                    new_state_dict[name] = torch.tensor(param)
+                model.load_state_dict(new_state_dict)
+
+                # Save the model
+                if round_num == self.num_rounds:
+                    # Save final model
+                    save_final_model(
+                        model,
+                        self.logdir,
+                        metadata={
+                            'final_round': round_num,
+                            'save_strategy': self.save_models,
+                            'num_features': self.num_features,
+                            'num_classes': self.num_classes
+                        }
+                    )
+                    print(f"[Server] Saved final global model: {self.logdir}/final_global_model.pth")
+                else:
+                    # Save round model
+                    save_global_model(
+                        model,
+                        self.logdir,
+                        round_num,
+                        metadata={
+                            'save_strategy': self.save_models,
+                            'num_features': self.num_features,
+                            'num_classes': self.num_classes
+                        }
+                    )
+                    print(f"[Server] Saved global model for round {round_num}: {self.logdir}/global_model_round_{round_num}.pth")
+
+            except Exception as e:
+                print(f"[Server] Warning: Failed to save global model for round {round_num}: {e}")
 
         def _estimate_benign_mean(
             self, client_weights: List[List[np.ndarray]]
@@ -228,6 +315,11 @@ def main() -> None:
         return {"accuracy": float(mean_accuracy)}
 
     strategy = RobustStrategy(
+        save_models=args.save_models,
+        logdir=args.logdir,
+        num_rounds=args.rounds,
+        num_features=args.num_features,
+        num_classes=args.num_classes,
         fraction_fit=args.fraction_fit,
         min_fit_clients=args.min_fit_clients,
         min_evaluate_clients=args.min_eval_clients,

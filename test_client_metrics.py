@@ -30,7 +30,7 @@ def test_client_metrics_csv_creation():
                 "client_id", "round", "dataset_size", "n_classes",
                 "loss_before", "acc_before", "loss_after", "acc_after",
                 "weight_norm_before", "weight_norm_after", "weight_update_norm",
-                "t_fit_ms", "epochs_completed", "lr", "batch_size"
+                "grad_norm_l2", "t_fit_ms", "epochs_completed", "lr", "batch_size"
             ]
             assert headers == expected
 
@@ -56,6 +56,7 @@ def test_client_metrics_logging_complete_record():
             weight_norm_before=10.5,
             weight_norm_after=12.3,
             weight_update_norm=2.1,
+            grad_norm_l2=1.8,
             t_fit_ms=2500.0,
             epochs_completed=5,
             lr=0.01,
@@ -70,7 +71,7 @@ def test_client_metrics_logging_complete_record():
 
             expected_row = [
                 "5", "3", "1000", "2", "1.5", "0.6", "0.8", "0.85",
-                "10.5", "12.3", "2.1", "2500.0", "5", "0.01", "32"
+                "10.5", "12.3", "2.1", "1.8", "2500.0", "5", "0.01", "32"
             ]
             assert row == expected_row
 
@@ -136,6 +137,7 @@ def test_client_metrics_with_none_values():
             weight_norm_before=None,
             weight_norm_after=15.2,
             weight_update_norm=None,
+            grad_norm_l2=None,
             t_fit_ms=3000.0,
             epochs_completed=3,
             lr=0.005,
@@ -151,7 +153,7 @@ def test_client_metrics_with_none_values():
             # None values should be empty strings in CSV
             expected_row = [
                 "7", "1", "800", "4", "", "", "0.9", "0.78",
-                "", "15.2", "", "3000.0", "3", "0.005", "128"
+                "", "15.2", "", "", "3000.0", "3", "0.005", "128"
             ]
             assert row == expected_row
 
