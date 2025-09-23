@@ -35,6 +35,29 @@ def summarize_clients(run_dir: Path) -> dict:
                 "max": float(s.max()) if not s.empty else None,
                 "cv": coef_variation(s) if not s.empty else None,
             }
+    # Worst/best client macro-F1 (argmax) across clients at last round if available
+    try:
+        if {"client_id","round","macro_f1_argmax"}.issubset(df.columns):
+            last = df.groupby("client_id").apply(lambda d: d.sort_values("round").tail(1)).reset_index(drop=True)
+            s = pd.to_numeric(last["macro_f1_argmax"], errors="coerce").dropna()
+            if not s.empty:
+                out["macro_f1_argmax_last_round"] = {
+                    "mean": float(s.mean()),
+                    "min": float(s.min()),
+                    "max": float(s.max()),
+                    "cv": coef_variation(s),
+                }
+    except Exception:
+        pass
+
+    # Low-FPR snapshot: aggregate the fraction of client-round rows with fpr_after<=0.10
+    if "fpr_after" in df.columns:
+        sa = pd.to_numeric(df["fpr_after"], errors="coerce").dropna()
+        if not sa.empty:
+            out["fpr_after"] = {
+                "mean": float(sa.mean()),
+                "frac_le_0_10": float((sa <= 0.10).mean()),
+            }
     return out
 
 
