@@ -2,32 +2,32 @@ name: ci
 
 on:
   push:
-    branches: [ "feat/**", "chore/**", "fix/**", "d2-training-setup" ]
+    branches: ["feat/**", "chore/**", "fix/**", "d2-training-setup"]
   pull_request:
-    branches: [ "d2-training-setup", "main" ]
+    branches: ["d2-training-setup", "main"]
   schedule:
     - cron: "0 7 * * *"
   workflow_dispatch:
     inputs:
       run_comprehensive:
-        description: 'Run comprehensive testing (includes d2_quick and extended nightly)'
+        description: "Run comprehensive testing (includes d2_quick and extended nightly)"
         required: false
-        default: 'false'
+        default: "false"
         type: boolean
       alpha_values:
         description: 'Alpha values for testing (comma-separated, e.g., "0.05,0.1,0.5")'
         required: false
-        default: '0.1'
+        default: "0.1"
         type: string
       client_count:
-        description: 'Number of clients for manual runs'
+        description: "Number of clients for manual runs"
         required: false
-        default: '5'
+        default: "5"
         type: string
       round_count:
-        description: 'Number of rounds for manual runs'
+        description: "Number of rounds for manual runs"
         required: false
-        default: '10'
+        default: "10"
         type: string
 
 permissions:
@@ -64,6 +64,8 @@ jobs:
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
       - name: Lint & unit tests
+        env:
+          D2_EXTENDED_METRICS: "1"
         run: |
           if command -v flake8 >/dev/null 2>&1; then flake8 ; fi
           pytest -q
@@ -125,7 +127,7 @@ jobs:
 
   nightly_full:
     runs-on: ubuntu-latest
-    timeout-minutes: 240  # 4 hours
+    timeout-minutes: 240 # 4 hours
     strategy:
       fail-fast: false
       matrix:
@@ -182,44 +184,14 @@ jobs:
     runs-on: ubuntu-latest
     if: always() && needs.nightly_full.result == 'failure'
     steps:
-      - name: Create issue on nightly failure
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const title = `Nightly CI Failed - ${new Date().toISOString().split('T')[0]}`;
-            const body = `🚨 **Nightly CI Pipeline Failed**
-
-            **Workflow Run:** [${context.runId}](${context.payload.repository.html_url}/actions/runs/${context.runId})
-            **Branch:** ${context.ref}
-            **Commit:** ${context.sha}
-            **Failed Jobs:** Check the workflow run for details
-
-            Please investigate and fix the failing tests.
-
-            _This issue was automatically created by the CI system._`;
-
-            // Check if similar issue already exists
-            const existingIssues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              labels: ['nightly-failure', 'automated']
-            });
-
-            const today = new Date().toISOString().split('T')[0];
-            const todayIssue = existingIssues.data.find(issue =>
-              issue.title.includes(today)
-            );
-
-            if (!todayIssue) {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: title,
-                body: body,
-                labels: ['nightly-failure', 'automated', 'bug']
-              });
-            }
+      - name: Log nightly failure (issues disabled)
+        run: |
+          echo "🚨 Nightly CI Pipeline Failed"
+          echo "Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Failed at: $(date)"
+          echo "Check the workflow run for details"
 
   manual_testing:
     if: github.event_name == 'workflow_dispatch'
@@ -307,5 +279,3 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-

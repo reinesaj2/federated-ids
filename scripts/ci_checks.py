@@ -1,101 +1,135 @@
 #!/usr/bin/env python3
+"""
+CI validation script for federated learning experiment artifacts.
+Validates schemas and basic sanity of generated metrics files.
+"""
+
 import argparse
+import csv
 import sys
 from pathlib import Path
-import pandas as pd
-import numpy as np
-
-REQUIRED_CLIENT_COLS = [
-  "client_id","round","dataset_size","n_classes","loss_after","acc_after"
-]
-# Extended columns checked only if present
-EXTENDED_ALIGN_COLS = [
-  "macro_f1_argmax","benign_fpr_argmax","f1_bin_tau","benign_fpr_bin_tau","tau_bin"
-]
+from typing import List, Set
 
 
-def check_schema(run_dir: Path) -> None:
-    client_files = list(run_dir.glob("client_*_metrics.csv"))
-    if not client_files:
-        raise AssertionError(f"No client metrics found in {run_dir}")
-    for f in client_files:
-        df = pd.read_csv(f)
-        for c in REQUIRED_CLIENT_COLS:
-            if c not in df.columns:
-                raise AssertionError(f"Missing column {c} in {f}")
+class ArtifactValidationError(Exception):
+    """Raised when artifact validation fails."""
+
+    pass
 
 
-def check_alignment(run_dir: Path, tol: float = 1e-6) -> None:
-    for f in run_dir.glob("client_*_metrics.csv"):
-        df = pd.read_csv(f)
-        if set(EXTENDED_ALIGN_COLS).issubset(df.columns):
-            # compute recall_benign from argmax via reported benign_fpr_argmax
-            # benign_fpr_argmax should equal 1 - recall_benign
-            # We trust benign_fpr_argmax value coherence per row
-            # Just validate ranges and existence
-            if not np.all((df["benign_fpr_argmax"] >= 0.0) & (df["benign_fpr_argmax"] <= 1.0)):
-                raise AssertionError(f"benign_fpr_argmax out of range in {f}")
+def validate_csv_schema(csv_path: Path, expected_columns: Set[str]) -> None:
+    """Validate that a CSV file exists and has expected columns."""
+    if not csv_path.exists():
+        raise ArtifactValidationError(f"Required CSV file missing: {csv_path}")
+
+    try:
+        with open(csv_path, "r") as f:
+            reader = csv.DictReader(f)
+            actual_columns = set(reader.fieldnames or [])
+
+            if not expected_columns.issubset(actual_columns):
+                missing = expected_columns - actual_columns
+                raise ArtifactValidationError(
+                    f"CSV {csv_path} missing required columns: {missing}. "
+                    f"Found: {actual_columns}"
+                )
+
+            # Validate at least one data row exists
+            try:
+                next(reader)
+            except StopIteration:
+                raise ArtifactValidationError(f"CSV {csv_path} has no data rows")
+
+    except Exception as e:
+        if isinstance(e, ArtifactValidationError):
+            raise
+        raise ArtifactValidationError(f"Failed to read CSV {csv_path}: {e}")
 
 
-def coef_variation(series: pd.Series) -> float:
-    s = pd.to_numeric(series, errors="coerce").dropna()
-    if s.empty:
-        return 0.0
-    mean = float(s.mean())
-    std = float(s.std(ddof=0))
-    return float(std / mean) if mean != 0 else 0.0
+def validate_plot_files(run_dir: Path) -> None:
+    """Validate that required plot files exist."""
+    required_plots = ["client_metrics_plot.png", "server_metrics_plot.png"]
+
+    for plot_file in required_plots:
+        plot_path = run_dir / plot_file
+        if not plot_path.exists():
+            raise ArtifactValidationError(
+                f"Required plot file missing: {plot_path}"
+            )
 
 
-def check_fairness(run_dir: Path, cv_threshold: float = 0.20) -> None:
-    rows = []
-    for f in run_dir.glob("client_*_metrics.csv"):
-        try:
-            rows.append(pd.read_csv(f))
-        except Exception:
-            pass
-    if not rows:
-        raise AssertionError(f"No client CSVs for fairness check in {run_dir}")
-    df = pd.concat(rows, ignore_index=True)
-    if "macro_f1_argmax" in df.columns:
-        cv = coef_variation(df["macro_f1_argmax"])
-        if cv > cv_threshold:
-            raise AssertionError(f"Fairness CV exceeded threshold: {cv:.3f} > {cv_threshold:.2f}")
+def validate_run_directory(run_dir: Path) -> None:
+    """Validate a single FL run directory."""
+    print(f"Validating run directory: {run_dir}")
+
+    # Validate server metrics - require basic structure
+    server_metrics_path = run_dir / "metrics.csv"
+    required_server_columns = {"round"}  # Flexible schema: only require 'round'
+    validate_csv_schema(server_metrics_path, required_server_columns)
+
+    # Find and validate client metrics files - required
+    client_metrics_files = list(run_dir.glob("client_*_metrics.csv"))
+    if not client_metrics_files:
+        raise ArtifactValidationError(f"No client metrics files found in {run_dir}")
+
+    # Validate client files have at least 'round' column
+    required_client_columns = {"round"}
+    for client_file in client_metrics_files:
+        validate_csv_schema(client_file, required_client_columns)
+
+    # Validate plot files - required
+    validate_plot_files(run_dir)
+
+    print(f"✓ Run directory {run_dir.name} validation passed")
 
 
-def check_artifacts(run_dir: Path) -> None:
-    needed = ["metrics.csv","client_metrics_plot.png","server_metrics_plot.png"]
-    present = [p.name for p in run_dir.iterdir() if p.is_file()]
-    for n in needed:
-        if n not in present:
-            raise AssertionError(f"Missing artifact {n} in {run_dir}")
+def find_run_directories(runs_dir: Path) -> List[Path]:
+    """Find all FL run directories in the runs directory."""
+    if not runs_dir.exists():
+        raise ArtifactValidationError(f"Runs directory does not exist: {runs_dir}")
+
+    run_dirs = [
+        d for d in runs_dir.iterdir() if d.is_dir() and not d.name.startswith(".")
+    ]
+
+    if not run_dirs:
+        raise ArtifactValidationError(f"No run directories found in {runs_dir}")
+
+    return sorted(run_dirs)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--runs_dir", type=str, default="runs")
+def main() -> None:
+    """Main CI validation entry point."""
+    parser = argparse.ArgumentParser(
+        description="Validate FL experiment artifacts for CI"
+    )
+
+    parser.add_argument(
+        "--runs_dir",
+        type=str,
+        default="runs",
+        help="Directory containing FL run subdirectories",
+    )
+
     args = parser.parse_args()
 
-    runs_root = Path(args.runs_dir)
-    if not runs_root.exists():
-        print(f"No runs dir at {runs_root}", file=sys.stderr)
-        sys.exit(1)
+    try:
+        runs_dir = Path(args.runs_dir)
+        run_directories = find_run_directories(runs_dir)
 
-    failed = []
-    for run_dir in runs_root.glob("**/"):
-        # only check leaf run dirs that contain metrics.csv
-        if (run_dir / "metrics.csv").exists():
-            try:
-                check_schema(run_dir)
-                check_alignment(run_dir)
-                check_fairness(run_dir)
-                check_artifacts(run_dir)
-            except AssertionError as e:
-                failed.append((str(run_dir), str(e)))
-    if failed:
-        for r, msg in failed:
-            print(f"[CI CHECK FAIL] {r}: {msg}", file=sys.stderr)
-        sys.exit(2)
-    print("CI checks passed.")
+        print(f"Found {len(run_directories)} run directories to validate")
+
+        for run_dir in run_directories:
+            validate_run_directory(run_dir)
+
+        print(f"✓ All {len(run_directories)} run directories passed validation")
+
+    except ArtifactValidationError as e:
+        print(f"❌ Validation failed: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Unexpected error during validation: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

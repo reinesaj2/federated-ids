@@ -22,16 +22,31 @@ def test_client_metrics_csv_creation():
         # Check file exists after creation
         assert metrics_path.exists()
 
-        # Check headers
+        # Check headers - expect extended headers if D2_EXTENDED_METRICS is set
         with open(metrics_path, 'r') as f:
             reader = csv.reader(f)
             headers = next(reader)
-            expected = [
-                "client_id", "round", "dataset_size", "n_classes",
-                "loss_before", "acc_before", "loss_after", "acc_after",
-                "weight_norm_before", "weight_norm_after", "weight_update_norm",
-                "t_fit_ms", "epochs_completed", "lr", "batch_size"
-            ]
+
+            # Check if running in extended mode
+            extended_mode = os.environ.get("D2_EXTENDED_METRICS", "0").lower() not in ("0", "false", "no", "")
+
+            if extended_mode:
+                expected = [
+                    "client_id", "round", "dataset_size", "n_classes",
+                    "loss_before", "acc_before", "loss_after", "acc_after",
+                    "macro_f1_before", "macro_f1_after", "macro_f1_argmax", "benign_fpr_argmax",
+                    "f1_per_class_after", "fpr_after", "pr_auc_after", "threshold_tau",
+                    "f1_bin_tau", "benign_fpr_bin_tau", "tau_bin", "seed",
+                    "weight_norm_before", "weight_norm_after", "weight_update_norm",
+                    "grad_norm_l2", "t_fit_ms", "epochs_completed", "lr", "batch_size"
+                ]
+            else:
+                expected = [
+                    "client_id", "round", "dataset_size", "n_classes",
+                    "loss_before", "acc_before", "loss_after", "acc_after",
+                    "weight_norm_before", "weight_norm_after", "weight_update_norm",
+                    "t_fit_ms", "epochs_completed", "lr", "batch_size"
+                ]
             assert headers == expected
 
 
@@ -62,17 +77,29 @@ def test_client_metrics_logging_complete_record():
             batch_size=32
         )
 
-        # Read and verify
+        # Read and verify key values are logged correctly
         with open(metrics_path, 'r') as f:
             reader = csv.reader(f)
             headers = next(reader)
             row = next(reader)
 
-            expected_row = [
-                "5", "3", "1000", "2", "1.5", "0.6", "0.8", "0.85",
-                "10.5", "12.3", "2.1", "2500.0", "5", "0.01", "32"
-            ]
-            assert row == expected_row
+            # Verify basic structure - convert to dict for easier checking
+            row_dict = dict(zip(headers, row))
+            assert row_dict["client_id"] == "5"
+            assert row_dict["round"] == "3"
+            assert row_dict["dataset_size"] == "1000"
+            assert row_dict["n_classes"] == "2"
+            assert row_dict["loss_before"] == "1.5"
+            assert row_dict["acc_before"] == "0.6"
+            assert row_dict["loss_after"] == "0.8"
+            assert row_dict["acc_after"] == "0.85"
+            assert row_dict["weight_norm_before"] == "10.5"
+            assert row_dict["weight_norm_after"] == "12.3"
+            assert row_dict["weight_update_norm"] == "2.1"
+            assert row_dict["t_fit_ms"] == "2500.0"
+            assert row_dict["epochs_completed"] == "5"
+            assert row_dict["lr"] == "0.01"
+            assert row_dict["batch_size"] == "32"
 
 
 def test_client_metrics_multiple_rounds():
@@ -145,15 +172,26 @@ def test_client_metrics_with_none_values():
         # Read and verify None values are handled
         with open(metrics_path, 'r') as f:
             reader = csv.reader(f)
-            next(reader)  # Skip headers
+            headers = next(reader)
             row = next(reader)
 
-            # None values should be empty strings in CSV
-            expected_row = [
-                "7", "1", "800", "4", "", "", "0.9", "0.78",
-                "", "15.2", "", "3000.0", "3", "0.005", "128"
-            ]
-            assert row == expected_row
+            # None values should be empty strings in CSV - check by column name
+            row_dict = dict(zip(headers, row))
+            assert row_dict["client_id"] == "7"
+            assert row_dict["round"] == "1"
+            assert row_dict["dataset_size"] == "800"
+            assert row_dict["n_classes"] == "4"
+            assert row_dict["loss_before"] == ""  # None -> empty string
+            assert row_dict["acc_before"] == ""  # None -> empty string
+            assert row_dict["loss_after"] == "0.9"
+            assert row_dict["acc_after"] == "0.78"
+            assert row_dict["weight_norm_before"] == ""  # None -> empty string
+            assert row_dict["weight_norm_after"] == "15.2"
+            assert row_dict["weight_update_norm"] == ""  # None -> empty string
+            assert row_dict["t_fit_ms"] == "3000.0"
+            assert row_dict["epochs_completed"] == "3"
+            assert row_dict["lr"] == "0.005"
+            assert row_dict["batch_size"] == "128"
 
 
 def test_client_fit_timer():
