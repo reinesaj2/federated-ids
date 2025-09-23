@@ -15,4 +15,7 @@ __pycache__/
 
 # Run artifacts
 /runs/
-!/runs/smoke_*/
+
+# agents
+CLAUDE.md 
+*.claude/*
