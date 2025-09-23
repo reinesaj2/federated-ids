@@ -15,4 +15,3 @@ __pycache__/
 
 # Run artifacts
 /runs/
-!/runs/smoke_*/
