@@ -24,25 +24,25 @@
             entirely in future versions of Flower.
         
 [92mINFO [0m:      
-[92mINFO [0m:      Received: get_parameters message ca4f74cb-aceb-4cf0-bd9d-5b4ba310e16a
+[92mINFO [0m:      Received: get_parameters message 365a206e-cfb1-4836-8141-db0d38b762de
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1758647187.330423 9082803 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758647660.209212 9136384 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Sent reply
-I0000 00:00:1758647187.342054 9082803 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758647660.218564 9136384 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 9fc5f8ca-860e-44db-b327-57657bd7ef30
-[92mINFO [0m:      Sent reply
-[92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message c6aa0ed4-c7ee-4a04-8146-70852397b3a9
+[92mINFO [0m:      Received: train message a3dc6c13-4450-4960-9504-066c9726f193
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message f306a4c5-e578-41c8-b76a-3bbd06ba62a1
+[92mINFO [0m:      Received: evaluate message bae0f3b1-1d97-41d8-a3fa-d3d706b56e93
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message f8974d76-18f0-495a-8e46-f7043bdd2d39
+[92mINFO [0m:      Received: train message d3b6d576-9a10-4d42-8d73-ab0f14462bee
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message 3c96b8f1-7b08-4b61-a628-eb51c0f1b2b0
+[92mINFO [0m:      Received: evaluate message 7a5bde01-4c2c-4223-a0db-92e0016eb0f0
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message 2f34934f-fab7-4755-8bae-893c618fcf8e
 [92mINFO [0m:      Disconnect and shut down
 [Client 0] Logging metrics to: ./logs/client_0_metrics.csv
 [Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}
