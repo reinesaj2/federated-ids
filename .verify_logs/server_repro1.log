@@ -14,11 +14,11 @@
         
 [92mINFO [0m:      Starting Flower server, config: num_rounds=2, no round_timeout
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1757973391.656485 7560451 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758643701.816553 8696036 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Flower ECE: gRPC server running (2 rounds), SSL is disabled
 [92mINFO [0m:      [INIT]
 [92mINFO [0m:      Requesting initial parameters from one random client
-I0000 00:00:1757973391.661866 7560451 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758643701.841729 8696036 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Received initial parameters from one random client
 [92mINFO [0m:      Starting evaluation of initial global parameters
 [92mINFO [0m:      Evaluation returned no results (`None`)
@@ -26,10 +26,8 @@ I0000 00:00:1757973391.661866 7560451 fork_posix.cc:71] Other threads are curren
 [92mINFO [0m:      [ROUND 1]
 [92mINFO [0m:      configure_fit: strategy sampled 2 clients (out of 2)
 [92mINFO [0m:      aggregate_fit: received 2 results and 0 failures
-[93mWARNING [0m:   No fit_metrics_aggregation_fn provided
 [92mINFO [0m:      configure_evaluate: strategy sampled 2 clients (out of 2)
 [92mINFO [0m:      aggregate_evaluate: received 2 results and 0 failures
-[93mWARNING [0m:   No evaluate_metrics_aggregation_fn provided
 [92mINFO [0m:      
 [92mINFO [0m:      [ROUND 2]
 [92mINFO [0m:      configure_fit: strategy sampled 2 clients (out of 2)
@@ -38,9 +36,19 @@ I0000 00:00:1757973391.661866 7560451 fork_posix.cc:71] Other threads are curren
 [92mINFO [0m:      aggregate_evaluate: received 2 results and 0 failures
 [92mINFO [0m:      
 [92mINFO [0m:      [SUMMARY]
-[92mINFO [0m:      Run finished 2 round(s) in 0.81s
+[92mINFO [0m:      Run finished 2 round(s) in 0.98s
 [92mINFO [0m:      	History (loss, distributed):
-[92mINFO [0m:      		round 1: 0.6798731088638306
-[92mINFO [0m:      		round 2: 0.6600066423416138
+[92mINFO [0m:      		round 1: 0.06503532081842422
+[92mINFO [0m:      		round 2: 0.08836180716753006
+[92mINFO [0m:      	History (metrics, distributed, evaluate):
+[92mINFO [0m:      	{'accuracy': [(1, 0.96), (2, 0.96)]}
 [92mINFO [0m:      
-[Server] Using aggregation method: fedavg (FedAvg baseline currently)
+[Server] Using aggregation method: fedavg
+[Server] Secure aggregation mode: OFF (stub)
+[Server] Logging metrics to: ./logs/metrics.csv
+[Server] Strategy configuration:
+  min_fit_clients: 2
+  min_eval_clients: 2
+  min_available_clients: 2
+  fraction_fit: 1.0
+  fraction_eval: 1.0

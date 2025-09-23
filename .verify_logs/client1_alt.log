@@ -24,21 +24,24 @@
             entirely in future versions of Flower.
         
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1757973387.908088 7559835 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758643698.116128 8695440 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 132e7a90-5714-4bfe-8533-54d3e6d08d54
-I0000 00:00:1757973387.921576 7559835 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+[92mINFO [0m:      Received: train message 9496a323-7171-4ab4-bb08-6776f3928fe6
+I0000 00:00:1758643698.129053 8695440 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message 4f01cff5-2d41-489f-b720-f6d35bed2115
+[92mINFO [0m:      Received: evaluate message 4bc723ef-4a92-41c1-9d49-bc11b8b36c96
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message b0cd8188-cca3-4cd4-b06c-9b2c9e799545
+[92mINFO [0m:      Received: train message adae05b0-4788-4f69-950d-646632e1a993
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message f229d817-b688-42b3-a83e-3010d99456d5
+[92mINFO [0m:      Received: evaluate message 1a5eb26f-ea21-4fe6-8d89-dfeb89937d98
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message c6ef9615-ac5e-4645-b8a1-30cf680fdcc8
+[92mINFO [0m:      Received: reconnect message 90c5cf37-05ea-4916-aa9f-cf291ab9bbac
 [92mINFO [0m:      Disconnect and shut down
+[Client 0] Logging metrics to: ./logs/client_0_metrics.csv
 [Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}
+[Client 0] Model validation passed: out_features=2, num_classes_global=2
+[Client 0] Label histogram: {"0": 490, "1": 510}

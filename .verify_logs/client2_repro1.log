@@ -23,25 +23,25 @@
             This is a deprecated feature. It will be removed
             entirely in future versions of Flower.
         
-[92mINFO [0m:      
-[92mINFO [0m:      Received: get_parameters message aaa08bfc-c64a-45ce-aad4-425ea588312b
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1757973393.529418 7560860 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-[92mINFO [0m:      Sent reply
-I0000 00:00:1757973393.538860 7560860 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758643703.674472 8696335 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758643703.685717 8696335 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 78d85339-1734-4d6e-bf24-21cfe4877614
-[92mINFO [0m:      Sent reply
-[92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message bb165ff3-39b5-46fa-bbce-c16eb8a67cab
+[92mINFO [0m:      Received: train message a859e80b-9c0b-45fe-ad30-efffff7fb207
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message a31b4e78-dc05-449d-b495-75af0efc8be2
+[92mINFO [0m:      Received: evaluate message c2a2a6a1-d0c4-4d90-ba04-0fa7dd7f613d
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message c126c8cd-c4a6-47e1-9702-bcb742ad52a6
+[92mINFO [0m:      Received: train message 60ce1f6e-295a-4ea5-87fb-e39b3bb1957e
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message 872e7863-1204-4dbd-ade9-5fc9dd66e86a
+[92mINFO [0m:      Received: evaluate message 442de003-ffc1-4d86-9129-26b85ed61e19
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message e4443bbc-8365-4aca-b402-a0cae65d66b2
 [92mINFO [0m:      Disconnect and shut down
+[Client 0] Logging metrics to: ./logs/client_0_metrics.csv
 [Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}
+[Client 0] Model validation passed: out_features=2, num_classes_global=2
+[Client 0] Label histogram: {"0": 490, "1": 510}
