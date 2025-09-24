@@ -23,14 +23,26 @@ def test_client_metrics_csv_creation():
         assert metrics_path.exists()
 
         # Check headers
-        with open(metrics_path, 'r') as f:
+        with open(metrics_path, "r") as f:
             reader = csv.reader(f)
             headers = next(reader)
             expected = [
-                "client_id", "round", "dataset_size", "n_classes",
-                "loss_before", "acc_before", "loss_after", "acc_after",
-                "weight_norm_before", "weight_norm_after", "weight_update_norm",
-                "t_fit_ms", "epochs_completed", "lr", "batch_size"
+                "client_id",
+                "round",
+                "dataset_size",
+                "n_classes",
+                "loss_before",
+                "acc_before",
+                "loss_after",
+                "acc_after",
+                "weight_norm_before",
+                "weight_norm_after",
+                "weight_update_norm",
+                "grad_norm_l2",
+                "t_fit_ms",
+                "epochs_completed",
+                "lr",
+                "batch_size",
             ]
             assert headers == expected
 
@@ -56,21 +68,36 @@ def test_client_metrics_logging_complete_record():
             weight_norm_before=10.5,
             weight_norm_after=12.3,
             weight_update_norm=2.1,
+            grad_norm_l2=1.8,
             t_fit_ms=2500.0,
             epochs_completed=5,
             lr=0.01,
-            batch_size=32
+            batch_size=32,
         )
 
         # Read and verify
-        with open(metrics_path, 'r') as f:
+        with open(metrics_path, "r") as f:
             reader = csv.reader(f)
             headers = next(reader)
             row = next(reader)
 
             expected_row = [
-                "5", "3", "1000", "2", "1.5", "0.6", "0.8", "0.85",
-                "10.5", "12.3", "2.1", "2500.0", "5", "0.01", "32"
+                "5",
+                "3",
+                "1000",
+                "2",
+                "1.5",
+                "0.6",
+                "0.8",
+                "0.85",
+                "10.5",
+                "12.3",
+                "2.1",
+                "1.8",
+                "2500.0",
+                "5",
+                "0.01",
+                "32",
             ]
             assert row == expected_row
 
@@ -100,11 +127,11 @@ def test_client_metrics_multiple_rounds():
                 t_fit_ms=1000.0 + round_num * 100,
                 epochs_completed=1,
                 lr=0.02,
-                batch_size=64
+                batch_size=64,
             )
 
         # Verify all rounds logged
-        with open(metrics_path, 'r') as f:
+        with open(metrics_path, "r") as f:
             reader = csv.reader(f)
             next(reader)  # Skip headers
             rows = list(reader)
@@ -136,22 +163,37 @@ def test_client_metrics_with_none_values():
             weight_norm_before=None,
             weight_norm_after=15.2,
             weight_update_norm=None,
+            grad_norm_l2=None,
             t_fit_ms=3000.0,
             epochs_completed=3,
             lr=0.005,
-            batch_size=128
+            batch_size=128,
         )
 
         # Read and verify None values are handled
-        with open(metrics_path, 'r') as f:
+        with open(metrics_path, "r") as f:
             reader = csv.reader(f)
             next(reader)  # Skip headers
             row = next(reader)
 
             # None values should be empty strings in CSV
             expected_row = [
-                "7", "1", "800", "4", "", "", "0.9", "0.78",
-                "", "15.2", "", "3000.0", "3", "0.005", "128"
+                "7",
+                "1",
+                "800",
+                "4",
+                "",
+                "",
+                "0.9",
+                "0.78",
+                "",
+                "15.2",
+                "",
+                "",
+                "3000.0",
+                "3",
+                "0.005",
+                "128",
             ]
             assert row == expected_row
 
@@ -179,7 +221,7 @@ def test_calculate_weight_norms():
     weights = [
         np.array([[1.0, 2.0], [3.0, 4.0]]),  # 2x2 weight matrix
         np.array([0.5, -0.5]),  # bias vector
-        np.array([[1.0, 1.0, 1.0], [0.0, 1.0, 0.0]])  # 2x3 output layer
+        np.array([[1.0, 1.0, 1.0], [0.0, 1.0, 0.0]]),  # 2x3 output layer
     ]
 
     norm = calculate_weight_norms(weights)
@@ -199,15 +241,9 @@ def test_calculate_weight_update_norm():
     from client_metrics import calculate_weight_update_norm
 
     # Create before and after weights
-    weights_before = [
-        np.array([[1.0, 2.0], [3.0, 4.0]]),
-        np.array([0.5, -0.5])
-    ]
+    weights_before = [np.array([[1.0, 2.0], [3.0, 4.0]]), np.array([0.5, -0.5])]
 
-    weights_after = [
-        np.array([[1.1, 2.1], [3.1, 4.1]]),
-        np.array([0.6, -0.4])
-    ]
+    weights_after = [np.array([[1.1, 2.1], [3.1, 4.1]]), np.array([0.6, -0.4])]
 
     update_norm = calculate_weight_update_norm(weights_before, weights_after)
 
@@ -223,7 +259,9 @@ def test_calculate_weight_update_norm():
 def test_client_metrics_directory_creation():
     """Test that parent directories are created if they don't exist."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        nested_path = Path(temp_dir) / "client_logs" / "experiment_1" / "client_metrics.csv"
+        nested_path = (
+            Path(temp_dir) / "client_logs" / "experiment_1" / "client_metrics.csv"
+        )
 
         from client_metrics import ClientMetricsLogger
 
