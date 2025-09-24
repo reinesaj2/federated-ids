@@ -65,6 +65,51 @@ Server logs include the chosen aggregation method and per-round aggregated accur
 - `robust_aggregation.py` – Aggregation method enum and robust implementations (median, Krum, simplified Bulyan).
 - `requirements.txt` – Python dependencies.
 
+## Algorithm Comparison: FedProx vs FedAvg
+
+This implementation supports both FedAvg (standard federated averaging) and FedProx (proximal federated optimization) for handling non-IID data heterogeneity.
+
+### FedProx Theory
+
+FedProx mitigates client drift in non-IID scenarios by adding a proximal regularization term `μ/2 * ||w - w_global||²` to the local client loss function. This constrains local updates to stay close to the global model, reducing divergence.
+
+### Usage
+
+```bash
+# Standard FedAvg (μ = 0)
+python client.py --server_address 127.0.0.1:8080 --dataset synthetic --fedprox_mu 0.0
+
+# FedProx with mild regularization (recommended starting point)
+python client.py --server_address 127.0.0.1:8080 --dataset synthetic --fedprox_mu 0.01
+
+# FedProx with stronger regularization for highly non-IID data
+python client.py --server_address 127.0.0.1:8080 --dataset synthetic --fedprox_mu 0.1
+```
+
+### Automated Comparison
+
+Run side-by-side experiments on non-IID synthetic data (Dirichlet α=0.05):
+
+```bash
+# Compare algorithms with 5 rounds, non-IID partitioning
+scripts/compare_fedprox_fedavg.sh
+
+# Generate comparison plots
+python scripts/plot_metrics.py --fedprox_comparison --logdir ./comparison_logs
+```
+
+### Trade-offs Summary
+
+| Aspect | FedAvg | FedProx |
+|--------|--------|---------|
+| **Convergence on IID** | Fast, optimal | Fast, minimal overhead |
+| **Convergence on Non-IID** | Slow, client drift issues | Better stability, reduced drift |
+| **Computational Cost** | Lower | ~5-10% overhead per round |
+| **Hyperparameter Tuning** | None needed | Requires μ selection (0.001-0.1) |
+| **Best Use Case** | IID data, homogeneous clients | Non-IID data, heterogeneous systems |
+
+**Recommendation**: Start with FedAvg for baseline comparison. Use FedProx with μ=0.01 when experiencing convergence issues on non-IID data.
+
 ## Next Steps (D2 scope)
 
 - Harden and evaluate robust aggregation (Krum/Bulyan), add unit tests.
