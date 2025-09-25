@@ -1,0 +1,221 @@
+name: FedProx Nightly Comparison
+
+on:
+  schedule:
+    - cron: "0 2 * * *"  # 2 AM UTC daily
+  workflow_dispatch:
+    inputs:
+      alpha_values:
+        description: 'Alpha values for non-IID testing (comma-separated, e.g., "0.05,0.1,0.5")'
+        required: false
+        default: "0.05,0.1,0.5"
+        type: string
+      mu_values:
+        description: 'FedProx mu values (comma-separated, e.g., "0.0,0.01,0.1")'
+        required: false
+        default: "0.0,0.01,0.1"
+        type: string
+      client_count:
+        description: "Number of clients for comparison"
+        required: false
+        default: "10"
+        type: string
+      round_count:
+        description: "Number of rounds for comparison"
+        required: false
+        default: "20"
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fedprox_comparison:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240  # 4 hours
+    strategy:
+      fail-fast: false
+      matrix:
+        alpha: [0.05, 0.1, 0.5]
+        mu: [0.0, 0.01, 0.1]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      - name: Install dependencies with retry
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: |
+            pip install -r requirements.txt
+            if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: FedProx Comparison (Alpha=${{ matrix.alpha }}, Mu=${{ matrix.mu }})
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 180
+          max_attempts: 2
+          retry_on: error
+          command: |
+            export D2_EXTENDED_METRICS="1"
+            export ALPHA=${{ matrix.alpha }}
+            export MU=${{ matrix.mu }}
+            export ROUNDS=20
+            export CLIENTS=10
+
+            python scripts/run_fl.py \
+              --clients 10 --rounds 20 --alpha ${{ matrix.alpha }} \
+              --preset "nightly_fedprox_alpha${{ matrix.alpha }}_mu${{ matrix.mu }}" \
+              --partition_strategy dirichlet --leakage_safe \
+              --fedprox_mu ${{ matrix.mu }}
+
+      - name: Generate comparison plots
+        run: |
+          python scripts/plot_metrics.py \
+            --logdir runs/nightly_fedprox_alpha${{ matrix.alpha }}_mu${{ matrix.mu }} \
+            --output runs/nightly_fedprox_alpha${{ matrix.alpha }}_mu${{ matrix.mu }}/fedprox_comparison.png
+
+      - name: Validate results
+        run: python scripts/ci_checks.py --runs_dir runs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fedprox-nightly-alpha${{ matrix.alpha }}-mu${{ matrix.mu }}-${{ github.sha }}
+          path: |
+            runs/**/metrics.csv
+            runs/**/client_*_metrics.csv
+            runs/**/fedprox_comparison.png
+            runs/**/server_metrics_plot.png
+            runs/**/client_metrics_plot.png
+          retention-days: 30
+
+  fedprox_summary:
+    needs: fedprox_comparison
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pandas matplotlib seaborn numpy
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: nightly-artifacts
+
+      - name: Generate FedProx comparison summary
+        run: |
+          python scripts/analyze_fedprox_comparison.py \
+            --artifacts_dir nightly-artifacts \
+            --output_dir fedprox-summary
+
+      - name: Upload consolidated results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fedprox-nightly-summary-${{ github.sha }}
+          path: |
+            fedprox-summary/fedprox_comparison_summary.json
+            fedprox-summary/fedprox_performance_plots.png
+            fedprox-summary/fedprox_thesis_tables.tex
+          retention-days: 60
+
+  fedprox_notify:
+    needs: fedprox_comparison
+    runs-on: ubuntu-latest
+    if: always() && needs.fedprox_comparison.result == 'failure'
+    steps:
+      - name: Log FedProx nightly failure
+        run: |
+          echo "🚨 FedProx Nightly Comparison Failed"
+          echo "Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Failed at: $(date)"
+          echo "Check the workflow run for details"
+
+  manual_fedprox_comparison:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Parse parameters and run FedProx comparison matrix
+        env:
+          D2_EXTENDED_METRICS: "1"
+        run: |
+          IFS=',' read -ra ALPHAS <<< "${{ github.event.inputs.alpha_values }}"
+          IFS=',' read -ra MUS <<< "${{ github.event.inputs.mu_values }}"
+
+          for alpha in "${ALPHAS[@]}"; do
+            alpha=$(echo "$alpha" | xargs)  # trim whitespace
+            for mu in "${MUS[@]}"; do
+              mu=$(echo "$mu" | xargs)  # trim whitespace
+              echo "Running FedProx comparison: alpha=${alpha}, mu=${mu}"
+
+              python scripts/run_fl.py \
+                --clients ${{ github.event.inputs.client_count }} \
+                --rounds ${{ github.event.inputs.round_count }} \
+                --alpha "$alpha" \
+                --preset "manual_fedprox_alpha${alpha}_mu${mu}" \
+                --partition_strategy dirichlet \
+                --leakage_safe \
+                --fedprox_mu "$mu"
+
+              python scripts/plot_metrics.py \
+                --logdir "runs/manual_fedprox_alpha${alpha}_mu${mu}" \
+                --output "runs/manual_fedprox_alpha${alpha}_mu${mu}/comparison.png"
+            done
+          done
+
+      - name: Validate all results
+        run: python scripts/ci_checks.py --runs_dir runs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: manual-fedprox-comparison-${{ github.sha }}
+          path: runs/**
+          retention-days: 14

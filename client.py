@@ -1,7 +1,7 @@
 import argparse
 import os
 import random
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import flwr as fl
 import numpy as np
@@ -62,19 +62,41 @@ def set_parameters(model: nn.Module, parameters: List[np.ndarray]) -> None:
 
 
 def train_epoch(
-    model: nn.Module, loader: DataLoader, device: torch.device, lr: float
+    model: nn.Module,
+    loader: DataLoader,
+    device: torch.device,
+    lr: float,
+    global_params: Optional[List[np.ndarray]] = None,
+    fedprox_mu: float = 0.0,
 ) -> float:
     model.train()
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     total_loss = 0.0
     num_batches = 0
+
+    # Convert global parameters to tensors if FedProx is enabled
+    global_tensors = None
+    if fedprox_mu > 0.0 and global_params is not None:
+        global_tensors = [
+            torch.tensor(param, dtype=torch.float32).to(device)
+            for param in global_params
+        ]
+
     for xb, yb in loader:
         xb = xb.to(device)
         yb = yb.to(device)
         optimizer.zero_grad()
         preds = model(xb)
         loss = criterion(preds, yb)
+
+        # Add FedProx proximal term: mu/2 * ||w - w_global||^2
+        if fedprox_mu > 0.0 and global_tensors is not None:
+            prox_term = 0.0
+            for param, global_param in zip(model.parameters(), global_tensors):
+                prox_term += torch.sum((param - global_param) ** 2)
+            loss = loss + (fedprox_mu / 2.0) * prox_term
+
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -160,11 +182,15 @@ class TorchClient(fl.client.NumPyClient):
         macro_f1_before = None
         try:
             if len(self.test_loader.dataset) > 0:
-                loss_before, acc_before, probs_before, labels_before = evaluate(self.model, self.test_loader, self.device)
+                loss_before, acc_before, probs_before, labels_before = evaluate(
+                    self.model, self.test_loader, self.device
+                )
                 # macro-F1 from hard predictions
                 if probs_before.size > 0:
                     preds_before = np.argmax(probs_before, axis=1)
-                    macro_f1_before = float(f1_score(labels_before, preds_before, average="macro"))
+                    macro_f1_before = float(
+                        f1_score(labels_before, preds_before, average="macro")
+                    )
         except Exception:
             # Skip evaluation if it fails (e.g., empty test set)
             pass
@@ -181,12 +207,32 @@ class TorchClient(fl.client.NumPyClient):
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
                     optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+
+                    # Get FedProx parameters
+                    fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
+                    global_tensors = None
+                    if fedprox_mu > 0.0:
+                        global_tensors = [
+                            torch.tensor(param, dtype=torch.float32).to(self.device)
+                            for param in parameters
+                        ]
+
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
                         yb = yb.to(self.device)
                         optimizer.zero_grad()
                         preds = self.model(xb)
                         loss = -criterion(preds, yb)
+
+                        # Add FedProx proximal term (even for adversarial training)
+                        if fedprox_mu > 0.0 and global_tensors is not None:
+                            prox_term = 0.0
+                            for param, global_param in zip(
+                                self.model.parameters(), global_tensors
+                            ):
+                                prox_term += torch.sum((param - global_param) ** 2)
+                            loss = loss + (fedprox_mu / 2.0) * prox_term
+
                         loss.backward()
                         optimizer.step()
                 elif mode == "label_flip":
@@ -195,6 +241,16 @@ class TorchClient(fl.client.NumPyClient):
                     criterion = torch.nn.CrossEntropyLoss()
                     optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
                     n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
+
+                    # Get FedProx parameters
+                    fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
+                    global_tensors = None
+                    if fedprox_mu > 0.0:
+                        global_tensors = [
+                            torch.tensor(param, dtype=torch.float32).to(self.device)
+                            for param in parameters
+                        ]
+
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
                         yb = yb.to(self.device)
@@ -203,10 +259,28 @@ class TorchClient(fl.client.NumPyClient):
                         optimizer.zero_grad()
                         preds = self.model(xb)
                         loss = criterion(preds, flipped)
+
+                        # Add FedProx proximal term
+                        if fedprox_mu > 0.0 and global_tensors is not None:
+                            prox_term = 0.0
+                            for param, global_param in zip(
+                                self.model.parameters(), global_tensors
+                            ):
+                                prox_term += torch.sum((param - global_param) ** 2)
+                            loss = loss + (fedprox_mu / 2.0) * prox_term
+
                         loss.backward()
                         optimizer.step()
                 else:
-                    train_epoch(self.model, self.train_loader, self.device, lr)
+                    fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
+                    train_epoch(
+                        self.model,
+                        self.train_loader,
+                        self.device,
+                        lr,
+                        global_params=parameters if fedprox_mu > 0.0 else None,
+                        fedprox_mu=fedprox_mu,
+                    )
                 epochs_completed += 1
 
         # Capture after metrics
@@ -218,9 +292,15 @@ class TorchClient(fl.client.NumPyClient):
                 clip = float(self.runtime_config.get("dp_clip", 1.0))
                 noise_mult = float(self.runtime_config.get("dp_noise_multiplier", 0.0))
                 # Build update (delta)
-                deltas: List[np.ndarray] = [wa - wb for wb, wa in zip(weights_before, weights_after)]
+                deltas: List[np.ndarray] = [
+                    wa - wb for wb, wa in zip(weights_before, weights_after)
+                ]
                 # Compute global L2 norm of concatenated delta
-                flat = np.concatenate([d.reshape(-1) for d in deltas]) if deltas else np.zeros(1, dtype=np.float32)
+                flat = (
+                    np.concatenate([d.reshape(-1) for d in deltas])
+                    if deltas
+                    else np.zeros(1, dtype=np.float32)
+                )
                 l2 = float(np.linalg.norm(flat))
                 scale = 1.0
                 if l2 > 0.0:
@@ -233,7 +313,10 @@ class TorchClient(fl.client.NumPyClient):
                 if dp_seed < 0:
                     dp_seed = int(os.environ.get("SEED", "42"))
                 rng = np.random.default_rng(dp_seed + self.round_num)
-                noisy: List[np.ndarray] = [c + rng.normal(loc=0.0, scale=sigma, size=c.shape).astype(c.dtype) for c in clipped]
+                noisy: List[np.ndarray] = [
+                    c + rng.normal(loc=0.0, scale=sigma, size=c.shape).astype(c.dtype)
+                    for c in clipped
+                ]
                 # Reconstruct noisy weights as weights_before + noisy_delta
                 weights_after = [wb + nd for wb, nd in zip(weights_before, noisy)]
         except Exception:
@@ -245,7 +328,9 @@ class TorchClient(fl.client.NumPyClient):
         grad_norm_l2 = None
         try:
             if lr > 0:
-                scaled = [ (wa - wb) / lr for wb, wa in zip(weights_before, weights_after) ]
+                scaled = [
+                    (wa - wb) / lr for wb, wa in zip(weights_before, weights_after)
+                ]
                 grad_norm_l2 = calculate_weight_norms(scaled)
         except Exception:
             pass
@@ -264,25 +349,44 @@ class TorchClient(fl.client.NumPyClient):
         tau_bin = None
         try:
             if len(self.test_loader.dataset) > 0:
-                loss_after, acc_after, probs_after, labels_after = evaluate(self.model, self.test_loader, self.device)
+                loss_after, acc_after, probs_after, labels_after = evaluate(
+                    self.model, self.test_loader, self.device
+                )
                 if probs_after.size > 0:
                     preds_after = np.argmax(probs_after, axis=1)
-                    macro_f1_after = float(f1_score(labels_after, preds_after, average="macro"))
+                    macro_f1_after = float(
+                        f1_score(labels_after, preds_after, average="macro")
+                    )
                     # Argmax metrics
                     macro_f1_argmax = macro_f1_after
                     benign_idx = 0
                     if np.sum(labels_after == benign_idx) > 0:
                         benign_recall = float(
-                            np.sum((labels_after == benign_idx) & (preds_after == benign_idx))
+                            np.sum(
+                                (labels_after == benign_idx)
+                                & (preds_after == benign_idx)
+                            )
                         ) / float(np.sum(labels_after == benign_idx))
                         benign_fpr_argmax = float(max(0.0, 1.0 - benign_recall))
                     # Per-class F1
                     num_classes = probs_after.shape[1]
                     f1s = []
                     for c in range(num_classes):
-                        f1s.append(float(f1_score(labels_after, preds_after == c, labels=[c], average="macro")))
+                        f1s.append(
+                            float(
+                                f1_score(
+                                    labels_after,
+                                    preds_after == c,
+                                    labels=[c],
+                                    average="macro",
+                                )
+                            )
+                        )
                     import json as _json
-                    f1_per_class_after_json = _json.dumps({str(i): f for i, f in enumerate(f1s)})
+
+                    f1_per_class_after_json = _json.dumps(
+                        {str(i): f for i, f in enumerate(f1s)}
+                    )
                     # BENIGN is class 0 by construction in preprocessing
                     if num_classes >= 2:
                         benign_idx = 0
@@ -352,7 +456,11 @@ class TorchClient(fl.client.NumPyClient):
             f1_bin_tau=f1_bin_tau,
             benign_fpr_bin_tau=benign_fpr_bin_tau,
             tau_bin=tau_bin,
-            seed=int(os.environ.get("SEED", str(config.get("seed", 0)))) if isinstance(config, dict) else None,
+            seed=(
+                int(os.environ.get("SEED", str(config.get("seed", 0))))
+                if isinstance(config, dict)
+                else None
+            ),
             weight_norm_before=weight_norm_before,
             weight_norm_after=weight_norm_after,
             weight_update_norm=weight_update_norm,
@@ -421,6 +529,12 @@ def main() -> None:
     parser.add_argument("--local_epochs", type=int, default=1)
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument(
+        "--fedprox_mu",
+        type=float,
+        default=0.01,
+        help="FedProx proximal term coefficient (mu)",
+    )
+    parser.add_argument(
         "--secure_aggregation",
         action="store_true",
         help="Enable secure aggregation mode (stub toggle; no functional change)",
@@ -465,7 +579,9 @@ def main() -> None:
     )
 
     # Initialize metrics logging
-    client_metrics_path = os.path.join(args.logdir, f"client_{args.client_id}_metrics.csv")
+    client_metrics_path = os.path.join(
+        args.logdir, f"client_{args.client_id}_metrics.csv"
+    )
     metrics_logger = ClientMetricsLogger(client_metrics_path, args.client_id)
     fit_timer = ClientFitTimer()
     print(f"[Client {args.client_id}] Logging metrics to: {client_metrics_path}")
@@ -479,7 +595,9 @@ def main() -> None:
         )
         model = SimpleNet(num_features=args.features, num_classes=2)
         # Analyze data distribution for synthetic data
-        synthetic_labels = np.random.randint(0, 2, size=args.samples)  # Approximate for metrics
+        synthetic_labels = np.random.randint(
+            0, 2, size=args.samples
+        )  # Approximate for metrics
         data_stats = analyze_data_distribution(synthetic_labels)
         label_hist_json = create_label_histogram_json(synthetic_labels)
         num_classes_global = 2
@@ -507,7 +625,9 @@ def main() -> None:
         y_client = y_parts[args.client_id]
         # Warn if shard contains only a single class
         if len(np.unique(y_client)) <= 1:
-            print(f"[Client {args.client_id}] Warning: single-class shard detected; using global num_classes={num_classes_global}")
+            print(
+                f"[Client {args.client_id}] Warning: single-class shard detected; using global num_classes={num_classes_global}"
+            )
         train_loader, test_loader = numpy_to_loaders(
             X_client, y_client, batch_size=args.batch_size, seed=args.seed
         )
@@ -520,7 +640,9 @@ def main() -> None:
     # Model validation guard: assert output features match global num_classes
     model_output_features = None
     for name, module in model.named_modules():
-        if isinstance(module, torch.nn.Linear) and "net.4" in name:  # Last layer of SimpleNet
+        if (
+            isinstance(module, torch.nn.Linear) and "net.4" in name
+        ):  # Last layer of SimpleNet
             model_output_features = module.out_features
             break
 
@@ -536,11 +658,15 @@ def main() -> None:
             f"global num_classes ({num_classes_global}). "
             f"Label distribution: {label_hist_json}"
         )
-        print(f"[Client {args.client_id}] Model validation passed: "
-              f"out_features={model_output_features}, num_classes_global={num_classes_global}")
+        print(
+            f"[Client {args.client_id}] Model validation passed: "
+            f"out_features={model_output_features}, num_classes_global={num_classes_global}"
+        )
         print(f"[Client {args.client_id}] Label histogram: {label_hist_json}")
     else:
-        print(f"[Client {args.client_id}] Warning: Could not validate model output features")
+        print(
+            f"[Client {args.client_id}] Warning: Could not validate model output features"
+        )
         print(f"[Client {args.client_id}] Label histogram: {label_hist_json}")
 
     client = TorchClient(
@@ -555,12 +681,17 @@ def main() -> None:
             "adversary_mode": args.adversary_mode,
             "local_epochs": args.local_epochs,
             "lr": args.lr,
+            "fedprox_mu": float(os.environ.get("D2_FEDPROX_MU", str(args.fedprox_mu))),
             # Privacy/robustness toggles
             "secure_aggregation": bool(
-                args.secure_aggregation or os.environ.get("D2_SECURE_AGG", "0").lower() not in ("0", "false", "no", "")
+                args.secure_aggregation
+                or os.environ.get("D2_SECURE_AGG", "0").lower()
+                not in ("0", "false", "no", "")
             ),
             "dp_enabled": bool(
-                args.dp_enabled or os.environ.get("D2_DP_ENABLED", "0").lower() not in ("0", "false", "no", "")
+                args.dp_enabled
+                or os.environ.get("D2_DP_ENABLED", "0").lower()
+                not in ("0", "false", "no", "")
             ),
             "dp_clip": float(os.environ.get("D2_DP_CLIP", str(args.dp_clip))),
             "dp_noise_multiplier": float(
