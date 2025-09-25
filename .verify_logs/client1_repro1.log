@@ -23,22 +23,25 @@
             This is a deprecated feature. It will be removed
             entirely in future versions of Flower.
         
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 09883649-8105-40cb-b255-7ad2b8257523
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1757973393.527319 7560861 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-I0000 00:00:1757973393.537595 7560861 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-[92mINFO [0m:      
-[92mINFO [0m:      Received: train message 15672d7e-8c95-42f2-9e47-5e1bfc81f5cc
+I0000 00:00:1758647665.814152 9137591 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758647665.824717 9137591 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message 670cfc36-cb31-46af-bf17-d5c8c00da2c0
+[92mINFO [0m:      Received: evaluate message 2510a516-3245-4729-923e-aff9b722f4ae
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 2ba56854-0bef-462f-a724-a82e029c4255
+[92mINFO [0m:      Received: train message 180ac425-dd10-4f95-bf0a-92e158212ca6
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message 1f62bfe8-aa82-4614-a7cf-0dd433647660
+[92mINFO [0m:      Received: evaluate message 64dec78f-c426-4574-9ec8-e9ef43960674
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message 27ee5cff-ab3e-4da2-bd09-da1e29410bf3
+[92mINFO [0m:      Received: reconnect message d683ed3f-184a-41b6-bcfd-f540af81a7ea
 [92mINFO [0m:      Disconnect and shut down
+[Client 0] Logging metrics to: ./logs/client_0_metrics.csv
 [Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}
+[Client 0] Model validation passed: out_features=2, num_classes_global=2
+[Client 0] Label histogram: {"0": 490, "1": 510}

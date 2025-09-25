@@ -19,3 +19,4 @@ git filter-branch --force --msg-filter '
 
 echo "Commit message cleanup complete!"
 echo "Run 'git log --all --grep=\"claude\" --regexp-ignore-case' to verify"
+
