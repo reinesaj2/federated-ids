@@ -29,7 +29,8 @@ class ServerMetricsLogger:
             headers = [
                 "round", "agg_method", "n_clients", "byzantine_f",
                 "l2_to_benign_mean", "cos_to_benign_mean", "coord_median_agree_pct",
-                "update_norm_mean", "update_norm_std", "t_aggregate_ms", "t_round_ms"
+                "update_norm_mean", "update_norm_std", "t_aggregate_ms", "t_round_ms",
+                "pairwise_cosine_mean", "pairwise_cosine_std", "l2_dispersion_mean", "l2_dispersion_std"
             ]
             with open(self.csv_path, 'w', newline='') as f:
                 writer = csv.writer(f)
@@ -48,6 +49,10 @@ class ServerMetricsLogger:
         update_norm_std: Optional[float],
         t_aggregate_ms: Optional[float],
         t_round_ms: Optional[float],
+        pairwise_cosine_mean: Optional[float] = None,
+        pairwise_cosine_std: Optional[float] = None,
+        l2_dispersion_mean: Optional[float] = None,
+        l2_dispersion_std: Optional[float] = None,
     ) -> None:
         """Log metrics for a single federated learning round."""
         row = [
@@ -62,6 +67,10 @@ class ServerMetricsLogger:
             str(update_norm_std) if update_norm_std is not None else "",
             str(t_aggregate_ms) if t_aggregate_ms is not None else "",
             str(t_round_ms) if t_round_ms is not None else "",
+            str(pairwise_cosine_mean) if pairwise_cosine_mean is not None else "",
+            str(pairwise_cosine_std) if pairwise_cosine_std is not None else "",
+            str(l2_dispersion_mean) if l2_dispersion_mean is not None else "",
+            str(l2_dispersion_std) if l2_dispersion_std is not None else "",
         ]
 
         with open(self.csv_path, 'a', newline='') as f:

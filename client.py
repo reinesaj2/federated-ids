@@ -393,36 +393,43 @@ class TorchClient(fl.client.NumPyClient):
                         benign_probs = probs_after[:, benign_idx]
                         # Attack-vs-BENIGN probabilities (1 - P(benign))
                         attack_probs = 1.0 - benign_probs
-                        # PR-AUC (average precision)
-                        y_true_bin = (labels_after != benign_idx).astype(int)
-                        pr_auc_after = float(
-                            average_precision_score(y_true_bin, attack_probs)
-                        )
-                        # Choose tau on validation set in future; for now, maximize F1 using test as proxy
-                        precision, recall, thresholds = precision_recall_curve(
-                            y_true_bin, attack_probs
-                        )
-                        # Avoid division by zero
-                        denom = np.maximum(precision + recall, 1e-12)
-                        f1_curve = 2 * precision * recall / denom
-                        best_idx = int(np.argmax(f1_curve))
-                        threshold_tau = (
-                            float(thresholds[best_idx - 1])
-                            if best_idx > 0 and best_idx - 1 < len(thresholds)
-                            else 0.5
-                        )
+                        # PR-AUC (average precision) on full test
+                        y_true_bin_full = (labels_after != benign_idx).astype(int)
+                        pr_auc_after = float(average_precision_score(y_true_bin_full, attack_probs))
+
+                        # Select a single tau on a validation subset, reuse for full test logging
+                        n = attack_probs.shape[0]
+                        if n > 1:
+                            rng = np.random.default_rng(int(os.environ.get("SEED", "42")) + self.round_num)
+                            n_val = max(1, int(0.4 * n))
+                            val_idx = rng.choice(n, size=n_val, replace=False)
+                            y_true_bin_val = y_true_bin_full[val_idx]
+                            attack_probs_val = attack_probs[val_idx]
+                            # Compute PR curve on validation subset
+                            precision, recall, thresholds = precision_recall_curve(y_true_bin_val, attack_probs_val)
+                            denom = np.maximum(precision + recall, 1e-12)
+                            f1_curve = 2 * precision * recall / denom
+                            if thresholds.size > 0 and f1_curve.size > 0:
+                                best_idx = int(np.argmax(f1_curve))
+                                # precision_recall_curve returns thresholds of length len(precision)-1
+                                tau_idx = max(0, min(best_idx - 1, thresholds.size - 1))
+                                threshold_tau = float(thresholds[tau_idx])
+                            else:
+                                threshold_tau = 0.5
+                        else:
+                            threshold_tau = 0.5
                         tau_bin = threshold_tau
-                        # Compute FPR at tau
-                        y_pred_attack = (attack_probs >= threshold_tau).astype(int)
-                        benign_mask = labels_after == benign_idx
-                        fp = int(np.sum(y_pred_attack[benign_mask] == 1))
-                        tn = int(np.sum(y_pred_attack[benign_mask] == 0))
+
+                        # Apply chosen tau to full test
+                        y_pred_attack_full = (attack_probs >= threshold_tau).astype(int)
+                        benign_mask_full = (labels_after == benign_idx)
+                        fp = int(np.sum(y_pred_attack_full[benign_mask_full] == 1))
+                        tn = int(np.sum(y_pred_attack_full[benign_mask_full] == 0))
                         fpr_after = float(fp / max(fp + tn, 1))
                         benign_fpr_bin_tau = fpr_after
-                        # Binary F1 at tau
+                        # Binary F1 at tau on full test
                         from sklearn.metrics import f1_score as _f1_bin
-
-                        f1_bin_tau = float(_f1_bin(y_true_bin, y_pred_attack))
+                        f1_bin_tau = float(_f1_bin(y_true_bin_full, y_pred_attack_full))
         except Exception:
             pass
 
