@@ -45,7 +45,7 @@ def test_client_metrics_csv_creation():
                     "client_id", "round", "dataset_size", "n_classes",
                     "loss_before", "acc_before", "loss_after", "acc_after",
                     "weight_norm_before", "weight_norm_after", "weight_update_norm",
-                    "t_fit_ms", "epochs_completed", "lr", "batch_size"
+                    "grad_norm_l2", "t_fit_ms", "epochs_completed", "lr", "batch_size"
                 ]
             assert headers == expected
 

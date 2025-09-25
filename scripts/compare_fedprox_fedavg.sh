@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# FedProx vs FedAvg Comparison Script
-# Compares federated learning performance on non-IID data (alpha=0.05)
-# following the verify_readme.sh pattern for consistency
+# FedProx vs FedAvg Matrix Comparison Script
+# Compares federated learning performance across multiple alpha/mu combinations
+# Supports both single values and comma-separated matrix parameters
 
 PORT_BASE=${PORT_BASE:-9000}
 ROUNDS=${ROUNDS:-5}
 TIMEOUT_SECS=${TIMEOUT_SECS:-60}
 LOGDIR=${LOGDIR:-"./comparison_logs"}
 SEED=${SEED:-42}
-ALPHA=${ALPHA:-0.05}  # Non-IID Dirichlet alpha as per issue #12
+ALPHA_VALUES=${ALPHA_VALUES:-"0.05"}  # Comma-separated alpha values (e.g., "0.05,0.1,0.5")
+MU_VALUES=${MU_VALUES:-"0.0,0.01"}    # Comma-separated mu values (e.g., "0.0,0.01,0.1")
+
+# Legacy support for single ALPHA parameter
+if [ -n "${ALPHA:-}" ]; then
+  ALPHA_VALUES="$ALPHA"
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -37,7 +43,8 @@ run_algorithm() {
   local algorithm=$1
   local port=$2
   local fedprox_mu=${3:-0.0}
-  local exp_dir="$LOGDIR/${algorithm}"
+  local alpha=${4:-0.05}
+  local exp_dir="$LOGDIR/${algorithm}_alpha${alpha}_mu${fedprox_mu}"
 
   mkdir -p "$exp_dir"
 
@@ -45,7 +52,7 @@ run_algorithm() {
   local c1_log="$exp_dir/client1.log"
   local c2_log="$exp_dir/client2.log"
 
-  info "Starting ${algorithm} experiment (port=${port}, mu=${fedprox_mu}, alpha=${ALPHA})"
+  info "Starting ${algorithm} experiment (port=${port}, mu=${fedprox_mu}, alpha=${alpha})"
 
   # Start server
   SEED=$SEED python server.py \
@@ -65,14 +72,14 @@ run_algorithm() {
     return 1
   fi
 
-  info "Starting ${algorithm} clients (non-IID, alpha=${ALPHA})"
+  info "Starting ${algorithm} clients (non-IID, alpha=${alpha})"
 
   # Start clients with non-IID synthetic data
   python client.py \
     --server_address 127.0.0.1:"$port" \
     --client_id 0 --num_clients 2 \
     --dataset synthetic --samples 1000 --features 20 \
-    --partition_strategy dirichlet --alpha "$ALPHA" \
+    --partition_strategy dirichlet --alpha "$alpha" \
     --fedprox_mu "$fedprox_mu" \
     --local_epochs 3 \
     --logdir "$exp_dir" \
@@ -84,7 +91,7 @@ run_algorithm() {
     --server_address 127.0.0.1:"$port" \
     --client_id 1 --num_clients 2 \
     --dataset synthetic --samples 1000 --features 20 \
-    --partition_strategy dirichlet --alpha "$ALPHA" \
+    --partition_strategy dirichlet --alpha "$alpha" \
     --fedprox_mu "$fedprox_mu" \
     --local_epochs 3 \
     --logdir "$exp_dir" \
@@ -121,11 +128,11 @@ run_algorithm() {
 }
 
 extract_final_metrics() {
-  local algorithm=$1
-  local metrics_file="$LOGDIR/${algorithm}/metrics.csv"
+  local experiment_name=$1
+  local metrics_file="$LOGDIR/${experiment_name}/metrics.csv"
 
   if [ ! -f "$metrics_file" ]; then
-    echo "No metrics file for $algorithm"
+    echo "No metrics file for $experiment_name"
     return
   fi
 
@@ -135,7 +142,7 @@ extract_final_metrics() {
   local cos_similarity=$(tail -n 1 "$metrics_file" | cut -d',' -f6)
   local update_norm=$(tail -n 1 "$metrics_file" | cut -d',' -f8)
 
-  echo "$algorithm: Round=$final_round, L2_dist=$l2_distance, Cos_sim=$cos_similarity, Norm=$update_norm"
+  echo "$experiment_name: Round=$final_round, L2_dist=$l2_distance, Cos_sim=$cos_similarity, Norm=$update_norm"
 }
 
 ensure_env() {
@@ -157,33 +164,81 @@ main() {
   cd "$REPO_ROOT"
   ensure_env
 
+  # Parse comma-separated values into arrays
+  IFS=',' read -ra ALPHA_ARRAY <<< "$ALPHA_VALUES"
+  IFS=',' read -ra MU_ARRAY <<< "$MU_VALUES"
+
   # Clean previous comparison logs
   rm -rf "$LOGDIR"
   mkdir -p "$LOGDIR"
 
-  info "Starting FedProx vs FedAvg comparison (alpha=${ALPHA}, rounds=${ROUNDS})"
+  info "Starting FedProx vs FedAvg matrix comparison"
+  info "Alpha values: ${ALPHA_ARRAY[*]}"
+  info "Mu values: ${MU_ARRAY[*]}"
+  info "Total combinations: $((${#ALPHA_ARRAY[@]} * ${#MU_ARRAY[@]}))"
+  info "Rounds per experiment: ${ROUNDS}"
 
-  # Run FedAvg (mu=0.0)
-  if ! run_algorithm "fedavg" $((PORT_BASE)) 0.0; then
-    info "FedAvg experiment failed"
-    exit 1
-  fi
+  local port_counter=0
+  local failed_experiments=0
+  local completed_experiments=()
 
-  # Run FedProx (mu=0.01 as default)
-  if ! run_algorithm "fedprox" $((PORT_BASE + 1)) 0.01; then
-    info "FedProx experiment failed"
-    exit 2
-  fi
+  # Run all combinations of alpha and mu
+  for alpha in "${ALPHA_ARRAY[@]}"; do
+    alpha=$(echo "$alpha" | xargs)  # trim whitespace
+    for mu in "${MU_ARRAY[@]}"; do
+      mu=$(echo "$mu" | xargs)  # trim whitespace
+
+      # Determine algorithm name based on mu value
+      local algorithm
+      if [[ "$mu" == "0.0" ]] || [[ "$mu" == "0" ]]; then
+        algorithm="fedavg"
+      else
+        algorithm="fedprox"
+      fi
+
+      local port=$((PORT_BASE + port_counter))
+      port_counter=$((port_counter + 1))
+
+      info "Running $algorithm with alpha=$alpha, mu=$mu (port=$port)"
+
+      if run_algorithm "$algorithm" "$port" "$mu" "$alpha"; then
+        local exp_name="${algorithm}_alpha${alpha}_mu${mu}"
+        completed_experiments+=("$exp_name")
+        info "✓ Completed: $exp_name"
+      else
+        failed_experiments=$((failed_experiments + 1))
+        info "✗ Failed: ${algorithm}_alpha${alpha}_mu${mu}"
+      fi
+
+      # Small delay between experiments to avoid port conflicts
+      sleep 1
+    done
+  done
 
   # Display comparison summary
-  info "Comparison Results:"
-  extract_final_metrics "fedavg"
-  extract_final_metrics "fedprox"
+  info ""
+  info "Matrix Comparison Results:"
+  info "========================="
+  for exp_name in "${completed_experiments[@]}"; do
+    extract_final_metrics "$exp_name"
+  done
 
-  info "Detailed logs and metrics saved to: $LOGDIR"
-  info "Generate plots with: python scripts/plot_metrics.py --fedprox_comparison --logdir $LOGDIR"
+  info ""
+  info "Summary:"
+  info "  Completed: ${#completed_experiments[@]} experiments"
+  info "  Failed: $failed_experiments experiments"
+  info "  Detailed logs and metrics saved to: $LOGDIR"
 
-  info "Comparison completed successfully"
+  if [ ${#completed_experiments[@]} -gt 0 ]; then
+    info "  Generate analysis with: python scripts/analyze_fedprox_comparison.py --artifacts_dir $LOGDIR --output_dir analysis"
+  fi
+
+  if [ $failed_experiments -gt 0 ]; then
+    info "Matrix comparison completed with $failed_experiments failures"
+    exit 1
+  else
+    info "Matrix comparison completed successfully"
+  fi
 }
 
 main "$@"
