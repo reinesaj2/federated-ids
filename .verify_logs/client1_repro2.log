@@ -24,25 +24,22 @@
             entirely in future versions of Flower.
         
 [92mINFO [0m:      
-[92mINFO [0m:      Received: get_parameters message db85413d-c264-40a3-a146-b28fc4d70d26
+[92mINFO [0m:      Received: train message 1bef1c77-36f3-4432-bfe1-75fa0756435c
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1758647671.363656 9138610 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-[92mINFO [0m:      Sent reply
-I0000 00:00:1758647671.374270 9138610 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-[92mINFO [0m:      
-[92mINFO [0m:      Received: train message 02062bd2-017d-454c-80cd-b8731528303f
+I0000 00:00:1758769291.015439  945511 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758769291.025826  945511 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message c628ffe1-e416-4024-9652-a2f6dd9bb4b2
+[92mINFO [0m:      Received: evaluate message 1b80fa21-302c-45bb-b15b-50efbf99c2f2
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 2c9964da-4957-4306-9c58-e7fd06d8dec8
+[92mINFO [0m:      Received: train message 425d882b-fe84-4dab-bae0-88822e314c07
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message 58fd8371-0406-4849-8b41-d61da2605513
+[92mINFO [0m:      Received: evaluate message 9e503e2c-0190-404b-92ab-89367790f6e7
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message c465b053-4bb1-4968-a95c-237707104af8
+[92mINFO [0m:      Received: reconnect message 1c8eeb9b-e17e-4559-9832-4ae6f9c23b1b
 [92mINFO [0m:      Disconnect and shut down
 [Client 0] Logging metrics to: ./logs/client_0_metrics.csv
 [Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}

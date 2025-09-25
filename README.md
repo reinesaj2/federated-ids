@@ -2,7 +2,7 @@
 
 Federated learning demo using [Flower](https://flower.dev) for orchestration and PyTorch for local training.
 Supports synthetic and real IDS datasets (CIC-IDS2017, UNSW-NB15) with preprocessing (scaling and one‑hot encoding)
-and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregation implementations (Median, Krum, simplified Bulyan).
+and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregation implementations (Median, Krum, simplified Bulyan) and FedProx algorithm comparison.
 
 ## Table of Contents
 
@@ -11,10 +11,11 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 3. Manual Quickstart (server + two clients)
 4. Expected output (so you know it worked)
 5. Reproducibility & logging (seeds, logs, plots)
-6. Real datasets (UNSW‑NB15, CIC‑IDS2017)
-7. Troubleshooting (common errors and fixes)
-8. Project structure
-9. Notes on privacy/robustness scaffolding
+6. Algorithm comparison (FedAvg vs FedProx)
+7. Real datasets (UNSW‑NB15, CIC‑IDS2017)
+8. Troubleshooting (common errors and fixes)
+9. Project structure
+10. Notes on privacy/robustness scaffolding
 
 ---
 
@@ -98,23 +99,26 @@ The server will run 2 rounds and then print a summary and exit.
 
 On the server terminal, a successful 2‑round run ends with output similar to:
 
-```64:71:/Users/abrahamreines/Documents/Thesis/federated-ids/.verify_logs/example_server_output.txt
+```
 INFO :      [SUMMARY]
-INFO :      Run finished 2 round(s) in ~80s
+INFO :      Run finished 2 round(s) in ~6-8s
 INFO :          History (loss, distributed):
-INFO :                  round 1: 0.05...
-INFO :                  round 2: 0.04...
+INFO :                  round 1: 0.047... (varies by seed)
+INFO :                  round 2: 0.041... (varies by seed)
 INFO :          History (metrics, distributed, evaluate):
-INFO :          {'accuracy': [(1, ~0.98), (2, ~0.978)]}
+INFO :          {'accuracy': [(1, 0.98), (2, 0.975)]} (varies by seed)
 ```
 
-On each client terminal, you’ll see lines such as:
+On each client terminal, you'll see lines such as:
 
-```1:6:/Users/abrahamreines/Documents/Thesis/federated-ids/runs/smoke_metrics/README_example_client.txt
+```
 [Client X] Logging metrics to: ./logs/client_X_metrics.csv
 [Data] Train samples=1600, class_counts={0: 800, 1: 800}; Test samples=400, class_counts={0: 200, 1: 200}
 [Client X] Model validation passed: out_features=2, num_classes_global=2
+[Client X] Label histogram: {"0": 1016, "1": 984} (varies by partitioning)
 ```
+
+**Note**: Exact values will vary based on random seed and data partitioning, but the structure should be identical.
 
 ---
 
@@ -129,16 +133,62 @@ On each client terminal, you’ll see lines such as:
 - Logs: CSV files are written to `./logs/` (e.g., `metrics.csv`, `client_0_metrics.csv`).
 - Plots: generate figures from any run directory that contains CSVs:
   ```bash
-  # Server + client plots → saves PNGs next to the CSVs by default
+  # Create output directory
+  mkdir -p ./runs/smoke_metrics
+
+  # Server + client plots → saves PNGs to output directory
   python scripts/plot_metrics.py --run_dir ./logs --output_dir ./runs/smoke_metrics
 
   # JSON summary of client metrics
   python scripts/summarize_metrics.py --run_dir ./logs --output ./runs/smoke_metrics/summary.json
   ```
 
+**Important**: If plotting fails with "Expected X fields, saw Y" error, clean logs between different demo runs:
+```bash
+rm -rf logs/; mkdir logs
+```
+
 ---
 
-## 6) Real datasets (UNSW‑NB15, CIC‑IDS2017)
+## 6) Algorithm comparison (FedAvg vs FedProx)
+
+Test the FedProx algorithm with proximal regularization to improve convergence on non-IID data:
+
+### Single comparison
+```bash
+# Clean logs and run FedAvg baseline
+rm -rf logs/; mkdir logs
+export SEED=42
+python server.py --rounds 3 --aggregation fedavg --server_address 127.0.0.1:8099 &
+python client.py --server_address 127.0.0.1:8099 --dataset synthetic --samples 2000 --features 20 --seed 42 --client_id 0 --num_clients 2 --fedprox_mu 0.0 &
+python client.py --server_address 127.0.0.1:8099 --dataset synthetic --samples 2000 --features 20 --seed 42 --client_id 1 --num_clients 2 --fedprox_mu 0.0 &
+wait
+
+# Run FedProx with regularization
+python server.py --rounds 3 --aggregation fedavg --server_address 127.0.0.1:8098 &
+python client.py --server_address 127.0.0.1:8098 --dataset synthetic --samples 2000 --features 20 --seed 42 --client_id 0 --num_clients 2 --fedprox_mu 0.01 &
+python client.py --server_address 127.0.0.1:8098 --dataset synthetic --samples 2000 --features 20 --seed 42 --client_id 1 --num_clients 2 --fedprox_mu 0.01 &
+wait
+```
+
+### Matrix comparison script
+```bash
+# Test multiple α (non-IID levels) and μ (regularization strengths)
+export ALPHA_VALUES="0.1,0.5" MU_VALUES="0.0,0.01,0.1" ROUNDS=5 LOGDIR="./fedprox_comparison"
+bash scripts/compare_fedprox_fedavg.sh
+
+# Generate analysis plots and thesis tables
+python scripts/analyze_fedprox_comparison.py --artifacts_dir ./fedprox_comparison --output_dir ./fedprox_analysis
+```
+
+**Parameters**:
+- `--fedprox_mu 0.0`: Standard FedAvg (no regularization)
+- `--fedprox_mu 0.01`: Light FedProx regularization
+- `--fedprox_mu 0.1`: Strong FedProx regularization
+
+---
+
+## 7) Real datasets (UNSW‑NB15, CIC‑IDS2017)
 
 Important rule: all clients connected to the same server must use the same dataset and preprocessing settings.
 Do not mix synthetic with UNSW/CIC (or different feature configs) on the same server run, or you will get a
@@ -158,16 +208,22 @@ python scripts/prepare_unsw_sample.py \
 
 ---
 
-## 7) Troubleshooting
+## 8) Troubleshooting
 
-- Deprecation warnings (Flower): you might see messages about `start_server`/`start_client` being deprecated.
+- **Deprecation warnings (Flower)**: you might see messages about `start_server`/`start_client` being deprecated.
   This demo targets flwr==1.21.0 and is known to work despite the warnings.
 
-- Address already in use: change the port (e.g., to 8100) and pass the same port to the clients.
+- **Address already in use**: change the port (e.g., to 8100) and pass the same port to the clients.
   ```bash
   # Find what is using the port 8099 (macOS/Linux)
   lsof -i :8099
   ```
+
+- **CSV plotting errors** ("Expected X fields, saw Y"): Clean logs directory between different demo runs.
+  ```bash
+  rm -rf logs/; mkdir logs
+  ```
+  This happens when CSV files accumulate data from runs with different column structures.
 
 - State dict size mismatch: all clients in a given run must use the same dataset and preprocessing
   (do not mix synthetic with UNSW/CIC in the same server run).
@@ -184,23 +240,25 @@ python scripts/prepare_unsw_sample.py \
 
 ---
 
-## 8) Project structure
+## 9) Project structure
 
 - `server.py` – Flower server with FedAvg and robust aggregation options (`median`, `krum`, simplified `bulyan`).
   - For `fedavg`, aggregation is sample‑size weighted; robust methods are intentionally unweighted.
 - `client.py` – PyTorch `NumPyClient` with a small MLP; supports synthetic, UNSW‑NB15, and CIC‑IDS2017 datasets
-  with IID/Dirichlet/protocol partitions.
+  with IID/Dirichlet/protocol partitions. Includes FedProx proximal regularization via `--fedprox_mu`.
 - `data_preprocessing.py` – CSV loaders, preprocessing (StandardScaler + OneHotEncoder), partitioning
   (iid/dirichlet/protocol), and DataLoader builders.
 - `robust_aggregation.py` – Aggregation method enum and robust implementations (Median, Krum, simplified Bulyan).
 - `scripts/verify_readme.sh` – Non‑interactive verification for automated demo sanity checks.
 - `scripts/plot_metrics.py` – Generate server/client metric plots from CSV logs.
 - `scripts/summarize_metrics.py` – Emit a compact JSON summary of client metrics.
+- `scripts/compare_fedprox_fedavg.sh` – Matrix comparison script for FedAvg vs FedProx across different parameters.
+- `scripts/analyze_fedprox_comparison.py` – Analysis tool for generating thesis-ready plots and LaTeX tables.
 - `requirements.txt` – Python dependencies.
 
 ---
 
-## 9) Privacy & robustness disclosure (D2 scope)
+## 10) Privacy & robustness disclosure (D2 scope)
 
 - Differential Privacy (scaffold): client‑side clipping with Gaussian noise applied to the model update
   before sending. This is not DP‑SGD and does not include privacy accounting.

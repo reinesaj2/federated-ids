@@ -24,27 +24,42 @@
             entirely in future versions of Flower.
         
 [92mINFO [0m:      
-[92mINFO [0m:      Received: get_parameters message ebd2b9e3-1487-48bb-b820-31cd529238d3
+[92mINFO [0m:      Received: train message 30b704a0-c428-4a24-8fd3-2a4e50a6524f
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1758769273.356853  942065 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758769253.551415  938868 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758769253.562513  938868 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 167a5c72-42c8-4ef7-a2fa-b824eb95cc04
-I0000 00:00:1758769273.370203  942065 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+[92mINFO [0m:      Received: evaluate message db07be77-194f-41f6-b248-bfe50b724fcf
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message e47f8f24-2242-4489-bf50-7d5af1329f23
+[92mINFO [0m:      Received: train message 84b05932-4ddf-4c8e-8b46-d497af3626f8
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: train message 5f6a6fdf-c2e4-4b5b-86a8-bb9e7075d8ed
+[92mINFO [0m:      Received: evaluate message 83e965da-34a1-4236-8ede-e5ddd8710340
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: evaluate message 9a6a691b-8b66-4de5-a720-704d668534af
+[92mINFO [0m:      Received: train message 67285e39-13d0-441e-9540-917632a366e2
 [92mINFO [0m:      Sent reply
 [92mINFO [0m:      
-[92mINFO [0m:      Received: reconnect message efa71a68-cc20-49ef-9c8d-8ea18a90d043
+[92mINFO [0m:      Received: evaluate message ac278ab9-e210-429e-80ba-4d1013cd8f56
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message e593c98c-3673-42fa-98f3-c79e9839b202
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 6a009527-97b7-42db-adba-32b8e0d40030
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 3e952d4b-84ce-4a7e-b79f-adacdba56ef3
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message fc3ee5a3-801f-4233-9194-7bdd47d8a3c5
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message e5f1946d-9519-4dc4-ab05-c57424a3934b
 [92mINFO [0m:      Disconnect and shut down
-[Client 0] Logging metrics to: ./logs/client_0_metrics.csv
+[Client 0] Logging metrics to: ./comparison_logs/fedprox_alpha0.05_mu0.01/client_0_metrics.csv
 [Data] Train samples=800, class_counts={0: 400, 1: 400}; Test samples=200, class_counts={0: 100, 1: 100}
 [Client 0] Model validation passed: out_features=2, num_classes_global=2
 [Client 0] Label histogram: {"0": 490, "1": 510}
