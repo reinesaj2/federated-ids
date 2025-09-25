@@ -13,12 +13,12 @@
             entirely in future versions of Flower.
         
 [92mINFO [0m:      Starting Flower server, config: num_rounds=2, no round_timeout
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1758769283.512791  943910 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Flower ECE: gRPC server running (2 rounds), SSL is disabled
 [92mINFO [0m:      [INIT]
 [92mINFO [0m:      Requesting initial parameters from one random client
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1758647663.941891 9137138 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
-I0000 00:00:1758647663.946866 9137138 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1758769283.517935  943910 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
 [92mINFO [0m:      Received initial parameters from one random client
 [92mINFO [0m:      Starting evaluation of initial global parameters
 [92mINFO [0m:      Evaluation returned no results (`None`)
@@ -36,12 +36,12 @@ I0000 00:00:1758647663.946866 9137138 fork_posix.cc:71] Other threads are curren
 [92mINFO [0m:      aggregate_evaluate: received 2 results and 0 failures
 [92mINFO [0m:      
 [92mINFO [0m:      [SUMMARY]
-[92mINFO [0m:      Run finished 2 round(s) in 0.89s
+[92mINFO [0m:      Run finished 2 round(s) in 1.14s
 [92mINFO [0m:      	History (loss, distributed):
-[92mINFO [0m:      		round 1: 0.06503532081842422
-[92mINFO [0m:      		round 2: 0.08836180716753006
+[92mINFO [0m:      		round 1: 0.06911218166351318
+[92mINFO [0m:      		round 2: 0.08512440323829651
 [92mINFO [0m:      	History (metrics, distributed, evaluate):
-[92mINFO [0m:      	{'accuracy': [(1, 0.96), (2, 0.96)]}
+[92mINFO [0m:      	{'accuracy': [(1, 0.96), (2, 0.965)]}
 [92mINFO [0m:      
 [Server] Using aggregation method: fedavg
 [Server] Secure aggregation mode: OFF (stub)
