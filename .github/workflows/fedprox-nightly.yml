@@ -58,6 +58,9 @@ jobs:
           key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: pip-${{ runner.os }}-
 
+      - name: Prepare real dataset samples
+        run: python scripts/setup_real_datasets.py
+
       - name: Install dependencies with retry
         uses: nick-fields/retry@v3
         with:
@@ -68,7 +71,7 @@ jobs:
             pip install -r requirements.txt
             if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
-      - name: FedProx Comparison (Alpha=${{ matrix.alpha }}, Mu=${{ matrix.mu }})
+      - name: FedProx Comparison (real UNSW)
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 180
@@ -79,16 +82,21 @@ jobs:
             export ALPHA=${{ matrix.alpha }}
             export MU=${{ matrix.mu }}
             export ROUNDS=20
-            export CLIENTS=10
+            export CLIENTS=6
             export ROUNDS=20
             export ALPHA="${{ matrix.alpha }}"
             export MU="${{ matrix.mu }}"
             PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}"
-            
+            DATASET="unsw"
+            DATA_PATH="data/unsw/unsw_nb15_sample.csv"
+
             mkdir -p "runs/$PRESET"
             LOGDIR="runs/$PRESET"
             PORT=$((8200 + RANDOM % 1000))
-            
+            echo "$DATASET" >"$LOGDIR/dataset.txt"
+            echo "$DATA_PATH" >"$LOGDIR/dataset_path.txt"
+            echo "Running FedProx comparison with alpha=$ALPHA mu=$MU dataset=$DATASET"
+
             # Start server
             python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
             SERVER_PID=$!
@@ -103,7 +111,7 @@ jobs:
             CLIENT_PIDS=()
             for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
               python client.py --server_address 127.0.0.1:$PORT --client_id $CLIENT_ID --num_clients $CLIENTS \
-                --dataset synthetic --samples 1000 --features 20 --partition_strategy dirichlet --alpha $ALPHA \
+                --dataset "$DATASET" --data_path "$DATA_PATH" --partition_strategy dirichlet --alpha $ALPHA \
                 --fedprox_mu $MU --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
               CLIENT_PIDS+=($!)
             done
