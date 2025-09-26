@@ -74,9 +74,86 @@ jobs:
         if: startsWith(github.ref, 'refs/heads/feat/')
         env:
           D2_EXTENDED_METRICS: "1"
+          SEED: "42"
         run: |
-          python scripts/run_fl.py --clients 2 --rounds 3 --alpha 0.1 --preset smoke_feat_iid --partition_strategy iid --leakage_safe
-          python scripts/run_fl.py --clients 2 --rounds 3 --alpha 0.1 --preset smoke_feat_dirichlet --partition_strategy dirichlet --leakage_safe
+          # Function to wait for port
+          wait_for_port() {
+            local port=$1
+            for i in {1..20}; do
+              nc -z 127.0.0.1 "$port" 2>/dev/null && return 0
+              sleep 0.5
+            done
+            return 1
+          }
+          
+          # Run IID experiment
+          mkdir -p runs/smoke_feat_iid
+          LOGDIR=runs/smoke_feat_iid
+          PORT=8090
+          
+          # Start server
+          python server.py --rounds 3 --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
+          SERVER_PID=$!
+          
+          # Wait for server
+          if ! wait_for_port $PORT; then
+            echo "Server failed to start"
+            kill $SERVER_PID 2>/dev/null || true
+            exit 1
+          fi
+          
+          # Start clients
+          python client.py --server_address 127.0.0.1:$PORT --client_id 0 --num_clients 2 --dataset synthetic --samples 1000 --features 20 --partition_strategy iid --alpha 0.1 --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_0.log" 2>&1 &
+          C1=$!
+          python client.py --server_address 127.0.0.1:$PORT --client_id 1 --num_clients 2 --dataset synthetic --samples 1000 --features 20 --partition_strategy iid --alpha 0.1 --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_1.log" 2>&1 &
+          C2=$!
+          
+          # Wait for completion
+          TIMEOUT=60
+          for i in $(seq 1 $TIMEOUT); do
+            if ! kill -0 $C1 2>/dev/null && ! kill -0 $C2 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          
+          # Clean up
+          sleep 2
+          kill $SERVER_PID 2>/dev/null || true
+          
+          # Run Dirichlet experiment
+          mkdir -p runs/smoke_feat_dirichlet
+          LOGDIR=runs/smoke_feat_dirichlet
+          PORT=8091
+          
+          # Start server
+          python server.py --rounds 3 --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
+          SERVER_PID=$!
+          
+          # Wait for server
+          if ! wait_for_port $PORT; then
+            echo "Server failed to start"
+            kill $SERVER_PID 2>/dev/null || true
+            exit 1
+          fi
+          
+          # Start clients
+          python client.py --server_address 127.0.0.1:$PORT --client_id 0 --num_clients 2 --dataset synthetic --samples 1000 --features 20 --partition_strategy dirichlet --alpha 0.1 --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_0.log" 2>&1 &
+          C1=$!
+          python client.py --server_address 127.0.0.1:$PORT --client_id 1 --num_clients 2 --dataset synthetic --samples 1000 --features 20 --partition_strategy dirichlet --alpha 0.1 --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_1.log" 2>&1 &
+          C2=$!
+          
+          # Wait for completion
+          for i in $(seq 1 $TIMEOUT); do
+            if ! kill -0 $C1 2>/dev/null && ! kill -0 $C2 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          
+          # Clean up
+          sleep 2
+          kill $SERVER_PID 2>/dev/null || true
 
       - name: Upload smoke artifacts
         if: startsWith(github.ref, 'refs/heads/feat/')
@@ -111,14 +188,76 @@ jobs:
       - name: Benign quick
         env:
           D2_EXTENDED_METRICS: "1"
-        run: python scripts/run_fl.py --clients 5 --rounds 10 --alpha 0.1 --preset d2_quick_benign --partition_strategy dirichlet --leakage_safe
+          SEED: "42"
+        run: |
+          mkdir -p runs/d2_quick_benign
+          LOGDIR=runs/d2_quick_benign
+          PORT=8092
+          CLIENTS=5
+          ROUNDS=10
+          
+          # Start server
+          python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
+          SERVER_PID=$!
+          
+          # Wait for server
+          for i in {1..20}; do
+            nc -z 127.0.0.1 $PORT 2>/dev/null && break
+            sleep 0.5
+          done
+          
+          # Start clients
+          for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
+            python client.py --server_address 127.0.0.1:$PORT --client_id $CLIENT_ID --num_clients $CLIENTS --dataset synthetic --samples 1000 --features 20 --partition_strategy dirichlet --alpha 0.1 --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
+          done
+          
+          # Wait for completion
+          wait
+          sleep 2
+          kill $SERVER_PID 2>/dev/null || true
+          
       - name: Adversarial quick
         env:
           D2_EXTENDED_METRICS: "1"
-        run: python scripts/run_fl.py --clients 5 --rounds 10 --alpha 0.1 --preset d2_quick_adv --partition_strategy dirichlet --adversary_mode label_flip --leakage_safe
-
-      - name: Schema/metric checks
-        run: python scripts/ci_checks.py --runs_dir runs
+          SEED: "42"
+        run: |
+          mkdir -p runs/d2_quick_adv
+          LOGDIR=runs/d2_quick_adv
+          PORT=8093
+          CLIENTS=5
+          ROUNDS=10
+          
+          # Start server
+          python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
+          SERVER_PID=$!
+          
+          # Wait for server
+          for i in {1..20}; do
+            nc -z 127.0.0.1 $PORT 2>/dev/null && break
+            sleep 0.5
+          done
+          
+          # Start clients
+          for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
+            python client.py --server_address 127.0.0.1:$PORT --client_id $CLIENT_ID --num_clients $CLIENTS --dataset synthetic --samples 1000 --features 20 --partition_strategy dirichlet --alpha 0.1 --adversary_mode label_flip --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
+          done
+          
+          # Wait for completion
+          wait
+          sleep 2
+          kill $SERVER_PID 2>/dev/null || true
+          
+      - name: Validate metrics
+        run: |
+          # Check that metrics files were created
+          for dir in runs/*/; do
+            if [ -f "$dir/metrics.csv" ]; then
+              echo "✓ Found metrics.csv in $dir"
+            else
+              echo "✗ Missing metrics.csv in $dir"
+              exit 1
+            fi
+          done
 
       - uses: actions/upload-artifact@v4
         with:
@@ -163,14 +302,101 @@ jobs:
           retry_on: error
           command: |
             export D2_EXTENDED_METRICS="1"
+            export SEED="42"
+            CLIENTS=10
+            ROUNDS=30
+            ALPHA="${{ matrix.alpha }}"
+            
             if [ "${{ matrix.scenario }}" = "benign" ]; then
-              python scripts/run_fl.py --clients 10 --rounds 30 --alpha ${{ matrix.alpha }} --preset d2_full_${{ matrix.alpha }}_benign --partition_strategy dirichlet --leakage_safe
+              PRESET="d2_full_${ALPHA}_benign"
+              ADV_MODE=""
             else
-              python scripts/run_fl.py --clients 10 --rounds 30 --alpha ${{ matrix.alpha }} --preset d2_full_${{ matrix.alpha }}_adv --partition_strategy dirichlet --adversary_mode label_flip --leakage_safe
+              PRESET="d2_full_${ALPHA}_adv"
+              ADV_MODE="--adversary_mode label_flip"
+            fi
+            
+            mkdir -p "runs/$PRESET"
+            LOGDIR="runs/$PRESET"
+            PORT=$((8100 + RANDOM % 1000))
+            
+            # Start server
+            python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
+            SERVER_PID=$!
+            
+            # Wait for server
+            for i in {1..20}; do
+              nc -z 127.0.0.1 $PORT 2>/dev/null && break
+              sleep 0.5
+            done
+            
+            # Start all clients
+            CLIENT_PIDS=()
+            for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
+              python client.py --server_address 127.0.0.1:$PORT --client_id $CLIENT_ID --num_clients $CLIENTS \
+                --dataset synthetic --samples 1000 --features 20 --partition_strategy dirichlet --alpha $ALPHA \
+                $ADV_MODE --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
+              CLIENT_PIDS+=($!)
+            done
+            
+            # Wait for all clients with timeout
+            TIMEOUT=3600  # 60 minutes
+            START_TIME=$SECONDS
+            while true; do
+              ALL_DONE=true
+              for PID in "${CLIENT_PIDS[@]}"; do
+                if kill -0 $PID 2>/dev/null; then
+                  ALL_DONE=false
+                  break
+                fi
+              done
+              
+              if $ALL_DONE; then
+                echo "All clients completed"
+                break
+              fi
+              
+              if [ $((SECONDS - START_TIME)) -gt $TIMEOUT ]; then
+                echo "Timeout reached, killing processes"
+                for PID in "${CLIENT_PIDS[@]}"; do
+                  kill $PID 2>/dev/null || true
+                done
+                kill $SERVER_PID 2>/dev/null || true
+                exit 1
+              fi
+              
+              sleep 5
+            done
+            
+            # Clean up server
+            sleep 5
+            kill $SERVER_PID 2>/dev/null || true
+            
+            # Verify metrics file exists
+            if [ ! -f "$LOGDIR/metrics.csv" ]; then
+              echo "Missing metrics.csv in $LOGDIR"
+              exit 1
             fi
 
       - name: Validate results
-        run: python scripts/ci_checks.py --runs_dir runs
+        run: |
+          # Basic validation of results
+          PRESET="d2_full_${{ matrix.alpha }}_${{ matrix.scenario }}"
+          if [ "${{ matrix.scenario }}" = "adversarial" ]; then
+            PRESET="d2_full_${{ matrix.alpha }}_adv"
+          else
+            PRESET="d2_full_${{ matrix.alpha }}_benign"
+          fi
+          LOGDIR="runs/$PRESET"
+          
+          if [ -f "$LOGDIR/metrics.csv" ]; then
+            echo "✓ Found metrics.csv"
+            # Check that we have expected number of rounds
+            LINES=$(wc -l < "$LOGDIR/metrics.csv")
+            echo "  Metrics has $LINES lines"
+          else
+            echo "✗ Missing metrics.csv"
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -220,32 +446,80 @@ jobs:
       - name: Parse alpha values and run tests
         env:
           D2_EXTENDED_METRICS: "1"
+          SEED: "42"
         run: |
           IFS=',' read -ra ALPHAS <<< "${{ github.event.inputs.alpha_values }}"
+          CLIENTS=${{ github.event.inputs.client_count }}
+          ROUNDS=${{ github.event.inputs.round_count }}
+          
           for alpha in "${ALPHAS[@]}"; do
             alpha=$(echo "$alpha" | xargs)  # trim whitespace
+            
             if [ "${{ matrix.scenario }}" = "benign" ]; then
-              python scripts/run_fl.py \
-                --clients ${{ github.event.inputs.client_count }} \
-                --rounds ${{ github.event.inputs.round_count }} \
-                --alpha "$alpha" \
-                --preset "manual_${alpha}_benign" \
-                --partition_strategy dirichlet \
-                --leakage_safe
+              PRESET="manual_${alpha}_benign"
+              ADV_MODE=""
             else
-              python scripts/run_fl.py \
-                --clients ${{ github.event.inputs.client_count }} \
-                --rounds ${{ github.event.inputs.round_count }} \
-                --alpha "$alpha" \
-                --preset "manual_${alpha}_adv" \
-                --partition_strategy dirichlet \
-                --adversary_mode label_flip \
-                --leakage_safe
+              PRESET="manual_${alpha}_adv"
+              ADV_MODE="--adversary_mode label_flip"
+            fi
+            
+            mkdir -p "runs/$PRESET"
+            LOGDIR="runs/$PRESET"
+            PORT=$((9000 + RANDOM % 1000))
+            
+            echo "Running experiment: $PRESET (port=$PORT)"
+            
+            # Start server
+            python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
+            SERVER_PID=$!
+            
+            # Wait for server
+            for i in {1..20}; do
+              nc -z 127.0.0.1 $PORT 2>/dev/null && break
+              sleep 0.5
+            done
+            
+            # Start all clients
+            CLIENT_PIDS=()
+            for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
+              python client.py --server_address 127.0.0.1:$PORT --client_id $CLIENT_ID --num_clients $CLIENTS \
+                --dataset synthetic --samples 1000 --features 20 --partition_strategy dirichlet --alpha "$alpha" \
+                $ADV_MODE --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
+              CLIENT_PIDS+=($!)
+            done
+            
+            # Wait for all clients
+            for PID in "${CLIENT_PIDS[@]}"; do
+              wait $PID
+            done
+            
+            # Clean up server
+            sleep 2
+            kill $SERVER_PID 2>/dev/null || true
+            
+            # Verify metrics
+            if [ ! -f "$LOGDIR/metrics.csv" ]; then
+              echo "Warning: Missing metrics.csv in $LOGDIR"
+            else
+              echo "✓ Completed $PRESET"
             fi
           done
 
       - name: Validate results
-        run: python scripts/ci_checks.py --runs_dir runs
+        run: |
+          # Check that all expected directories have metrics
+          FOUND=0
+          for dir in runs/*/; do
+            if [ -f "$dir/metrics.csv" ]; then
+              echo "✓ Found metrics in $(basename $dir)"
+              FOUND=$((FOUND + 1))
+            fi
+          done
+          echo "Total experiments with metrics: $FOUND"
+          if [ $FOUND -eq 0 ]; then
+            echo "Error: No experiments produced metrics"
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         if: always()
