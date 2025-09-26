@@ -194,9 +194,20 @@ Important rule: all clients connected to the same server must use the same datas
 Do not mix synthetic with UNSW/CIC (or different feature configs) on the same server run, or you will get a
 “state_dict size mismatch” error.
 
-### 6.1 UNSW‑NB15 (Dirichlet non‑IID; 3 clients)
+### 7.1 Lightweight samples shipped in-repo
 
-Prepare a fast 10% sample for demos (adjust the input path to your file if needed):
+Nightly CI consumes real UNSW-NB15 and CIC-IDS2017 slices that live under `datasets/real/*.csv.gz`.
+To materialize them locally, run:
+```bash
+python scripts/setup_real_datasets.py
+```
+This inflates the archives into `data/unsw/unsw_nb15_sample.csv` and `data/cic/cic_ids2017_sample.csv`.
+Feel free to regenerate larger or different samples with the helper scripts below—just remember to update the
+archives if CI should pick them up.
+
+### 7.2 UNSW‑NB15 (Dirichlet non‑IID; 3+ clients)
+
+Prepare a fresh sample if you need a different size:
 ```bash
 cd <ABS_PATH>
 mkdir -p data/unsw

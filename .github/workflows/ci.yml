@@ -294,7 +294,10 @@ jobs:
             pip install -r requirements.txt
             if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
-      - name: Full sweep (10c×30r) - ${{ matrix.scenario }}
+      - name: Prepare real dataset samples
+        run: python scripts/setup_real_datasets.py
+
+      - name: Full sweep (real-data 5c×20r) - ${{ matrix.scenario }}
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 200
@@ -303,22 +306,30 @@ jobs:
           command: |
             export D2_EXTENDED_METRICS="1"
             export SEED="42"
-            CLIENTS=10
-            ROUNDS=30
+            CLIENTS=5
+            ROUNDS=20
             ALPHA="${{ matrix.alpha }}"
-            
+
+            DATASET="unsw"
+            DATA_PATH="data/unsw/unsw_nb15_sample.csv"
+            ADV_MODE=""
             if [ "${{ matrix.scenario }}" = "benign" ]; then
               PRESET="d2_full_${ALPHA}_benign"
-              ADV_MODE=""
             else
               PRESET="d2_full_${ALPHA}_adv"
+              DATASET="cic"
+              DATA_PATH="data/cic/cic_ids2017_sample.csv"
               ADV_MODE="--adversary_mode label_flip"
             fi
-            
+
             mkdir -p "runs/$PRESET"
             LOGDIR="runs/$PRESET"
             PORT=$((8100 + RANDOM % 1000))
-            
+
+            echo "$DATASET" >"$LOGDIR/dataset.txt"
+            echo "$DATA_PATH" >"$LOGDIR/dataset_path.txt"
+            echo "Running nightly_full scenario=${{ matrix.scenario }} alpha=$ALPHA dataset=$DATASET"
+
             # Start server
             python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
             SERVER_PID=$!
@@ -333,8 +344,8 @@ jobs:
             CLIENT_PIDS=()
             for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
               python client.py --server_address 127.0.0.1:$PORT --client_id $CLIENT_ID --num_clients $CLIENTS \
-                --dataset synthetic --samples 1000 --features 20 --partition_strategy dirichlet --alpha $ALPHA \
-                $ADV_MODE --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
+                --dataset "$DATASET" --data_path "$DATA_PATH" --partition_strategy dirichlet --alpha $ALPHA \
+                --logdir "$LOGDIR" --leakage_safe --seed 42 $ADV_MODE >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
               CLIENT_PIDS+=($!)
             done
             
