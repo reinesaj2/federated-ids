@@ -105,7 +105,7 @@ def dirichlet_partition(
         splits = (np.cumsum(proportions) * len(idxs)).astype(int)[:-1]
         shards = np.split(idxs, splits)
         for i, shard in enumerate(shards):
-            client_indices[i].extend(shard.tolist())
+            client_indices[i].extend(shard.astype(np.int64).tolist())
 
     for shard in client_indices:
         rng.shuffle(shard)
@@ -419,6 +419,6 @@ def prepare_partitions_from_dataframe(
     else:
         raise ValueError(f"Unknown partition_strategy: {partition_strategy}")
 
-    X_parts = [X_all[np.array(idx_list)] for idx_list in shards]
-    y_parts = [y_all[np.array(idx_list)] for idx_list in shards]
+    X_parts = [X_all[np.array(idx_list, dtype=np.int64)] for idx_list in shards]
+    y_parts = [y_all[np.array(idx_list, dtype=np.int64)] for idx_list in shards]
     return pre, X_parts, y_parts, num_classes_global
