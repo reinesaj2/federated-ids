@@ -127,9 +127,13 @@ jobs:
 
       - name: Generate comparison plots
         run: |
+          RUN_DIR="runs/nightly_fedprox_alpha${{ matrix.alpha }}_mu${{ matrix.mu }}"
           python scripts/plot_metrics.py \
-            --logdir runs/nightly_fedprox_alpha${{ matrix.alpha }}_mu${{ matrix.mu }} \
-            --output runs/nightly_fedprox_alpha${{ matrix.alpha }}_mu${{ matrix.mu }}/fedprox_comparison.png
+            --run_dir "$RUN_DIR" \
+            --output_dir "$RUN_DIR"
+          if [ -f "$RUN_DIR/client_metrics_plot.png" ]; then
+            cp "$RUN_DIR/client_metrics_plot.png" "$RUN_DIR/fedprox_comparison.png"
+          fi
 
       - name: Validate results
         run: python scripts/ci_checks.py --runs_dir runs
@@ -270,8 +274,11 @@ jobs:
               kill $SERVER_PID 2>/dev/null || true
 
               python scripts/plot_metrics.py \
-                --logdir "runs/$PRESET" \
-                --output "runs/$PRESET/comparison.png"
+                --run_dir "runs/$PRESET" \
+                --output_dir "runs/$PRESET"
+              if [ -f "runs/$PRESET/client_metrics_plot.png" ]; then
+                cp "runs/$PRESET/client_metrics_plot.png" "runs/$PRESET/comparison.png"
+              fi
             done
           done
 
