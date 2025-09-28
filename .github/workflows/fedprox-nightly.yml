@@ -146,6 +146,8 @@ jobs:
             runs/**/metrics.csv
             runs/**/client_*_metrics.csv
             runs/**/fedprox_comparison.png
+            runs/**/server.log
+            runs/**/client_*.log
             runs/**/server_metrics_plot.png
             runs/**/client_metrics_plot.png
           retention-days: 30
@@ -303,4 +305,5 @@ jobs:
         with:
           name: manual-fedprox-comparison-${{ github.sha }}
           path: runs/**
+          include-hidden-files: false
           retention-days: 14
