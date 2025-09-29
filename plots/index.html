@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Federated IDS - Experiment Plots</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f8f9fa;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .experiment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+      .experiment-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid #007acc;
+      }
+      .experiment-title {
+        font-size: 1.2em;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 10px;
+      }
+      .experiment-meta {
+        font-size: 0.9em;
+        color: #666;
+        margin-bottom: 15px;
+      }
+      .plot-link {
+        display: inline-block;
+        margin: 5px 10px 5px 0;
+        padding: 8px 12px;
+        background: #007acc;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 0.9em;
+      }
+      .plot-link:hover {
+        background: #005a9e;
+      }
+      .date-section {
+        margin-bottom: 40px;
+      }
+      .date-header {
+        font-size: 1.4em;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #007acc;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: 500;
+      }
+      .status-success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status-running {
+        background: #fff3cd;
+        color: #856404;
+      }
+      .auto-refresh {
+        text-align: center;
+        margin-top: 30px;
+        color: #666;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🔬 Federated IDS Experiment Plots</h1>
+      <p>Automated FedProx vs FedAvg comparison results and visualizations</p>
+      <div class="status-badge status-success">Live Dashboard</div>
+    </div>
+
+    <div id="experiments-container">
+      <!-- Experiments will be populated by JavaScript -->
+    </div>
+
+    <div class="auto-refresh">
+      <p>
+        📊 This dashboard automatically updates with the latest experiment
+        results
+      </p>
+      <p>Last updated: <span id="last-updated"></span></p>
+    </div>
+
+    <script>
+      // Plot gallery functionality
+      async function loadExperiments() {
+        const container = document.getElementById("experiments-container");
+
+        // For GitHub Pages, we'll need to scan the directory structure
+        // This is a simplified version that will work with manually maintained data
+        const experiments = [
+          {
+            date: "2025-09-28",
+            title: "FedProx Nightly Comparison",
+            type: "fedprox-nightly",
+            status: "completed",
+            plots: ["fedprox_performance_plots.png", "comparison.png"],
+            metadata:
+              "Alpha: [0.05, 0.1, 0.5], Mu: [0.0, 0.01, 0.1], Clients: 10, Rounds: 20",
+          },
+        ];
+
+        // Group by date
+        const byDate = experiments.reduce((acc, exp) => {
+          if (!acc[exp.date]) acc[exp.date] = [];
+          acc[exp.date].push(exp);
+          return acc;
+        }, {});
+
+        // Render experiments
+        let html = "";
+        Object.keys(byDate)
+          .sort()
+          .reverse()
+          .forEach((date) => {
+            html += `<div class="date-section">`;
+            html += `<h2 class="date-header">${date}</h2>`;
+            html += `<div class="experiment-grid">`;
+
+            byDate[date].forEach((exp) => {
+              const statusClass =
+                exp.status === "completed"
+                  ? "status-success"
+                  : "status-running";
+              html += `
+                        <div class="experiment-card">
+                            <div class="experiment-title">${exp.title}</div>
+                            <div class="experiment-meta">
+                                <span class="status-badge ${statusClass}">${exp.status}</span><br>
+                                ${exp.metadata}
+                            </div>
+                            <div class="plot-links">
+                                ${exp.plots
+                                  .map(
+                                    (plot) =>
+                                      `<a href="${date}/${exp.type}/${plot}" class="plot-link" target="_blank">${plot}</a>`,
+                                  )
+                                  .join("")}
+                            </div>
+                        </div>
+                    `;
+            });
+
+            html += `</div></div>`;
+          });
+
+        container.innerHTML = html;
+        document.getElementById("last-updated").textContent =
+          new Date().toLocaleString();
+      }
+
+      // Load experiments on page load
+      loadExperiments();
+    </script>
+  </body>
+</html>

@@ -27,7 +27,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 concurrency:
@@ -191,6 +191,69 @@ jobs:
             fedprox-summary/fedprox_performance_plots.png
             fedprox-summary/fedprox_thesis_tables.tex
           retention-days: 60
+
+  commit_plots:
+    needs: [fedprox_summary]
+    runs-on: ubuntu-latest
+    if: always() && needs.fedprox_summary.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download consolidated results
+        uses: actions/download-artifact@v4
+        with:
+          name: fedprox-nightly-summary-${{ github.sha }}
+          path: fedprox-summary
+
+      - name: Download manual comparison results
+        uses: actions/download-artifact@v4
+        with:
+          name: manual-fedprox-comparison-${{ github.sha }}
+          path: manual-comparison
+        continue-on-error: true
+
+      - name: Commit plots to repository
+        run: |
+          # Configure git
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          # Create plots directory if it doesn't exist
+          mkdir -p plots
+
+          # Copy consolidated summary plots
+          if [ -d "fedprox-summary" ]; then
+            python scripts/commit_plots.py \
+              --source_dir fedprox-summary \
+              --experiment_type fedprox-nightly \
+              --plots_dir plots
+          fi
+
+          # Copy manual comparison plots if available
+          if [ -d "manual-comparison" ]; then
+            python scripts/commit_plots.py \
+              --source_dir manual-comparison \
+              --experiment_type fedprox-manual \
+              --plots_dir plots
+          fi
+
+      - name: Push plots to repository
+        run: |
+          # Check if there are any changes to push
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No changes to push"
+            exit 0
+          fi
+
+          # Push changes
+          git push origin main
 
   fedprox_notify:
     needs: fedprox_comparison
