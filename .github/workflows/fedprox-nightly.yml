@@ -127,7 +127,11 @@ jobs:
 
       - name: Generate comparison plots
         run: |
-          RUN_DIR="runs/nightly_fedprox_alpha${{ matrix.alpha }}_mu${{ matrix.mu }}"
+          # Use same directory construction as training step
+          export ALPHA="${{ matrix.alpha }}"
+          export MU="${{ matrix.mu }}"
+          PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}"
+          RUN_DIR="runs/$PRESET"
           python scripts/plot_metrics.py \
             --run_dir "$RUN_DIR" \
             --output_dir "$RUN_DIR"
