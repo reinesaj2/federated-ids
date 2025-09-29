@@ -269,9 +269,20 @@ def numpy_to_loaders(
         dummy_loader = DataLoader(dummy_ds, batch_size=batch_size, shuffle=False)
         return dummy_loader, dummy_loader
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=seed, stratify=y
-    )
+    # Try stratified split first, fall back to simple split if stratification fails
+    try:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=seed, stratify=y
+        )
+    except ValueError as e:
+        # Handle case where stratification is impossible (e.g., only 1 sample per class)
+        if "least populated class" in str(e) or "minimum number of groups" in str(e):
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=test_size, random_state=seed, stratify=None
+            )
+        else:
+            raise e
+
     train_ds = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train))
     test_ds = TensorDataset(torch.from_numpy(X_test), torch.from_numpy(y_test))
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
