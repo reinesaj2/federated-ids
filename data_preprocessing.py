@@ -100,12 +100,35 @@ def dirichlet_partition(
     client_indices: List[List[int]] = [[] for _ in range(num_clients)]
 
     for idxs in class_indices:
+        if len(idxs) == 0:
+            continue
         rng.shuffle(idxs)
-        proportions = rng.dirichlet(alpha=[alpha] * num_clients)
-        splits = (np.cumsum(proportions) * len(idxs)).astype(int)[:-1]
-        shards = np.split(idxs, splits)
-        for i, shard in enumerate(shards):
-            client_indices[i].extend(shard.astype(np.int64).tolist())
+
+        # Resample until no empty shards (common pattern in FL repos)
+        max_attempts = 100
+        shards = None
+        for attempt in range(max_attempts):
+            proportions = rng.dirichlet(alpha=[alpha] * num_clients)
+            splits = (np.cumsum(proportions) * len(idxs)).astype(int)[:-1]
+            shards = np.split(idxs, splits)
+
+            # Check if any shard is empty
+            if all(len(shard) > 0 for shard in shards):
+                # Good distribution, use it
+                for i, shard in enumerate(shards):
+                    client_indices[i].extend(shard.astype(np.int64).tolist())
+                break
+
+            # If we're on the last attempt, redistribute manually
+            if attempt == max_attempts - 1:
+                # Ensure each client gets at least one sample by round-robin
+                for i in range(num_clients):
+                    if i < len(idxs):
+                        client_indices[i].append(int(idxs[i]))
+                # Distribute remaining samples
+                for i in range(num_clients, len(idxs)):
+                    client_indices[i % num_clients].append(int(idxs[i]))
+                break
 
     for shard in client_indices:
         rng.shuffle(shard)
@@ -237,6 +260,15 @@ def numpy_to_loaders(
     seed: int = 42,
     test_size: float = 0.2,
 ) -> Tuple[DataLoader, DataLoader]:
+    # Defensive guard: handle empty shards gracefully
+    if len(X) == 0 or len(y) == 0:
+        # Return dummy loaders with minimal tensors
+        dummy_X = torch.zeros((1, X.shape[1] if X.size > 0 else 1), dtype=torch.float32)
+        dummy_y = torch.zeros((1,), dtype=torch.long)
+        dummy_ds = TensorDataset(dummy_X, dummy_y)
+        dummy_loader = DataLoader(dummy_ds, batch_size=batch_size, shuffle=False)
+        return dummy_loader, dummy_loader
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=seed, stratify=y
     )
