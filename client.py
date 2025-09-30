@@ -139,6 +139,107 @@ def evaluate(
     return float(avg_loss), float(acc), all_probs, all_labels
 
 
+def _select_tau_for_target_fpr(
+    y_true_val: np.ndarray,
+    attack_probs_val: np.ndarray,
+    thresholds: np.ndarray,
+    target_fpr: float,
+) -> float:
+    """
+    Select threshold tau to achieve target FPR on benign class.
+
+    Args:
+        y_true_val: Binary labels on validation set (0=benign, 1=attack)
+        attack_probs_val: P(attack) scores on validation set
+        thresholds: Candidate thresholds from precision_recall_curve
+        target_fpr: Desired false positive rate (e.g., 0.10)
+
+    Returns:
+        Threshold tau achieving closest FPR to target
+    """
+    best_tau = 0.5
+    best_fpr_diff = float("inf")
+
+    for tau in thresholds:
+        y_pred_val = (attack_probs_val >= tau).astype(int)
+        benign_mask_val = y_true_val == 0
+
+        if benign_mask_val.sum() == 0:
+            continue
+
+        fp_val = ((y_pred_val == 1) & benign_mask_val).sum()
+        tn_val = ((y_pred_val == 0) & benign_mask_val).sum()
+        fpr_val = fp_val / max(fp_val + tn_val, 1)
+        fpr_diff = abs(fpr_val - target_fpr)
+
+        if fpr_diff < best_fpr_diff:
+            best_fpr_diff = fpr_diff
+            best_tau = float(tau)
+
+    return best_tau
+
+
+def _select_tau_for_max_f1(
+    precision: np.ndarray, recall: np.ndarray, thresholds: np.ndarray
+) -> float:
+    """
+    Select threshold tau to maximize F1 score.
+
+    Args:
+        precision: Precision values from precision_recall_curve
+        recall: Recall values from precision_recall_curve
+        thresholds: Candidate thresholds from precision_recall_curve
+
+    Returns:
+        Threshold tau maximizing F1 score
+    """
+    denom = np.maximum(precision + recall, 1e-12)
+    f1_curve = 2 * precision * recall / denom
+
+    if f1_curve.size == 0:
+        return 0.5
+
+    best_idx = int(np.argmax(f1_curve))
+    # precision_recall_curve returns thresholds of length len(precision)-1
+    tau_idx = max(0, min(best_idx - 1, thresholds.size - 1))
+    return float(thresholds[tau_idx])
+
+
+def select_threshold_tau(
+    y_true_val: np.ndarray,
+    attack_probs_val: np.ndarray,
+    tau_mode: str,
+    target_fpr: float,
+) -> float:
+    """
+    Select threshold tau on validation set based on mode.
+
+    Args:
+        y_true_val: Binary labels on validation set (0=benign, 1=attack)
+        attack_probs_val: P(attack) scores on validation set
+        tau_mode: "low_fpr" (target FPR) or "max_f1" (maximize F1)
+        target_fpr: Target false positive rate for low_fpr mode
+
+    Returns:
+        Selected threshold tau in [0, 1]
+    """
+    if attack_probs_val.size == 0:
+        return 0.5
+
+    # Compute PR curve on validation subset
+    precision, recall, thresholds = precision_recall_curve(y_true_val, attack_probs_val)
+
+    if thresholds.size == 0:
+        return 0.5
+
+    if tau_mode == "low_fpr":
+        return _select_tau_for_target_fpr(
+            y_true_val, attack_probs_val, thresholds, target_fpr
+        )
+    else:  # max_f1 mode
+        return _select_tau_for_max_f1(precision, recall, thresholds)
+
+
 class TorchClient(fl.client.NumPyClient):
     def __init__(
         self,
@@ -400,11 +501,12 @@ class TorchClient(fl.client.NumPyClient):
                         )
 
                         # Select tau on validation subset based on mode
-                        n = attack_probs.shape[0]
                         tau_mode = str(self.runtime_config.get("tau_mode", "low_fpr"))
                         target_fpr = float(self.runtime_config.get("target_fpr", 0.10))
 
+                        n = attack_probs.shape[0]
                         if n > 1:
+                            # Split into validation subset for tau selection
                             rng = np.random.default_rng(
                                 int(os.environ.get("SEED", "42")) + self.round_num
                             )
@@ -413,50 +515,12 @@ class TorchClient(fl.client.NumPyClient):
                             y_true_bin_val = y_true_bin_full[val_idx]
                             attack_probs_val = attack_probs[val_idx]
 
-                            # Compute PR curve on validation subset
-                            precision, recall, thresholds = precision_recall_curve(
-                                y_true_bin_val, attack_probs_val
+                            threshold_tau = select_threshold_tau(
+                                y_true_bin_val, attack_probs_val, tau_mode, target_fpr
                             )
-
-                            if thresholds.size > 0:
-                                if tau_mode == "low_fpr":
-                                    # Select tau to achieve target FPR
-                                    best_tau = 0.5
-                                    best_fpr_diff = float("inf")
-                                    for i, tau in enumerate(thresholds):
-                                        y_pred_val = (attack_probs_val >= tau).astype(
-                                            int
-                                        )
-                                        benign_mask_val = y_true_bin_val == 0
-                                        if benign_mask_val.sum() > 0:
-                                            fp_val = (
-                                                (y_pred_val == 1) & benign_mask_val
-                                            ).sum()
-                                            tn_val = (
-                                                (y_pred_val == 0) & benign_mask_val
-                                            ).sum()
-                                            fpr_val = fp_val / max(fp_val + tn_val, 1)
-                                            fpr_diff = abs(fpr_val - target_fpr)
-                                            if fpr_diff < best_fpr_diff:
-                                                best_fpr_diff = fpr_diff
-                                                best_tau = float(tau)
-                                    threshold_tau = best_tau
-                                else:  # max_f1 mode
-                                    # Select tau to maximize F1
-                                    denom = np.maximum(precision + recall, 1e-12)
-                                    f1_curve = 2 * precision * recall / denom
-                                    if f1_curve.size > 0:
-                                        best_idx = int(np.argmax(f1_curve))
-                                        tau_idx = max(
-                                            0, min(best_idx - 1, thresholds.size - 1)
-                                        )
-                                        threshold_tau = float(thresholds[tau_idx])
-                                    else:
-                                        threshold_tau = 0.5
-                            else:
-                                threshold_tau = 0.5
                         else:
                             threshold_tau = 0.5
+
                         tau_bin = threshold_tau
 
                         # Apply chosen tau to full test

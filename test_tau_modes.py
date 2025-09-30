@@ -7,81 +7,9 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from sklearn.metrics import precision_recall_curve, f1_score
+from sklearn.metrics import f1_score
 
-
-def select_tau_low_fpr(
-    y_true: np.ndarray, attack_probs: np.ndarray, target_fpr: float
-) -> float:
-    """
-    Select tau to achieve target FPR on benign class.
-
-    Args:
-        y_true: Binary labels (0=benign, 1=attack)
-        attack_probs: P(attack) scores
-        target_fpr: Desired false positive rate
-
-    Returns:
-        Threshold tau achieving target FPR (or closest)
-    """
-    precision, recall, thresholds = precision_recall_curve(y_true, attack_probs)
-
-    if thresholds.size == 0:
-        return 0.5
-
-    # FPR on benign = 1 - specificity
-    # For attack detection: FPR = FP / (FP + TN)
-    # We need to find threshold where FPR ≈ target_fpr
-
-    best_tau = 0.5
-    best_fpr_diff = float("inf")
-
-    for i, tau in enumerate(thresholds):
-        # Predict attack if attack_probs >= tau
-        y_pred = (attack_probs >= tau).astype(int)
-
-        # Calculate FPR on benign samples
-        benign_mask = y_true == 0
-        if benign_mask.sum() > 0:
-            fp = ((y_pred == 1) & benign_mask).sum()
-            tn = ((y_pred == 0) & benign_mask).sum()
-            fpr = fp / max(fp + tn, 1)
-
-            fpr_diff = abs(fpr - target_fpr)
-            if fpr_diff < best_fpr_diff:
-                best_fpr_diff = fpr_diff
-                best_tau = float(tau)
-
-    return best_tau
-
-
-def select_tau_max_f1(y_true: np.ndarray, attack_probs: np.ndarray) -> float:
-    """
-    Select tau to maximize F1 score (existing behavior).
-
-    Args:
-        y_true: Binary labels (0=benign, 1=attack)
-        attack_probs: P(attack) scores
-
-    Returns:
-        Threshold tau maximizing F1
-    """
-    precision, recall, thresholds = precision_recall_curve(y_true, attack_probs)
-
-    if thresholds.size == 0:
-        return 0.5
-
-    # Calculate F1 for each threshold
-    denom = np.maximum(precision + recall, 1e-12)
-    f1_curve = 2 * precision * recall / denom
-
-    if f1_curve.size == 0:
-        return 0.5
-
-    best_idx = int(np.argmax(f1_curve))
-    # precision_recall_curve returns thresholds of length len(precision)-1
-    tau_idx = max(0, min(best_idx - 1, thresholds.size - 1))
-    return float(thresholds[tau_idx])
+from client import select_threshold_tau
 
 
 def test_tau_low_fpr_mode():
@@ -101,7 +29,7 @@ def test_tau_low_fpr_mode():
 
     # Test low_fpr mode with target_fpr=0.10
     target_fpr = 0.10
-    tau = select_tau_low_fpr(y_true, all_probs, target_fpr)
+    tau = select_threshold_tau(y_true, all_probs, "low_fpr", target_fpr)
 
     # Predict with selected tau
     y_pred = (all_probs >= tau).astype(int)
@@ -133,7 +61,7 @@ def test_tau_max_f1_mode():
     y_true = np.concatenate([np.zeros(100), np.ones(100)]).astype(int)
 
     # Test max_f1 mode
-    tau = select_tau_max_f1(y_true, all_probs)
+    tau = select_threshold_tau(y_true, all_probs, "max_f1", 0.10)
 
     # Predict with selected tau
     y_pred = (all_probs >= tau).astype(int)
@@ -165,8 +93,8 @@ def test_tau_edge_case_single_class():
     probs = np.random.rand(100)
 
     # Should return reasonable default without crashing
-    tau_low_fpr = select_tau_low_fpr(y_true, probs, 0.10)
-    tau_max_f1 = select_tau_max_f1(y_true, probs)
+    tau_low_fpr = select_threshold_tau(y_true, probs, "low_fpr", 0.10)
+    tau_max_f1 = select_threshold_tau(y_true, probs, "max_f1", 0.10)
 
     assert 0 <= tau_low_fpr <= 1
     assert 0 <= tau_max_f1 <= 1
@@ -179,8 +107,8 @@ def test_tau_edge_case_empty_thresholds():
     probs = np.array([0.5, 0.5, 0.5, 0.5])
 
     # Should return default 0.5 without crashing
-    tau_low_fpr = select_tau_low_fpr(y_true, probs, 0.10)
-    tau_max_f1 = select_tau_max_f1(y_true, probs)
+    tau_low_fpr = select_threshold_tau(y_true, probs, "low_fpr", 0.10)
+    tau_max_f1 = select_threshold_tau(y_true, probs, "max_f1", 0.10)
 
     # Default fallback should be 0.5
     assert tau_low_fpr == 0.5 or 0 <= tau_low_fpr <= 1
