@@ -1,0 +1,40 @@
+% FedProx vs FedAvg Convergence Comparison
+\begin{table}[htbp]
+\centering
+\caption{FedProx vs FedAvg Convergence Analysis}
+\label{tab:fedprox_convergence}
+\begin{tabular}{lccccc}
+\toprule
+Algorithm & $\alpha$ & $\mu$ & Final L2 Distance & Cosine Similarity & Avg Time (ms) \\
+\midrule
+FedAvg & 0.05 & 0.00 & 0.3036 & 0.9998 & 0.13 \\
+FedProx & 0.05 & 0.01 & 0.2245 & 0.9997 & 0.13 \\
+FedProx & 0.05 & 0.10 & 0.1138 & 0.9999 & 0.13 \\
+FedAvg & 0.10 & 0.00 & 0.0031 & 1.0000 & 0.13 \\
+FedProx & 0.10 & 0.01 & 0.0906 & 1.0000 & 0.13 \\
+FedProx & 0.10 & 0.10 & 0.2064 & 0.9996 & 0.14 \\
+FedAvg & 0.50 & 0.00 & 0.0024 & 1.0000 & 0.13 \\
+FedProx & 0.50 & 0.01 & 0.2285 & 0.9997 & 0.13 \\
+FedProx & 0.50 & 0.10 & 0.1356 & 0.9998 & 0.13 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% FedProx Performance Improvements
+\begin{table}[htbp]
+\centering
+\caption{FedProx Performance Improvements over FedAvg}
+\label{tab:fedprox_improvements}
+\begin{tabular}{lccc}
+\toprule
+Comparison & L2 Improvement & Time Overhead & Recommendation \\
+\midrule
+α=0.1 μ=0.01 vs α=0.1 μ=0.0 & 0.03× & 0.95× & Marginal benefit \\
+α=0.1 μ=0.1 vs α=0.1 μ=0.0 & 0.02× & 1.03× & Marginal benefit \\
+α=0.5 μ=0.01 vs α=0.5 μ=0.0 & 0.01× & 0.99× & Marginal benefit \\
+α=0.5 μ=0.1 vs α=0.5 μ=0.0 & 0.02× & 1.02× & Marginal benefit \\
+α=0.05 μ=0.01 vs α=0.05 μ=0.0 & 1.35× & 1.01× & Recommended \\
+α=0.05 μ=0.1 vs α=0.05 μ=0.0 & 2.67× & 1.03× & Recommended \\
+\bottomrule
+\end{tabular}
+\end{table}

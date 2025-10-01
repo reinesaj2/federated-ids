@@ -1,0 +1,165 @@
+{
+  "experiment_metadata": {
+    "total_comparisons": 9,
+    "alpha_values_tested": [
+      0.1,
+      0.5,
+      0.05
+    ],
+    "mu_values_tested": [
+      0.0,
+      0.1,
+      0.01
+    ],
+    "algorithms_compared": [
+      "FedAvg",
+      "FedProx"
+    ]
+  },
+  "key_findings": {
+    "best_l2_distance": {
+      "algorithm": "FedAvg",
+      "alpha": 0.5,
+      "mu": 0.0,
+      "value": 0.002417784211146
+    },
+    "avg_l2_improvement": 0.6831779357649772,
+    "avg_time_overhead": 1.0046247795411185
+  },
+  "recommendations": {
+    "for_iid_data": "Use FedAvg for faster convergence and lower computational overhead",
+    "for_mild_non_iid": "Use FedProx with \u03bc=0.01 for improved stability with minimal overhead",
+    "for_severe_non_iid": "Use FedProx with \u03bc=0.1 for better convergence, accept higher computational cost",
+    "thesis_conclusion": "FedProx shows measurable improvements in non-IID scenarios at the cost of increased computational overhead"
+  },
+  "raw_analysis_results": {
+    "convergence_analysis": {
+      "alpha_0.1_mu_0.0": {
+        "alpha": 0.1,
+        "mu": 0.0,
+        "algorithm": "FedAvg",
+        "final_round": 20,
+        "rounds_to_converge": null,
+        "final_l2_distance": 0.0031185809173866,
+        "final_cosine_similarity": 1.0000001192092896,
+        "avg_aggregation_time": 0.13281085000187426,
+        "total_training_time": 6068.509185000095
+      },
+      "alpha_0.5_mu_0.1": {
+        "alpha": 0.5,
+        "mu": 0.1,
+        "algorithm": "FedProx",
+        "final_round": 20,
+        "rounds_to_converge": null,
+        "final_l2_distance": 0.1356081841670535,
+        "final_cosine_similarity": 0.9998279809951782,
+        "avg_aggregation_time": 0.13127815000473214,
+        "total_training_time": 6911.257775999985
+      },
+      "alpha_0.05_mu_0.01": {
+        "alpha": 0.05,
+        "mu": 0.01,
+        "algorithm": "FedProx",
+        "final_round": 20,
+        "rounds_to_converge": null,
+        "final_l2_distance": 0.2245139718227862,
+        "final_cosine_similarity": 0.9996892213821412,
+        "avg_aggregation_time": 0.13100220000126223,
+        "total_training_time": 7419.179036999965
+      },
+      "alpha_0.1_mu_0.1": {
+        "alpha": 0.1,
+        "mu": 0.1,
+        "algorithm": "FedProx",
+        "final_round": 20,
+        "rounds_to_converge": null,
+        "final_l2_distance": 0.2063916917872363,
+        "final_cosine_similarity": 0.9995954632759094,
+        "avg_aggregation_time": 0.13700745000022602,
+        "total_training_time": 7032.18829699992
+      },
+      "alpha_0.5_mu_0.0": {
+        "alpha": 0.5,
+        "mu": 0.0,
+        "algorithm": "FedAvg",
+        "final_round": 20,
+        "rounds_to_converge": null,
+        "final_l2_distance": 0.002417784211146,
+        "final_cosine_similarity": 0.9999998807907104,
+        "avg_aggregation_time": 0.12925009999946718,
+        "total_training_time": 6593.852007999942
+      },
+      "alpha_0.1_mu_0.01": {
+        "alpha": 0.1,
+        "mu": 0.01,
+        "algorithm": "FedProx",
+        "final_round": 20,
+        "rounds_to_converge": null,
+        "final_l2_distance": 0.0905702298320256,
+        "final_cosine_similarity": 0.9999536871910096,
+        "avg_aggregation_time": 0.12634004999654275,
+        "total_training_time": 6862.712553999955
+      },
+      "alpha_0.05_mu_0.0": {
+        "alpha": 0.05,
+        "mu": 0.0,
+        "algorithm": "FedAvg",
+        "final_round": 20,
+        "rounds_to_converge": null,
+        "final_l2_distance": 0.3035978805126612,
+        "final_cosine_similarity": 0.9998337030410768,
+        "avg_aggregation_time": 0.12986764999851624,
+        "total_training_time": 6546.31028899999
+      },
+      "alpha_0.05_mu_0.1": {
+        "alpha": 0.05,
+        "mu": 0.1,
+        "algorithm": "FedProx",
+        "final_round": 20,
+        "rounds_to_converge": null,
+        "final_l2_distance": 0.1137552917517633,
+        "final_cosine_similarity": 0.9998852014541626,
+        "avg_aggregation_time": 0.13383349999855906,
+        "total_training_time": 7810.0252449999925
+      },
+      "alpha_0.5_mu_0.01": {
+        "alpha": 0.5,
+        "mu": 0.01,
+        "algorithm": "FedProx",
+        "final_round": 20,
+        "rounds_to_converge": null,
+        "final_l2_distance": 0.2284690743801821,
+        "final_cosine_similarity": 0.999686062335968,
+        "avg_aggregation_time": 0.12794564999865082,
+        "total_training_time": 6804.945024000062
+      }
+    },
+    "final_metrics": {},
+    "improvement_ratios": {
+      "alpha_0.1_mu_0.01_vs_alpha_0.1_mu_0.0": {
+        "time_overhead": 0.9512780770152424,
+        "l2_improvement": 0.034432737149617684
+      },
+      "alpha_0.1_mu_0.1_vs_alpha_0.1_mu_0.0": {
+        "time_overhead": 1.0315983219615907,
+        "l2_improvement": 0.01511001189234624
+      },
+      "alpha_0.5_mu_0.01_vs_alpha_0.5_mu_0.0": {
+        "time_overhead": 0.9899075513224227,
+        "l2_improvement": 0.010582544782943822
+      },
+      "alpha_0.5_mu_0.1_vs_alpha_0.5_mu_0.0": {
+        "time_overhead": 1.0156908969917495,
+        "l2_improvement": 0.01782919095920915
+      },
+      "alpha_0.05_mu_0.01_vs_alpha_0.05_mu_0.0": {
+        "time_overhead": 1.008736201839018,
+        "l2_improvement": 1.3522449317866847
+      },
+      "alpha_0.05_mu_0.1_vs_alpha_0.05_mu_0.0": {
+        "time_overhead": 1.0305376281166876,
+        "l2_improvement": 2.668868198019062
+      }
+    }
+  }
+}
