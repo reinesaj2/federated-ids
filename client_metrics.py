@@ -68,6 +68,11 @@ class ClientMetricsLogger:
                     "epochs_completed",
                     "lr",
                     "batch_size",
+                    "macro_f1_global",
+                    "macro_f1_personalized",
+                    "benign_fpr_global",
+                    "benign_fpr_personalized",
+                    "personalization_gain",
                 ]
             else:
                 headers = [
@@ -147,7 +152,7 @@ class ClientMetricsLogger:
                 str(weight_norm_before) if weight_norm_before is not None else "",
                 str(weight_norm_after) if weight_norm_after is not None else "",
                 str(weight_update_norm) if weight_update_norm is not None else "",
-                    str(grad_norm_l2) if grad_norm_l2 is not None else "",
+                str(grad_norm_l2) if grad_norm_l2 is not None else "",
                 str(t_fit_ms) if t_fit_ms is not None else "",
                 str(epochs_completed),
                 str(lr),
@@ -175,6 +180,83 @@ class ClientMetricsLogger:
         with open(self.csv_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(row)
+
+    def log_personalization_metrics(
+        self,
+        round_num: int,
+        macro_f1_global: Optional[float] = None,
+        macro_f1_personalized: Optional[float] = None,
+        benign_fpr_global: Optional[float] = None,
+        benign_fpr_personalized: Optional[float] = None,
+        personalization_gain: Optional[float] = None,
+    ) -> None:
+        """Log personalization metrics for a round (appends to existing row)."""
+        if not self.extended:
+            return
+
+        # Read the CSV to find and update the row for this round
+        rows = []
+        header = None
+        target_row_idx = None
+
+        with open(self.csv_path, "r", newline="") as f:
+            reader = csv.reader(f)
+            header = next(reader)
+            rows.append(header)
+
+            for idx, row in enumerate(reader):
+                if (
+                    len(row) > 1
+                    and row[0] == str(self.client_id)
+                    and row[1] == str(round_num)
+                ):
+                    target_row_idx = idx + 1  # +1 because header is row 0
+                rows.append(row)
+
+        # If we found the target row, update it with personalization metrics
+        if target_row_idx is not None:
+            # Pad row to match header length if needed
+            while len(rows[target_row_idx]) < len(header):
+                rows[target_row_idx].append("")
+
+            # Find column indices for personalization fields
+            try:
+                global_f1_idx = header.index("macro_f1_global")
+                pers_f1_idx = header.index("macro_f1_personalized")
+                global_fpr_idx = header.index("benign_fpr_global")
+                pers_fpr_idx = header.index("benign_fpr_personalized")
+                gain_idx = header.index("personalization_gain")
+
+                # Update the row
+                rows[target_row_idx][global_f1_idx] = (
+                    str(macro_f1_global) if macro_f1_global is not None else ""
+                )
+                rows[target_row_idx][pers_f1_idx] = (
+                    str(macro_f1_personalized)
+                    if macro_f1_personalized is not None
+                    else ""
+                )
+                rows[target_row_idx][global_fpr_idx] = (
+                    str(benign_fpr_global) if benign_fpr_global is not None else ""
+                )
+                rows[target_row_idx][pers_fpr_idx] = (
+                    str(benign_fpr_personalized)
+                    if benign_fpr_personalized is not None
+                    else ""
+                )
+                rows[target_row_idx][gain_idx] = (
+                    str(personalization_gain)
+                    if personalization_gain is not None
+                    else ""
+                )
+
+                # Write back the entire CSV
+                with open(self.csv_path, "w", newline="") as f:
+                    writer = csv.writer(f)
+                    writer.writerows(rows)
+            except ValueError:
+                # Column not found, skip
+                pass
 
 
 class ClientFitTimer:
