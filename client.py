@@ -575,6 +575,84 @@ class TorchClient(fl.client.NumPyClient):
             batch_size=batch_size,
         )
 
+        # Personalization: post-FL local fine-tuning (if enabled)
+        personalization_epochs = int(
+            self.runtime_config.get("personalization_epochs", 0)
+        )
+
+        # Early exit if personalization disabled or no test data
+        if personalization_epochs == 0 or len(self.test_loader.dataset) == 0:
+            num_examples = len(self.train_loader.dataset)
+            metrics = {}
+            return weights_after, num_examples, metrics
+
+        # Save global model performance (already computed above)
+        macro_f1_global = macro_f1_after
+        benign_fpr_global = benign_fpr_bin_tau
+
+        # Fine-tune on local train data
+        for _ in range(personalization_epochs):
+            train_epoch(
+                self.model,
+                self.train_loader,
+                self.device,
+                lr,
+                global_params=None,
+                fedprox_mu=0.0,
+            )
+
+        # Evaluate personalized model
+        try:
+            _, _, probs_pers, labels_pers = evaluate(
+                self.model, self.test_loader, self.device
+            )
+
+            macro_f1_personalized = None
+            benign_fpr_personalized = None
+            personalization_gain = None
+
+            if probs_pers.size == 0:
+                # No predictions, skip metrics
+                pass
+            else:
+                preds_pers = np.argmax(probs_pers, axis=1)
+                macro_f1_personalized = float(
+                    f1_score(labels_pers, preds_pers, average="macro")
+                )
+
+                # Compute FPR for personalized model using same threshold
+                if probs_pers.shape[1] >= 2 and threshold_tau is not None:
+                    benign_idx = 0
+                    benign_probs_pers = probs_pers[:, benign_idx]
+                    attack_probs_pers = 1.0 - benign_probs_pers
+                    y_pred_attack_pers = (attack_probs_pers >= threshold_tau).astype(
+                        int
+                    )
+                    benign_mask_pers = labels_pers == benign_idx
+                    fp_pers = int(np.sum(y_pred_attack_pers[benign_mask_pers] == 1))
+                    tn_pers = int(np.sum(y_pred_attack_pers[benign_mask_pers] == 0))
+                    benign_fpr_personalized = float(fp_pers / max(fp_pers + tn_pers, 1))
+
+                # Compute improvement gain
+                if macro_f1_global is not None and macro_f1_personalized is not None:
+                    personalization_gain = macro_f1_personalized - macro_f1_global
+
+            # Log personalization metrics
+            self.metrics_logger.log_personalization_metrics(
+                round_num=self.round_num,
+                macro_f1_global=macro_f1_global,
+                macro_f1_personalized=macro_f1_personalized,
+                benign_fpr_global=benign_fpr_global,
+                benign_fpr_personalized=benign_fpr_personalized,
+                personalization_gain=personalization_gain,
+            )
+        except Exception as e:
+            # If personalization evaluation fails, log warning but continue
+            print(f"[Client] Warning: Personalization evaluation failed: {e}")
+
+        # CRITICAL: Restore global model weights before returning to server
+        set_parameters(self.model, weights_after)
+
         num_examples = len(self.train_loader.dataset)
         metrics = {}
         return weights_after, num_examples, metrics
@@ -680,6 +758,12 @@ def main() -> None:
         help="Target false positive rate for low_fpr tau mode",
     )
     parser.add_argument(
+        "--personalization_epochs",
+        type=int,
+        default=0,
+        help="Number of local fine-tuning epochs after FL rounds for personalization (0=disabled)",
+    )
+    parser.add_argument(
         "--logdir",
         type=str,
         default="./logs",
@@ -743,7 +827,8 @@ def main() -> None:
         # Warn if shard contains only a single class
         if len(np.unique(y_client)) <= 1:
             print(
-                f"[Client {args.client_id}] Warning: single-class shard detected; using global num_classes={num_classes_global}"
+                f"[Client {args.client_id}] Warning: single-class shard detected; "
+                f"using global num_classes={num_classes_global}"
             )
         train_loader, test_loader = numpy_to_loaders(
             X_client, y_client, batch_size=args.batch_size, seed=args.seed
@@ -818,6 +903,8 @@ def main() -> None:
             # Threshold selection
             "tau_mode": args.tau_mode,
             "target_fpr": args.target_fpr,
+            # Personalization
+            "personalization_epochs": args.personalization_epochs,
         },
     )
 

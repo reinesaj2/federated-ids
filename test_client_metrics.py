@@ -65,6 +65,11 @@ def test_client_metrics_csv_creation():
                     "epochs_completed",
                     "lr",
                     "batch_size",
+                    "macro_f1_global",
+                    "macro_f1_personalized",
+                    "benign_fpr_global",
+                    "benign_fpr_personalized",
+                    "personalization_gain",
                 ]
             else:
                 expected = [
