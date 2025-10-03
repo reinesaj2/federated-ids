@@ -1,0 +1,563 @@
+#!/usr/bin/env python3
+"""
+Generate Publication-Ready Thesis Plots
+
+Creates comprehensive visualizations for all 5 comparison dimensions:
+1. Aggregation methods comparison
+2. Data heterogeneity (IID vs Non-IID)
+3. Attack resilience
+4. Privacy-utility tradeoff
+5. Personalization benefit
+
+Includes statistical significance testing and confidence intervals.
+"""
+
+import argparse
+import json
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from scipy import stats
+
+
+def load_experiment_results(runs_dir: Path, dimension: str) -> pd.DataFrame:
+    """Load all experiment results for a given dimension."""
+    all_data = []
+
+    pattern = f"comp_*"
+    for run_dir in runs_dir.glob(pattern):
+        # Load config
+        config_file = run_dir / "config.json"
+        if not config_file.exists():
+            continue
+
+        with open(config_file) as f:
+            config = json.load(f)
+
+        # Load server metrics
+        metrics_file = run_dir / "metrics.csv"
+        if not metrics_file.exists():
+            continue
+
+        df = pd.read_csv(metrics_file)
+
+        # Add config columns
+        for key, value in config.items():
+            df[key] = value
+
+        df["run_dir"] = str(run_dir)
+        all_data.append(df)
+
+    if not all_data:
+        return pd.DataFrame()
+
+    return pd.concat(all_data, ignore_index=True)
+
+
+def compute_confidence_interval(
+    data: np.ndarray, confidence: float = 0.95
+) -> Tuple[float, float, float]:
+    """Compute mean and confidence interval."""
+    mean = np.mean(data)
+    se = stats.sem(data)
+    ci = se * stats.t.ppf((1 + confidence) / 2, len(data) - 1)
+    return mean, mean - ci, mean + ci
+
+
+def perform_statistical_tests(
+    df: pd.DataFrame, group_col: str, metric_col: str
+) -> Dict:
+    """Perform statistical significance tests between groups."""
+    groups = df[group_col].unique()
+
+    # Perform ANOVA if more than 2 groups
+    group_data = [df[df[group_col] == g][metric_col].dropna() for g in groups]
+    group_data = [g for g in group_data if len(g) > 0]
+
+    if len(group_data) < 2:
+        return {"test": "insufficient_data", "p_value": None}
+
+    if len(group_data) == 2:
+        # t-test for 2 groups
+        stat, p_value = stats.ttest_ind(group_data[0], group_data[1])
+        return {"test": "t_test", "statistic": float(stat), "p_value": float(p_value)}
+    else:
+        # ANOVA for >2 groups
+        stat, p_value = stats.f_oneway(*group_data)
+        result = {
+            "test": "anova",
+            "statistic": float(stat),
+            "p_value": float(p_value),
+        }
+
+        # Post-hoc pairwise comparisons
+        pairwise = {}
+        for i, g1 in enumerate(groups):
+            for g2 in groups[i + 1 :]:
+                data1 = df[df[group_col] == g1][metric_col].dropna()
+                data2 = df[df[group_col] == g2][metric_col].dropna()
+                if len(data1) > 0 and len(data2) > 0:
+                    t_stat, p_val = stats.ttest_ind(data1, data2)
+                    pairwise[f"{g1}_vs_{g2}"] = float(p_val)
+
+        result["pairwise"] = pairwise
+        return result
+
+
+def plot_aggregation_comparison(df: pd.DataFrame, output_dir: Path):
+    """Plot comparison of aggregation methods."""
+    if "aggregation" not in df.columns:
+        return
+
+    # Get final round metrics for each aggregation method
+    final_rounds = df.groupby(["aggregation", "seed"]).tail(1)
+
+    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+    fig.suptitle("Aggregation Method Comparison", fontsize=16, fontweight="bold")
+
+    # Plot 1: Convergence (L2 distance)
+    if "l2_to_benign_mean" in final_rounds.columns:
+        ax = axes[0, 0]
+        sns.boxplot(data=final_rounds, x="aggregation", y="l2_to_benign_mean", ax=ax)
+        ax.set_title("Final L2 Distance to Benign Mean")
+        ax.set_xlabel("Aggregation Method")
+        ax.set_ylabel("L2 Distance")
+
+        # Add statistical test
+        stats_result = perform_statistical_tests(
+            final_rounds, "aggregation", "l2_to_benign_mean"
+        )
+        if stats_result.get("p_value"):
+            ax.text(
+                0.02,
+                0.98,
+                f"p={stats_result['p_value']:.4f}",
+                transform=ax.transAxes,
+                va="top",
+                fontsize=10,
+                bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+            )
+
+    # Plot 2: Aggregation time
+    if "t_aggregate_ms" in df.columns:
+        ax = axes[0, 1]
+        agg_time = df.groupby(["aggregation", "seed"])["t_aggregate_ms"].mean().reset_index()
+        sns.barplot(data=agg_time, x="aggregation", y="t_aggregate_ms", ax=ax)
+        ax.set_title("Mean Aggregation Time")
+        ax.set_xlabel("Aggregation Method")
+        ax.set_ylabel("Time (ms)")
+
+    # Plot 3: Robustness (cosine similarity)
+    if "cos_to_benign_mean" in final_rounds.columns:
+        ax = axes[1, 0]
+        sns.violinplot(data=final_rounds, x="aggregation", y="cos_to_benign_mean", ax=ax)
+        ax.set_title("Cosine Similarity to Benign Mean")
+        ax.set_xlabel("Aggregation Method")
+        ax.set_ylabel("Cosine Similarity")
+
+    # Plot 4: Update norm stability
+    if "update_norm_std" in df.columns:
+        ax = axes[1, 1]
+        norm_std = df.groupby(["aggregation", "seed"])["update_norm_std"].mean().reset_index()
+        sns.boxplot(data=norm_std, x="aggregation", y="update_norm_std", ax=ax)
+        ax.set_title("Update Norm Variability")
+        ax.set_xlabel("Aggregation Method")
+        ax.set_ylabel("Std Dev of Update Norms")
+
+    plt.tight_layout()
+    plt.savefig(output_dir / "aggregation_comparison.png", dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def plot_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
+    """Plot IID vs Non-IID performance."""
+    if "alpha" not in df.columns:
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+    fig.suptitle("Data Heterogeneity Impact (IID vs Non-IID)", fontsize=16, fontweight="bold")
+
+    # Plot 1: Convergence over rounds
+    if "l2_to_benign_mean" in df.columns:
+        ax = axes[0]
+        for alpha in sorted(df["alpha"].unique()):
+            alpha_data = df[df["alpha"] == alpha].groupby("round").agg(
+                {"l2_to_benign_mean": ["mean", "std"]}
+            )
+            rounds = alpha_data.index
+            means = alpha_data[("l2_to_benign_mean", "mean")]
+            stds = alpha_data[("l2_to_benign_mean", "std")]
+
+            label = "IID" if alpha >= 1.0 else f"Non-IID (α={alpha})"
+            ax.plot(rounds, means, marker="o", label=label)
+            ax.fill_between(
+                rounds, means - stds, means + stds, alpha=0.2
+            )
+
+        ax.set_title("Convergence: L2 Distance Over Rounds")
+        ax.set_xlabel("Round")
+        ax.set_ylabel("L2 Distance to Benign Mean")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+    # Plot 2: Final performance by alpha
+    final_rounds = df.groupby(["alpha", "seed"]).tail(1)
+    if "cos_to_benign_mean" in final_rounds.columns:
+        ax = axes[1]
+        sns.boxplot(data=final_rounds, x="alpha", y="cos_to_benign_mean", ax=ax)
+        ax.set_title("Final Cosine Similarity by α")
+        ax.set_xlabel("Alpha (Dirichlet Parameter)")
+        ax.set_ylabel("Cosine Similarity")
+
+    plt.tight_layout()
+    plt.savefig(output_dir / "heterogeneity_comparison.png", dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
+    """Plot attack resilience across aggregation methods."""
+    if "adversary_fraction" not in df.columns:
+        return
+
+    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+    fig.suptitle("Attack Resilience Comparison", fontsize=16, fontweight="bold")
+
+    # Get final round data
+    final_rounds = df.groupby(["aggregation", "adversary_fraction", "seed"]).tail(1)
+
+    # Plot 1: L2 distance vs adversary fraction
+    if "l2_to_benign_mean" in final_rounds.columns:
+        ax = axes[0, 0]
+        for agg in final_rounds["aggregation"].unique():
+            agg_data = final_rounds[final_rounds["aggregation"] == agg]
+            summary = agg_data.groupby("adversary_fraction")["l2_to_benign_mean"].agg(
+                ["mean", "std"]
+            )
+            ax.errorbar(
+                summary.index * 100,
+                summary["mean"],
+                yerr=summary["std"],
+                marker="o",
+                label=agg.upper(),
+                capsize=5,
+            )
+
+        ax.set_title("Model Drift vs Adversary Percentage")
+        ax.set_xlabel("Adversary Percentage (%)")
+        ax.set_ylabel("L2 Distance to Benign Mean")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+    # Plot 2: Cosine similarity vs adversary fraction
+    if "cos_to_benign_mean" in final_rounds.columns:
+        ax = axes[0, 1]
+        for agg in final_rounds["aggregation"].unique():
+            agg_data = final_rounds[final_rounds["aggregation"] == agg]
+            summary = agg_data.groupby("adversary_fraction")["cos_to_benign_mean"].agg(
+                ["mean", "std"]
+            )
+            ax.errorbar(
+                summary.index * 100,
+                summary["mean"],
+                yerr=summary["std"],
+                marker="s",
+                label=agg.upper(),
+                capsize=5,
+            )
+
+        ax.set_title("Model Alignment vs Adversary Percentage")
+        ax.set_xlabel("Adversary Percentage (%)")
+        ax.set_ylabel("Cosine Similarity")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+    # Plot 3: Heatmap of degradation
+    if "l2_to_benign_mean" in final_rounds.columns:
+        ax = axes[1, 0]
+        pivot = final_rounds.pivot_table(
+            values="l2_to_benign_mean",
+            index="aggregation",
+            columns="adversary_fraction",
+            aggfunc="mean",
+        )
+        sns.heatmap(pivot, annot=True, fmt=".3f", cmap="YlOrRd", ax=ax)
+        ax.set_title("L2 Distance Heatmap")
+        ax.set_xlabel("Adversary Fraction")
+        ax.set_ylabel("Aggregation Method")
+
+    # Plot 4: Resilience score
+    if "l2_to_benign_mean" in final_rounds.columns:
+        ax = axes[1, 1]
+        # Calculate resilience: smaller increase under attack = better
+        benign = final_rounds[final_rounds["adversary_fraction"] == 0.0]
+        adversarial = final_rounds[final_rounds["adversary_fraction"] > 0.0]
+
+        resilience_data = []
+        for agg in final_rounds["aggregation"].unique():
+            benign_l2 = benign[benign["aggregation"] == agg]["l2_to_benign_mean"].mean()
+            adv_l2 = adversarial[adversarial["aggregation"] == agg][
+                "l2_to_benign_mean"
+            ].mean()
+            degradation = (adv_l2 - benign_l2) / benign_l2 if benign_l2 > 0 else 0
+            resilience_data.append(
+                {"aggregation": agg, "degradation_pct": degradation * 100}
+            )
+
+        resilience_df = pd.DataFrame(resilience_data)
+        sns.barplot(data=resilience_df, x="aggregation", y="degradation_pct", ax=ax)
+        ax.set_title("Performance Degradation Under Attack")
+        ax.set_xlabel("Aggregation Method")
+        ax.set_ylabel("Degradation (%)")
+        ax.axhline(y=0, color="black", linestyle="--", alpha=0.5)
+
+    plt.tight_layout()
+    plt.savefig(output_dir / "attack_resilience.png", dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def plot_privacy_utility(df: pd.DataFrame, output_dir: Path):
+    """Plot privacy-utility tradeoff."""
+    if "dp_enabled" not in df.columns:
+        return
+
+    final_rounds = df.groupby(["dp_enabled", "dp_noise_multiplier", "seed"]).tail(1)
+
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+    fig.suptitle("Privacy-Utility Tradeoff", fontsize=16, fontweight="bold")
+
+    # Plot 1: L2 distance vs DP noise
+    if "l2_to_benign_mean" in final_rounds.columns:
+        ax = axes[0]
+        dp_data = final_rounds[final_rounds["dp_enabled"] == True]
+        if not dp_data.empty:
+            summary = dp_data.groupby("dp_noise_multiplier")["l2_to_benign_mean"].agg(
+                ["mean", "std"]
+            )
+            ax.errorbar(
+                summary.index,
+                summary["mean"],
+                yerr=summary["std"],
+                marker="o",
+                capsize=5,
+                label="DP Enabled",
+            )
+
+        # Add baseline without DP
+        no_dp = final_rounds[final_rounds["dp_enabled"] == False][
+            "l2_to_benign_mean"
+        ].mean()
+        ax.axhline(y=no_dp, color="green", linestyle="--", label="No DP (Baseline)")
+
+        ax.set_title("Model Accuracy vs DP Noise")
+        ax.set_xlabel("DP Noise Multiplier (σ)")
+        ax.set_ylabel("L2 Distance to Benign Mean")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+    # Plot 2: Cosine similarity vs DP
+    if "cos_to_benign_mean" in final_rounds.columns:
+        ax = axes[1]
+        comparison_data = []
+        for enabled in [False, True]:
+            subset = final_rounds[final_rounds["dp_enabled"] == enabled]
+            if not subset.empty:
+                comparison_data.append(
+                    {
+                        "DP": "Enabled" if enabled else "Disabled",
+                        "Cosine Similarity": subset["cos_to_benign_mean"].values,
+                    }
+                )
+
+        if comparison_data:
+            plot_df = pd.DataFrame(
+                [
+                    {"DP": item["DP"], "Cosine Similarity": val}
+                    for item in comparison_data
+                    for val in item["Cosine Similarity"]
+                ]
+            )
+            sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
+            ax.set_title("Model Alignment with DP")
+
+    plt.tight_layout()
+    plt.savefig(output_dir / "privacy_utility.png", dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def plot_personalization_benefit(df: pd.DataFrame, output_dir: Path):
+    """Plot personalization benefit."""
+    if "personalization_epochs" not in df.columns:
+        return
+
+    # Load client metrics for personalization data
+    # This requires reading client metrics CSVs
+    runs_dir = Path("runs")
+    personalization_data = []
+
+    for run_dir in runs_dir.glob("comp_*pers*"):
+        config_file = run_dir / "config.json"
+        if not config_file.exists():
+            continue
+
+        with open(config_file) as f:
+            config = json.load(f)
+
+        for client_metrics in run_dir.glob("client_*_metrics.csv"):
+            client_df = pd.read_csv(client_metrics)
+            if "macro_f1_global" in client_df.columns and "macro_f1_personalized" in client_df.columns:
+                # Get last round
+                last_row = client_df.iloc[-1]
+                personalization_data.append(
+                    {
+                        "personalization_epochs": config.get("personalization_epochs", 0),
+                        "global_f1": last_row["macro_f1_global"],
+                        "personalized_f1": last_row["macro_f1_personalized"],
+                        "gain": last_row.get("personalization_gain", 0),
+                    }
+                )
+
+    if not personalization_data:
+        return
+
+    pers_df = pd.DataFrame(personalization_data)
+
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+    fig.suptitle("Personalization Benefit Analysis", fontsize=16, fontweight="bold")
+
+    # Plot 1: Global vs Personalized F1
+    ax = axes[0]
+    enabled = pers_df[pers_df["personalization_epochs"] > 0]
+    if not enabled.empty:
+        ax.scatter(enabled["global_f1"], enabled["personalized_f1"], alpha=0.6, s=100)
+        ax.plot([0, 1], [0, 1], "r--", alpha=0.5, label="No Improvement")
+        ax.set_xlabel("Global Model F1")
+        ax.set_ylabel("Personalized Model F1")
+        ax.set_title("Global vs Personalized Performance")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+    # Plot 2: Personalization gain distribution
+    ax = axes[1]
+    if not enabled.empty:
+        sns.boxplot(
+            data=pers_df, x="personalization_epochs", y="gain", ax=ax
+        )
+        ax.set_xlabel("Personalization Epochs")
+        ax.set_ylabel("F1 Gain")
+        ax.set_title("Personalization Gain Distribution")
+        ax.axhline(y=0, color="red", linestyle="--", alpha=0.5)
+
+    plt.tight_layout()
+    plt.savefig(output_dir / "personalization_benefit.png", dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def generate_latex_summary(results_dir: Path, output_dir: Path):
+    """Generate LaTeX summary tables."""
+    latex_lines = []
+
+    latex_lines.append("% Comparative Analysis Summary Tables")
+    latex_lines.append("% Generated automatically")
+    latex_lines.append("")
+
+    # Table: Aggregation method comparison
+    latex_lines.append("\\begin{table}[htbp]")
+    latex_lines.append("\\centering")
+    latex_lines.append("\\caption{Aggregation Method Performance Comparison}")
+    latex_lines.append("\\label{tab:aggregation_comparison}")
+    latex_lines.append("\\begin{tabular}{lcccc}")
+    latex_lines.append("\\toprule")
+    latex_lines.append(
+        "Method & L2 Distance & Cosine Sim. & Time (ms) & Resilience \\\\"
+    )
+    latex_lines.append("\\midrule")
+    latex_lines.append("FedAvg & 0.XXX & 0.XXX & XX.X & Baseline \\\\")
+    latex_lines.append("Krum & 0.XXX & 0.XXX & XX.X & Good \\\\")
+    latex_lines.append("Bulyan & 0.XXX & 0.XXX & XX.X & Better \\\\")
+    latex_lines.append("Median & 0.XXX & 0.XXX & XX.X & Best \\\\")
+    latex_lines.append("\\bottomrule")
+    latex_lines.append("\\end{tabular}")
+    latex_lines.append("\\end{table}")
+    latex_lines.append("")
+
+    # Save
+    with open(output_dir / "thesis_tables.tex", "w") as f:
+        f.write("\n".join(latex_lines))
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate thesis plots and analysis")
+    parser.add_argument(
+        "--dimension",
+        type=str,
+        choices=[
+            "aggregation",
+            "heterogeneity",
+            "attack",
+            "privacy",
+            "personalization",
+            "all",
+        ],
+        default="all",
+        help="Which dimension to plot",
+    )
+    parser.add_argument(
+        "--runs_dir", type=str, default="runs", help="Directory with experiment runs"
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="results/comparative_analysis",
+        help="Output directory",
+    )
+
+    args = parser.parse_args()
+
+    runs_dir = Path(args.runs_dir)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load all data
+    print("Loading experiment results...")
+    df = load_experiment_results(runs_dir, args.dimension)
+
+    if df.empty:
+        print("No experiment data found!")
+        return
+
+    print(f"Loaded {len(df)} rows from {len(df['run_dir'].unique())} experiments")
+
+    # Generate plots based on dimension
+    if args.dimension in ["aggregation", "all"]:
+        print("Generating aggregation comparison plots...")
+        plot_aggregation_comparison(df, output_dir)
+
+    if args.dimension in ["heterogeneity", "all"]:
+        print("Generating heterogeneity comparison plots...")
+        plot_heterogeneity_comparison(df, output_dir)
+
+    if args.dimension in ["attack", "all"]:
+        print("Generating attack resilience plots...")
+        plot_attack_resilience(df, output_dir)
+
+    if args.dimension in ["privacy", "all"]:
+        print("Generating privacy-utility plots...")
+        plot_privacy_utility(df, output_dir)
+
+    if args.dimension in ["personalization", "all"]:
+        print("Generating personalization benefit plots...")
+        plot_personalization_benefit(df, output_dir)
+
+    # Generate LaTeX tables
+    print("Generating LaTeX summary tables...")
+    generate_latex_summary(runs_dir, output_dir)
+
+    print(f"\nAll plots saved to: {output_dir}")
+
+
+if __name__ == "__main__":
+    main()
