@@ -23,29 +23,71 @@ def test_client_metrics_csv_creation():
         assert metrics_path.exists()
 
         # Check headers - expect extended headers if D2_EXTENDED_METRICS is set
-        with open(metrics_path, 'r') as f:
+        with open(metrics_path, "r") as f:
             reader = csv.reader(f)
             headers = next(reader)
 
             # Check if running in extended mode
-            extended_mode = os.environ.get("D2_EXTENDED_METRICS", "0").lower() not in ("0", "false", "no", "")
+            extended_mode = os.environ.get("D2_EXTENDED_METRICS", "0").lower() not in (
+                "0",
+                "false",
+                "no",
+                "",
+            )
 
             if extended_mode:
                 expected = [
-                    "client_id", "round", "dataset_size", "n_classes",
-                    "loss_before", "acc_before", "loss_after", "acc_after",
-                    "macro_f1_before", "macro_f1_after", "macro_f1_argmax", "benign_fpr_argmax",
-                    "f1_per_class_after", "fpr_after", "pr_auc_after", "threshold_tau",
-                    "f1_bin_tau", "benign_fpr_bin_tau", "tau_bin", "seed",
-                    "weight_norm_before", "weight_norm_after", "weight_update_norm",
-                    "grad_norm_l2", "t_fit_ms", "epochs_completed", "lr", "batch_size"
+                    "client_id",
+                    "round",
+                    "dataset_size",
+                    "n_classes",
+                    "loss_before",
+                    "acc_before",
+                    "loss_after",
+                    "acc_after",
+                    "macro_f1_before",
+                    "macro_f1_after",
+                    "macro_f1_argmax",
+                    "benign_fpr_argmax",
+                    "f1_per_class_after",
+                    "fpr_after",
+                    "pr_auc_after",
+                    "threshold_tau",
+                    "f1_bin_tau",
+                    "benign_fpr_bin_tau",
+                    "tau_bin",
+                    "seed",
+                    "weight_norm_before",
+                    "weight_norm_after",
+                    "weight_update_norm",
+                    "grad_norm_l2",
+                    "t_fit_ms",
+                    "epochs_completed",
+                    "lr",
+                    "batch_size",
+                    "macro_f1_global",
+                    "macro_f1_personalized",
+                    "benign_fpr_global",
+                    "benign_fpr_personalized",
+                    "personalization_gain",
                 ]
             else:
                 expected = [
-                    "client_id", "round", "dataset_size", "n_classes",
-                    "loss_before", "acc_before", "loss_after", "acc_after",
-                    "weight_norm_before", "weight_norm_after", "weight_update_norm",
-                    "grad_norm_l2", "t_fit_ms", "epochs_completed", "lr", "batch_size"
+                    "client_id",
+                    "round",
+                    "dataset_size",
+                    "n_classes",
+                    "loss_before",
+                    "acc_before",
+                    "loss_after",
+                    "acc_after",
+                    "weight_norm_before",
+                    "weight_norm_after",
+                    "weight_update_norm",
+                    "t_fit_ms",
+                    "epochs_completed",
+                    "lr",
+                    "batch_size",
                 ]
             assert headers == expected
 
@@ -79,7 +121,7 @@ def test_client_metrics_logging_complete_record():
         )
 
         # Read and verify key values are logged correctly
-        with open(metrics_path, 'r') as f:
+        with open(metrics_path, "r") as f:
             reader = csv.reader(f)
             headers = next(reader)
             row = next(reader)

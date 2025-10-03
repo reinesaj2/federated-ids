@@ -26,7 +26,12 @@ def summarize_clients(run_dir: Path) -> dict:
         return {}
     df = pd.concat(rows, ignore_index=True)
     out = {}
-    for key in ["macro_f1_argmax", "benign_fpr_argmax", "f1_bin_tau", "benign_fpr_bin_tau"]:
+    for key in [
+        "macro_f1_argmax",
+        "benign_fpr_argmax",
+        "f1_bin_tau",
+        "benign_fpr_bin_tau",
+    ]:
         if key in df.columns:
             s = pd.to_numeric(df[key], errors="coerce").dropna()
             out[key] = {
@@ -37,8 +42,12 @@ def summarize_clients(run_dir: Path) -> dict:
             }
     # Worst/best client macro-F1 (argmax) across clients at last round if available
     try:
-        if {"client_id","round","macro_f1_argmax"}.issubset(df.columns):
-            last = df.groupby("client_id").apply(lambda d: d.sort_values("round").tail(1)).reset_index(drop=True)
+        if {"client_id", "round", "macro_f1_argmax"}.issubset(df.columns):
+            last = (
+                df.groupby("client_id")
+                .apply(lambda d: d.sort_values("round").tail(1))
+                .reset_index(drop=True)
+            )
             s = pd.to_numeric(last["macro_f1_argmax"], errors="coerce").dropna()
             if not s.empty:
                 out["macro_f1_argmax_last_round"] = {
@@ -58,11 +67,49 @@ def summarize_clients(run_dir: Path) -> dict:
                 "mean": float(sa.mean()),
                 "frac_le_0_10": float((sa <= 0.10).mean()),
             }
+
+    # Low-FPR point: extract (τ, FPR, F1) from last round across all clients
+    if {"tau_bin", "benign_fpr_bin_tau", "f1_bin_tau", "client_id", "round"}.issubset(
+        df.columns
+    ):
+        try:
+            # Get last round for each client
+            last_round_df = (
+                df.groupby("client_id")
+                .apply(lambda d: d.sort_values("round").tail(1))
+                .reset_index(drop=True)
+            )
+
+            tau_vals = pd.to_numeric(last_round_df["tau_bin"], errors="coerce").dropna()
+            fpr_vals = pd.to_numeric(
+                last_round_df["benign_fpr_bin_tau"], errors="coerce"
+            ).dropna()
+            f1_vals = pd.to_numeric(
+                last_round_df["f1_bin_tau"], errors="coerce"
+            ).dropna()
+
+            if not tau_vals.empty and not fpr_vals.empty and not f1_vals.empty:
+                out["low_fpr_point"] = {
+                    "tau_mean": float(tau_vals.mean()),
+                    "tau_min": float(tau_vals.min()),
+                    "tau_max": float(tau_vals.max()),
+                    "fpr_mean": float(fpr_vals.mean()),
+                    "fpr_min": float(fpr_vals.min()),
+                    "fpr_max": float(fpr_vals.max()),
+                    "f1_mean": float(f1_vals.mean()),
+                    "f1_min": float(f1_vals.min()),
+                    "f1_max": float(f1_vals.max()),
+                }
+        except Exception:
+            pass
+
     return out
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Summarize FL metrics for fairness and rare-class reporting")
+    parser = argparse.ArgumentParser(
+        description="Summarize FL metrics for fairness and rare-class reporting"
+    )
     parser.add_argument("--run_dir", type=str, required=True)
     parser.add_argument("--output", type=str, default=None)
     args = parser.parse_args()

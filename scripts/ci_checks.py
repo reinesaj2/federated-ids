@@ -53,9 +53,54 @@ def validate_plot_files(run_dir: Path) -> None:
     for plot_file in required_plots:
         plot_path = run_dir / plot_file
         if not plot_path.exists():
-            raise ArtifactValidationError(
-                f"Required plot file missing: {plot_path}"
-            )
+            raise ArtifactValidationError(f"Required plot file missing: {plot_path}")
+
+
+def validate_fpr_tolerance(
+    run_dir: Path, target_fpr: float = 0.10, tolerance: float = 0.02
+) -> None:
+    """Validate that benign FPR at tau is within tolerance of target when using low_fpr mode."""
+    client_metrics_files = list(run_dir.glob("client_*_metrics.csv"))
+
+    if not client_metrics_files:
+        return  # Skip if no client files
+
+    for client_file in client_metrics_files:
+        try:
+            with open(client_file, "r") as f:
+                reader = csv.DictReader(f)
+                headers = set(reader.fieldnames or [])
+
+                # Check if this run has tau metrics (extended metrics mode)
+                if "benign_fpr_bin_tau" not in headers:
+                    return  # Skip validation if extended metrics not present
+
+                # Read all rows and check last round FPR
+                rows = list(reader)
+                if not rows:
+                    continue
+
+                last_row = rows[-1]
+                benign_fpr_str = last_row.get("benign_fpr_bin_tau", "")
+
+                if benign_fpr_str and benign_fpr_str.strip():
+                    try:
+                        benign_fpr = float(benign_fpr_str)
+                        fpr_diff = abs(benign_fpr - target_fpr)
+
+                        if fpr_diff > tolerance:
+                            raise ArtifactValidationError(
+                                f"FPR tolerance check failed for {client_file.name}: "
+                                f"benign_fpr_bin_tau={benign_fpr:.3f}, target={target_fpr:.3f}, "
+                                f"diff={fpr_diff:.3f} > tolerance={tolerance:.3f}"
+                            )
+                    except ValueError:
+                        pass  # Skip if conversion fails
+        except Exception as e:
+            if isinstance(e, ArtifactValidationError):
+                raise
+            # Skip validation errors for files that can't be read
+            pass
 
 
 def validate_run_directory(run_dir: Path) -> None:
@@ -79,6 +124,9 @@ def validate_run_directory(run_dir: Path) -> None:
 
     # Validate plot files - required
     validate_plot_files(run_dir)
+
+    # Validate FPR tolerance if using low_fpr tau mode
+    validate_fpr_tolerance(run_dir, target_fpr=0.10, tolerance=0.02)
 
     print(f"✓ Run directory {run_dir.name} validation passed")
 

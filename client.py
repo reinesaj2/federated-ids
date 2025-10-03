@@ -139,6 +139,107 @@ def evaluate(
     return float(avg_loss), float(acc), all_probs, all_labels
 
 
+def _select_tau_for_target_fpr(
+    y_true_val: np.ndarray,
+    attack_probs_val: np.ndarray,
+    thresholds: np.ndarray,
+    target_fpr: float,
+) -> float:
+    """
+    Select threshold tau to achieve target FPR on benign class.
+
+    Args:
+        y_true_val: Binary labels on validation set (0=benign, 1=attack)
+        attack_probs_val: P(attack) scores on validation set
+        thresholds: Candidate thresholds from precision_recall_curve
+        target_fpr: Desired false positive rate (e.g., 0.10)
+
+    Returns:
+        Threshold tau achieving closest FPR to target
+    """
+    best_tau = 0.5
+    best_fpr_diff = float("inf")
+
+    for tau in thresholds:
+        y_pred_val = (attack_probs_val >= tau).astype(int)
+        benign_mask_val = y_true_val == 0
+
+        if benign_mask_val.sum() == 0:
+            continue
+
+        fp_val = ((y_pred_val == 1) & benign_mask_val).sum()
+        tn_val = ((y_pred_val == 0) & benign_mask_val).sum()
+        fpr_val = fp_val / max(fp_val + tn_val, 1)
+        fpr_diff = abs(fpr_val - target_fpr)
+
+        if fpr_diff < best_fpr_diff:
+            best_fpr_diff = fpr_diff
+            best_tau = float(tau)
+
+    return best_tau
+
+
+def _select_tau_for_max_f1(
+    precision: np.ndarray, recall: np.ndarray, thresholds: np.ndarray
+) -> float:
+    """
+    Select threshold tau to maximize F1 score.
+
+    Args:
+        precision: Precision values from precision_recall_curve
+        recall: Recall values from precision_recall_curve
+        thresholds: Candidate thresholds from precision_recall_curve
+
+    Returns:
+        Threshold tau maximizing F1 score
+    """
+    denom = np.maximum(precision + recall, 1e-12)
+    f1_curve = 2 * precision * recall / denom
+
+    if f1_curve.size == 0:
+        return 0.5
+
+    best_idx = int(np.argmax(f1_curve))
+    # precision_recall_curve returns thresholds of length len(precision)-1
+    tau_idx = max(0, min(best_idx - 1, thresholds.size - 1))
+    return float(thresholds[tau_idx])
+
+
+def select_threshold_tau(
+    y_true_val: np.ndarray,
+    attack_probs_val: np.ndarray,
+    tau_mode: str,
+    target_fpr: float,
+) -> float:
+    """
+    Select threshold tau on validation set based on mode.
+
+    Args:
+        y_true_val: Binary labels on validation set (0=benign, 1=attack)
+        attack_probs_val: P(attack) scores on validation set
+        tau_mode: "low_fpr" (target FPR) or "max_f1" (maximize F1)
+        target_fpr: Target false positive rate for low_fpr mode
+
+    Returns:
+        Selected threshold tau in [0, 1]
+    """
+    if attack_probs_val.size == 0:
+        return 0.5
+
+    # Compute PR curve on validation subset
+    precision, recall, thresholds = precision_recall_curve(y_true_val, attack_probs_val)
+
+    if thresholds.size == 0:
+        return 0.5
+
+    if tau_mode == "low_fpr":
+        return _select_tau_for_target_fpr(
+            y_true_val, attack_probs_val, thresholds, target_fpr
+        )
+    else:  # max_f1 mode
+        return _select_tau_for_max_f1(precision, recall, thresholds)
+
+
 class TorchClient(fl.client.NumPyClient):
     def __init__(
         self,
@@ -395,40 +496,43 @@ class TorchClient(fl.client.NumPyClient):
                         attack_probs = 1.0 - benign_probs
                         # PR-AUC (average precision) on full test
                         y_true_bin_full = (labels_after != benign_idx).astype(int)
-                        pr_auc_after = float(average_precision_score(y_true_bin_full, attack_probs))
+                        pr_auc_after = float(
+                            average_precision_score(y_true_bin_full, attack_probs)
+                        )
 
-                        # Select a single tau on a validation subset, reuse for full test logging
+                        # Select tau on validation subset based on mode
+                        tau_mode = str(self.runtime_config.get("tau_mode", "low_fpr"))
+                        target_fpr = float(self.runtime_config.get("target_fpr", 0.10))
+
                         n = attack_probs.shape[0]
                         if n > 1:
-                            rng = np.random.default_rng(int(os.environ.get("SEED", "42")) + self.round_num)
+                            # Split into validation subset for tau selection
+                            rng = np.random.default_rng(
+                                int(os.environ.get("SEED", "42")) + self.round_num
+                            )
                             n_val = max(1, int(0.4 * n))
                             val_idx = rng.choice(n, size=n_val, replace=False)
                             y_true_bin_val = y_true_bin_full[val_idx]
                             attack_probs_val = attack_probs[val_idx]
-                            # Compute PR curve on validation subset
-                            precision, recall, thresholds = precision_recall_curve(y_true_bin_val, attack_probs_val)
-                            denom = np.maximum(precision + recall, 1e-12)
-                            f1_curve = 2 * precision * recall / denom
-                            if thresholds.size > 0 and f1_curve.size > 0:
-                                best_idx = int(np.argmax(f1_curve))
-                                # precision_recall_curve returns thresholds of length len(precision)-1
-                                tau_idx = max(0, min(best_idx - 1, thresholds.size - 1))
-                                threshold_tau = float(thresholds[tau_idx])
-                            else:
-                                threshold_tau = 0.5
+
+                            threshold_tau = select_threshold_tau(
+                                y_true_bin_val, attack_probs_val, tau_mode, target_fpr
+                            )
                         else:
                             threshold_tau = 0.5
+
                         tau_bin = threshold_tau
 
                         # Apply chosen tau to full test
                         y_pred_attack_full = (attack_probs >= threshold_tau).astype(int)
-                        benign_mask_full = (labels_after == benign_idx)
+                        benign_mask_full = labels_after == benign_idx
                         fp = int(np.sum(y_pred_attack_full[benign_mask_full] == 1))
                         tn = int(np.sum(y_pred_attack_full[benign_mask_full] == 0))
                         fpr_after = float(fp / max(fp + tn, 1))
                         benign_fpr_bin_tau = fpr_after
                         # Binary F1 at tau on full test
                         from sklearn.metrics import f1_score as _f1_bin
+
                         f1_bin_tau = float(_f1_bin(y_true_bin_full, y_pred_attack_full))
         except Exception:
             pass
@@ -470,6 +574,84 @@ class TorchClient(fl.client.NumPyClient):
             lr=lr,
             batch_size=batch_size,
         )
+
+        # Personalization: post-FL local fine-tuning (if enabled)
+        personalization_epochs = int(
+            self.runtime_config.get("personalization_epochs", 0)
+        )
+
+        # Early exit if personalization disabled or no test data
+        if personalization_epochs == 0 or len(self.test_loader.dataset) == 0:
+            num_examples = len(self.train_loader.dataset)
+            metrics = {}
+            return weights_after, num_examples, metrics
+
+        # Save global model performance (already computed above)
+        macro_f1_global = macro_f1_after
+        benign_fpr_global = benign_fpr_bin_tau
+
+        # Fine-tune on local train data
+        for _ in range(personalization_epochs):
+            train_epoch(
+                self.model,
+                self.train_loader,
+                self.device,
+                lr,
+                global_params=None,
+                fedprox_mu=0.0,
+            )
+
+        # Evaluate personalized model
+        try:
+            _, _, probs_pers, labels_pers = evaluate(
+                self.model, self.test_loader, self.device
+            )
+
+            macro_f1_personalized = None
+            benign_fpr_personalized = None
+            personalization_gain = None
+
+            if probs_pers.size == 0:
+                # No predictions, skip metrics
+                pass
+            else:
+                preds_pers = np.argmax(probs_pers, axis=1)
+                macro_f1_personalized = float(
+                    f1_score(labels_pers, preds_pers, average="macro")
+                )
+
+                # Compute FPR for personalized model using same threshold
+                if probs_pers.shape[1] >= 2 and threshold_tau is not None:
+                    benign_idx = 0
+                    benign_probs_pers = probs_pers[:, benign_idx]
+                    attack_probs_pers = 1.0 - benign_probs_pers
+                    y_pred_attack_pers = (attack_probs_pers >= threshold_tau).astype(
+                        int
+                    )
+                    benign_mask_pers = labels_pers == benign_idx
+                    fp_pers = int(np.sum(y_pred_attack_pers[benign_mask_pers] == 1))
+                    tn_pers = int(np.sum(y_pred_attack_pers[benign_mask_pers] == 0))
+                    benign_fpr_personalized = float(fp_pers / max(fp_pers + tn_pers, 1))
+
+                # Compute improvement gain
+                if macro_f1_global is not None and macro_f1_personalized is not None:
+                    personalization_gain = macro_f1_personalized - macro_f1_global
+
+            # Log personalization metrics
+            self.metrics_logger.log_personalization_metrics(
+                round_num=self.round_num,
+                macro_f1_global=macro_f1_global,
+                macro_f1_personalized=macro_f1_personalized,
+                benign_fpr_global=benign_fpr_global,
+                benign_fpr_personalized=benign_fpr_personalized,
+                personalization_gain=personalization_gain,
+            )
+        except Exception as e:
+            # If personalization evaluation fails, log warning but continue
+            print(f"[Client] Warning: Personalization evaluation failed: {e}")
+
+        # CRITICAL: Restore global model weights before returning to server
+        set_parameters(self.model, weights_after)
 
         num_examples = len(self.train_loader.dataset)
         metrics = {}
@@ -563,6 +745,25 @@ def main() -> None:
         help="Optional DP RNG seed (defaults to SEED if < 0)",
     )
     parser.add_argument(
+        "--tau_mode",
+        type=str,
+        default="low_fpr",
+        choices=["low_fpr", "max_f1"],
+        help="Threshold selection mode: low_fpr (target FPR) or max_f1 (maximize F1)",
+    )
+    parser.add_argument(
+        "--target_fpr",
+        type=float,
+        default=0.10,
+        help="Target false positive rate for low_fpr tau mode",
+    )
+    parser.add_argument(
+        "--personalization_epochs",
+        type=int,
+        default=0,
+        help="Number of local fine-tuning epochs after FL rounds for personalization (0=disabled)",
+    )
+    parser.add_argument(
         "--logdir",
         type=str,
         default="./logs",
@@ -626,7 +827,8 @@ def main() -> None:
         # Warn if shard contains only a single class
         if len(np.unique(y_client)) <= 1:
             print(
-                f"[Client {args.client_id}] Warning: single-class shard detected; using global num_classes={num_classes_global}"
+                f"[Client {args.client_id}] Warning: single-class shard detected; "
+                f"using global num_classes={num_classes_global}"
             )
         train_loader, test_loader = numpy_to_loaders(
             X_client, y_client, batch_size=args.batch_size, seed=args.seed
@@ -698,6 +900,11 @@ def main() -> None:
                 os.environ.get("D2_DP_NOISE_MULTIPLIER", str(args.dp_noise_multiplier))
             ),
             "dp_seed": int(os.environ.get("D2_DP_SEED", str(args.dp_seed))),
+            # Threshold selection
+            "tau_mode": args.tau_mode,
+            "target_fpr": args.target_fpr,
+            # Personalization
+            "personalization_epochs": args.personalization_epochs,
         },
     )
 
