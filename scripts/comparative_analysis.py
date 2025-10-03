@@ -1,0 +1,509 @@
+#!/usr/bin/env python3
+"""
+Comparative Analysis Framework for Federated IDS
+
+Orchestrates systematic comparison experiments across multiple dimensions:
+- Aggregation methods (FedAvg, Krum, Bulyan, Median)
+- Data heterogeneity (IID vs Non-IID)
+- Attack resilience (benign vs adversarial clients)
+- Privacy impact (DP enabled/disabled)
+- Personalization benefit (global vs personalized)
+
+Generates reproducible results for thesis validation.
+"""
+
+import argparse
+import json
+import socket
+import subprocess
+import time
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Dict, List, Optional
+
+
+# Default baseline values for controlled experiments
+DEFAULT_ALPHA_IID = 1.0  # Alpha=1.0 means IID (uniform Dirichlet)
+DEFAULT_ALPHA_NON_IID = 0.5  # Moderate non-IID for multi-dimensional experiments
+DEFAULT_AGGREGATION = "fedavg"  # Baseline aggregation
+# For attack dimension: use subset excluding Bulyan to reduce experiment count
+# while still comparing FedAvg (baseline) vs robust methods (Krum, Median)
+ATTACK_AGGREGATIONS = ["fedavg", "krum", "median"]
+
+
+@dataclass
+class ExperimentConfig:
+    """Configuration for a single comparative experiment."""
+
+    aggregation: str
+    alpha: float
+    adversary_fraction: float
+    dp_enabled: bool
+    dp_noise_multiplier: float
+    personalization_epochs: int
+    num_clients: int
+    num_rounds: int
+    seed: int
+    dataset: str = "unsw"
+    data_path: str = "data/unsw/unsw_nb15_sample.csv"
+
+    def to_preset_name(self) -> str:
+        """Generate unique preset name for this configuration."""
+        parts = [
+            f"comp_{self.aggregation}",
+            f"alpha{self.alpha}",
+            f"adv{int(self.adversary_fraction * 100)}",
+            f"dp{int(self.dp_enabled)}",
+            f"pers{self.personalization_epochs}",
+            f"seed{self.seed}",
+        ]
+        return "_".join(parts)
+
+
+@dataclass
+class ComparisonMatrix:
+    """Defines the full comparison experiment matrix."""
+
+    aggregation_methods: List[str] = field(
+        default_factory=lambda: ["fedavg", "krum", "bulyan", "median"]
+    )
+    alpha_values: List[float] = field(default_factory=lambda: [1.0, 0.5, 0.1])
+    adversary_fractions: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.3])
+    dp_configs: List[Dict] = field(
+        default_factory=lambda: [
+            {"enabled": False, "noise": 0.0},
+            {"enabled": True, "noise": 0.5},
+            {"enabled": True, "noise": 1.0},
+        ]
+    )
+    personalization_epochs: List[int] = field(default_factory=lambda: [0, 5])
+    seeds: List[int] = field(default_factory=lambda: [42, 43, 44])
+    num_clients: int = 6
+    num_rounds: int = 20
+
+    def _base_config(self, seed: int) -> Dict:
+        """Get baseline config with fixed parameters for controlled experiments."""
+        return {
+            "aggregation": DEFAULT_AGGREGATION,
+            "alpha": DEFAULT_ALPHA_IID,
+            "adversary_fraction": 0.0,
+            "dp_enabled": False,
+            "dp_noise_multiplier": 0.0,
+            "personalization_epochs": 0,
+            "num_clients": self.num_clients,
+            "num_rounds": self.num_rounds,
+            "seed": seed,
+        }
+
+    def _create_config(self, base: Dict, **overrides) -> ExperimentConfig:
+        """Create config with overrides applied to base."""
+        return ExperimentConfig(**{**base, **overrides})
+
+    def _generate_aggregation_configs(self) -> List[ExperimentConfig]:
+        """Generate configs varying only aggregation method."""
+        configs = []
+        for agg in self.aggregation_methods:
+            for seed in self.seeds:
+                configs.append(self._create_config(self._base_config(seed), aggregation=agg))
+        return configs
+
+    def _generate_heterogeneity_configs(self) -> List[ExperimentConfig]:
+        """Generate configs varying only alpha (data heterogeneity)."""
+        configs = []
+        for alpha in self.alpha_values:
+            for seed in self.seeds:
+                configs.append(self._create_config(self._base_config(seed), alpha=alpha))
+        return configs
+
+    def _generate_attack_configs(self) -> List[ExperimentConfig]:
+        """Generate configs for attack resilience comparison.
+
+        Uses subset of aggregation methods (FedAvg, Krum, Median) to reduce
+        computational cost while comparing baseline vs robust approaches.
+        Uses alpha=0.5 for moderate non-IID setting.
+        """
+        configs = []
+        for agg in ATTACK_AGGREGATIONS:
+            for adv_frac in self.adversary_fractions:
+                for seed in self.seeds:
+                    configs.append(
+                        self._create_config(
+                            self._base_config(seed),
+                            aggregation=agg,
+                            alpha=DEFAULT_ALPHA_NON_IID,
+                            adversary_fraction=adv_frac,
+                        )
+                    )
+        return configs
+
+    def _generate_privacy_configs(self) -> List[ExperimentConfig]:
+        """Generate configs varying DP settings.
+
+        Uses alpha=0.5 for moderate non-IID to test privacy impact under
+        realistic heterogeneous conditions.
+        """
+        configs = []
+        for dp_config in self.dp_configs:
+            for seed in self.seeds:
+                configs.append(
+                    self._create_config(
+                        self._base_config(seed),
+                        alpha=DEFAULT_ALPHA_NON_IID,
+                        dp_enabled=dp_config["enabled"],
+                        dp_noise_multiplier=dp_config["noise"],
+                    )
+                )
+        return configs
+
+    def _generate_personalization_configs(self) -> List[ExperimentConfig]:
+        """Generate configs varying personalization epochs.
+
+        Uses alpha=0.5 to test personalization benefit under non-IID conditions
+        where it is expected to provide the most value.
+        """
+        configs = []
+        for pers_epochs in self.personalization_epochs:
+            for seed in self.seeds:
+                configs.append(
+                    self._create_config(
+                        self._base_config(seed),
+                        alpha=DEFAULT_ALPHA_NON_IID,
+                        personalization_epochs=pers_epochs,
+                    )
+                )
+        return configs
+
+    def _generate_full_factorial_configs(self) -> List[ExperimentConfig]:
+        """Generate full factorial experiment matrix (WARNING: very large)."""
+        configs = []
+        for agg in self.aggregation_methods:
+            for alpha in self.alpha_values:
+                for adv_frac in self.adversary_fractions:
+                    for dp_config in self.dp_configs:
+                        for pers in self.personalization_epochs:
+                            for seed in self.seeds:
+                                configs.append(
+                                    ExperimentConfig(
+                                        aggregation=agg,
+                                        alpha=alpha,
+                                        adversary_fraction=adv_frac,
+                                        dp_enabled=dp_config["enabled"],
+                                        dp_noise_multiplier=dp_config["noise"],
+                                        personalization_epochs=pers,
+                                        num_clients=self.num_clients,
+                                        num_rounds=self.num_rounds,
+                                        seed=seed,
+                                    )
+                                )
+        return configs
+
+    def generate_configs(
+        self, filter_dimension: Optional[str] = None
+    ) -> List[ExperimentConfig]:
+        """Generate experiment configurations for specified dimension.
+
+        Args:
+            filter_dimension: Dimension to vary. Options:
+                - 'aggregation': Compare aggregation methods
+                - 'heterogeneity': Compare IID vs Non-IID
+                - 'attack': Compare attack resilience
+                - 'privacy': Compare privacy-utility tradeoff
+                - 'personalization': Compare personalization benefit
+                - None: Full factorial (all combinations)
+
+        Returns:
+            List of experiment configurations
+        """
+        dimension_map = {
+            "aggregation": self._generate_aggregation_configs,
+            "heterogeneity": self._generate_heterogeneity_configs,
+            "attack": self._generate_attack_configs,
+            "privacy": self._generate_privacy_configs,
+            "personalization": self._generate_personalization_configs,
+        }
+
+        if filter_dimension is None:
+            return self._generate_full_factorial_configs()
+
+        generator = dimension_map.get(filter_dimension)
+        if generator is None:
+            raise ValueError(
+                f"Invalid dimension: {filter_dimension}. "
+                f"Must be one of {list(dimension_map.keys())} or None for full factorial."
+            )
+
+        return generator()
+
+
+def is_port_available(port: int, host: str = "localhost") -> bool:
+    """Check if a port is available for use."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        try:
+            sock.bind((host, port))
+            return True
+        except OSError:
+            return False
+
+
+def find_available_port(start_port: int = 8080, max_attempts: int = 100) -> int:
+    """Find an available port starting from start_port."""
+    for port in range(start_port, start_port + max_attempts):
+        if is_port_available(port):
+            return port
+    raise RuntimeError(f"Could not find available port in range {start_port}-{start_port + max_attempts}")
+
+
+@contextmanager
+def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int = 600):
+    """Context manager for subprocess with proper cleanup.
+
+    Args:
+        cmd: Command and arguments
+        log_file: Path to log file for stdout/stderr
+        cwd: Working directory
+        timeout: Timeout in seconds for process wait
+
+    Yields:
+        subprocess.Popen object
+    """
+    proc = None
+    try:
+        with open(log_file, "w") as log:
+            proc = subprocess.Popen(
+                cmd, stdout=log, stderr=subprocess.STDOUT, cwd=cwd
+            )
+        yield proc
+    finally:
+        if proc is not None:
+            try:
+                proc.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+
+
+def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_start: int = 8080) -> Dict:
+    """Run a single federated learning experiment with proper error handling.
+
+    Args:
+        config: Experiment configuration
+        base_dir: Base directory for project
+        port_start: Starting port for server (will find next available)
+
+    Returns:
+        Dictionary with experiment results and metadata
+
+    Raises:
+        RuntimeError: If experiment fails to complete
+    """
+    preset = config.to_preset_name()
+    run_dir = base_dir / "runs" / preset
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save config metadata
+    config_path = run_dir / "config.json"
+    with open(config_path, "w") as f:
+        json.dump(asdict(config), f, indent=2)
+
+    # Find available port
+    port = find_available_port(port_start)
+
+    # Calculate adversary client count
+    num_adversaries = int(config.adversary_fraction * config.num_clients)
+
+    # Build server command
+    server_log = run_dir / "server.log"
+    server_cmd = [
+        "python",
+        "server.py",
+        "--rounds",
+        str(config.num_rounds),
+        "--aggregation",
+        config.aggregation,
+        "--server_address",
+        f"localhost:{port}",
+        "--logdir",
+        str(run_dir),
+        "--min_fit_clients",
+        str(config.num_clients),
+        "--min_eval_clients",
+        str(config.num_clients),
+        "--min_available_clients",
+        str(config.num_clients),
+    ]
+
+    client_procs = []
+    try:
+        # Start server with managed subprocess
+        with managed_subprocess(server_cmd, server_log, base_dir, timeout=120) as server_proc:
+            # Wait for server startup with basic health check
+            max_retries = 10
+            for _ in range(max_retries):
+                time.sleep(0.5)
+                if is_port_available(port):
+                    continue  # Port still available, server not ready
+                break
+            else:
+                raise RuntimeError(f"Server failed to bind to port {port} after {max_retries * 0.5}s")
+
+            # Start clients
+            for client_id in range(config.num_clients):
+                adversary_mode = "grad_ascent" if client_id < num_adversaries else "none"
+
+                client_log = run_dir / f"client_{client_id}.log"
+                client_cmd = [
+                    "python",
+                    "client.py",
+                    "--server_address",
+                    f"localhost:{port}",
+                    "--dataset",
+                    config.dataset,
+                    "--data_path",
+                    config.data_path,
+                    "--partition_strategy",
+                    "dirichlet" if config.alpha < 1.0 else "iid",
+                    "--alpha",
+                    str(config.alpha),
+                    "--num_clients",
+                    str(config.num_clients),
+                    "--client_id",
+                    str(client_id),
+                    "--seed",
+                    str(config.seed),
+                    "--local_epochs",
+                    "1",
+                    "--adversary_mode",
+                    adversary_mode,
+                    "--personalization_epochs",
+                    str(config.personalization_epochs),
+                    "--logdir",
+                    str(run_dir),
+                ]
+
+                if config.dp_enabled:
+                    client_cmd.extend(
+                        [
+                            "--dp_enabled",
+                            "--dp_noise_multiplier",
+                            str(config.dp_noise_multiplier),
+                        ]
+                    )
+
+                with open(client_log, "w") as log:
+                    proc = subprocess.Popen(
+                        client_cmd, stdout=log, stderr=subprocess.STDOUT, cwd=base_dir
+                    )
+                    client_procs.append(proc)
+
+            # Wait for all clients to complete with timeout
+            for proc in client_procs:
+                try:
+                    proc.wait(timeout=600)  # 10 minute timeout per client
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    raise RuntimeError(f"Client process timed out")
+
+            # Server will complete after all clients finish
+            server_exit_code = server_proc.returncode
+
+    finally:
+        # Ensure all client processes are terminated
+        for proc in client_procs:
+            if proc.poll() is None:  # Still running
+                proc.kill()
+                proc.wait()
+
+    # Collect results
+    metrics_file = run_dir / "metrics.csv"
+    results = {
+        "preset": preset,
+        "config": asdict(config),
+        "run_dir": str(run_dir),
+        "metrics_exist": metrics_file.exists(),
+        "server_exit_code": server_exit_code,
+        "port": port,
+    }
+
+    return results
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Run comparative analysis experiments"
+    )
+    parser.add_argument(
+        "--dimension",
+        type=str,
+        choices=[
+            "aggregation",
+            "heterogeneity",
+            "attack",
+            "privacy",
+            "personalization",
+            "full",
+        ],
+        default="aggregation",
+        help="Comparison dimension to explore",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="results/comparative_analysis",
+        help="Directory for analysis results",
+    )
+    parser.add_argument(
+        "--dry_run",
+        action="store_true",
+        help="Print configs without running experiments",
+    )
+
+    args = parser.parse_args()
+
+    base_dir = Path.cwd()
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate experiment matrix
+    matrix = ComparisonMatrix()
+    configs = matrix.generate_configs(
+        filter_dimension=None if args.dimension == "full" else args.dimension
+    )
+
+    print(f"Generated {len(configs)} experiment configurations for dimension: {args.dimension}")
+
+    if args.dry_run:
+        for i, config in enumerate(configs):
+            print(f"{i+1}. {config.to_preset_name()}")
+        return
+
+    # Run experiments
+    results = []
+    for i, config in enumerate(configs):
+        print(f"\n[{i+1}/{len(configs)}] Running: {config.to_preset_name()}")
+        try:
+            result = run_federated_experiment(config, base_dir)
+            results.append(result)
+            print(f"  Completed with exit code: {result['server_exit_code']}")
+        except Exception as e:
+            print(f"  FAILED: {e}")
+            results.append({"preset": config.to_preset_name(), "error": str(e)})
+
+    # Save experiment manifest
+    manifest_path = output_dir / f"experiment_manifest_{args.dimension}.json"
+    with open(manifest_path, "w") as f:
+        json.dump(
+            {"dimension": args.dimension, "total_experiments": len(results), "results": results},
+            f,
+            indent=2,
+        )
+
+    print(f"\nExperiment manifest saved to: {manifest_path}")
+    print(f"Total experiments run: {len(results)}")
+    failed = sum(1 for r in results if "error" in r)
+    if failed:
+        print(f"Failed experiments: {failed}")
+
+
+if __name__ == "__main__":
+    main()
