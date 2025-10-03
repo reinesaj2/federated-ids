@@ -188,6 +188,57 @@ python scripts/analyze_fedprox_comparison.py --artifacts_dir ./fedprox_compariso
 
 ---
 
+## 6.5) Personalization: Client-level model adaptation
+
+After federated training completes, each client can optionally fine-tune the global model on its local data to improve local performance. This is useful in heterogeneous (non-IID) environments where each client has unique traffic patterns.
+
+### Enable personalization
+```bash
+# Run FL training with 2 local epochs, then 3 personalization epochs
+python server.py --rounds 5 --aggregation fedavg --server_address 127.0.0.1:8099 &
+python client.py --server_address 127.0.0.1:8099 --dataset synthetic --samples 2000 --features 20 --seed 42 --client_id 0 --num_clients 2 --local_epochs 2 --personalization_epochs 3 &
+python client.py --server_address 127.0.0.1:8099 --dataset synthetic --samples 2000 --features 20 --seed 42 --client_id 1 --num_clients 2 --local_epochs 2 --personalization_epochs 3 &
+wait
+```
+
+**Key points:**
+- Personalization happens **after** each FL round, locally on the client
+- The **global model weights** are sent back to the server (personalized weights stay local)
+- Each client logs both global and personalized performance metrics
+- Useful for non-IID data where clients have different data distributions
+
+### Metrics logged
+When `--personalization_epochs > 0` and `D2_EXTENDED_METRICS=1`, client CSVs include:
+- `macro_f1_global`: F1 score of global model before personalization
+- `macro_f1_personalized`: F1 score after local fine-tuning
+- `benign_fpr_global`: False positive rate of global model
+- `benign_fpr_personalized`: False positive rate after personalization
+- `personalization_gain`: Improvement from personalization (`personalized - global`)
+
+### Example: Compare with and without personalization
+```bash
+rm -rf logs/; mkdir logs
+
+# Baseline: No personalization
+export SEED=42 D2_EXTENDED_METRICS=1
+python server.py --rounds 3 --aggregation fedavg --server_address 127.0.0.1:8099 &
+python client.py --server_address 127.0.0.1:8099 --dataset synthetic --samples 2000 --features 20 --seed 42 --client_id 0 --num_clients 2 --partition_strategy dirichlet --dirichlet_alpha 0.1 --personalization_epochs 0 &
+python client.py --server_address 127.0.0.1:8099 --dataset synthetic --samples 2000 --features 20 --seed 42 --client_id 1 --num_clients 2 --partition_strategy dirichlet --dirichlet_alpha 0.1 --personalization_epochs 0 &
+wait
+
+# With personalization
+python server.py --rounds 3 --aggregation fedavg --server_address 127.0.0.1:8098 &
+python client.py --server_address 127.0.0.1:8098 --dataset synthetic --samples 2000 --features 20 --seed 42 --client_id 0 --num_clients 2 --partition_strategy dirichlet --dirichlet_alpha 0.1 --personalization_epochs 3 &
+python client.py --server_address 127.0.0.1:8098 --dataset synthetic --samples 2000 --features 20 --seed 42 --client_id 1 --num_clients 2 --partition_strategy dirichlet --dirichlet_alpha 0.1 --personalization_epochs 3 &
+wait
+
+# Compare metrics
+cat logs/client_0_metrics.csv | grep -v "^client_id" | cut -d',' -f29,30,33
+# Columns: macro_f1_global, macro_f1_personalized, personalization_gain
+```
+
+---
+
 ## 7) Real datasets (UNSW‑NB15, CIC‑IDS2017)
 
 Important rule: all clients connected to the same server must use the same dataset and preprocessing settings.
