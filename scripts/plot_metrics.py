@@ -12,114 +12,131 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from plot_config import (
+    PlotStyle,
+    LayoutConfig,
+    MetricDetector,
+    SmoothingConfig,
+    ConfidenceIntervalConfig,
+    create_default_config,
+)
 
-def plot_server_metrics(metrics_path: str, output_path: str):
+
+def plot_server_metrics(metrics_path: str, output_path: str, config: dict = None):
     """Plot server aggregation metrics."""
+    if config is None:
+        config = create_default_config()
+
+    style = config.get("style", PlotStyle())
+    layout = config.get("layout", LayoutConfig())
+    detector = config.get("detector", MetricDetector())
+    title = config.get("title", "Federated Learning Server Metrics")
+
+    style.apply()
+
     df = pd.read_csv(metrics_path)
 
     if df.empty or "round" not in df.columns:
         print(f"Skipping server metrics plot for {metrics_path} (empty/missing round)")
         return
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    fig.suptitle("Federated Learning Server Metrics - D2 Demo", fontsize=16)
+    # Auto-detect available metrics
+    available = detector.detect_available(df, metric_type="server")
+    num_plots = detector.count_available_plots(available)
 
-    plotted_time = plotted_robust = plotted_norm = plotted_dispersion = False
-
-    # Plot 1: Aggregation timing
-    time_series = _first_present(df, ["t_aggregate_ms", "aggregation_time_ms"])
-    if time_series is not None and not time_series.isna().all():
-        axes[0, 0].plot(
-            df["round"], time_series, "o-", color="blue", label="Aggregation Time (ms)"
-        )
-        axes[0, 0].set_xlabel("Round")
-        axes[0, 0].set_ylabel("Time (ms)")
-        axes[0, 0].set_title("Aggregation Time per Round")
-        axes[0, 0].grid(True, alpha=0.3)
-        axes[0, 0].legend()
-        plotted_time = True
-        try:
-            agg_s = time_series / 1000.0
-            mean_s = agg_s.mean()
-            std_s = agg_s.std()
-            fig.text(
-                0.5, 0.02, f"Aggregation time: {mean_s:.3f}±{std_s:.3f} s", ha="center"
-            )
-        except Exception:
-            pass
-
-    # Plot 2: Robustness metrics
-    if "l2_to_benign_mean" in df.columns and "cos_to_benign_mean" in df.columns:
-        axes[0, 1].plot(
-            df["round"],
-            df["l2_to_benign_mean"],
-            "o-",
-            color="red",
-            label="L2 to Benign Mean",
-        )
-        axes[0, 1].plot(
-            df["round"],
-            df["cos_to_benign_mean"],
-            "o-",
-            color="green",
-            label="Cosine Similarity",
-        )
-        axes[0, 1].set_xlabel("Round")
-        axes[0, 1].set_ylabel("Metric Value")
-        axes[0, 1].set_title("Robustness Metrics")
-        axes[0, 1].grid(True, alpha=0.3)
-        axes[0, 1].legend()
-        plotted_robust = True
-
-    # Plot 3: Update norms
-    if (
-        "update_norm_mean" in df.columns
-        and not pd.to_numeric(df["update_norm_mean"], errors="coerce").isna().all()
-    ):
-        axes[1, 0].plot(
-            df["round"],
-            df["update_norm_mean"],
-            "o-",
-            color="purple",
-            label="Mean Update Norm",
-        )
-        axes[1, 0].set_xlabel("Round")
-        axes[1, 0].set_ylabel("Norm Value")
-        axes[1, 0].set_title("Update Norms")
-        axes[1, 0].grid(True, alpha=0.3)
-        axes[1, 0].legend()
-        plotted_norm = True
-
-    # Plot 4: Pairwise dispersion (if present)
-    if "pairwise_cosine_mean" in df.columns and "l2_dispersion_mean" in df.columns:
-        axes[1, 1].plot(
-            df["round"],
-            df["pairwise_cosine_mean"],
-            "o-",
-            color="orange",
-            label="Pairwise Cosine Mean",
-        )
-        axes[1, 1].plot(
-            df["round"],
-            df["l2_dispersion_mean"],
-            "s-",
-            color="brown",
-            label="L2 Dispersion Mean",
-        )
-        axes[1, 1].set_xlabel("Round")
-        axes[1, 1].set_ylabel("Value")
-        axes[1, 1].set_title("Pairwise Dispersion")
-        axes[1, 1].grid(True, alpha=0.3)
-        axes[1, 1].legend()
-        plotted_dispersion = True
-
-    if not any([plotted_time, plotted_robust, plotted_norm, plotted_dispersion]):
-        plt.close(fig)
+    if num_plots == 0:
         print(f"No server metrics columns available to plot for {metrics_path}")
         return
 
-    plt.tight_layout(rect=[0, 0.04, 1, 1])
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    rows, cols = layout.compute_grid(num_plots)
+    fig, axes = plt.subplots(rows, cols, figsize=style.figsize)
+    fig.suptitle(title, fontsize=style.title_size)
+
+    if num_plots == 1:
+        axes = [axes]
+    else:
+        axes = axes.flat
+
+    ax_idx = 0
+    colors = style.get_colors(4)
+
+    # Plot timing if available
+    if available.get("timing"):
+        time_series = _first_present(df, ["t_aggregate_ms", "aggregation_time_ms"])
+        axes[ax_idx].plot(
+            df["round"], time_series, "o-", color=colors[0],
+            label="Aggregation Time (ms)", linewidth=style.linewidth,
+            markersize=style.markersize, alpha=style.alpha
+        )
+        axes[ax_idx].set_xlabel("Round")
+        axes[ax_idx].set_ylabel("Time (ms)")
+        axes[ax_idx].set_title("Aggregation Time per Round")
+        axes[ax_idx].grid(True, alpha=0.3)
+        axes[ax_idx].legend()
+        ax_idx += 1
+
+    # Plot robustness metrics if available
+    if available.get("robustness"):
+        axes[ax_idx].plot(
+            df["round"], df["l2_to_benign_mean"], "o-", color=colors[1],
+            label="L2 to Benign Mean", linewidth=style.linewidth,
+            markersize=style.markersize, alpha=style.alpha
+        )
+        if "cos_to_benign_mean" in df.columns:
+            axes[ax_idx].plot(
+                df["round"], df["cos_to_benign_mean"], "s-", color=colors[2],
+                label="Cosine Similarity", linewidth=style.linewidth,
+                markersize=style.markersize, alpha=style.alpha
+            )
+        axes[ax_idx].set_xlabel("Round")
+        axes[ax_idx].set_ylabel("Metric Value")
+        axes[ax_idx].set_title("Robustness Metrics")
+        axes[ax_idx].grid(True, alpha=0.3)
+        axes[ax_idx].legend()
+        ax_idx += 1
+
+    # Plot norms if available
+    if available.get("norms"):
+        axes[ax_idx].plot(
+            df["round"], df[available["norms"]], "o-", color=colors[3],
+            label="Mean Update Norm", linewidth=style.linewidth,
+            markersize=style.markersize, alpha=style.alpha
+        )
+        axes[ax_idx].set_xlabel("Round")
+        axes[ax_idx].set_ylabel("Norm Value")
+        axes[ax_idx].set_title("Update Norms")
+        axes[ax_idx].grid(True, alpha=0.3)
+        axes[ax_idx].legend()
+        ax_idx += 1
+
+    # Plot dispersion if available
+    if available.get("dispersion"):
+        if "pairwise_cosine_mean" in df.columns:
+            axes[ax_idx].plot(
+                df["round"], df["pairwise_cosine_mean"], "o-", color=colors[0],
+                label="Pairwise Cosine Mean", linewidth=style.linewidth,
+                markersize=style.markersize, alpha=style.alpha
+            )
+        if "l2_dispersion_mean" in df.columns:
+            axes[ax_idx].plot(
+                df["round"], df["l2_dispersion_mean"], "s-", color=colors[1],
+                label="L2 Dispersion Mean", linewidth=style.linewidth,
+                markersize=style.markersize, alpha=style.alpha
+            )
+        axes[ax_idx].set_xlabel("Round")
+        axes[ax_idx].set_ylabel("Value")
+        axes[ax_idx].set_title("Pairwise Dispersion")
+        axes[ax_idx].grid(True, alpha=0.3)
+        axes[ax_idx].legend()
+
+    # Hide unused subplots
+    for i in range(ax_idx, len(axes)):
+        axes[i].axis('off')
+
+    if layout.tight_layout:
+        plt.tight_layout()
+
+    plt.savefig(output_path, dpi=style.dpi, bbox_inches="tight")
     plt.close()
 
 
@@ -138,16 +155,25 @@ def _client_label(path: Path, df: pd.DataFrame) -> str:
     return match.group(1) if match else path.stem
 
 
-def plot_client_metrics(client_metrics_paths: list, output_path: str):
+def plot_client_metrics(client_metrics_paths: list, output_path: str, config: dict = None):
     """Plot client training metrics with argmax vs binary@tau overlays if present."""
     if not client_metrics_paths:
         print("No client metrics found; skipping client plots")
         return
 
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-    fig.suptitle("Federated Learning Client Metrics - D2 Demo", fontsize=16)
+    if config is None:
+        config = create_default_config()
 
-    colors = ["blue", "red", "green", "purple", "orange"]
+    style = config.get("style", PlotStyle())
+    layout = config.get("layout", LayoutConfig())
+    title = config.get("title", "Federated Learning Client Metrics")
+
+    style.apply()
+
+    fig, axes = plt.subplots(2, 3, figsize=style.figsize)
+    fig.suptitle(title, fontsize=style.title_size)
+
+    colors = style.get_colors(len(client_metrics_paths))
     plotted_loss = plotted_acc = plotted_norm = plotted_overlay = plotted_tau = (
         plotted_fpr
     ) = False
@@ -170,14 +196,16 @@ def plot_client_metrics(client_metrics_paths: list, output_path: str):
         loss_series = _first_present(df, ["loss_after", "local_loss"])
         if loss_series is not None and not loss_series.isna().all():
             axes[0, 0].plot(
-                rounds, loss_series, "o-", color=color, label=f"Client {client_id}"
+                rounds, loss_series, "o-", color=color, label=f"Client {client_id}",
+                linewidth=style.linewidth, markersize=style.markersize, alpha=style.alpha
             )
             plotted_loss = True
 
         acc_series = _first_present(df, ["acc_after", "local_accuracy"])
         if acc_series is not None and not acc_series.isna().all():
             axes[0, 1].plot(
-                rounds, acc_series, "o-", color=color, label=f"Client {client_id}"
+                rounds, acc_series, "o-", color=color, label=f"Client {client_id}",
+                linewidth=style.linewidth, markersize=style.markersize, alpha=style.alpha
             )
             if not plotted_acc:
                 plotted_acc = True
@@ -185,7 +213,8 @@ def plot_client_metrics(client_metrics_paths: list, output_path: str):
         norm_series = _first_present(df, ["weight_norm_after", "weight_norm"])
         if norm_series is not None and not norm_series.isna().all():
             axes[1, 0].plot(
-                rounds, norm_series, "o-", color=color, label=f"Client {client_id}"
+                rounds, norm_series, "o-", color=color, label=f"Client {client_id}",
+                linewidth=style.linewidth, markersize=style.markersize, alpha=style.alpha
             )
             plotted_norm = True
 
@@ -224,7 +253,8 @@ def plot_client_metrics(client_metrics_paths: list, output_path: str):
         tau_series = _first_present(df, ["tau_bin", "threshold_tau"])
         if tau_series is not None and not tau_series.isna().all():
             axes[0, 2].plot(
-                rounds, tau_series, "o-", color=color, label=f"Client {client_id}"
+                rounds, tau_series, "o-", color=color, label=f"Client {client_id}",
+                linewidth=style.linewidth, markersize=style.markersize, alpha=style.alpha
             )
             plotted_tau = True
 
@@ -232,7 +262,8 @@ def plot_client_metrics(client_metrics_paths: list, output_path: str):
         fpr_series = _first_present(df, ["benign_fpr_bin_tau", "fpr_after"])
         if fpr_series is not None and not fpr_series.isna().all():
             axes[1, 2].plot(
-                rounds, fpr_series, "o-", color=color, label=f"Client {client_id}"
+                rounds, fpr_series, "o-", color=color, label=f"Client {client_id}",
+                linewidth=style.linewidth, markersize=style.markersize, alpha=style.alpha
             )
             plotted_fpr = True
 
@@ -281,13 +312,23 @@ def plot_client_metrics(client_metrics_paths: list, output_path: str):
     if plotted_fpr:
         axes[1, 2].legend()
 
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    if layout.tight_layout:
+        plt.tight_layout()
+
+    plt.savefig(output_path, dpi=style.dpi, bbox_inches="tight")
     plt.close()
 
 
-def plot_fedprox_comparison(comparison_dir: str, output_path: str):
+def plot_fedprox_comparison(comparison_dir: str, output_path: str, config: dict = None):
     """Plot FedProx vs FedAvg comparison metrics."""
+    if config is None:
+        config = create_default_config()
+
+    style = config.get("style", PlotStyle())
+    title = config.get("title", "FedProx vs FedAvg Comparison on Non-IID Data")
+
+    style.apply()
+
     fedavg_path = Path(comparison_dir) / "fedavg" / "metrics.csv"
     fedprox_path = Path(comparison_dir) / "fedprox" / "metrics.csv"
 
@@ -298,8 +339,8 @@ def plot_fedprox_comparison(comparison_dir: str, output_path: str):
     fedavg_df = pd.read_csv(fedavg_path)
     fedprox_df = pd.read_csv(fedprox_path)
 
-    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    fig.suptitle("FedProx vs FedAvg Comparison on Non-IID Data", fontsize=16)
+    fig, axes = plt.subplots(2, 2, figsize=style.figsize)
+    fig.suptitle(title, fontsize=style.title_size)
 
     # Plot 1: Convergence comparison - L2 distance to benign mean
     axes[0, 0].plot(
@@ -428,7 +469,26 @@ def main():
         default=None,
         help="Log directory for comparison (used with --fedprox_comparison)",
     )
+
+    # Style configuration
+    parser.add_argument("--title", type=str, help="Custom plot title")
+    parser.add_argument("--palette", type=str, default="colorblind",
+                       choices=["default", "colorblind", "vibrant", "muted", "dark"],
+                       help="Color palette for plots")
+    parser.add_argument("--style", type=str, default="whitegrid",
+                       help="Seaborn style theme")
+    parser.add_argument("--dpi", type=int, default=150, help="Plot DPI")
+    parser.add_argument("--format", type=str, default="png",
+                       choices=["png", "pdf", "svg"],
+                       help="Output format")
+
     args = parser.parse_args()
+
+    # Build configuration
+    config = create_default_config(title=args.title or "Federated Learning Metrics")
+    config["style"].palette = args.palette
+    config["style"].theme = args.style
+    config["style"].dpi = args.dpi
 
     if args.fedprox_comparison:
         # Handle comparison plotting
@@ -436,8 +496,8 @@ def main():
         output_dir = Path(args.output_dir) if args.output_dir else Path(comparison_dir)
         output_dir.mkdir(exist_ok=True)
 
-        comparison_plot_path = output_dir / "fedprox_vs_fedavg_comparison.png"
-        plot_fedprox_comparison(comparison_dir, str(comparison_plot_path))
+        comparison_plot_path = output_dir / f"fedprox_vs_fedavg_comparison.{args.format}"
+        plot_fedprox_comparison(comparison_dir, str(comparison_plot_path), config)
         print(f"FedProx vs FedAvg comparison plot saved to: {comparison_plot_path}")
         return
 
@@ -452,16 +512,16 @@ def main():
     # Plot server metrics
     server_metrics_path = run_path / "metrics.csv"
     if server_metrics_path.exists():
-        server_plot_path = output_dir / "server_metrics_plot.png"
-        plot_server_metrics(str(server_metrics_path), str(server_plot_path))
+        server_plot_path = output_dir / f"server_metrics_plot.{args.format}"
+        plot_server_metrics(str(server_metrics_path), str(server_plot_path), config)
         print(f"Server metrics plot saved to: {server_plot_path}")
 
     # Plot client metrics
     client_metrics_paths = list(run_path.glob("client_*_metrics.csv"))
     if client_metrics_paths:
-        client_plot_path = output_dir / "client_metrics_plot.png"
+        client_plot_path = output_dir / f"client_metrics_plot.{args.format}"
         plot_client_metrics(
-            [str(p) for p in client_metrics_paths], str(client_plot_path)
+            [str(p) for p in client_metrics_paths], str(client_plot_path), config
         )
         print(f"Client metrics plot saved to: {client_plot_path}")
 
