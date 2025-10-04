@@ -139,6 +139,20 @@ jobs:
             cp "$RUN_DIR/client_metrics_plot.png" "$RUN_DIR/fedprox_comparison.png"
           fi
 
+      - name: Generate thesis-quality plots
+        run: |
+          export ALPHA="${{ matrix.alpha }}"
+          export MU="${{ matrix.mu }}"
+          PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}"
+          RUN_DIR="runs/$PRESET"
+
+          # Generate heterogeneity dimension plots (alpha variation is heterogeneity)
+          mkdir -p "$RUN_DIR/thesis_plots"
+          python scripts/generate_thesis_plots.py \
+            --dimension heterogeneity \
+            --runs_dir runs \
+            --output_dir "$RUN_DIR/thesis_plots" || echo "Thesis plots generation failed (non-fatal)"
+
       - name: Validate results
         run: python scripts/ci_checks.py --runs_dir runs
 
@@ -154,6 +168,8 @@ jobs:
             runs/**/client_*.log
             runs/**/server_metrics_plot.png
             runs/**/client_metrics_plot.png
+            runs/**/thesis_plots/**/*.png
+            runs/**/thesis_plots/**/*.pdf
           retention-days: 30
 
   fedprox_summary:
@@ -190,6 +206,8 @@ jobs:
             fedprox-summary/fedprox_comparison_summary.json
             fedprox-summary/fedprox_performance_plots.png
             fedprox-summary/fedprox_thesis_tables.tex
+            fedprox-summary/thesis_plots/**/*.png
+            fedprox-summary/thesis_plots/**/*.pdf
           retention-days: 60
 
   commit_plots:
