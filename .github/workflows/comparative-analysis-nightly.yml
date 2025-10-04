@@ -1,0 +1,218 @@
+name: Comparative Analysis Nightly
+
+on:
+  schedule:
+    - cron: "0 3 * * 0"  # 3 AM UTC every Sunday
+  workflow_dispatch:
+    inputs:
+      dimensions:
+        description: 'Dimensions to run (comma-separated: aggregation,heterogeneity,attack,privacy,personalization,all)'
+        required: false
+        default: "all"
+        type: string
+      num_clients:
+        description: "Number of clients"
+        required: false
+        default: "6"
+        type: string
+      num_rounds:
+        description: "Number of rounds"
+        required: false
+        default: "20"
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  comparative_analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 hours
+    strategy:
+      fail-fast: false
+      matrix:
+        dimension: [aggregation, heterogeneity, attack, privacy, personalization]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      - name: Prepare real dataset samples
+        run: python scripts/setup_real_datasets.py
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Run comparative analysis
+        env:
+          D2_EXTENDED_METRICS: "1"
+        run: |
+          CLIENTS=${{ github.event.inputs.num_clients || '6' }}
+          ROUNDS=${{ github.event.inputs.num_rounds || '20' }}
+
+          python scripts/comparative_analysis.py \
+            --dimension ${{ matrix.dimension }} \
+            --output_dir results/comparative_analysis
+
+      - name: Generate thesis plots
+        run: |
+          python scripts/generate_thesis_plots.py \
+            --dimension ${{ matrix.dimension }} \
+            --runs_dir runs \
+            --output_dir results/thesis_plots/${{ matrix.dimension }}
+
+      - name: Validate results
+        run: |
+          FOUND=0
+          for dir in runs/comp_*/; do
+            if [ -f "$dir/metrics.csv" ]; then
+              echo "✓ Found metrics in $(basename $dir)"
+              FOUND=$((FOUND + 1))
+            fi
+          done
+          echo "Total experiments with metrics: $FOUND"
+          if [ $FOUND -eq 0 ]; then
+            echo "Error: No experiments produced metrics"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: comparative-analysis-${{ matrix.dimension }}-${{ github.sha }}
+          path: |
+            runs/comp_**/metrics.csv
+            runs/comp_**/client_*_metrics.csv
+            runs/comp_**/config.json
+            runs/comp_**/*.log
+            results/thesis_plots/${{ matrix.dimension }}/**/*.png
+            results/thesis_plots/${{ matrix.dimension }}/**/*.pdf
+          retention-days: 90
+
+  consolidated_summary:
+    needs: comparative_analysis
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pandas matplotlib seaborn numpy scipy
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: comparative-artifacts
+
+      - name: Generate consolidated summary
+        run: |
+          mkdir -p thesis-summary
+
+          # Collect all thesis plots into one directory
+          find comparative-artifacts -name "*.png" -o -name "*.pdf" | while read file; do
+            cp "$file" thesis-summary/
+          done
+
+          # Create markdown index
+          cat > thesis-summary/README.md << 'EOF'
+          # Comparative Analysis Thesis Plots
+
+          Auto-generated on $(date)
+
+          ## Available Plots
+
+          EOF
+
+          for dim in aggregation heterogeneity attack privacy personalization; do
+            echo "### $dim" >> thesis-summary/README.md
+            find thesis-summary -name "*${dim}*.png" | while read plot; do
+              echo "- ![$(basename $plot)]($(basename $plot))" >> thesis-summary/README.md
+            done
+            echo "" >> thesis-summary/README.md
+          done
+
+      - name: Upload consolidated results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: thesis-plots-summary-${{ github.sha }}
+          path: thesis-summary/**
+          retention-days: 90
+
+  commit_thesis_plots:
+    needs: [consolidated_summary]
+    runs-on: ubuntu-latest
+    if: always() && needs.consolidated_summary.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download consolidated results
+        uses: actions/download-artifact@v4
+        with:
+          name: thesis-plots-summary-${{ github.sha }}
+          path: thesis-summary
+
+      - name: Commit plots to repository
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          mkdir -p plots/thesis
+
+          # Copy thesis plots
+          if [ -d "thesis-summary" ]; then
+            python scripts/commit_plots.py \
+              --source_dir thesis-summary \
+              --experiment_type thesis-comparative \
+              --plots_dir plots/thesis
+          fi
+
+      - name: Push plots to repository
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No changes to push"
+            exit 0
+          fi
+
+          git push origin main
+
+  notify_failure:
+    needs: comparative_analysis
+    runs-on: ubuntu-latest
+    if: always() && needs.comparative_analysis.result == 'failure'
+    steps:
+      - name: Log comparative analysis failure
+        run: |
+          echo "🚨 Comparative Analysis Nightly Failed"
+          echo "Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Failed at: $(date)"
