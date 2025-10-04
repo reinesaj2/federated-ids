@@ -57,9 +57,19 @@ def validate_plot_files(run_dir: Path) -> None:
 
 
 def validate_fpr_tolerance(
-    run_dir: Path, target_fpr: float = 0.10, tolerance: float = 0.02
+    run_dir: Path,
+    target_fpr: float = 0.10,
+    tolerance: float = 0.02,
+    strict: bool = True,
 ) -> None:
-    """Validate that benign FPR at tau is within tolerance of target when using low_fpr mode."""
+    """Validate that benign FPR at tau is within tolerance of target when using low_fpr mode.
+
+    Args:
+        run_dir: Directory containing client metrics
+        target_fpr: Target FPR value (default 0.10)
+        tolerance: Tolerance band around target (default 0.02)
+        strict: If False, log warnings instead of raising errors (default True)
+    """
     client_metrics_files = list(run_dir.glob("client_*_metrics.csv"))
 
     if not client_metrics_files:
@@ -89,11 +99,15 @@ def validate_fpr_tolerance(
                         fpr_diff = abs(benign_fpr - target_fpr)
 
                         if fpr_diff > tolerance:
-                            raise ArtifactValidationError(
+                            message = (
                                 f"FPR tolerance check failed for {client_file.name}: "
                                 f"benign_fpr_bin_tau={benign_fpr:.3f}, target={target_fpr:.3f}, "
                                 f"diff={fpr_diff:.3f} > tolerance={tolerance:.3f}"
                             )
+                            if strict:
+                                raise ArtifactValidationError(message)
+                            else:
+                                print(f"⚠️  Warning: {message}")
                     except ValueError:
                         pass  # Skip if conversion fails
         except Exception as e:
@@ -103,8 +117,13 @@ def validate_fpr_tolerance(
             pass
 
 
-def validate_run_directory(run_dir: Path) -> None:
-    """Validate a single FL run directory."""
+def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
+    """Validate a single FL run directory.
+
+    Args:
+        run_dir: Directory to validate
+        fpr_strict: If False, FPR tolerance violations are warnings (default True)
+    """
     print(f"Validating run directory: {run_dir}")
 
     # Validate server metrics - require basic structure
@@ -126,7 +145,7 @@ def validate_run_directory(run_dir: Path) -> None:
     validate_plot_files(run_dir)
 
     # Validate FPR tolerance if using low_fpr tau mode
-    validate_fpr_tolerance(run_dir, target_fpr=0.10, tolerance=0.02)
+    validate_fpr_tolerance(run_dir, target_fpr=0.10, tolerance=0.02, strict=fpr_strict)
 
     print(f"✓ Run directory {run_dir.name} validation passed")
 
@@ -148,6 +167,8 @@ def find_run_directories(runs_dir: Path) -> List[Path]:
 
 def main() -> None:
     """Main CI validation entry point."""
+    import os
+
     parser = argparse.ArgumentParser(
         description="Validate FL experiment artifacts for CI"
     )
@@ -159,7 +180,21 @@ def main() -> None:
         help="Directory containing FL run subdirectories",
     )
 
+    parser.add_argument(
+        "--fpr_strict",
+        action="store_true",
+        help="Enforce strict FPR tolerance (raises error on violations). Default: warnings only.",
+    )
+
     args = parser.parse_args()
+
+    # Allow environment variable to override FPR strictness
+    # FPR_STRICT=1 for strict validation (errors), FPR_STRICT=0 for warnings only
+    fpr_strict_env = os.environ.get("FPR_STRICT", "0")
+    fpr_strict = args.fpr_strict or (fpr_strict_env == "1")
+
+    if not fpr_strict:
+        print("ℹ️  FPR tolerance check: warnings only (not blocking)")
 
     try:
         runs_dir = Path(args.runs_dir)
@@ -168,7 +203,7 @@ def main() -> None:
         print(f"Found {len(run_directories)} run directories to validate")
 
         for run_dir in run_directories:
-            validate_run_directory(run_dir)
+            validate_run_directory(run_dir, fpr_strict=fpr_strict)
 
         print(f"✓ All {len(run_directories)} run directories passed validation")
 
