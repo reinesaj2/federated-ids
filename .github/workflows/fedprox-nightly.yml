@@ -2,7 +2,7 @@ name: FedProx Nightly Comparison
 
 on:
   schedule:
-    - cron: "0 2 * * *"  # 2 AM UTC daily
+    - cron: "0 2 * * *" # 2 AM UTC daily
   workflow_dispatch:
     inputs:
       alpha_values:
@@ -37,7 +37,7 @@ concurrency:
 jobs:
   fedprox_comparison:
     runs-on: ubuntu-latest
-    timeout-minutes: 240  # 4 hours
+    timeout-minutes: 240 # 4 hours
     strategy:
       fail-fast: false
       matrix:
@@ -100,13 +100,13 @@ jobs:
             # Start server
             python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
             SERVER_PID=$!
-            
+
             # Wait for server
             for i in {1..20}; do
               nc -z 127.0.0.1 $PORT 2>/dev/null && break
               sleep 0.5
             done
-            
+
             # Start all clients with FedProx mu parameter
             CLIENT_PIDS=()
             for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
@@ -115,12 +115,12 @@ jobs:
                 --fedprox_mu $MU --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
               CLIENT_PIDS+=($!)
             done
-            
+
             # Wait for all clients
             for PID in "${CLIENT_PIDS[@]}"; do
               wait $PID
             done
-            
+
             # Clean up server
             sleep 2
             kill $SERVER_PID 2>/dev/null || true
@@ -221,6 +221,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -268,14 +269,12 @@ jobs:
 
       - name: Push plots to repository
         run: |
-          # Check if there are any changes to push
-          if git diff --quiet && git diff --cached --quiet; then
-            echo "No changes to push"
-            exit 0
+          # Check if there are unpushed commits
+          if git log origin/main..HEAD --oneline | grep -q .; then
+            git push origin main
+          else
+            echo "No commits to push"
           fi
-
-          # Push changes
-          git push origin main
 
   fedprox_notify:
     needs: fedprox_comparison
