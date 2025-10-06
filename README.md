@@ -239,6 +239,78 @@ cat logs/client_0_metrics.csv | grep -v "^client_id" | cut -d',' -f29,30,33
 
 ---
 
+## 6.6) Multi-class attack detection
+
+The framework supports multi-class attack detection (e.g., 8+ attack types) in addition to binary classification (BENIGN vs attack). Multi-class support enables per-attack-type performance analysis.
+
+### Synthetic multi-class experiments
+
+Use the `--num_classes` parameter to test multi-class scenarios:
+
+```bash
+# 8-class synthetic experiment (simulates DoS, DDoS, PortScan, etc.)
+python server.py --rounds 5 --aggregation fedavg --server_address 127.0.0.1:8080 &
+
+python client.py \
+  --server_address 127.0.0.1:8080 \
+  --dataset synthetic \
+  --samples 2000 \
+  --features 20 \
+  --num_classes 8 \
+  --client_id 0 \
+  --num_clients 2 \
+  --partition_strategy dirichlet \
+  --alpha 0.1 &
+
+python client.py \
+  --server_address 127.0.0.1:8080 \
+  --dataset synthetic \
+  --samples 2000 \
+  --features 20 \
+  --num_classes 8 \
+  --client_id 1 \
+  --num_clients 2 \
+  --partition_strategy dirichlet \
+  --alpha 0.1 &
+
+wait
+```
+
+### Per-class metrics
+
+When using extended metrics (`D2_EXTENDED_METRICS=1`), the following per-class metrics are logged:
+
+- **`f1_per_class_after`**: F1-score for each class (JSON format: `{"0": 0.92, "1": 0.88, ...}`)
+- **`precision_per_class`**: Precision for each class
+- **`recall_per_class`**: Recall for each class
+
+Example:
+```bash
+export D2_EXTENDED_METRICS=1
+# Run experiment as above, then inspect metrics
+cat logs/client_0_metrics.csv | grep -v "^client_id" | cut -d',' -f13,14,15
+# Columns: f1_per_class_after, precision_per_class, recall_per_class
+```
+
+### Real multi-class datasets
+
+For CIC-IDS2017 and UNSW-NB15, `num_classes` is automatically detected from the dataset labels. No manual configuration needed.
+
+```bash
+# CIC-IDS2017 multi-class (8 attack types + BENIGN)
+python client.py \
+  --dataset cic \
+  --data_path data/cic/cic_ids2017_multiclass.csv \
+  --num_clients 3 \
+  --client_id 0 \
+  --partition_strategy dirichlet \
+  --alpha 0.1
+
+# num_classes automatically set to 9 (8 attacks + BENIGN)
+```
+
+---
+
 ## 7) Real datasets (UNSW‑NB15, CIC‑IDS2017)
 
 Important rule: all clients connected to the same server must use the same dataset and preprocessing settings.
