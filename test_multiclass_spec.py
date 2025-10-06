@@ -5,7 +5,10 @@ import numpy as np
 import pandas as pd
 import torch
 from client import SimpleNet
-from data_preprocessing import prepare_partitions_from_dataframe
+from data_preprocessing import (
+    prepare_partitions_from_dataframe,
+    create_synthetic_classification_loaders,
+)
 
 
 class TestSimpleNetArchitecture:
@@ -115,3 +118,65 @@ class TestPerClassMetrics:
             assert f1_parsed[str(i)] == sample_f1s[i]
             assert precision_parsed[str(i)] == sample_precisions[i]
             assert recall_parsed[str(i)] == sample_recalls[i]
+
+
+class TestSyntheticDataGeneration:
+    """Test synthetic data generation with multi-class support."""
+
+    def test_synthetic_binary_classification(self):
+        """Test synthetic data with default binary classification."""
+        num_samples = 1000
+        num_features = 10
+        batch_size = 32
+        num_classes = 2
+
+        train_loader, test_loader = create_synthetic_classification_loaders(
+            num_samples=num_samples,
+            num_features=num_features,
+            batch_size=batch_size,
+            seed=42,
+            num_classes=num_classes,
+        )
+
+        all_labels = []
+        for _, labels in train_loader:
+            all_labels.extend(labels.numpy())
+        for _, labels in test_loader:
+            all_labels.extend(labels.numpy())
+
+        unique_labels = set(all_labels)
+        assert len(unique_labels) == num_classes
+        assert unique_labels == {0, 1}
+
+    def test_synthetic_multiclass_8_classes(self):
+        """Test synthetic data with 8 classes."""
+        num_samples = 1600
+        num_features = 20
+        batch_size = 64
+        num_classes = 8
+
+        train_loader, test_loader = create_synthetic_classification_loaders(
+            num_samples=num_samples,
+            num_features=num_features,
+            batch_size=batch_size,
+            seed=42,
+            num_classes=num_classes,
+        )
+
+        all_labels = []
+        for _, labels in train_loader:
+            all_labels.extend(labels.numpy())
+        for _, labels in test_loader:
+            all_labels.extend(labels.numpy())
+
+        unique_labels = set(all_labels)
+        assert len(unique_labels) == num_classes
+        assert unique_labels == set(range(num_classes))
+
+        label_counts = {}
+        for label in all_labels:
+            label_counts[label] = label_counts.get(label, 0) + 1
+
+        for class_id in range(num_classes):
+            assert class_id in label_counts
+            assert label_counts[class_id] > 0

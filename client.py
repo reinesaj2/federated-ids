@@ -485,10 +485,11 @@ class TorchClient(fl.client.NumPyClient):
                             float(
                                 f1_score(
                                     labels_after,
-                                    preds_after == c,
-                                    labels=[c],
-                                    average="macro",
-                                )
+                                    preds_after,
+                                    labels=list(range(num_classes)),
+                                    average=None,
+                                    zero_division=0,
+                                )[c]
                             )
                         )
                     import json as _json
@@ -843,6 +844,7 @@ def main() -> None:
             num_features=args.features,
             batch_size=args.batch_size,
             seed=args.seed,
+            num_classes=args.num_classes,
         )
         model = SimpleNet(num_features=args.features, num_classes=args.num_classes)
         # Analyze data distribution for synthetic data
