@@ -17,6 +17,10 @@ SAMPLES = {
         "source": ROOT / "datasets" / "real" / "cic_ids2017_sample.csv.gz",
         "target": ROOT / "data" / "cic" / "cic_ids2017_sample.csv",
     },
+    "cic_multiclass": {
+        "source": ROOT / "datasets" / "real" / "cic_ids2017_multiclass.csv.gz",
+        "target": ROOT / "data" / "cic" / "cic_ids2017_multiclass.csv",
+    },
 }
 
 
