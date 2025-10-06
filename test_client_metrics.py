@@ -50,6 +50,8 @@ def test_client_metrics_csv_creation():
                     "macro_f1_argmax",
                     "benign_fpr_argmax",
                     "f1_per_class_after",
+                    "precision_per_class",
+                    "recall_per_class",
                     "fpr_after",
                     "pr_auc_after",
                     "threshold_tau",
