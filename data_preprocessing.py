@@ -24,6 +24,7 @@ DEFAULT_DROP_COLS: List[str] = [
     "Dst Port",
 ]
 
+
 @dataclass
 class DatasetStats:
     num_samples: int
@@ -40,18 +41,36 @@ def create_synthetic_classification_loaders(
     num_features: int,
     batch_size: int,
     seed: int = 42,
+    num_classes: int = 2,
 ) -> Tuple[DataLoader, DataLoader]:
     rng = np.random.default_rng(seed)
 
-    # Two-class synthetic data with controlled separation
-    means = np.zeros(num_features)
+    # Multi-class synthetic data with controlled separation
+    # Generate K Gaussian clusters arranged in a circle pattern
+    X_list = []
+    y_list = []
+    samples_per_class = num_samples // num_classes
+    remainder = num_samples % num_classes
+
     cov = np.eye(num_features)
-    x0 = rng.multivariate_normal(mean=means - 0.5, cov=cov, size=num_samples // 2)
-    x1 = rng.multivariate_normal(
-        mean=means + 0.5, cov=cov, size=num_samples - x0.shape[0]
-    )
-    X = np.vstack([x0, x1]).astype(np.float32)
-    y = np.array([0] * x0.shape[0] + [1] * x1.shape[0], dtype=np.int64)
+
+    for class_idx in range(num_classes):
+        # Distribute classes in a circle for max separation (first 2 dimensions)
+        angle = 2 * np.pi * class_idx / num_classes
+        mean = np.zeros(num_features)
+        mean[0] = 2.0 * np.cos(angle)
+        if num_features > 1:
+            mean[1] = 2.0 * np.sin(angle)
+
+        # Distribute remainder samples across first few classes
+        n_samples_for_class = samples_per_class + (1 if class_idx < remainder else 0)
+
+        x_class = rng.multivariate_normal(mean=mean, cov=cov, size=n_samples_for_class)
+        X_list.append(x_class)
+        y_list.extend([class_idx] * n_samples_for_class)
+
+    X = np.vstack(X_list).astype(np.float32)
+    y = np.array(y_list, dtype=np.int64)
 
     # Shuffle consistently
     perm = rng.permutation(len(X))
@@ -313,7 +332,11 @@ def numpy_to_train_val_test_loaders(
     denom = max(train_frac + val_frac, 1e-12)
     val_relative = val_frac / denom
     X_train, X_val, y_train, y_val = train_test_split(
-        X_train_val, y_train_val, test_size=val_relative, random_state=seed, stratify=y_train_val
+        X_train_val,
+        y_train_val,
+        test_size=val_relative,
+        random_state=seed,
+        stratify=y_train_val,
     )
 
     train_ds = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train))
@@ -443,7 +466,9 @@ def prepare_partitions_from_dataframe(
             df, label_col, drop_cols=drop_cols, seed=seed
         )
     else:
-        pre, X_all, y_all = fit_preprocessor_global(df.drop(columns=(drop_cols or []), errors="ignore"), label_col)
+        pre, X_all, y_all = fit_preprocessor_global(
+            df.drop(columns=(drop_cols or []), errors="ignore"), label_col
+        )
     num_classes_global = int(len(np.unique(y_all)))
     if partition_strategy == "iid":
         shards = iid_partition(num_samples=len(df), num_clients=num_clients, seed=seed)

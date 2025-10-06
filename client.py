@@ -8,7 +8,13 @@ import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from sklearn.metrics import f1_score, precision_recall_curve, average_precision_score
+from sklearn.metrics import (
+    f1_score,
+    precision_score,
+    recall_score,
+    precision_recall_curve,
+    average_precision_score,
+)
 
 from data_preprocessing import (
     create_synthetic_classification_loaders,
@@ -442,6 +448,8 @@ class TorchClient(fl.client.NumPyClient):
         macro_f1_argmax = None
         benign_fpr_argmax = None
         f1_per_class_after_json = None
+        precision_per_class_json = None
+        recall_per_class_json = None
         fpr_after = None
         pr_auc_after = None
         threshold_tau = None
@@ -477,16 +485,51 @@ class TorchClient(fl.client.NumPyClient):
                             float(
                                 f1_score(
                                     labels_after,
-                                    preds_after == c,
-                                    labels=[c],
-                                    average="macro",
-                                )
+                                    preds_after,
+                                    labels=list(range(num_classes)),
+                                    average=None,
+                                    zero_division=0,
+                                )[c]
                             )
                         )
                     import json as _json
 
                     f1_per_class_after_json = _json.dumps(
                         {str(i): f for i, f in enumerate(f1s)}
+                    )
+                    # Per-class Precision
+                    precisions = []
+                    for c in range(num_classes):
+                        precisions.append(
+                            float(
+                                precision_score(
+                                    labels_after,
+                                    preds_after,
+                                    labels=list(range(num_classes)),
+                                    average=None,
+                                    zero_division=0,
+                                )[c]
+                            )
+                        )
+                    precision_per_class_json = _json.dumps(
+                        {str(i): p for i, p in enumerate(precisions)}
+                    )
+                    # Per-class Recall
+                    recalls = []
+                    for c in range(num_classes):
+                        recalls.append(
+                            float(
+                                recall_score(
+                                    labels_after,
+                                    preds_after,
+                                    labels=list(range(num_classes)),
+                                    average=None,
+                                    zero_division=0,
+                                )[c]
+                            )
+                        )
+                    recall_per_class_json = _json.dumps(
+                        {str(i): r for i, r in enumerate(recalls)}
                     )
                     # BENIGN is class 0 by construction in preprocessing
                     if num_classes >= 2:
@@ -554,6 +597,8 @@ class TorchClient(fl.client.NumPyClient):
             macro_f1_argmax=macro_f1_argmax,
             benign_fpr_argmax=benign_fpr_argmax,
             f1_per_class_after_json=f1_per_class_after_json,
+            precision_per_class_json=precision_per_class_json,
+            recall_per_class_json=recall_per_class_json,
             fpr_after=fpr_after,
             pr_auc_after=pr_auc_after,
             threshold_tau=threshold_tau,
@@ -699,6 +744,12 @@ def main() -> None:
     )
     parser.add_argument("--samples", type=int, default=2000)
     parser.add_argument("--features", type=int, default=20)
+    parser.add_argument(
+        "--num_classes",
+        type=int,
+        default=2,
+        help="Number of classes for synthetic dataset (default: 2 for binary)",
+    )
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
@@ -793,15 +844,16 @@ def main() -> None:
             num_features=args.features,
             batch_size=args.batch_size,
             seed=args.seed,
+            num_classes=args.num_classes,
         )
-        model = SimpleNet(num_features=args.features, num_classes=2)
+        model = SimpleNet(num_features=args.features, num_classes=args.num_classes)
         # Analyze data distribution for synthetic data
         synthetic_labels = np.random.randint(
-            0, 2, size=args.samples
+            0, args.num_classes, size=args.samples
         )  # Approximate for metrics
         data_stats = analyze_data_distribution(synthetic_labels)
         label_hist_json = create_label_histogram_json(synthetic_labels)
-        num_classes_global = 2
+        num_classes_global = args.num_classes
     else:
         if not args.data_path:
             raise SystemExit("--data_path is required for dataset unsw/cic")
