@@ -9,6 +9,7 @@ from data_preprocessing import (
     prepare_partitions_from_dataframe,
     dirichlet_partition,
     protocol_partition,
+    load_cic_ids2017,
 )
 
 
@@ -91,3 +92,39 @@ def test_preprocessor_yields_same_feature_dim_when_fitted_on_shuffled_rows():
     _, X1, _ = fit_preprocessor_global(df, label_col="label")
     _, X2, _ = fit_preprocessor_global(df_shuffled, label_col="label")
     assert X1.shape[1] == X2.shape[1]
+
+
+def test_load_cic_ids2017_trims_whitespace_headers(tmp_path):
+    df = pd.DataFrame(
+        {
+            " FlowDuration": [1.0, 2.0],
+            " Label": ["benign", "Attack"],
+            " Protocol": ["tcp", "udp"],
+        }
+    )
+    csv_path = tmp_path / "cic_whitespace.csv"
+    df.to_csv(csv_path, index=False)
+
+    loaded_df, label_col, proto_col = load_cic_ids2017(str(csv_path))
+
+    assert label_col == "Label"
+    assert proto_col == "Protocol"
+    assert {"BENIGN", "ATTACK"} == set(loaded_df[label_col].unique())
+
+
+def test_load_cic_ids2017_drops_infinite_rows(tmp_path):
+    df = pd.DataFrame(
+        {
+            "Dst Port": [80, 443],
+            "Label": ["BENIGN", "Attack"],
+            "Flow Bytes/s": [np.inf, 123.0],
+        }
+    )
+    csv_path = tmp_path / "cic_inf.csv"
+    df.to_csv(csv_path, index=False)
+
+    loaded_df, label_col, _ = load_cic_ids2017(str(csv_path))
+
+    assert len(loaded_df) == 1
+    assert np.isfinite(loaded_df["Flow Bytes/s"].values).all()
+    assert label_col == "Label"

@@ -355,6 +355,7 @@ def load_csv_dataset(
     drop_cols: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     df = pd.read_csv(csv_path)
+    df.columns = [col.strip() if isinstance(col, str) else col for col in df.columns]
     # Basic cleanup: drop fully null columns
     df = df.dropna(axis=1, how="all")
     # Drop rows with missing label
@@ -368,6 +369,8 @@ def load_unsw_nb15(csv_path: str) -> Tuple[pd.DataFrame, str, Optional[str]]:
     Tries common column names across variants.
     """
     df = pd.read_csv(csv_path)
+    df.columns = [col.strip() if isinstance(col, str) else col for col in df.columns]
+    df = df.replace([np.inf, -np.inf], np.nan)
     # Standardize: some versions use 'Label' with 'Normal'/'Attack' or binary 0/1
     candidate_labels = [
         "label",
@@ -388,7 +391,7 @@ def load_unsw_nb15(csv_path: str) -> Tuple[pd.DataFrame, str, Optional[str]]:
     proto_col = "proto" if "proto" in df.columns else None
     # Basic cleanup
     df = df.dropna(axis=1, how="all")
-    df = df[~df[label_col].isna()].reset_index(drop=True)
+    df = df.dropna(axis=0).reset_index(drop=True)
     return df, label_col, proto_col
 
 
@@ -398,6 +401,8 @@ def load_cic_ids2017(csv_path: str) -> Tuple[pd.DataFrame, str, Optional[str]]:
     Tries common column names across merged/day CSVs.
     """
     df = pd.read_csv(csv_path)
+    df.columns = [col.strip() if isinstance(col, str) else col for col in df.columns]
+    df = df.replace([np.inf, -np.inf], np.nan)
     candidate_labels = [
         "Label",
         "label",
@@ -417,7 +422,7 @@ def load_cic_ids2017(csv_path: str) -> Tuple[pd.DataFrame, str, Optional[str]]:
     proto_col_candidates = ["Protocol", "ProtocolName", "proto"]
     proto_col = next((c for c in proto_col_candidates if c in df.columns), None)
     df = df.dropna(axis=1, how="all")
-    df = df[~df[label_col].isna()].reset_index(drop=True)
+    df = df.dropna(axis=0).reset_index(drop=True)
     return df, label_col, proto_col
 
 

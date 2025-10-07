@@ -635,8 +635,27 @@ class TorchClient(fl.client.NumPyClient):
         macro_f1_global = macro_f1_after
         benign_fpr_global = benign_fpr_bin_tau
 
+        # Debug: Compute weight norm before personalization
+        import os as _debug_os
+
+        debug_enabled = _debug_os.environ.get("DEBUG_PERSONALIZATION", "0") == "1"
+        weights_before_pers = get_parameters(self.model)
+        if debug_enabled:
+            norm_before = float(np.sqrt(sum(np.sum(w**2) for w in weights_before_pers)))
+            cid = self.metrics_logger.client_id
+            print(
+                f"[Client {cid}] Personalization R{self.round_num}: "
+                f"Starting with {personalization_epochs} epochs, "
+                f"global F1={macro_f1_global:.4f}, "
+                f"weight_norm={norm_before:.4f}"
+            )
+            print(
+                f"[Client {cid}] Train size: {len(self.train_loader.dataset)}, "
+                f"Test size: {len(self.test_loader.dataset)}"
+            )
+
         # Fine-tune on local train data
-        for _ in range(personalization_epochs):
+        for epoch_idx in range(personalization_epochs):
             train_epoch(
                 self.model,
                 self.train_loader,
@@ -645,6 +664,26 @@ class TorchClient(fl.client.NumPyClient):
                 global_params=None,
                 fedprox_mu=0.0,
             )
+            if debug_enabled and epoch_idx == 0:
+                # Check if weights changed after first epoch
+                weights_after_first = get_parameters(self.model)
+                norm_after_first = float(
+                    np.sqrt(sum(np.sum(w**2) for w in weights_after_first))
+                )
+                weight_delta = float(
+                    np.sqrt(
+                        sum(
+                            np.sum((w1 - w2) ** 2)
+                            for w1, w2 in zip(weights_after_first, weights_before_pers)
+                        )
+                    )
+                )
+                cid = self.metrics_logger.client_id
+                print(
+                    f"[Client {cid}] After epoch 1: "
+                    f"weight_norm={norm_after_first:.4f}, "
+                    f"delta={weight_delta:.6f}"
+                )
 
         # Evaluate personalized model
         try:
@@ -681,6 +720,22 @@ class TorchClient(fl.client.NumPyClient):
                 # Compute improvement gain
                 if macro_f1_global is not None and macro_f1_personalized is not None:
                     personalization_gain = macro_f1_personalized - macro_f1_global
+
+                if debug_enabled:
+                    cid = self.metrics_logger.client_id
+                    print(
+                        f"[Client {cid}] Personalization results: "
+                        f"global_F1={macro_f1_global:.4f}, "
+                        f"personalized_F1={macro_f1_personalized:.4f}, "
+                        f"gain={personalization_gain:.6f}"
+                    )
+                    if abs(personalization_gain) < 0.001:
+                        print(
+                            f"[Client {cid}] WARNING: Near-zero gain detected! "
+                            f"Possible causes: (1) train/test same distribution, "
+                            f"(2) insufficient personalization epochs, "
+                            f"(3) learning rate too low"
+                        )
 
             # Log personalization metrics
             self.metrics_logger.log_personalization_metrics(
