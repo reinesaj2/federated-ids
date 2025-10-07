@@ -13,6 +13,7 @@ Generates reproducible results for thesis validation.
 """
 
 import argparse
+import errno
 import json
 import socket
 import subprocess
@@ -239,10 +240,17 @@ class ComparisonMatrix:
 def is_port_available(port: int, host: str = "localhost") -> bool:
     """Check if a port is available for use."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             sock.bind((host, port))
             return True
-        except OSError:
+        except PermissionError:
+            if port < 1024:
+                return False
+            return True
+        except OSError as exc:
+            if exc.errno == errno.EPERM and port >= 1024:
+                return True
             return False
 
 
