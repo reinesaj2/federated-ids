@@ -239,8 +239,13 @@ class ComparisonMatrix:
 def is_port_available(port: int, host: str = "localhost") -> bool:
     """Check if a port is available for use."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             sock.bind((host, port))
+            return True
+        except PermissionError:
+            if port < 1024:
+                return False
             return True
         except OSError:
             return False
