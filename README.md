@@ -237,6 +237,58 @@ cat logs/client_0_metrics.csv | grep -v "^client_id" | cut -d',' -f29,30,33
 # Columns: macro_f1_global, macro_f1_personalized, personalization_gain
 ```
 
+### When personalization helps
+
+Personalization shows **positive gains** when:
+
+1. **Highly heterogeneous clients** (use `--dirichlet_alpha 0.05` or lower)
+2. **Protocol-based partitioning** where each client sees specific attack types
+3. **Sufficient personalization epochs** (5-10 epochs recommended)
+4. **Appropriate learning rate** (0.01-0.02 works well)
+5. **Global model not fully converged** (room for local adaptation)
+
+**When to expect zero gains (this is correct behavior!):**
+- IID data (`alpha=1.0` or uniform partitioning)
+- Stratified train/test splits (maintains same class distribution)
+- Global model already achieves >95% F1
+
+**Latest real-data experiments (2025-10-07):**
+- `UNSW, α=0.1, 5 epochs, lr=0.01` → mean gain **+7.0%** (client 2: +17%)
+- `UNSW, α=0.05, 10 epochs, lr=0.01` → skewed shard gain **+4.5%**, other shards already saturated
+- `UNSW, α=1.0, 5 epochs, lr=0.01` → mean gain **+0.25%** (IID ≈ zero)
+- `CIC sample` (single-class shards) → global and personalized F1 both **1.0** (no headroom)
+
+Full tables and log paths are documented in `docs/personalization_investigation.md` (`logs_debug/`).
+
+**Troubleshooting:**
+
+```bash
+# Enable debug logging to diagnose zero-gain issues
+export DEBUG_PERSONALIZATION=1
+python client.py --personalization_epochs 5 ...
+
+# Expected output:
+# [Client 0] Personalization R1: Starting with 5 epochs, global F1=0.7234, ...
+# [Client 0] After epoch 1: weight_norm=5.5123, delta=0.002341
+# [Client 0] Personalization results: global_F1=0.7234, personalized_F1=0.7456, gain=0.022200
+#
+# If gain < 0.001, you'll see:
+# [Client 0] WARNING: Near-zero gain detected!
+# Possible causes: (1) train/test same distribution, (2) insufficient epochs, (3) LR too low
+```
+
+**Diagnostic tools:**
+
+```bash
+# Analyze train/test data distributions
+python scripts/analyze_data_splits.py --dataset unsw --data_path data/unsw/unsw_nb15_sample.csv --alpha 0.1
+
+# Run comprehensive diagnostic experiments
+python scripts/debug_personalization.py --dataset unsw --num_clients 3
+```
+
+See [docs/personalization_investigation.md](docs/personalization_investigation.md) for detailed investigation findings.
+
 ---
 
 ## 6.6) Multi-class attack detection
