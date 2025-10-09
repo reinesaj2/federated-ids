@@ -35,6 +35,16 @@ from client_metrics import (
 from privacy_accounting import compute_epsilon
 
 
+DEFAULT_CLIENT_LR = 1e-3
+DEFAULT_WEIGHT_DECAY = 1e-4
+
+
+def create_adamw_optimizer(
+    parameters, lr: float, weight_decay: float = DEFAULT_WEIGHT_DECAY
+) -> torch.optim.Optimizer:
+    return torch.optim.AdamW(parameters, lr=lr, weight_decay=weight_decay)
+
+
 def set_global_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -75,10 +85,11 @@ def train_epoch(
     lr: float,
     global_params: Optional[List[np.ndarray]] = None,
     fedprox_mu: float = 0.0,
+    weight_decay: float = DEFAULT_WEIGHT_DECAY,
 ) -> float:
     model.train()
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = create_adamw_optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
     total_loss = 0.0
     num_batches = 0
 
@@ -278,7 +289,12 @@ class TorchClient(fl.client.NumPyClient):
 
         # Get training hyperparameters
         epochs = int(config.get("epoch", self.runtime_config.get("local_epochs", 1)))
-        lr = float(config.get("lr", self.runtime_config.get("lr", 0.01)))
+        lr = float(config.get("lr", self.runtime_config.get("lr", DEFAULT_CLIENT_LR)))
+        weight_decay = float(
+            config.get(
+                "weight_decay", self.runtime_config.get("weight_decay", DEFAULT_WEIGHT_DECAY)
+            )
+        )
         batch_size = self.train_loader.batch_size or 32
 
         # Set initial parameters and capture before metrics
@@ -314,7 +330,9 @@ class TorchClient(fl.client.NumPyClient):
                     # Perform gradient ascent by negating the loss
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+                    optimizer = create_adamw_optimizer(
+                        self.model.parameters(), lr=lr, weight_decay=weight_decay
+                    )
 
                     # Get FedProx parameters
                     fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
@@ -347,7 +365,9 @@ class TorchClient(fl.client.NumPyClient):
                     # Train on intentionally wrong labels: rotate class index by +1
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+                    optimizer = create_adamw_optimizer(
+                        self.model.parameters(), lr=lr, weight_decay=weight_decay
+                    )
                     n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
 
                     # Get FedProx parameters
@@ -388,6 +408,7 @@ class TorchClient(fl.client.NumPyClient):
                         lr,
                         global_params=parameters if fedprox_mu > 0.0 else None,
                         fedprox_mu=fedprox_mu,
+                        weight_decay=weight_decay,
                     )
                 epochs_completed += 1
 
@@ -838,7 +859,13 @@ def main() -> None:
         help="Adversarial client behavior for robustness smoke tests",
     )
     parser.add_argument("--local_epochs", type=int, default=1)
-    parser.add_argument("--lr", type=float, default=0.01)
+    parser.add_argument("--lr", type=float, default=DEFAULT_CLIENT_LR)
+    parser.add_argument(
+        "--weight_decay",
+        type=float,
+        default=DEFAULT_WEIGHT_DECAY,
+        help="AdamW weight decay for local optimizer",
+    )
     parser.add_argument(
         "--fedprox_mu",
         type=float,
@@ -1013,6 +1040,9 @@ def main() -> None:
             "adversary_mode": args.adversary_mode,
             "local_epochs": args.local_epochs,
             "lr": args.lr,
+            "weight_decay": float(
+                os.environ.get("D2_WEIGHT_DECAY", str(args.weight_decay))
+            ),
             "fedprox_mu": float(os.environ.get("D2_FEDPROX_MU", str(args.fedprox_mu))),
             # Privacy/robustness toggles
             "secure_aggregation": bool(

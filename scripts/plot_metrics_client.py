@@ -97,25 +97,41 @@ def _render_client_norms(
     color: str,
     available: Dict[str, str | None],
 ) -> bool:
-    column = available.get("norms")
-    if not column or column not in df.columns:
-        return False
+    weight_column = available.get("norms")
+    grad_column = available.get("grad_norms")
 
-    series = first_present(df, [column])
-    if series is None or series.isna().all():
+    weight_series = first_present(df, [weight_column]) if weight_column else None
+    grad_series = first_present(df, [grad_column]) if grad_column else None
+
+    has_weight = weight_series is not None and not weight_series.isna().all()
+    has_grad = grad_series is not None and not grad_series.isna().all()
+    if not (has_weight or has_grad):
         return False
 
     rounds = pd.to_numeric(df.get("round"), errors="coerce")
-    ax.plot(
-        rounds,
-        series,
-        "o-",
-        color=color,
-        label=f"Client {label}",
-        linewidth=style.linewidth,
-        markersize=style.markersize,
-        alpha=style.alpha,
-    )
+    if has_weight:
+        ax.plot(
+            rounds,
+            weight_series,
+            "o-",
+            color=color,
+            label=f"Client {label} (weights)",
+            linewidth=style.linewidth,
+            markersize=style.markersize,
+            alpha=style.alpha,
+        )
+    if has_grad:
+        ax.plot(
+            rounds,
+            grad_series,
+            "s--",
+            color=color,
+            label=f"Client {label} (grads)",
+            linewidth=style.linewidth,
+            markersize=style.markersize,
+            alpha=max(style.alpha - 0.1, 0.2),
+        )
+
     ax.set_title("Client Norms")
     ax.set_xlabel("Round")
     ax.set_ylabel("Norm")

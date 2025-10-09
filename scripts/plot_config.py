@@ -144,6 +144,7 @@ class MetricDetector:
         "loss": ["loss_after", "local_loss"],
         "accuracy": ["acc_after", "local_accuracy"],
         "norms": ["weight_norm_after", "weight_norm"],
+        "grad_norms": ["grad_norm_l2"],
         "f1_comparison": ["macro_f1_argmax", "f1_bin_tau"],
         "threshold": ["tau_bin", "threshold_tau"],
         "fpr": ["benign_fpr_bin_tau", "fpr_after"],
