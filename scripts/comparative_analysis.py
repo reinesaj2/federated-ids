@@ -13,6 +13,7 @@ Generates reproducible results for thesis validation.
 """
 
 import argparse
+import errno
 import json
 import socket
 import subprocess
@@ -247,7 +248,9 @@ def is_port_available(port: int, host: str = "localhost") -> bool:
             if port < 1024:
                 return False
             return True
-        except OSError:
+        except OSError as exc:
+            if exc.errno == errno.EPERM and port >= 1024:
+                return True
             return False
 
 
