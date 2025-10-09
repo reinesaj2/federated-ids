@@ -90,6 +90,7 @@ def test_client_metrics_csv_creation():
                     "weight_norm_before",
                     "weight_norm_after",
                     "weight_update_norm",
+                    "grad_norm_l2",
                     "t_fit_ms",
                     "epochs_completed",
                     "lr",
@@ -145,6 +146,7 @@ def test_client_metrics_logging_complete_record():
             assert row_dict["weight_norm_before"] == "10.5"
             assert row_dict["weight_norm_after"] == "12.3"
             assert row_dict["weight_update_norm"] == "2.1"
+            assert row_dict["grad_norm_l2"] == "1.8"
             assert row_dict["t_fit_ms"] == "2500.0"
             assert row_dict["epochs_completed"] == "5"
             assert row_dict["lr"] == "0.01"
@@ -238,6 +240,7 @@ def test_client_metrics_with_none_values():
             assert row_dict["weight_norm_before"] == ""  # None -> empty string
             assert row_dict["weight_norm_after"] == "15.2"
             assert row_dict["weight_update_norm"] == ""  # None -> empty string
+            assert row_dict["grad_norm_l2"] == ""
             assert row_dict["t_fit_ms"] == "3000.0"
             assert row_dict["epochs_completed"] == "3"
             assert row_dict["lr"] == "0.005"
