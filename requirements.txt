@@ -12,6 +12,9 @@ scapy==2.5.0
 # Crypto (for future robust/privacy features)
 pycryptodome==3.20.0
 
+# Privacy accounting
+opacus==1.5.0
+
 # Testing
 pytest==8.3.3
 hypothesis==6.104.3
