@@ -238,5 +238,6 @@ def create_default_config(title: str = "Federated Learning Metrics") -> Dict:
         "detector": MetricDetector(),
         "smoothing": SmoothingConfig(),
         "ci": ConfidenceIntervalConfig(),
+        "axes": {},
         "title": title,
     }
