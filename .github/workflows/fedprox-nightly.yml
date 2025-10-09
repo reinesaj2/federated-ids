@@ -40,9 +40,16 @@ jobs:
     timeout-minutes: 240 # 4 hours
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         alpha: [0.05, 0.1, 0.5]
         mu: [0.0, 0.01, 0.1]
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      PYTHONHASHSEED: "0"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -78,14 +85,13 @@ jobs:
           max_attempts: 2
           retry_on: error
           command: |
+            set -euo pipefail
+            trap 'pkill -P $$ || true' EXIT
             export D2_EXTENDED_METRICS="1"
-            export ALPHA=${{ matrix.alpha }}
-            export MU=${{ matrix.mu }}
-            export ROUNDS=20
-            export CLIENTS=6
-            export ROUNDS=20
             export ALPHA="${{ matrix.alpha }}"
             export MU="${{ matrix.mu }}"
+            CLIENTS=4
+            ROUNDS=15
             PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}"
             DATASET="unsw"
             DATA_PATH="data/unsw/unsw_nb15_sample.csv"
@@ -102,10 +108,16 @@ jobs:
             SERVER_PID=$!
 
             # Wait for server
-            for i in {1..20}; do
-              nc -z 127.0.0.1 $PORT 2>/dev/null && break
+            for i in {1..120}; do
+              if nc -z 127.0.0.1 $PORT 2>/dev/null; then
+                break
+              fi
               sleep 0.5
             done
+            if ! nc -z 127.0.0.1 $PORT 2>/dev/null; then
+              echo "Server failed to start on port $PORT"
+              exit 1
+            fi
 
             # Start all clients with FedProx mu parameter
             CLIENT_PIDS=()
@@ -243,6 +255,7 @@ jobs:
         continue-on-error: true
 
       - name: Commit plots to repository
+        if: github.event_name == 'workflow_dispatch'
         run: |
           # Configure git
           git config user.name "GitHub Actions"
@@ -268,6 +281,7 @@ jobs:
           fi
 
       - name: Push plots to repository
+        if: github.event_name == 'workflow_dispatch'
         run: |
           # Check if there are unpushed commits
           if git log origin/main..HEAD --oneline | grep -q .; then
@@ -290,10 +304,38 @@ jobs:
           echo "Failed at: $(date)"
           echo "Check the workflow run for details"
 
+  failure_context:
+    needs: fedprox_comparison
+    if: needs.fedprox_comparison.result == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump runner diagnostics
+        run: |
+          echo "Runner diagnostics for failed FedProx nightly"
+          echo "Timestamp: $(date -u)"
+          echo "Kernel:" $(uname -a)
+          echo "Disk usage:" && df -h
+          echo "Memory usage:"
+          if command -v free >/dev/null 2>&1; then
+            free -m
+          elif command -v vm_stat >/dev/null 2>&1; then
+            vm_stat
+          else
+            echo "free/vm_stat unavailable"
+          fi
+          echo "Python version:" && python3 --version
+          echo "Pip packages (top 20):" && pip3 list --format=columns | head -n 22
+
   manual_fedprox_comparison:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      PYTHONHASHSEED: "0"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -318,6 +360,8 @@ jobs:
         env:
           D2_EXTENDED_METRICS: "1"
         run: |
+          set -euo pipefail
+          trap 'pkill -P $$ || true' EXIT
           IFS=',' read -ra ALPHAS <<< "${{ github.event.inputs.alpha_values }}"
           IFS=',' read -ra MUS <<< "${{ github.event.inputs.mu_values }}"
 
@@ -340,10 +384,17 @@ jobs:
               SERVER_PID=$!
               
               # Wait for server
-              for i in {1..20}; do
-                nc -z 127.0.0.1 $PORT 2>/dev/null && break
+              for i in {1..120}; do
+                if nc -z 127.0.0.1 $PORT 2>/dev/null; then
+                  break
+                fi
                 sleep 0.5
               done
+              if ! nc -z 127.0.0.1 $PORT 2>/dev/null; then
+                echo "Server failed to start on port $PORT"
+                kill $SERVER_PID 2>/dev/null || true
+                exit 1
+              fi
               
               # Start all clients with FedProx mu parameter
               CLIENT_PIDS=()
