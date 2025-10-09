@@ -40,6 +40,21 @@ def summarize_clients(run_dir: Path) -> dict:
                 "max": float(s.max()) if not s.empty else None,
                 "cv": coef_variation(s) if not s.empty else None,
             }
+
+    # Differential Privacy metrics summary
+    dp_fields = ["dp_epsilon", "dp_delta", "dp_sigma", "dp_clip_norm"]
+    dp_present = any(field in df.columns for field in dp_fields)
+    if dp_present:
+        out["privacy"] = {}
+        for field in dp_fields:
+            if field in df.columns:
+                s = pd.to_numeric(df[field], errors="coerce").dropna()
+                if not s.empty:
+                    out["privacy"][field] = {
+                        "mean": float(s.mean()),
+                        "min": float(s.min()),
+                        "max": float(s.max()),
+                    }
     # Worst/best client macro-F1 (argmax) across clients at last round if available
     try:
         if {"client_id", "round", "macro_f1_argmax"}.issubset(df.columns):

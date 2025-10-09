@@ -75,6 +75,10 @@ class ClientMetricsLogger:
                     "benign_fpr_global",
                     "benign_fpr_personalized",
                     "personalization_gain",
+                    "dp_epsilon",
+                    "dp_delta",
+                    "dp_sigma",
+                    "dp_clip_norm",
                 ]
             else:
                 headers = [
@@ -129,6 +133,10 @@ class ClientMetricsLogger:
         epochs_completed: int = 0,
         lr: float = 0.0,
         batch_size: int = 0,
+        dp_epsilon: Optional[float] = None,
+        dp_delta: Optional[float] = None,
+        dp_sigma: Optional[float] = None,
+        dp_clip_norm: Optional[float] = None,
     ) -> None:
         """Log metrics for a single client training round."""
         if self.extended:
@@ -163,6 +171,15 @@ class ClientMetricsLogger:
                 str(epochs_completed),
                 str(lr),
                 str(batch_size),
+                "",  # macro_f1_global (filled by personalization)
+                "",  # macro_f1_personalized (filled by personalization)
+                "",  # benign_fpr_global (filled by personalization)
+                "",  # benign_fpr_personalized (filled by personalization)
+                "",  # personalization_gain (filled by personalization)
+                str(dp_epsilon) if dp_epsilon is not None else "",
+                str(dp_delta) if dp_delta is not None else "",
+                str(dp_sigma) if dp_sigma is not None else "",
+                str(dp_clip_norm) if dp_clip_norm is not None else "",
             ]
         else:
             row = [
