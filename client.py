@@ -32,6 +32,7 @@ from client_metrics import (
     analyze_data_distribution,
     create_label_histogram_json,
 )
+from privacy_accounting import compute_epsilon
 
 
 def set_global_seed(seed: int) -> None:
@@ -392,6 +393,13 @@ class TorchClient(fl.client.NumPyClient):
 
         # Capture after metrics
         weights_after = get_parameters(self.model)
+
+        # Initialize DP metrics (None by default)
+        dp_epsilon = None
+        dp_delta = None
+        dp_sigma = None
+        dp_clip_norm = None
+
         # Differential Privacy: clip update and add Gaussian noise (if enabled)
         try:
             dp_enabled = bool(self.runtime_config.get("dp_enabled", False))
@@ -426,6 +434,17 @@ class TorchClient(fl.client.NumPyClient):
                 ]
                 # Reconstruct noisy weights as weights_before + noisy_delta
                 weights_after = [wb + nd for wb, nd in zip(weights_before, noisy)]
+
+                # Compute epsilon privacy budget for this round
+                dp_delta = 1e-5  # Standard delta for (epsilon, delta)-DP
+                dp_epsilon = compute_epsilon(
+                    noise_multiplier=noise_mult,
+                    delta=dp_delta,
+                    num_steps=self.round_num,  # Cumulative across rounds
+                    sample_rate=1.0,  # Full batch per round
+                )
+                dp_sigma = noise_mult
+                dp_clip_norm = clip
         except Exception:
             # Fail-open: if DP step errors, proceed with original weights_after
             pass
@@ -618,6 +637,10 @@ class TorchClient(fl.client.NumPyClient):
             epochs_completed=epochs_completed,
             lr=lr,
             batch_size=batch_size,
+            dp_epsilon=dp_epsilon,
+            dp_delta=dp_delta,
+            dp_sigma=dp_sigma,
+            dp_clip_norm=dp_clip_norm,
         )
 
         # Personalization: post-FL local fine-tuning (if enabled)
