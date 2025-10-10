@@ -701,6 +701,17 @@ class TorchClient(fl.client.NumPyClient):
                     "test_size": len(self.test_loader.dataset),
                 },
             )
+            # Preserve human-readable debug prints for tests and CLI
+            print(
+                f"[Client {cid}] Personalization R{self.round_num}: "
+                f"Starting with {personalization_epochs} epochs, "
+                f"global F1={macro_f1_global:.4f}, "
+                f"weight_norm={norm_before:.4f}"
+            )
+            print(
+                f"[Client {cid}] Train size: {len(self.train_loader.dataset)}, "
+                f"Test size: {len(self.test_loader.dataset)}"
+            )
 
         # Fine-tune on local train data
         for epoch_idx in range(personalization_epochs):
@@ -736,6 +747,11 @@ class TorchClient(fl.client.NumPyClient):
                         "weight_norm": norm_after_first,
                         "delta": weight_delta,
                     },
+                )
+                print(
+                    f"[Client {cid}] After epoch 1: "
+                    f"weight_norm={norm_after_first:.4f}, "
+                    f"delta={weight_delta:.6f}"
                 )
 
         # Evaluate personalized model
@@ -786,6 +802,12 @@ class TorchClient(fl.client.NumPyClient):
                             "gain": personalization_gain,
                         },
                     )
+                    print(
+                        f"[Client {cid}] Personalization results: "
+                        f"global_F1={macro_f1_global:.4f}, "
+                        f"personalized_F1={macro_f1_personalized:.4f}, "
+                        f"gain={personalization_gain:.6f}"
+                    )
                     if abs(personalization_gain) < 0.001:
                         logging.getLogger("client").warning(
                             "personalization_low_gain",
@@ -794,6 +816,12 @@ class TorchClient(fl.client.NumPyClient):
                                 "round": self.round_num,
                                 "hint": "Check distribution, epochs, learning rate",
                             },
+                        )
+                        print(
+                            f"[Client {cid}] WARNING: Near-zero gain detected! "
+                            f"Possible causes: (1) train/test same distribution, "
+                            f"(2) insufficient personalization epochs, "
+                            f"(3) learning rate too low"
                         )
 
             # Log personalization metrics
