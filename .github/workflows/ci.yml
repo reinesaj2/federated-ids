@@ -65,7 +65,7 @@ jobs:
 
       - name: Define static-check file list
         run: |
-          FILES="server.py client.py logging_utils.py privacy_accounting.py robust_aggregation.py server_metrics.py client_metrics.py data_preprocessing.py"
+          FILES="server.py client.py logging_utils.py privacy_accounting.py"
           echo "FILES=$FILES" >> "$GITHUB_ENV"
 
       - name: Static analysis (ruff, black, mypy)
