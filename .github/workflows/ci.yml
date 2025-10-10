@@ -63,6 +63,15 @@ jobs:
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
+      - name: Static analysis (ruff, black, mypy)
+        run: |
+          ruff --version
+          black --version
+          mypy --version
+          ruff check .
+          black --check .
+          mypy
+
       - name: Lint & unit tests
         env:
           D2_EXTENDED_METRICS: "1"
