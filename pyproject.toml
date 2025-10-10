@@ -2,20 +2,7 @@
 line-length = 100
 target-version = ["py311"]
 skip-string-normalization = true
-extend-exclude = """
-/(
-  \.venv|
-  __pycache__|
-  runs|
-  logs|
-  datasets|
-  data|
-  plots|
-  analysis|
-  docs|
-  scripts
-)/
-"""
+extend-exclude = "(\\.venv|__pycache__|runs|logs|datasets|data|plots|analysis|docs|scripts)"
 
 [tool.ruff]
 line-length = 100
@@ -45,5 +32,4 @@ warn_redundant_casts = true
 no_implicit_optional = false
 check_untyped_defs = false
 disallow_untyped_defs = false
-exclude = '(runs/|logs/|datasets/|data/|plots/|analysis/|docs/|scripts/)'
-
+exclude = "(runs/|logs/|datasets/|data/|plots/|analysis/|docs/|scripts/)"
