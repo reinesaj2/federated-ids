@@ -21,9 +21,6 @@ from server_metrics import (
 from logging_utils import configure_logging, get_logger
 
 
-AggregationChoice = Literal["fedavg", "median", "krum", "bulyan"]
-
-
 def _set_global_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
