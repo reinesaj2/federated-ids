@@ -4,7 +4,7 @@ import csv
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional
 
 import numpy as np
 
