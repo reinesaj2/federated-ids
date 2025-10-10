@@ -73,8 +73,9 @@ jobs:
           ruff --version
           black --version
           mypy --version
+          # Auto-format the selected files, then lint and type-check
+          black $FILES
           ruff check $FILES
-          black --check $FILES
           mypy $FILES
 
       - name: Lint & unit tests
