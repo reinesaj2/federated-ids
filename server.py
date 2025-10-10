@@ -2,7 +2,7 @@ import argparse
 import os
 import random
 import time
-from typing import Literal, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import flwr as fl
 import numpy as np
