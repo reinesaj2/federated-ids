@@ -138,6 +138,33 @@ def test_render_client_fpr_handles_missing_series():
     assert rendered is False
 
 
+def test_render_client_norms_overlays_weight_and_grad():
+    df = pd.DataFrame(
+        {
+            "round": [1, 2, 3],
+            "weight_norm_after": [1.0, 1.1, 1.2],
+            "grad_norm_l2": [0.5, 0.55, 0.6],
+        }
+    )
+    style = PlotStyle()
+
+    fig, ax = plt.subplots()
+    try:
+        rendered = _render_client_norms(
+            ax,
+            df,
+            style,
+            label="D",
+            color="#112233",
+            available={"norms": "weight_norm_after", "grad_norms": "grad_norm_l2"},
+        )
+    finally:
+        plt.close(fig)
+
+    assert rendered is True
+    assert len(ax.get_lines()) == 2
+
+
 def test_render_mu_scatter_plots_points_and_mean():
     records = [
         {"mu": 0.0, "metric": 0.7, "client": "A"},
