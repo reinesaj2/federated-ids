@@ -49,7 +49,7 @@ jobs:
       OPENBLAS_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"
       NUMEXPR_NUM_THREADS: "1"
-      PYTHONHASHSEED: "0"
+      SEED_LIST: "0 1 2 3 4"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -92,78 +92,107 @@ jobs:
             export MU="${{ matrix.mu }}"
             CLIENTS=4
             ROUNDS=15
-            PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}"
             DATASET="unsw"
             DATA_PATH="data/unsw/unsw_nb15_sample.csv"
 
-            mkdir -p "runs/$PRESET"
-            LOGDIR="runs/$PRESET"
-            PORT=$((8200 + RANDOM % 1000))
-            echo "$DATASET" >"$LOGDIR/dataset.txt"
-            echo "$DATA_PATH" >"$LOGDIR/dataset_path.txt"
-            echo "Running FedProx comparison with alpha=$ALPHA mu=$MU dataset=$DATASET"
+            for SEED in $SEED_LIST; do
+              PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}_seed${SEED}"
+              LOGDIR="runs/$PRESET"
+              mkdir -p "$LOGDIR"
 
-            # Start server
-            python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
-            SERVER_PID=$!
+              PORT=$((8200 + SEED))
+              export SEED="$SEED"
+              export PYTHONHASHSEED="$SEED"
+              export CUBLAS_WORKSPACE_CONFIG=":4096:8"
 
-            # Wait for server
-            for i in {1..120}; do
-              if nc -z 127.0.0.1 $PORT 2>/dev/null; then
-                break
+              echo "$DATASET" >"$LOGDIR/dataset.txt"
+              echo "$DATA_PATH" >"$LOGDIR/dataset_path.txt"
+              echo "$SEED" >"$LOGDIR/seed.txt"
+              echo "Running FedProx comparison alpha=$ALPHA mu=$MU seed=$SEED dataset=$DATASET"
+
+              python server.py \
+                --rounds $ROUNDS \
+                --aggregation fedavg \
+                --server_address 127.0.0.1:$PORT \
+                --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
+              SERVER_PID=$!
+
+              for i in {1..120}; do
+                if nc -z 127.0.0.1 $PORT 2>/dev/null; then
+                  break
+                fi
+                sleep 0.5
+              done
+              if ! nc -z 127.0.0.1 $PORT 2>/dev/null; then
+                echo "Server failed to start on port $PORT (seed=$SEED)"
+                kill $SERVER_PID 2>/dev/null || true
+                exit 1
               fi
-              sleep 0.5
-            done
-            if ! nc -z 127.0.0.1 $PORT 2>/dev/null; then
-              echo "Server failed to start on port $PORT"
-              exit 1
-            fi
 
-            # Start all clients with FedProx mu parameter
-            CLIENT_PIDS=()
-            for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
-              python client.py --server_address 127.0.0.1:$PORT --client_id $CLIENT_ID --num_clients $CLIENTS \
-                --dataset "$DATASET" --data_path "$DATA_PATH" --partition_strategy dirichlet --alpha $ALPHA \
-                --fedprox_mu $MU --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
-              CLIENT_PIDS+=($!)
-            done
+              CLIENT_PIDS=()
+              for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
+                python client.py \
+                  --server_address 127.0.0.1:$PORT \
+                  --client_id $CLIENT_ID \
+                  --num_clients $CLIENTS \
+                  --dataset "$DATASET" \
+                  --data_path "$DATA_PATH" \
+                  --partition_strategy dirichlet \
+                  --alpha $ALPHA \
+                  --fedprox_mu $MU \
+                  --logdir "$LOGDIR" \
+                  --leakage_safe \
+                  --seed $SEED >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
+                CLIENT_PIDS+=($!)
+              done
 
-            # Wait for all clients
-            for PID in "${CLIENT_PIDS[@]}"; do
-              wait $PID
-            done
+              for PID in "${CLIENT_PIDS[@]}"; do
+                wait $PID
+              done
 
-            # Clean up server
-            sleep 2
-            kill $SERVER_PID 2>/dev/null || true
+              sleep 2
+              kill $SERVER_PID 2>/dev/null || true
+              wait $SERVER_PID 2>/dev/null || true
+
+              ALGORITHM=$(python -c "import sys; mu=float(sys.argv[1]); print('FedProx' if mu > 0 else 'FedAvg')" "$MU")
+              cat <<EOF >"$LOGDIR/metadata.json"
+              {
+                "alpha": $ALPHA,
+                "mu": $MU,
+                "seed": $SEED,
+                "algorithm": "$ALGORITHM"
+              }
+              EOF
+            done
 
       - name: Generate comparison plots
         run: |
-          # Use same directory construction as training step
           export ALPHA="${{ matrix.alpha }}"
           export MU="${{ matrix.mu }}"
-          PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}"
-          RUN_DIR="runs/$PRESET"
-          python scripts/plot_metrics.py \
-            --run_dir "$RUN_DIR" \
-            --output_dir "$RUN_DIR"
-          if [ -f "$RUN_DIR/client_metrics_plot.png" ]; then
-            cp "$RUN_DIR/client_metrics_plot.png" "$RUN_DIR/fedprox_comparison.png"
-          fi
+          for SEED in $SEED_LIST; do
+            PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}_seed${SEED}"
+            RUN_DIR="runs/$PRESET"
+            python scripts/plot_metrics.py \
+              --run_dir "$RUN_DIR" \
+              --output_dir "$RUN_DIR"
+            if [ -f "$RUN_DIR/client_metrics_plot.png" ]; then
+              cp "$RUN_DIR/client_metrics_plot.png" "$RUN_DIR/fedprox_comparison.png"
+            fi
+          done
 
       - name: Generate thesis-quality plots
         run: |
           export ALPHA="${{ matrix.alpha }}"
           export MU="${{ matrix.mu }}"
-          PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}"
-          RUN_DIR="runs/$PRESET"
-
-          # Generate heterogeneity dimension plots (alpha variation is heterogeneity)
-          mkdir -p "$RUN_DIR/thesis_plots"
-          python scripts/generate_thesis_plots.py \
-            --dimension heterogeneity \
-            --runs_dir runs \
-            --output_dir "$RUN_DIR/thesis_plots" || echo "Thesis plots generation failed (non-fatal)"
+          for SEED in $SEED_LIST; do
+            PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}_seed${SEED}"
+            RUN_DIR="runs/$PRESET"
+            mkdir -p "$RUN_DIR/thesis_plots"
+            python scripts/generate_thesis_plots.py \
+              --dimension heterogeneity \
+              --runs_dir runs \
+              --output_dir "$RUN_DIR/thesis_plots" || echo "Thesis plots generation failed (non-fatal)"
+          done
 
       - name: Validate results
         run: |
@@ -220,7 +249,9 @@ jobs:
           name: fedprox-nightly-summary-${{ github.sha }}
           path: |
             fedprox-summary/fedprox_comparison_summary.json
+            fedprox-summary/fedprox_comparison_summary.csv
             fedprox-summary/fedprox_performance_plots.png
+            fedprox-summary/fedprox_performance_plots.pdf
             fedprox-summary/fedprox_thesis_tables.tex
             fedprox-summary/thesis_plots/**/*.png
             fedprox-summary/thesis_plots/**/*.pdf
