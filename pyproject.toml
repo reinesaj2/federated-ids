@@ -29,6 +29,7 @@ ignore = ["E501", "E203"]
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
+follow_imports = "skip"
 warn_unused_ignores = true
 warn_redundant_casts = true
 no_implicit_optional = false

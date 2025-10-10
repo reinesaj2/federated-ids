@@ -111,7 +111,7 @@ def train_epoch(
 
         # Add FedProx proximal term: mu/2 * ||w - w_global||^2
         if fedprox_mu > 0.0 and global_tensors is not None:
-            prox_term = 0.0
+            prox_term = torch.tensor(0.0, device=device)
             for param, global_param in zip(model.parameters(), global_tensors):
                 prox_term += torch.sum((param - global_param) ** 2)
             loss = loss + (fedprox_mu / 2.0) * prox_term
@@ -282,10 +282,10 @@ class TorchClient(fl.client.NumPyClient):
         self.round_num = 0
         self.runtime_config = runtime_config
 
-    def get_parameters(self, config):  # type: ignore[override]
+    def get_parameters(self, config):
         return get_parameters(self.model)
 
-    def fit(self, parameters, config):  # type: ignore[override]
+    def fit(self, parameters, config):
         self.round_num += 1
 
         # Get training hyperparameters
@@ -845,7 +845,7 @@ class TorchClient(fl.client.NumPyClient):
         metrics = {}
         return weights_after, num_examples, metrics
 
-    def evaluate(self, parameters, config):  # type: ignore[override]
+    def evaluate(self, parameters, config):
         set_parameters(self.model, parameters)
         loss, acc, _probs, _labels = evaluate(self.model, self.test_loader, self.device)
         num_examples = len(self.test_loader.dataset)

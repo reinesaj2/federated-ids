@@ -12,7 +12,7 @@ class JsonFormatter(logging.Formatter):
     Emits records as JSON with standard fields and any extras passed via `extra`.
     """
 
-    def format(self, record: logging.LogRecord) -> str:  # type: ignore[override]
+    def format(self, record: logging.LogRecord) -> str:
         payload: Dict[str, Any] = {
             "ts": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
@@ -82,4 +82,3 @@ def configure_logging(level: str | int | None = None) -> None:
 
 def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
-
