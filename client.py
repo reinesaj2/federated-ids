@@ -23,7 +23,6 @@ from data_preprocessing import (
     load_cic_ids2017,
     prepare_partitions_from_dataframe,
     numpy_to_loaders,
-    numpy_to_train_val_test_loaders,
 )
 from client_metrics import (
     ClientMetricsLogger,

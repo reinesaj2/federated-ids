@@ -7,8 +7,6 @@ extend-exclude = "(\\.venv|__pycache__|runs|logs|datasets|data|plots|analysis|do
 [tool.ruff]
 line-length = 140
 target-version = "py311"
-select = ["E", "F"]
-ignore = ["E501", "E203"]
 exclude = [
   ".venv",
   "__pycache__",
@@ -23,6 +21,10 @@ exclude = [
   ".mypy_cache",
   ".pytest_cache",
 ]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["E501", "E203"]
 
 [tool.mypy]
 python_version = "3.11"
