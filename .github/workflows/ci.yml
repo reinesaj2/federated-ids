@@ -63,6 +63,21 @@ jobs:
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
+      - name: Define static-check file list
+        run: |
+          FILES="server.py client.py logging_utils.py privacy_accounting.py"
+          echo "FILES=$FILES" >> "$GITHUB_ENV"
+
+      - name: Static analysis (ruff, black, mypy)
+        run: |
+          ruff --version
+          black --version
+          mypy --version
+          # Auto-format the selected files, then lint and type-check
+          black $FILES
+          ruff check $FILES
+          mypy $FILES
+
       - name: Lint & unit tests
         env:
           D2_EXTENDED_METRICS: "1"

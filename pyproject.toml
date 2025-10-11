@@ -1,0 +1,38 @@
+[tool.black]
+line-length = 140
+target-version = ["py311"]
+skip-string-normalization = true
+extend-exclude = "(\\.venv|__pycache__|runs|logs|datasets|data|plots|analysis|docs|scripts)"
+
+[tool.ruff]
+line-length = 140
+target-version = "py311"
+exclude = [
+  ".venv",
+  "__pycache__",
+  "runs",
+  "logs",
+  "datasets",
+  "data",
+  "plots",
+  "analysis",
+  "docs",
+  "scripts",
+  ".mypy_cache",
+  ".pytest_cache",
+]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["E501", "E203"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+follow_imports = "skip"
+warn_unused_ignores = false
+warn_redundant_casts = true
+no_implicit_optional = false
+check_untyped_defs = false
+disallow_untyped_defs = false
+exclude = "(runs/|logs/|datasets/|data/|plots/|analysis/|docs/|scripts/)"
