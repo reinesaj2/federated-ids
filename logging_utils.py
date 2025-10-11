@@ -6,6 +6,33 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 
+# Standard LogRecord attributes that should not be included as extras
+STANDARD_FIELDS: frozenset[str] = frozenset(
+    [
+        "name",
+        "msg",
+        "args",
+        "levelname",
+        "levelno",
+        "pathname",
+        "filename",
+        "module",
+        "exc_info",
+        "exc_text",
+        "stack_info",
+        "lineno",
+        "funcName",
+        "created",
+        "msecs",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "processName",
+        "process",
+    ]
+)
+
+
 class JsonFormatter(logging.Formatter):
     """Simple JSON formatter for structured logs.
 
@@ -20,36 +47,12 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
         # Include extra attributes (non-standard logging fields)
-        standard = set(
-            [
-                "name",
-                "msg",
-                "args",
-                "levelname",
-                "levelno",
-                "pathname",
-                "filename",
-                "module",
-                "exc_info",
-                "exc_text",
-                "stack_info",
-                "lineno",
-                "funcName",
-                "created",
-                "msecs",
-                "relativeCreated",
-                "thread",
-                "threadName",
-                "processName",
-                "process",
-            ]
-        )
         for key, value in record.__dict__.items():
-            if key not in standard and key not in payload:
+            if key not in STANDARD_FIELDS and key not in payload:
                 try:
                     json.dumps(value)  # ensure JSON-serializable
                     payload[key] = value
-                except Exception:
+                except (TypeError, ValueError):
                     payload[key] = str(value)
 
         if record.exc_info:
@@ -76,7 +79,7 @@ def configure_logging(level: str | int | None = None) -> None:
     lvl = level or os.getenv("LOG_LEVEL", "INFO").upper()
     try:
         root.setLevel(getattr(logging, str(lvl)))
-    except Exception:
+    except (AttributeError, TypeError, ValueError):
         root.setLevel(logging.INFO)
 
 
