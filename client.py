@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import random
 from typing import List, Tuple, Optional
@@ -22,7 +23,6 @@ from data_preprocessing import (
     load_cic_ids2017,
     prepare_partitions_from_dataframe,
     numpy_to_loaders,
-    numpy_to_train_val_test_loaders,
 )
 from client_metrics import (
     ClientMetricsLogger,
@@ -33,6 +33,7 @@ from client_metrics import (
     create_label_histogram_json,
 )
 from privacy_accounting import compute_epsilon
+from logging_utils import configure_logging, get_logger
 
 
 DEFAULT_CLIENT_LR = 1e-3
@@ -110,7 +111,7 @@ def train_epoch(
 
         # Add FedProx proximal term: mu/2 * ||w - w_global||^2
         if fedprox_mu > 0.0 and global_tensors is not None:
-            prox_term = 0.0
+            prox_term = torch.tensor(0.0, device=device)
             for param, global_param in zip(model.parameters(), global_tensors):
                 prox_term += torch.sum((param - global_param) ** 2)
             loss = loss + (fedprox_mu / 2.0) * prox_term
@@ -281,10 +282,10 @@ class TorchClient(fl.client.NumPyClient):
         self.round_num = 0
         self.runtime_config = runtime_config
 
-    def get_parameters(self, config):  # type: ignore[override]
+    def get_parameters(self, config):
         return get_parameters(self.model)
 
-    def fit(self, parameters, config):  # type: ignore[override]
+    def fit(self, parameters, config):
         self.round_num += 1
 
         # Get training hyperparameters
@@ -687,6 +688,19 @@ class TorchClient(fl.client.NumPyClient):
         if debug_enabled:
             norm_before = float(np.sqrt(sum(np.sum(w**2) for w in weights_before_pers)))
             cid = self.metrics_logger.client_id
+            logging.getLogger("client").info(
+                "personalization_start",
+                extra={
+                    "client_id": cid,
+                    "round": self.round_num,
+                    "epochs": personalization_epochs,
+                    "global_f1": macro_f1_global,
+                    "weight_norm": norm_before,
+                    "train_size": len(self.train_loader.dataset),
+                    "test_size": len(self.test_loader.dataset),
+                },
+            )
+            # Preserve human-readable debug prints for tests and CLI
             print(
                 f"[Client {cid}] Personalization R{self.round_num}: "
                 f"Starting with {personalization_epochs} epochs, "
@@ -723,6 +737,16 @@ class TorchClient(fl.client.NumPyClient):
                     )
                 )
                 cid = self.metrics_logger.client_id
+                logging.getLogger("client").info(
+                    "personalization_epoch",
+                    extra={
+                        "client_id": cid,
+                        "round": self.round_num,
+                        "epoch": 1,
+                        "weight_norm": norm_after_first,
+                        "delta": weight_delta,
+                    },
+                )
                 print(
                     f"[Client {cid}] After epoch 1: "
                     f"weight_norm={norm_after_first:.4f}, "
@@ -767,6 +791,16 @@ class TorchClient(fl.client.NumPyClient):
 
                 if debug_enabled:
                     cid = self.metrics_logger.client_id
+                    logging.getLogger("client").info(
+                        "personalization_results",
+                        extra={
+                            "client_id": cid,
+                            "round": self.round_num,
+                            "global_f1": macro_f1_global,
+                            "personalized_f1": macro_f1_personalized,
+                            "gain": personalization_gain,
+                        },
+                    )
                     print(
                         f"[Client {cid}] Personalization results: "
                         f"global_F1={macro_f1_global:.4f}, "
@@ -774,6 +808,14 @@ class TorchClient(fl.client.NumPyClient):
                         f"gain={personalization_gain:.6f}"
                     )
                     if abs(personalization_gain) < 0.001:
+                        logging.getLogger("client").warning(
+                            "personalization_low_gain",
+                            extra={
+                                "client_id": cid,
+                                "round": self.round_num,
+                                "hint": "Check distribution, epochs, learning rate",
+                            },
+                        )
                         print(
                             f"[Client {cid}] WARNING: Near-zero gain detected! "
                             f"Possible causes: (1) train/test same distribution, "
@@ -792,7 +834,9 @@ class TorchClient(fl.client.NumPyClient):
             )
         except Exception as e:
             # If personalization evaluation fails, log warning but continue
-            print(f"[Client] Warning: Personalization evaluation failed: {e}")
+            logging.getLogger("client").warning(
+                "personalization_eval_failed", extra={"error": str(e)}
+            )
 
         # CRITICAL: Restore global model weights before returning to server
         set_parameters(self.model, weights_after)
@@ -801,7 +845,7 @@ class TorchClient(fl.client.NumPyClient):
         metrics = {}
         return weights_after, num_examples, metrics
 
-    def evaluate(self, parameters, config):  # type: ignore[override]
+    def evaluate(self, parameters, config):
         set_parameters(self.model, parameters)
         loss, acc, _probs, _labels = evaluate(self.model, self.test_loader, self.device)
         num_examples = len(self.test_loader.dataset)
@@ -809,6 +853,8 @@ class TorchClient(fl.client.NumPyClient):
 
 
 def main() -> None:
+    configure_logging()
+    logger = get_logger("client")
     parser = argparse.ArgumentParser(description="Flower client for Federated IDS demo")
     parser.add_argument("--server_address", type=str, default="127.0.0.1:8080")
     parser.add_argument(
@@ -941,7 +987,10 @@ def main() -> None:
     )
     metrics_logger = ClientMetricsLogger(client_metrics_path, args.client_id)
     fit_timer = ClientFitTimer()
-    print(f"[Client {args.client_id}] Logging metrics to: {client_metrics_path}")
+    logger.info(
+        "metrics_init",
+        extra={"client_id": args.client_id, "metrics_path": client_metrics_path},
+    )
 
     if args.dataset == "synthetic":
         train_loader, test_loader = create_synthetic_classification_loaders(
@@ -983,9 +1032,12 @@ def main() -> None:
         y_client = y_parts[args.client_id]
         # Warn if shard contains only a single class
         if len(np.unique(y_client)) <= 1:
-            print(
-                f"[Client {args.client_id}] Warning: single-class shard detected; "
-                f"using global num_classes={num_classes_global}"
+            logger.warning(
+                "single_class_shard",
+                extra={
+                    "client_id": args.client_id,
+                    "num_classes_global": num_classes_global,
+                },
             )
         train_loader, test_loader = numpy_to_loaders(
             X_client, y_client, batch_size=args.batch_size, seed=args.seed
@@ -1017,16 +1069,27 @@ def main() -> None:
             f"global num_classes ({num_classes_global}). "
             f"Label distribution: {label_hist_json}"
         )
-        print(
-            f"[Client {args.client_id}] Model validation passed: "
-            f"out_features={model_output_features}, num_classes_global={num_classes_global}"
+        logger.info(
+            "model_validation",
+            extra={
+                "client_id": args.client_id,
+                "out_features": model_output_features,
+                "num_classes_global": num_classes_global,
+            },
         )
-        print(f"[Client {args.client_id}] Label histogram: {label_hist_json}")
+        logger.info(
+            "label_histogram",
+            extra={"client_id": args.client_id, "histogram": label_hist_json},
+        )
     else:
-        print(
-            f"[Client {args.client_id}] Warning: Could not validate model output features"
+        logger.warning(
+            "model_validation_skipped",
+            extra={"client_id": args.client_id},
         )
-        print(f"[Client {args.client_id}] Label histogram: {label_hist_json}")
+        logger.info(
+            "label_histogram",
+            extra={"client_id": args.client_id, "histogram": label_hist_json},
+        )
 
     client = TorchClient(
         model=model,

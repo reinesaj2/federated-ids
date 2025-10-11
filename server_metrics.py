@@ -4,7 +4,7 @@ import csv
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional
 
 import numpy as np
 
@@ -151,10 +151,10 @@ def calculate_robustness_metrics(
         matching_coords = 0
 
         for agg_layer, median_layer in zip(aggregated, median_update):
-            total_coords += agg_layer.size
+            total_coords += int(agg_layer.size)
             # Use small tolerance for floating point comparison
             matches = np.isclose(agg_layer, median_layer, rtol=1e-10, atol=1e-10)
-            matching_coords += np.sum(matches)
+            matching_coords += int(np.sum(matches))
 
         return float(matching_coords / total_coords * 100.0) if total_coords > 0 else 0.0
 

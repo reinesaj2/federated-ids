@@ -6,9 +6,11 @@ Validates schemas and basic sanity of generated metrics files.
 
 import argparse
 import csv
+import re
 import sys
+from collections import defaultdict
 from pathlib import Path
-from typing import List, Set
+from typing import Dict, List, Set, Tuple
 
 
 class ArtifactValidationError(Exception):
@@ -29,10 +31,7 @@ def validate_csv_schema(csv_path: Path, expected_columns: Set[str]) -> None:
 
             if not expected_columns.issubset(actual_columns):
                 missing = expected_columns - actual_columns
-                raise ArtifactValidationError(
-                    f"CSV {csv_path} missing required columns: {missing}. "
-                    f"Found: {actual_columns}"
-                )
+                raise ArtifactValidationError(f"CSV {csv_path} missing required columns: {missing}. " f"Found: {actual_columns}")
 
             # Validate at least one data row exists
             try:
@@ -155,9 +154,7 @@ def find_run_directories(runs_dir: Path) -> List[Path]:
     if not runs_dir.exists():
         raise ArtifactValidationError(f"Runs directory does not exist: {runs_dir}")
 
-    run_dirs = [
-        d for d in runs_dir.iterdir() if d.is_dir() and not d.name.startswith(".")
-    ]
+    run_dirs = [d for d in runs_dir.iterdir() if d.is_dir() and not d.name.startswith(".")]
 
     if not run_dirs:
         raise ArtifactValidationError(f"No run directories found in {runs_dir}")
@@ -165,13 +162,37 @@ def find_run_directories(runs_dir: Path) -> List[Path]:
     return sorted(run_dirs)
 
 
+RUN_NAME_PATTERN = re.compile(r"nightly_fedprox_alpha(?P<alpha>[0-9.]+)_mu(?P<mu>[0-9.]+)_seed(?P<seed>\d+)")
+
+
+def _collect_seed_counts(run_directories: List[Path]) -> Dict[Tuple[str, str], Set[int]]:
+    seed_map: Dict[Tuple[str, str], Set[int]] = defaultdict(set)
+    for run_dir in run_directories:
+        match = RUN_NAME_PATTERN.match(run_dir.name)
+        if not match:
+            continue
+        key = (match.group("alpha"), match.group("mu"))
+        seed_map[key].add(int(match.group("seed")))
+    return seed_map
+
+
+def validate_seed_coverage(run_directories: List[Path], minimum_seeds: int = 5) -> None:
+    """Ensure each FedProx nightly configuration has at least ``minimum_seeds`` runs."""
+    seed_map = _collect_seed_counts(run_directories)
+    if not seed_map:
+        return
+    for (alpha, mu), seeds in seed_map.items():
+        if len(seeds) < minimum_seeds:
+            raise ArtifactValidationError(
+                f"FedProx nightly runs for alpha={alpha} mu={mu} have only {len(seeds)} seeds; " f"require at least {minimum_seeds}."
+            )
+
+
 def main() -> None:
     """Main CI validation entry point."""
     import os
 
-    parser = argparse.ArgumentParser(
-        description="Validate FL experiment artifacts for CI"
-    )
+    parser = argparse.ArgumentParser(description="Validate FL experiment artifacts for CI")
 
     parser.add_argument(
         "--runs_dir",
@@ -199,6 +220,7 @@ def main() -> None:
     try:
         runs_dir = Path(args.runs_dir)
         run_directories = find_run_directories(runs_dir)
+        validate_seed_coverage(run_directories, minimum_seeds=5)
 
         print(f"Found {len(run_directories)} run directories to validate")
 

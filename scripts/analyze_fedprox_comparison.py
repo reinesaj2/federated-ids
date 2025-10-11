@@ -1,369 +1,390 @@
 #!/usr/bin/env python3
 """
-FedProx vs FedAvg Comparison Analysis Script
+Aggregate FedProx nightlies into publication-ready summaries.
 
-Analyzes nightly comparison results from multiple alpha/mu combinations
-and generates consolidated reports for thesis research.
+This script consolidates per-seed run artifacts produced by the FedProx nightly
+workflow, computes aggregate statistics with 95% confidence intervals, and
+emits plots/tables suitable for the thesis.
 """
+
+from __future__ import annotations
 
 import argparse
 import json
-import os
+import math
+import re
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Iterable, Mapping, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
+from scipy import stats
 
 
-def load_comparison_data(artifacts_dir: str) -> Dict[str, pd.DataFrame]:
-    """Load metrics from all FedProx comparison artifacts."""
-    comparison_data = {}
-    artifacts_path = Path(artifacts_dir)
-
-    # Pattern: fedprox-nightly-alpha{alpha}-mu{mu}-{sha}/
-    for artifact_dir in artifacts_path.glob("fedprox-nightly-alpha*-mu*"):
-        # Parse alpha and mu from directory name
-        parts = artifact_dir.name.split('-')
-        alpha_part = [p for p in parts if p.startswith('alpha')][0]
-        mu_part = [p for p in parts if p.startswith('mu')][0]
-
-        alpha = float(alpha_part.replace('alpha', ''))
-        mu = float(mu_part.replace('mu', ''))
-
-        # Load server metrics
-        metrics_files = list(artifact_dir.glob("**/metrics.csv"))
-        if metrics_files:
-            server_df = pd.read_csv(metrics_files[0])
-            server_df['alpha'] = alpha
-            server_df['mu'] = mu
-            server_df['algorithm'] = 'FedProx' if mu > 0 else 'FedAvg'
-
-            key = f"alpha_{alpha}_mu_{mu}"
-            comparison_data[key] = server_df
-
-    return comparison_data
+ARTIFACT_DIR_PATTERN = re.compile(r"fedprox-nightly-alpha(?P<alpha>[0-9.]+)-mu(?P<mu>[0-9.]+)-seed(?P<seed>\d+)-")
+RUN_DIR_PATTERN = re.compile(r"nightly_fedprox_alpha(?P<alpha>[0-9.]+)_mu(?P<mu>[0-9.]+)_seed(?P<seed>\d+)")
 
 
-def analyze_convergence_comparison(comparison_data: Dict[str, pd.DataFrame]) -> Dict:
-    """Compare FedAvg vs FedProx convergence across alpha values."""
-    results = {
-        'convergence_analysis': {},
-        'final_metrics': {},
-        'improvement_ratios': {}
-    }
-
-    for key, df in comparison_data.items():
-        alpha = df['alpha'].iloc[0]
-        mu = df['mu'].iloc[0]
-        algorithm = df['algorithm'].iloc[0]
-
-        # Extract convergence metrics
-        if len(df) > 0:
-            final_round = df['round'].max()
-            convergence_data = {
-                'alpha': alpha,
-                'mu': mu,
-                'algorithm': algorithm,
-                'final_round': int(final_round),
-                'rounds_to_converge': None,  # Could implement convergence detection
-                'final_l2_distance': df['l2_to_benign_mean'].iloc[-1] if 'l2_to_benign_mean' in df.columns else None,
-                'final_cosine_similarity': df['cos_to_benign_mean'].iloc[-1] if 'cos_to_benign_mean' in df.columns else None,
-                'avg_aggregation_time': df['t_aggregate_ms'].mean() if 't_aggregate_ms' in df.columns else None,
-                'total_training_time': df['t_round_ms'].sum() if 't_round_ms' in df.columns else None
-            }
-
-            results['convergence_analysis'][key] = convergence_data
-
-    # Calculate improvement ratios (FedProx vs FedAvg)
-    alpha_values = set(data['alpha'] for data in results['convergence_analysis'].values())
-
-    for alpha in alpha_values:
-        fedavg_key = f"alpha_{alpha}_mu_0.0"
-
-        if fedavg_key in results['convergence_analysis']:
-            fedavg_data = results['convergence_analysis'][fedavg_key]
-
-            for mu in [0.01, 0.1]:  # Compare against non-zero mu values
-                fedprox_key = f"alpha_{alpha}_mu_{mu}"
-
-                if fedprox_key in results['convergence_analysis']:
-                    fedprox_data = results['convergence_analysis'][fedprox_key]
-
-                    # Calculate improvement ratios
-                    improvement = {}
-                    if fedavg_data['avg_aggregation_time'] and fedprox_data['avg_aggregation_time']:
-                        improvement['time_overhead'] = (
-                            fedprox_data['avg_aggregation_time'] / fedavg_data['avg_aggregation_time']
-                        )
-
-                    if fedavg_data['final_l2_distance'] and fedprox_data['final_l2_distance']:
-                        improvement['l2_improvement'] = (
-                            fedavg_data['final_l2_distance'] / fedprox_data['final_l2_distance']
-                        )
-
-                    results['improvement_ratios'][f"{fedprox_key}_vs_{fedavg_key}"] = improvement
-
-    return results
+@dataclass(frozen=True)
+class RunMetrics:
+    alpha: float
+    mu: float
+    seed: int
+    algorithm: str
+    weighted_macro_f1: float
+    mean_aggregation_time_ms: float
+    rounds: int
+    run_dir: Path
 
 
-def plot_regularization_effects(comparison_data: Dict[str, pd.DataFrame], output_dir: str):
-    """Plot effect of μ values on model performance."""
-    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    fig.suptitle('FedProx Regularization Effects Analysis', fontsize=16)
-
-    # Prepare data for plotting
-    plot_data = []
-    for key, df in comparison_data.items():
-        alpha = df['alpha'].iloc[0]
-        mu = df['mu'].iloc[0]
-        algorithm = df['algorithm'].iloc[0]
-
-        if len(df) > 0:
-            plot_data.append({
-                'alpha': alpha,
-                'mu': mu,
-                'algorithm': algorithm,
-                'final_l2_distance': df['l2_to_benign_mean'].iloc[-1] if 'l2_to_benign_mean' in df.columns else np.nan,
-                'final_cosine_similarity': df['cos_to_benign_mean'].iloc[-1] if 'cos_to_benign_mean' in df.columns else np.nan,
-                'avg_aggregation_time': df['t_aggregate_ms'].mean() if 't_aggregate_ms' in df.columns else np.nan,
-                'update_norm_stability': df['update_norm_std'].mean() if 'update_norm_std' in df.columns else np.nan
-            })
-
-    plot_df = pd.DataFrame(plot_data)
-
-    if len(plot_df) == 0:
-        plt.figtext(0.5, 0.5, 'No data available for plotting', ha='center', va='center')
-        plt.savefig(f"{output_dir}/fedprox_performance_plots.png", dpi=150, bbox_inches='tight')
-        plt.close()
-        return
-
-    # Plot 1: L2 Distance by Alpha and Mu
-    if 'final_l2_distance' in plot_df.columns and not plot_df['final_l2_distance'].isna().all():
-        sns.lineplot(data=plot_df, x='mu', y='final_l2_distance', hue='alpha',
-                    marker='o', ax=axes[0, 0])
-        axes[0, 0].set_title('Final L2 Distance to Benign Mean')
-        axes[0, 0].set_xlabel('FedProx μ Value')
-        axes[0, 0].set_ylabel('L2 Distance')
-        axes[0, 0].legend(title='Alpha (Non-IID Level)')
-
-    # Plot 2: Cosine Similarity by Alpha and Mu
-    if 'final_cosine_similarity' in plot_df.columns and not plot_df['final_cosine_similarity'].isna().all():
-        sns.lineplot(data=plot_df, x='mu', y='final_cosine_similarity', hue='alpha',
-                    marker='s', ax=axes[0, 1])
-        axes[0, 1].set_title('Final Cosine Similarity to Benign Mean')
-        axes[0, 1].set_xlabel('FedProx μ Value')
-        axes[0, 1].set_ylabel('Cosine Similarity')
-        axes[0, 1].legend(title='Alpha (Non-IID Level)')
-
-    # Plot 3: Aggregation Time Overhead
-    if 'avg_aggregation_time' in plot_df.columns and not plot_df['avg_aggregation_time'].isna().all():
-        sns.boxplot(data=plot_df, x='alpha', y='avg_aggregation_time', hue='algorithm', ax=axes[1, 0])
-        axes[1, 0].set_title('Aggregation Time by Algorithm')
-        axes[1, 0].set_xlabel('Alpha (Non-IID Level)')
-        axes[1, 0].set_ylabel('Avg Aggregation Time (ms)')
-        axes[1, 0].legend(title='Algorithm')
-
-    # Plot 4: Update Norm Stability
-    if 'update_norm_stability' in plot_df.columns and not plot_df['update_norm_stability'].isna().all():
-        sns.scatterplot(data=plot_df, x='mu', y='update_norm_stability', hue='alpha',
-                       size='alpha', sizes=(50, 200), ax=axes[1, 1])
-        axes[1, 1].set_title('Update Norm Stability')
-        axes[1, 1].set_xlabel('FedProx μ Value')
-        axes[1, 1].set_ylabel('Update Norm Std Dev')
-        axes[1, 1].legend(title='Alpha (Non-IID Level)')
-
-    plt.tight_layout()
-    plt.savefig(f"{output_dir}/fedprox_performance_plots.png", dpi=150, bbox_inches='tight')
-    plt.close()
+def _safe_float(value: object) -> float | None:
+    if value in ("", None):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
-def generate_thesis_tables(analysis_results: Dict, output_dir: str):
-    """Generate LaTeX tables for thesis results section."""
-    latex_output = []
-
-    # Table 1: Convergence Comparison
-    latex_output.append("% FedProx vs FedAvg Convergence Comparison")
-    latex_output.append("\\begin{table}[htbp]")
-    latex_output.append("\\centering")
-    latex_output.append("\\caption{FedProx vs FedAvg Convergence Analysis}")
-    latex_output.append("\\label{tab:fedprox_convergence}")
-    latex_output.append("\\begin{tabular}{lccccc}")
-    latex_output.append("\\toprule")
-    latex_output.append("Algorithm & $\\alpha$ & $\\mu$ & Final L2 Distance & Cosine Similarity & Avg Time (ms) \\\\")
-    latex_output.append("\\midrule")
-
-    convergence_data = analysis_results.get('convergence_analysis', {})
-    for key, data in sorted(convergence_data.items()):
-        algorithm = data['algorithm']
-        alpha = data['alpha']
-        mu = data['mu']
-        l2_dist = data.get('final_l2_distance', 'N/A')
-        cos_sim = data.get('final_cosine_similarity', 'N/A')
-        avg_time = data.get('avg_aggregation_time', 'N/A')
-
-        # Format numbers
-        l2_str = f"{l2_dist:.4f}" if isinstance(l2_dist, (int, float)) else str(l2_dist)
-        cos_str = f"{cos_sim:.4f}" if isinstance(cos_sim, (int, float)) else str(cos_sim)
-        time_str = f"{avg_time:.2f}" if isinstance(avg_time, (int, float)) else str(avg_time)
-
-        latex_output.append(f"{algorithm} & {alpha:.2f} & {mu:.2f} & {l2_str} & {cos_str} & {time_str} \\\\")
-
-    latex_output.append("\\bottomrule")
-    latex_output.append("\\end{tabular}")
-    latex_output.append("\\end{table}")
-    latex_output.append("")
-
-    # Table 2: Performance Improvements
-    improvement_data = analysis_results.get('improvement_ratios', {})
-    if improvement_data:
-        latex_output.append("% FedProx Performance Improvements")
-        latex_output.append("\\begin{table}[htbp]")
-        latex_output.append("\\centering")
-        latex_output.append("\\caption{FedProx Performance Improvements over FedAvg}")
-        latex_output.append("\\label{tab:fedprox_improvements}")
-        latex_output.append("\\begin{tabular}{lccc}")
-        latex_output.append("\\toprule")
-        latex_output.append("Comparison & L2 Improvement & Time Overhead & Recommendation \\\\")
-        latex_output.append("\\midrule")
-
-        for key, improvements in improvement_data.items():
-            l2_improvement = improvements.get('l2_improvement', 'N/A')
-            time_overhead = improvements.get('time_overhead', 'N/A')
-
-            l2_str = f"{l2_improvement:.2f}×" if isinstance(l2_improvement, (int, float)) else str(l2_improvement)
-            time_str = f"{time_overhead:.2f}×" if isinstance(time_overhead, (int, float)) else str(time_overhead)
-
-            # Simple recommendation logic
-            if isinstance(l2_improvement, (int, float)) and l2_improvement > 1.1:
-                recommendation = "Recommended"
-            elif isinstance(time_overhead, (int, float)) and time_overhead > 1.5:
-                recommendation = "High overhead"
-            else:
-                recommendation = "Marginal benefit"
-
-            comparison_name = key.replace('_', ' ').replace('alpha ', 'α=').replace('mu ', 'μ=').replace(' vs ', ' vs ')
-            latex_output.append(f"{comparison_name} & {l2_str} & {time_str} & {recommendation} \\\\")
-
-        latex_output.append("\\bottomrule")
-        latex_output.append("\\end{tabular}")
-        latex_output.append("\\end{table}")
-
-    # Write to file
-    with open(f"{output_dir}/fedprox_thesis_tables.tex", 'w') as f:
-        f.write('\n'.join(latex_output))
+def _extract_float(row: Mapping[str, object], keys: Sequence[str]) -> float | None:
+    for key in keys:
+        if key in row:
+            value = _safe_float(row[key])
+            if value is not None and not math.isnan(value):
+                return value
+    return None
 
 
-def generate_comparison_summary(analysis_results: Dict, output_dir: str):
-    """Generate JSON summary of FedProx comparison results."""
-    summary = {
-        'experiment_metadata': {
-            'total_comparisons': len(analysis_results.get('convergence_analysis', {})),
-            'alpha_values_tested': list(set(
-                data['alpha'] for data in analysis_results.get('convergence_analysis', {}).values()
-            )),
-            'mu_values_tested': list(set(
-                data['mu'] for data in analysis_results.get('convergence_analysis', {}).values()
-            )),
-            'algorithms_compared': ['FedAvg', 'FedProx']
-        },
-        'key_findings': {},
-        'recommendations': {},
-        'raw_analysis_results': analysis_results
-    }
+def compute_weighted_macro_f1(rows: Sequence[Mapping[str, object]]) -> float:
+    """Compute dataset-size-weighted macro-F1 across clients."""
+    weighted_sum = 0.0
+    total_examples = 0.0
 
-    # Extract key findings
-    convergence_data = analysis_results.get('convergence_analysis', {})
-    improvement_data = analysis_results.get('improvement_ratios', {})
+    for row in rows:
+        dataset_size = _safe_float(row.get("dataset_size"))
+        if dataset_size is None or dataset_size <= 0:
+            continue
 
-    # Find best performing configurations
-    if convergence_data:
-        best_l2 = min(
-            (data for data in convergence_data.values() if data.get('final_l2_distance') is not None),
-            key=lambda x: x['final_l2_distance'],
-            default=None
+        macro_f1 = _extract_float(
+            row,
+            (
+                "macro_f1_after",
+                "macro_f1_argmax",
+                "macro_f1_before",
+            ),
         )
-        if best_l2:
-            summary['key_findings']['best_l2_distance'] = {
-                'algorithm': best_l2['algorithm'],
-                'alpha': best_l2['alpha'],
-                'mu': best_l2['mu'],
-                'value': best_l2['final_l2_distance']
-            }
+        if macro_f1 is None:
+            continue
 
-    # Calculate average improvements
-    if improvement_data:
-        l2_improvements = [
-            imp['l2_improvement'] for imp in improvement_data.values()
-            if 'l2_improvement' in imp and isinstance(imp['l2_improvement'], (int, float))
-        ]
-        time_overheads = [
-            imp['time_overhead'] for imp in improvement_data.values()
-            if 'time_overhead' in imp and isinstance(imp['time_overhead'], (int, float))
-        ]
+        weighted_sum += dataset_size * macro_f1
+        total_examples += dataset_size
 
-        if l2_improvements:
-            summary['key_findings']['avg_l2_improvement'] = np.mean(l2_improvements)
-        if time_overheads:
-            summary['key_findings']['avg_time_overhead'] = np.mean(time_overheads)
+    if total_examples == 0:
+        return float("nan")
 
-    # Generate recommendations
-    summary['recommendations'] = {
-        'for_iid_data': "Use FedAvg for faster convergence and lower computational overhead",
-        'for_mild_non_iid': "Use FedProx with μ=0.01 for improved stability with minimal overhead",
-        'for_severe_non_iid': "Use FedProx with μ=0.1 for better convergence, accept higher computational cost",
-        'thesis_conclusion': "FedProx shows measurable improvements in non-IID scenarios at the cost of increased computational overhead"
+    return weighted_sum / total_examples
+
+
+def _parse_run_identifiers(path: Path) -> tuple[float, float, int] | None:
+    match = ARTIFACT_DIR_PATTERN.search(path.name)
+    if match:
+        return (
+            float(match.group("alpha")),
+            float(match.group("mu")),
+            int(match.group("seed")),
+        )
+    match = RUN_DIR_PATTERN.search(path.name)
+    if match:
+        return (
+            float(match.group("alpha")),
+            float(match.group("mu")),
+            int(match.group("seed")),
+        )
+    return None
+
+
+def _load_client_summaries(run_dir: Path) -> list[dict[str, object]]:
+    summaries: list[dict[str, object]] = []
+    for client_file in sorted(run_dir.glob("client_*_metrics.csv")):
+        try:
+            df = pd.read_csv(client_file)
+        except Exception:
+            continue
+        if df.empty:
+            continue
+        last_row = df.iloc[-1].to_dict()
+        summaries.append(last_row)
+    return summaries
+
+
+def _load_server_metrics(run_dir: Path) -> pd.DataFrame | None:
+    metrics_path = run_dir / "metrics.csv"
+    if not metrics_path.exists():
+        return None
+    try:
+        df = pd.read_csv(metrics_path)
+    except Exception:
+        return None
+    if df.empty:
+        return None
+    return df
+
+
+def _resolve_algorithm(mu: float, metadata_path: Path | None) -> str:
+    if metadata_path and metadata_path.exists():
+        try:
+            meta = json.loads(metadata_path.read_text(encoding="utf-8"))
+            algo = str(meta.get("algorithm", "")).strip()
+            if algo:
+                return algo
+        except json.JSONDecodeError:
+            pass
+    return "FedProx" if mu > 0 else "FedAvg"
+
+
+def collect_run_metrics(artifacts_dir: Path) -> list[RunMetrics]:
+    run_metrics: list[RunMetrics] = []
+
+    if not artifacts_dir.exists():
+        return run_metrics
+
+    for artifact_dir in sorted(artifacts_dir.iterdir()):
+        identifiers = _parse_run_identifiers(artifact_dir)
+
+        candidate_run_dirs: list[Path]
+        if identifiers is not None:
+            alpha, mu, seed = identifiers
+            candidate_run_dirs = list(artifact_dir.glob(f"**/nightly_fedprox_alpha{alpha}_mu{mu}_seed{seed}")) or [artifact_dir]
+        else:
+            candidate_run_dirs = [p for p in artifact_dir.rglob("nightly_fedprox_alpha*_mu*_seed*") if p.is_dir()]
+
+        for run_dir in candidate_run_dirs:
+            run_identifiers = _parse_run_identifiers(run_dir)
+            if run_identifiers is None:
+                continue
+
+            alpha, mu, seed = run_identifiers
+            client_summaries = _load_client_summaries(run_dir)
+            if not client_summaries:
+                continue
+
+            weighted_macro_f1 = compute_weighted_macro_f1(client_summaries)
+
+            server_df = _load_server_metrics(run_dir)
+            if server_df is not None and "t_aggregate_ms" in server_df.columns:
+                mean_agg_time = float(server_df["t_aggregate_ms"].dropna().mean())
+            else:
+                mean_agg_time = float("nan")
+
+            rounds = int(server_df["round"].max()) if server_df is not None else 0
+
+            algorithm = _resolve_algorithm(mu, run_dir / "metadata.json")
+
+            run_metrics.append(
+                RunMetrics(
+                    alpha=float(alpha),
+                    mu=float(mu),
+                    seed=int(seed),
+                    algorithm=algorithm,
+                    weighted_macro_f1=float(weighted_macro_f1),
+                    mean_aggregation_time_ms=float(mean_agg_time),
+                    rounds=rounds,
+                    run_dir=run_dir,
+                )
+            )
+
+    return run_metrics
+
+
+def _mean_ci(values: Sequence[float], confidence: float = 0.95) -> tuple[float, float, float]:
+    arr = np.array([v for v in values if not math.isnan(v)], dtype=float)
+    if arr.size == 0:
+        return float("nan"), float("nan"), float("nan")
+
+    mean = float(arr.mean())
+    if arr.size == 1:
+        return mean, mean, mean
+
+    std = float(arr.std(ddof=1))
+    if std == 0.0:
+        return mean, mean, mean
+
+    t_crit = float(stats.t.ppf((1 + confidence) / 2, df=arr.size - 1))
+    margin = t_crit * std / math.sqrt(arr.size)
+    return mean, mean - margin, mean + margin
+
+
+def aggregate_run_metrics(
+    run_metrics: Sequence[RunMetrics],
+    metrics: Sequence[str] = ("weighted_macro_f1", "mean_aggregation_time_ms"),
+) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    if not run_metrics:
+        return pd.DataFrame(columns=["alpha", "mu", "algorithm", "metric", "mean", "ci_lower", "ci_upper", "n"])
+
+    grouped: dict[tuple[float, float, str], list[RunMetrics]] = {}
+    for metric in run_metrics:
+        key = (metric.alpha, metric.mu, metric.algorithm)
+        grouped.setdefault(key, []).append(metric)
+
+    for (alpha, mu, algorithm), group_runs in grouped.items():
+        for metric_name in metrics:
+            values = [getattr(run, metric_name, float("nan")) for run in group_runs]
+            mean, ci_lower, ci_upper = _mean_ci(values)
+            n = sum(1 for v in values if not math.isnan(v))
+            if n == 0:
+                continue
+            rows.append(
+                {
+                    "alpha": alpha,
+                    "mu": mu,
+                    "algorithm": algorithm,
+                    "metric": metric_name,
+                    "mean": mean,
+                    "ci_lower": ci_lower,
+                    "ci_upper": ci_upper,
+                    "n": n,
+                }
+            )
+
+    return pd.DataFrame(rows)
+
+
+def plot_aggregated_metrics(aggregated: pd.DataFrame, output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig.suptitle("FedAvg vs FedProx Nightly Aggregates", fontsize=16)
+
+    def _plot_metric(ax, metric_name: str, ylabel: str) -> None:
+        metric_df = aggregated[aggregated["metric"] == metric_name]
+        if metric_df.empty:
+            ax.set_visible(False)
+            return
+
+        for (alpha, algorithm), group in metric_df.groupby(["alpha", "algorithm"]):
+            sorted_group = group.sort_values("mu")
+            x = sorted_group["mu"].to_numpy()
+            mean = sorted_group["mean"].to_numpy()
+            lower = sorted_group["ci_lower"].to_numpy()
+            upper = sorted_group["ci_upper"].to_numpy()
+            label = f"{algorithm} (α={alpha})"
+            ax.plot(x, mean, marker="o", label=label)
+            ax.fill_between(x, lower, upper, alpha=0.2)
+
+        ax.set_xlabel("FedProx μ")
+        ax.set_ylabel(ylabel)
+        ax.grid(True, linestyle="--", alpha=0.3)
+        ax.legend()
+
+    _plot_metric(axes[0], "weighted_macro_f1", "Macro-F1 (weighted)")
+    _plot_metric(axes[1], "mean_aggregation_time_ms", "Aggregation time (ms)")
+
+    fig.tight_layout()
+    fig.savefig(output_dir / "fedprox_performance_plots.png", dpi=200)
+    fig.savefig(output_dir / "fedprox_performance_plots.pdf", dpi=200)
+    plt.close(fig)
+
+
+def write_summary(
+    run_metrics: Sequence[RunMetrics],
+    aggregated: pd.DataFrame,
+    output_dir: Path,
+) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    runs_payload = [
+        {
+            "alpha": run.alpha,
+            "mu": run.mu,
+            "seed": run.seed,
+            "algorithm": run.algorithm,
+            "weighted_macro_f1": run.weighted_macro_f1,
+            "mean_aggregation_time_ms": run.mean_aggregation_time_ms,
+            "rounds": run.rounds,
+            "run_dir": str(run.run_dir),
+        }
+        for run in run_metrics
+    ]
+
+    summary = {
+        "runs": runs_payload,
+        "aggregated": aggregated.to_dict(orient="records"),
     }
 
-    with open(f"{output_dir}/fedprox_comparison_summary.json", 'w') as f:
-        json.dump(summary, f, indent=2, default=str)
+    (output_dir / "fedprox_comparison_summary.json").write_text(
+        json.dumps(summary, indent=2),
+        encoding="utf-8",
+    )
+    aggregated.to_csv(output_dir / "fedprox_comparison_summary.csv", index=False)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Analyze FedProx vs FedAvg comparison results")
-    parser.add_argument("--artifacts_dir", type=str, required=True,
-                       help="Directory containing comparison artifacts")
-    parser.add_argument("--output_dir", type=str, required=True,
-                       help="Directory to save analysis results")
-
-    args = parser.parse_args()
-
-    # Create output directory
-    os.makedirs(args.output_dir, exist_ok=True)
-
-    # Load comparison data
-    print("Loading comparison data...")
-    comparison_data = load_comparison_data(args.artifacts_dir)
-
-    if not comparison_data:
-        print("Warning: No comparison data found in artifacts directory")
+def generate_thesis_tables(aggregated: pd.DataFrame, output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    macro_df = aggregated[aggregated["metric"] == "weighted_macro_f1"].copy()
+    if macro_df.empty:
         return
 
-    print(f"Loaded data for {len(comparison_data)} comparisons")
+    macro_df = macro_df.sort_values(["alpha", "mu", "algorithm"])
+    lines: list[str] = [
+        "% Auto-generated by analyze_fedprox_comparison.py",
+        "\\begin{table}[ht]",
+        "\\centering",
+        "\\caption{FedAvg vs FedProx weighted Macro-F1 (95\\% CI)}",
+        "\\label{tab:fedprox_macro_f1}",
+        "\\begin{tabular}{lccc}",
+        "\\toprule",
+        "Algorithm & $\\alpha$ & $\\mu$ & Macro-F1 $\\pm$ CI \\\\",
+        "\\midrule",
+    ]
 
-    # Analyze results
-    print("Analyzing convergence comparison...")
-    analysis_results = analyze_convergence_comparison(comparison_data)
+    for _, row in macro_df.iterrows():
+        mean = row["mean"]
+        lower = row["ci_lower"]
+        upper = row["ci_upper"]
+        ci_width = (upper - lower) / 2 if not math.isnan(upper) else 0.0
+        lines.append(f"{row['algorithm']} & {row['alpha']} & {row['mu']} & " f"{mean:.4f} $\\pm$ {ci_width:.4f} \\\\")
 
-    # Generate plots
-    print("Generating performance plots...")
-    plot_regularization_effects(comparison_data, args.output_dir)
+    lines.extend(["\\bottomrule", "\\end{tabular}", "\\end{table}"])
+    (output_dir / "fedprox_thesis_tables.tex").write_text(
+        "\n".join(lines),
+        encoding="utf-8",
+    )
 
-    # Generate thesis tables
-    print("Generating thesis tables...")
-    generate_thesis_tables(analysis_results, args.output_dir)
 
-    # Generate summary
-    print("Generating comparison summary...")
-    generate_comparison_summary(analysis_results, args.output_dir)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Aggregate FedProx nightly comparison artifacts.")
+    parser.add_argument(
+        "--artifacts_dir",
+        type=Path,
+        required=True,
+        help="Directory containing downloaded nightly artifacts.",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=Path,
+        required=True,
+        help="Directory where outputs (plots/tables) will be written.",
+    )
+    return parser.parse_args()
 
-    print(f"Analysis complete. Results saved to {args.output_dir}")
-    print(f"Generated files:")
-    print(f"  - fedprox_comparison_summary.json")
-    print(f"  - fedprox_performance_plots.png")
-    print(f"  - fedprox_thesis_tables.tex")
+
+def main() -> None:
+    args = parse_args()
+    run_metrics = collect_run_metrics(args.artifacts_dir)
+    if not run_metrics:
+        print("No FedProx artifacts found; nothing to summarize.")
+        return
+
+    aggregated = aggregate_run_metrics(run_metrics)
+    if aggregated.empty:
+        print("No valid metrics found across runs.")
+        return
+
+    write_summary(run_metrics, aggregated, args.output_dir)
+    plot_aggregated_metrics(aggregated, args.output_dir)
+    generate_thesis_tables(aggregated, args.output_dir)
 
 
 if __name__ == "__main__":

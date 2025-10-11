@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Sequence, Tuple
+from typing import List, Sequence, Tuple, Optional
 
 import numpy as np
 
@@ -187,11 +187,14 @@ def aggregate_weighted_mean(
     num_layers = len(weights_per_client[0])
     aggregated: List[np.ndarray] = []
     for layer_idx in range(num_layers):
-        acc = None
+        acc: Optional[np.ndarray] = None
         for client_idx, client_layers in enumerate(weights_per_client):
             weight = float(sample_counts[client_idx]) / totals
             contrib = client_layers[layer_idx] * weight
-            acc = contrib if acc is None else acc + contrib
+            if acc is None:
+                acc = contrib
+            else:
+                acc = acc + contrib
         assert acc is not None
         aggregated.append(acc)
     return aggregated

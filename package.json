@@ -1,0 +1,10 @@
+{
+  "name": "federated-ids",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "npm@10.5.0",
+  "scripts": {
+    "typecheck": "echo \"(turbo:typecheck) No JavaScript/TypeScript sources\"",
+    "lint": "echo \"(turbo:lint) No JavaScript/TypeScript sources\""
+  }
+}

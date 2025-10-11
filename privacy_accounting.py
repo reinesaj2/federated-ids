@@ -151,7 +151,7 @@ class DPAccountant:
         self.accountant = RDPAccountant()
         self._total_steps = 0
 
-    def get_privacy_summary(self) -> dict[str, float]:
+    def get_privacy_summary(self) -> dict[str, float | int]:
         """
         Get summary of current privacy state.
 

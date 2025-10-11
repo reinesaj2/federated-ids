@@ -2,7 +2,7 @@ import argparse
 import os
 import random
 import time
-from typing import Literal, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import flwr as fl
 import numpy as np
@@ -18,9 +18,7 @@ from server_metrics import (
     AggregationTimer,
     calculate_robustness_metrics,
 )
-
-
-AggregationChoice = Literal["fedavg", "median", "krum", "bulyan"]
+from logging_utils import configure_logging, get_logger
 
 
 def _set_global_seed(seed: int) -> None:
@@ -29,6 +27,8 @@ def _set_global_seed(seed: int) -> None:
 
 
 def main() -> None:
+    configure_logging()
+    logger = get_logger("server")
     parser = argparse.ArgumentParser(description="Flower server for Federated IDS demo")
     parser.add_argument("--rounds", type=int, default=2, help="Number of FL rounds")
     parser.add_argument(
@@ -97,17 +97,25 @@ def main() -> None:
     _set_global_seed(seed)
 
     agg_method = AggregationMethod.from_string(args.aggregation)
-    print(f"[Server] Using aggregation method: {agg_method.value}")
+    logger.info(
+        "server_config",
+        extra={
+            "aggregation": agg_method.value,
+        },
+    )
     secure_agg_enabled = bool(
         args.secure_aggregation or os.environ.get("D2_SECURE_AGG", "0").lower() not in ("0", "false", "no", "")
     )
-    print(f"[Server] Secure aggregation mode: {'ON' if secure_agg_enabled else 'OFF'} (stub)")
+    logger.info(
+        "secure_aggregation_mode",
+        extra={"enabled": bool(secure_agg_enabled), "note": "stub"},
+    )
 
     # Initialize metrics logging
     metrics_path = os.path.join(args.logdir, "metrics.csv")
     metrics_logger = ServerMetricsLogger(metrics_path)
     agg_timer = AggregationTimer()
-    print(f"[Server] Logging metrics to: {metrics_path}")
+    logger.info("metrics_init", extra={"metrics_path": metrics_path})
 
     class RobustStrategy(fl.server.strategy.FedAvg):
         def __init__(self, *args, **kwargs):
@@ -237,12 +245,16 @@ def main() -> None:
         fraction_evaluate=args.fraction_eval,
     )
 
-    print(f"[Server] Strategy configuration:")
-    print(f"  min_fit_clients: {args.min_fit_clients}")
-    print(f"  min_eval_clients: {args.min_eval_clients}")
-    print(f"  min_available_clients: {args.min_available_clients}")
-    print(f"  fraction_fit: {args.fraction_fit}")
-    print(f"  fraction_eval: {args.fraction_eval}")
+    logger.info(
+        "strategy_config",
+        extra={
+            "min_fit_clients": args.min_fit_clients,
+            "min_eval_clients": args.min_eval_clients,
+            "min_available_clients": args.min_available_clients,
+            "fraction_fit": args.fraction_fit,
+            "fraction_eval": args.fraction_eval,
+        },
+    )
 
     fl.server.start_server(
         server_address=args.server_address,
