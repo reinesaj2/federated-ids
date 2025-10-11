@@ -154,15 +154,7 @@ jobs:
               kill $SERVER_PID 2>/dev/null || true
               wait $SERVER_PID 2>/dev/null || true
 
-              ALGORITHM=$(python -c "import sys; mu=float(sys.argv[1]); print('FedProx' if mu > 0 else 'FedAvg')" "$MU")
-              cat <<EOF >"$LOGDIR/metadata.json"
-              {
-                "alpha": $ALPHA,
-                "mu": $MU,
-                "seed": $SEED,
-                "algorithm": "$ALGORITHM"
-              }
-              EOF
+              python -c "import json; json.dump({'alpha': float('$ALPHA'), 'mu': float('$MU'), 'seed': int('$SEED'), 'algorithm': 'FedProx' if float('$MU') > 0 else 'FedAvg'}, open('$LOGDIR/metadata.json', 'w'), indent=2)"
             done
 
       - name: Generate comparison plots
