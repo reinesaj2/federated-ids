@@ -221,7 +221,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install pandas matplotlib seaborn numpy
+        run: pip install pandas matplotlib seaborn numpy scipy
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
