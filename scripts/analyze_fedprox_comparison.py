@@ -23,7 +23,7 @@ import pandas as pd
 from scipy import stats
 
 
-ARTIFACT_DIR_PATTERN = re.compile(r"fedprox-nightly-alpha(?P<alpha>[0-9.]+)-mu(?P<mu>[0-9.]+)-seed(?P<seed>\d+)-")
+ARTIFACT_DIR_PATTERN = re.compile(r"fedprox-nightly-alpha(?P<alpha>[0-9.]+)-mu(?P<mu>[0-9.]+)-")
 RUN_DIR_PATTERN = re.compile(r"nightly_fedprox_alpha(?P<alpha>[0-9.]+)_mu(?P<mu>[0-9.]+)_seed(?P<seed>\d+)")
 
 
@@ -90,11 +90,9 @@ def compute_weighted_macro_f1(rows: Sequence[Mapping[str, object]]) -> float:
 def _parse_run_identifiers(path: Path) -> tuple[float, float, int] | None:
     match = ARTIFACT_DIR_PATTERN.search(path.name)
     if match:
-        return (
-            float(match.group("alpha")),
-            float(match.group("mu")),
-            int(match.group("seed")),
-        )
+        # Artifact names don't include seed, return None for seed to signal
+        # that we should look inside for run directories
+        return None
     match = RUN_DIR_PATTERN.search(path.name)
     if match:
         return (
