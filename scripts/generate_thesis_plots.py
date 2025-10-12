@@ -14,6 +14,7 @@ Includes statistical significance testing and confidence intervals.
 
 import argparse
 import json
+import math
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -22,6 +23,298 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import stats
+
+from privacy_accounting import compute_epsilon
+
+
+def _resolve_run_dir(reference: str, runs_root: Path) -> Optional[Path]:
+    if not reference:
+        return None
+
+    candidates = []
+    ref_path = Path(reference)
+    candidates.append(ref_path)
+    if not ref_path.is_absolute():
+        candidates.append(runs_root / ref_path)
+    candidates.append(runs_root / ref_path.name)
+
+    seen: set[Path] = set()
+    for candidate in candidates:
+        candidate = candidate.resolve() if candidate.exists() else candidate
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _extract_macro_f1(row: pd.Series) -> Optional[float]:
+    macro_columns = [
+        "macro_f1_after",
+        "macro_f1_global",
+        "macro_f1_personalized",
+        "macro_f1_argmax",
+    ]
+
+    for column in macro_columns:
+        if column in row and pd.notna(row[column]):
+            return float(row[column])
+    return None
+
+
+def _compute_epsilon_fallback(
+    row: Dict, final_row: Optional[pd.Series]
+) -> Optional[float]:
+    noise = None
+    if final_row is not None and "dp_sigma" in final_row:
+        noise = final_row.get("dp_sigma")
+        if pd.isna(noise):
+            noise = None
+
+    if noise is None:
+        noise = row.get("dp_noise_multiplier")
+
+    try:
+        noise = float(noise) if noise is not None else None
+    except (TypeError, ValueError):
+        noise = None
+
+    if not noise or noise <= 0.0:
+        return None
+
+    delta = None
+    if final_row is not None and "dp_delta" in final_row:
+        delta = final_row.get("dp_delta")
+        if pd.isna(delta):
+            delta = None
+    if delta is None:
+        delta = row.get("dp_delta", 1e-5)
+
+    try:
+        delta = float(delta) if delta is not None else None
+    except (TypeError, ValueError):
+        delta = None
+
+    if delta is None or delta <= 0.0:
+        delta = 1e-5
+
+    steps = row.get("round")
+    if (steps is None or steps <= 0) and final_row is not None and "round" in final_row:
+        steps = final_row.get("round")
+
+    try:
+        steps = int(steps)
+    except (TypeError, ValueError):
+        steps = None
+
+    if steps is None or steps <= 0:
+        return None
+
+    sample_rate = None
+    if final_row is not None and "dp_sample_rate" in final_row:
+        sample_rate = final_row.get("dp_sample_rate")
+        if pd.isna(sample_rate):
+            sample_rate = None
+    if sample_rate is None:
+        sample_rate = row.get("dp_sample_rate", 1.0)
+
+    try:
+        sample_rate = float(sample_rate)
+    except (TypeError, ValueError):
+        sample_rate = 1.0
+
+    try:
+        epsilon = compute_epsilon(
+            noise_multiplier=noise,
+            delta=delta,
+            num_steps=steps,
+            sample_rate=sample_rate,
+        )
+    except Exception:
+        return None
+
+    if not math.isfinite(epsilon):
+        return None
+
+    return float(epsilon)
+
+
+def _prepare_privacy_curve_data(
+    final_rounds: pd.DataFrame, runs_root: Path
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if "run_dir" not in final_rounds.columns:
+        return pd.DataFrame(), pd.DataFrame()
+
+    dp_records: List[Dict] = []
+    baseline_records: List[Dict] = []
+
+    for row in final_rounds.to_dict(orient="records"):
+        run_path = _resolve_run_dir(str(row.get("run_dir", "")), runs_root)
+        if run_path is None:
+            continue
+
+        client_files = sorted(run_path.glob("client_*_metrics.csv"))
+        if not client_files:
+            continue
+
+        macro_values: List[float] = []
+        epsilon_candidates: List[float] = []
+
+        for client_file in client_files:
+            try:
+                client_df = pd.read_csv(client_file)
+            except Exception:
+                continue
+
+            if client_df.empty:
+                continue
+
+            final_row = client_df.iloc[-1]
+            macro = _extract_macro_f1(final_row)
+            if macro is None:
+                continue
+            macro_values.append(macro)
+
+            if row.get("dp_enabled"):
+                epsilon_val = final_row.get("dp_epsilon")
+                if pd.isna(epsilon_val):
+                    epsilon_val = None
+                if epsilon_val is None:
+                    epsilon_val = _compute_epsilon_fallback(row, final_row)
+                if epsilon_val is not None:
+                    epsilon_candidates.append(float(epsilon_val))
+
+        if not macro_values:
+            continue
+
+        macro_mean = float(np.mean(macro_values))
+        base_record = {
+            "macro_f1": macro_mean,
+            "seed": row.get("seed"),
+            "dp_noise_multiplier": row.get("dp_noise_multiplier"),
+        }
+
+        if row.get("dp_enabled"):
+            epsilon = (
+                float(np.mean(epsilon_candidates))
+                if epsilon_candidates
+                else _compute_epsilon_fallback(row, None)
+            )
+            if epsilon is None:
+                continue
+            dp_records.append({**base_record, "epsilon": epsilon})
+        else:
+            baseline_records.append(base_record)
+
+    return pd.DataFrame(dp_records), pd.DataFrame(baseline_records)
+
+
+def _render_privacy_curve(
+    dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output_dir: Path
+) -> None:
+    if dp_df.empty:
+        return
+
+    summary_rows: List[Dict] = []
+
+    for epsilon, subset in dp_df.groupby("epsilon"):
+        macros = subset["macro_f1"].dropna()
+        if macros.empty:
+            continue
+
+        n = len(macros)
+        mean = float(macros.mean())
+        ci_lower = mean
+        ci_upper = mean
+        if n >= 2:
+            se = stats.sem(macros)
+            margin = se * stats.t.ppf(0.975, n - 1)
+            ci_lower = mean - margin
+            ci_upper = mean + margin
+
+        summary_rows.append(
+            {
+                "epsilon": float(epsilon),
+                "macro_f1_mean": mean,
+                "ci_lower": ci_lower,
+                "ci_upper": ci_upper,
+                "n": n,
+                "dp_noise_multiplier": subset["dp_noise_multiplier"].dropna().mean(),
+                "is_baseline": 0,
+            }
+        )
+
+    baseline_row: Optional[Dict] = None
+    if not baseline_df.empty:
+        baseline_macros = baseline_df["macro_f1"].dropna()
+        if not baseline_macros.empty:
+            n = len(baseline_macros)
+            mean = float(baseline_macros.mean())
+            ci_lower = mean
+            ci_upper = mean
+            if n >= 2:
+                se = stats.sem(baseline_macros)
+                margin = se * stats.t.ppf(0.975, n - 1)
+                ci_lower = mean - margin
+                ci_upper = mean + margin
+            baseline_row = {
+                "epsilon": float("nan"),
+                "macro_f1_mean": mean,
+                "ci_lower": ci_lower,
+                "ci_upper": ci_upper,
+                "n": n,
+                "dp_noise_multiplier": float("nan"),
+                "is_baseline": 1,
+            }
+            summary_rows.append(baseline_row)
+
+    if not summary_rows:
+        return
+
+    summary_df = pd.DataFrame(summary_rows)
+    summary_df = summary_df.sort_values(
+        by=["is_baseline", "epsilon"], na_position="last"
+    )
+    summary_path = output_dir / "privacy_utility_curve.csv"
+    summary_df.to_csv(summary_path, index=False)
+
+    dp_summary = summary_df[summary_df["is_baseline"] == 0]
+    if dp_summary.empty:
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    lower_errors = np.maximum(0.0, dp_summary["macro_f1_mean"] - dp_summary["ci_lower"])
+    upper_errors = np.maximum(0.0, dp_summary["ci_upper"] - dp_summary["macro_f1_mean"])
+    yerr = np.vstack([lower_errors.to_numpy(), upper_errors.to_numpy()])
+
+    ax.errorbar(
+        dp_summary["epsilon"],
+        dp_summary["macro_f1_mean"],
+        yerr=yerr,
+        fmt="o-",
+        capsize=5,
+        label="DP Enabled",
+    )
+
+    if baseline_row is not None and baseline_row["n"] > 0:
+        ax.axhline(
+            baseline_row["macro_f1_mean"],
+            color="gray",
+            linestyle="--",
+            label=f"No DP baseline (n={baseline_row['n']})",
+        )
+
+    ax.set_xlabel("ε (DP accountant)")
+    ax.set_ylabel("Macro-F1")
+    ax.set_title("Privacy–Utility Curve")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+    fig.tight_layout()
+    fig.savefig(output_dir / "privacy_utility_curve.png", dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
 
 def compute_server_macro_f1_from_clients(run_dir: Path, round_num: int) -> Optional[float]:
@@ -492,7 +785,9 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     plt.close()
 
 
-def plot_privacy_utility(df: pd.DataFrame, output_dir: Path):
+def plot_privacy_utility(
+    df: pd.DataFrame, output_dir: Path, runs_dir: Optional[Path] = None
+):
     """Plot privacy-utility tradeoff."""
     if "dp_enabled" not in df.columns:
         return
@@ -551,6 +846,10 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path):
     plt.tight_layout()
     plt.savefig(output_dir / "privacy_utility.png", dpi=300, bbox_inches="tight")
     plt.close()
+
+    runs_root = Path(runs_dir) if runs_dir is not None else Path("runs")
+    dp_df, baseline_df = _prepare_privacy_curve_data(final_rounds, runs_root)
+    _render_privacy_curve(dp_df, baseline_df, output_dir)
 
 
 def plot_personalization_benefit(df: pd.DataFrame, output_dir: Path):
@@ -705,7 +1004,7 @@ def main():
 
     if args.dimension in ["privacy", "all"]:
         print("Generating privacy-utility plots...")
-        plot_privacy_utility(df, output_dir)
+        plot_privacy_utility(df, output_dir, runs_dir=runs_dir)
 
     if args.dimension in ["personalization", "all"]:
         print("Generating personalization benefit plots...")
