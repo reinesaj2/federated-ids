@@ -16,7 +16,7 @@ import argparse
 import json
 import math
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -317,33 +317,79 @@ def _render_privacy_curve(
     plt.close(fig)
 
 
-def load_experiment_results(runs_dir: Path, dimension: str) -> pd.DataFrame:
+def compute_server_macro_f1_from_clients(run_dir: Path, round_num: int) -> Optional[float]:
+    """Compute server-level macro-F1 by averaging client macro-F1 scores for a given round."""
+    client_f1_scores = []
+
+    for client_csv in run_dir.glob("client_*_metrics.csv"):
+        try:
+            client_df = pd.read_csv(client_csv)
+            # Filter for the specific round
+            round_data = client_df[client_df["round"] == round_num]
+
+            if not round_data.empty:
+                # Try macro_f1_after first, fall back to macro_f1_argmax
+                f1_value = None
+                if "macro_f1_after" in round_data.columns:
+                    f1_value = round_data["macro_f1_after"].iloc[0]
+                elif "macro_f1_argmax" in round_data.columns:
+                    f1_value = round_data["macro_f1_argmax"].iloc[0]
+
+                if f1_value is not None and not pd.isna(f1_value):
+                    client_f1_scores.append(float(f1_value))
+        except Exception:
+            continue
+
+    if not client_f1_scores:
+        return None
+
+    return float(np.mean(client_f1_scores))
+
+
+def load_experiment_results(runs_dir: Path) -> pd.DataFrame:
     """Load all experiment results for a given dimension."""
     all_data = []
 
-    pattern = f"comp_*"
-    for run_dir in runs_dir.glob(pattern):
-        # Load config
-        config_file = run_dir / "config.json"
-        if not config_file.exists():
-            continue
+    # Try both comp_* and d2_* patterns
+    patterns = ["comp_*", "d2_*"]
 
-        with open(config_file) as f:
-            config = json.load(f)
+    for pattern in patterns:
+        for run_dir in runs_dir.glob(pattern):
+            # Load config if available
+            config = {}
+            config_file = run_dir / "config.json"
+            if config_file.exists():
+                with open(config_file) as f:
+                    config = json.load(f)
 
-        # Load server metrics
-        metrics_file = run_dir / "metrics.csv"
-        if not metrics_file.exists():
-            continue
+            # Load server metrics
+            metrics_file = run_dir / "metrics.csv"
+            if not metrics_file.exists():
+                continue
 
-        df = pd.read_csv(metrics_file)
+            df = pd.read_csv(metrics_file)
 
-        # Add config columns
-        for key, value in config.items():
-            df[key] = value
+            # Compute macro-F1 from client metrics for each round
+            macro_f1_values = []
+            for idx, row in df.iterrows():
+                round_num = row.get("round", idx)
+                macro_f1 = compute_server_macro_f1_from_clients(run_dir, round_num)
+                macro_f1_values.append(macro_f1)
 
-        df["run_dir"] = str(run_dir)
-        all_data.append(df)
+            df["macro_f1"] = macro_f1_values
+
+            # Add config columns
+            for key, value in config.items():
+                df[key] = value
+
+            # Extract aggregation method and seed from config
+            if "aggregation" not in df.columns:
+                df["aggregation"] = config.get("aggregation", "fedavg")
+            if "seed" not in df.columns:
+                df["seed"] = config.get("seed", 42)
+
+            df["run_dir"] = str(run_dir)
+            all_data.append(df)
 
     if not all_data:
         return pd.DataFrame()
@@ -351,9 +397,7 @@ def load_experiment_results(runs_dir: Path, dimension: str) -> pd.DataFrame:
     return pd.concat(all_data, ignore_index=True)
 
 
-def compute_confidence_interval(
-    data: np.ndarray, confidence: float = 0.95
-) -> Tuple[float, float, float]:
+def compute_confidence_interval(data: np.ndarray, confidence: float = 0.95) -> Tuple[float, float, float]:
     """Compute mean and confidence interval."""
     mean = np.mean(data)
     se = stats.sem(data)
@@ -361,9 +405,7 @@ def compute_confidence_interval(
     return mean, mean - ci, mean + ci
 
 
-def perform_statistical_tests(
-    df: pd.DataFrame, group_col: str, metric_col: str
-) -> Dict:
+def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str) -> Dict:
     """Perform statistical significance tests between groups."""
     groups = df[group_col].unique()
 
@@ -401,68 +443,211 @@ def perform_statistical_tests(
         return result
 
 
+def _render_macro_f1_plot(ax, final_rounds: pd.DataFrame, available_methods: list) -> bool:
+    """Render macro-F1 comparison plot with 95% CIs. Returns True if rendered."""
+    if "macro_f1" not in final_rounds.columns:
+        return False
+
+    macro_f1_data = final_rounds[final_rounds["macro_f1"].notna()]
+    if macro_f1_data.empty:
+        return False
+
+    summary_data = []
+    for method in available_methods:
+        method_data = macro_f1_data[macro_f1_data["aggregation"] == method]["macro_f1"].values
+        if len(method_data) > 0:
+            if len(method_data) >= 2:
+                mean, lower, upper = compute_confidence_interval(method_data)
+                ci_range = upper - lower
+            else:
+                mean = float(np.mean(method_data))
+                ci_range = 0.0
+            summary_data.append({"aggregation": method, "mean": mean, "ci": ci_range, "n": len(method_data)})
+
+    if not summary_data:
+        return False
+
+    summary_df = pd.DataFrame(summary_data)
+    x_pos = np.arange(len(summary_df))
+    ax.bar(
+        x_pos,
+        summary_df["mean"],
+        yerr=summary_df["ci"] / 2,
+        capsize=5,
+        alpha=0.7,
+        color=sns.color_palette("colorblind", len(summary_df)),
+    )
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels([m.upper() for m in summary_df["aggregation"]])
+    ax.set_title("Detection Performance (Macro-F1, 95% CI)")
+    ax.set_xlabel("Aggregation Method")
+    ax.set_ylabel("Macro-F1 Score")
+    ax.set_ylim([0, 1.0])
+    ax.grid(True, alpha=0.3, axis="y")
+
+    for i, row in summary_df.iterrows():
+        ax.text(i, row["mean"] + row["ci"] / 2 + 0.02, f"n={row['n']}", ha="center", va="bottom", fontsize=8)
+
+    stats_result = perform_statistical_tests(macro_f1_data, "aggregation", "macro_f1")
+    if stats_result.get("p_value"):
+        ax.text(
+            0.02,
+            0.02,
+            f"ANOVA p={stats_result['p_value']:.4f}",
+            transform=ax.transAxes,
+            va="bottom",
+            fontsize=9,
+            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+        )
+
+    return True
+
+
+def _render_timing_plot(ax, df: pd.DataFrame, available_methods: list) -> bool:
+    """Render aggregation timing plot with 95% CIs. Returns True if rendered."""
+    if "t_aggregate_ms" not in df.columns:
+        return False
+
+    timing_data = df.groupby(["aggregation", "seed"])["t_aggregate_ms"].mean().reset_index()
+
+    summary_data = []
+    for method in available_methods:
+        method_data = timing_data[timing_data["aggregation"] == method]["t_aggregate_ms"].values
+        if len(method_data) > 0:
+            if len(method_data) >= 2:
+                mean, lower, upper = compute_confidence_interval(method_data)
+                ci_range = upper - lower
+            else:
+                mean = float(np.mean(method_data))
+                ci_range = 0.0
+            summary_data.append({"aggregation": method, "mean": mean, "ci": ci_range, "n": len(method_data)})
+
+    if not summary_data:
+        return False
+
+    summary_df = pd.DataFrame(summary_data)
+    x_pos = np.arange(len(summary_df))
+    ax.bar(
+        x_pos,
+        summary_df["mean"],
+        yerr=summary_df["ci"] / 2,
+        capsize=5,
+        alpha=0.7,
+        color=sns.color_palette("colorblind", len(summary_df)),
+    )
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels([m.upper() for m in summary_df["aggregation"]])
+    ax.set_title("Aggregation Time (95% CI)")
+    ax.set_xlabel("Aggregation Method")
+    ax.set_ylabel("Time (ms)")
+    ax.grid(True, alpha=0.3, axis="y")
+
+    for i, row in summary_df.iterrows():
+        ax.text(i, row["mean"] + row["ci"] / 2 + row["mean"] * 0.05, f"n={row['n']}", ha="center", va="bottom", fontsize=8)
+
+    return True
+
+
+def _render_l2_plot(ax, final_rounds: pd.DataFrame, available_methods: list) -> bool:
+    """Render L2 distance boxplot. Returns True if rendered."""
+    if "l2_to_benign_mean" not in final_rounds.columns:
+        return False
+
+    l2_data = final_rounds[final_rounds["l2_to_benign_mean"].notna()]
+    if l2_data.empty or len(available_methods) == 0:
+        return False
+
+    l2_data_filtered = l2_data[l2_data["aggregation"].isin(available_methods)]
+    if l2_data_filtered.empty:
+        return False
+
+    sns.boxplot(data=l2_data_filtered, x="aggregation", y="l2_to_benign_mean", ax=ax, order=available_methods)
+    ax.set_title("Model Drift (L2 Distance)")
+    ax.set_xlabel("Aggregation Method")
+    ax.set_ylabel("L2 Distance to Benign Mean")
+    ax.set_xticklabels([m.upper() for m in available_methods])
+
+    y_min = l2_data_filtered["l2_to_benign_mean"].min()
+    if y_min > 0:
+        ax.set_ylim(bottom=y_min * 0.5)
+
+    return True
+
+
+def _render_cosine_plot(ax, final_rounds: pd.DataFrame, available_methods: list) -> bool:
+    """Render cosine similarity violinplot. Returns True if rendered."""
+    if "cos_to_benign_mean" not in final_rounds.columns:
+        return False
+
+    cos_data = final_rounds[final_rounds["cos_to_benign_mean"].notna()]
+    if cos_data.empty or len(available_methods) == 0:
+        return False
+
+    cos_data_filtered = cos_data[cos_data["aggregation"].isin(available_methods)]
+    if cos_data_filtered.empty:
+        return False
+
+    sns.violinplot(data=cos_data_filtered, x="aggregation", y="cos_to_benign_mean", ax=ax, order=available_methods)
+    ax.set_title("Model Alignment (Cosine Similarity)")
+    ax.set_xlabel("Aggregation Method")
+    ax.set_ylabel("Cosine Similarity")
+    ax.set_xticklabels([m.upper() for m in available_methods])
+
+    return True
+
+
 def plot_aggregation_comparison(df: pd.DataFrame, output_dir: Path):
-    """Plot comparison of aggregation methods."""
+    """Plot comparison of aggregation methods with macro-F1 as primary metric."""
     if "aggregation" not in df.columns:
         return
 
-    # Get final round metrics for each aggregation method
+    method_order = ["fedavg", "krum", "bulyan", "median"]
+    available_methods = [m for m in method_order if m in df["aggregation"].unique()]
+
     final_rounds = df.groupby(["aggregation", "seed"]).tail(1)
+
+    if "l2_to_benign_mean" in final_rounds.columns:
+        l2_data = final_rounds["l2_to_benign_mean"].dropna()
+        if len(l2_data) > 0:
+            zero_count = (l2_data == 0.0).sum()
+            if zero_count > len(l2_data) * 0.5:
+                print(f"WARNING: {zero_count}/{len(l2_data)} L2 values are exactly zero - possible data issue")
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
     fig.suptitle("Aggregation Method Comparison", fontsize=16, fontweight="bold")
 
-    # Plot 1: Convergence (L2 distance)
-    if "l2_to_benign_mean" in final_rounds.columns:
-        ax = axes[0, 0]
-        sns.boxplot(data=final_rounds, x="aggregation", y="l2_to_benign_mean", ax=ax)
-        ax.set_title("Final L2 Distance to Benign Mean")
-        ax.set_xlabel("Aggregation Method")
-        ax.set_ylabel("L2 Distance")
-
-        # Add statistical test
-        stats_result = perform_statistical_tests(
-            final_rounds, "aggregation", "l2_to_benign_mean"
-        )
-        if stats_result.get("p_value"):
-            ax.text(
-                0.02,
-                0.98,
-                f"p={stats_result['p_value']:.4f}",
-                transform=ax.transAxes,
-                va="top",
-                fontsize=10,
-                bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-            )
-
-    # Plot 2: Aggregation time
-    if "t_aggregate_ms" in df.columns:
-        ax = axes[0, 1]
-        agg_time = df.groupby(["aggregation", "seed"])["t_aggregate_ms"].mean().reset_index()
-        sns.barplot(data=agg_time, x="aggregation", y="t_aggregate_ms", ax=ax)
-        ax.set_title("Mean Aggregation Time")
-        ax.set_xlabel("Aggregation Method")
-        ax.set_ylabel("Time (ms)")
-
-    # Plot 3: Robustness (cosine similarity)
-    if "cos_to_benign_mean" in final_rounds.columns:
-        ax = axes[1, 0]
-        sns.violinplot(data=final_rounds, x="aggregation", y="cos_to_benign_mean", ax=ax)
-        ax.set_title("Cosine Similarity to Benign Mean")
-        ax.set_xlabel("Aggregation Method")
-        ax.set_ylabel("Cosine Similarity")
-
-    # Plot 4: Update norm stability
-    if "update_norm_std" in df.columns:
-        ax = axes[1, 1]
-        norm_std = df.groupby(["aggregation", "seed"])["update_norm_std"].mean().reset_index()
-        sns.boxplot(data=norm_std, x="aggregation", y="update_norm_std", ax=ax)
-        ax.set_title("Update Norm Variability")
-        ax.set_xlabel("Aggregation Method")
-        ax.set_ylabel("Std Dev of Update Norms")
+    _render_macro_f1_plot(axes[0, 0], final_rounds, available_methods)
+    _render_timing_plot(axes[0, 1], df, available_methods)
+    _render_l2_plot(axes[1, 0], final_rounds, available_methods)
+    _render_cosine_plot(axes[1, 1], final_rounds, available_methods)
 
     plt.tight_layout()
+
+    # Save both PNG and PDF
+    output_dir.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_dir / "aggregation_comparison.png", dpi=300, bbox_inches="tight")
+    plt.savefig(output_dir / "aggregation_comparison.pdf", bbox_inches="tight")
+
+    # Save summary statistics to CSV
+    if "macro_f1" in final_rounds.columns:
+        stats_data = []
+        for method in available_methods:
+            method_data = final_rounds[(final_rounds["aggregation"] == method) & (final_rounds["macro_f1"].notna())]
+            if not method_data.empty:
+                f1_values = method_data["macro_f1"].values
+                stats_data.append(
+                    {
+                        "aggregation_method": method,
+                        "macro_f1_mean": float(np.mean(f1_values)),
+                        "macro_f1_std": float(np.std(f1_values)),
+                        "n_seeds": len(f1_values),
+                    }
+                )
+
+        if stats_data:
+            stats_df = pd.DataFrame(stats_data)
+            stats_df.to_csv(output_dir / "aggregation_comparison_stats.csv", index=False)
+
     plt.close()
 
 
@@ -478,18 +663,14 @@ def plot_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     if "l2_to_benign_mean" in df.columns:
         ax = axes[0]
         for alpha in sorted(df["alpha"].unique()):
-            alpha_data = df[df["alpha"] == alpha].groupby("round").agg(
-                {"l2_to_benign_mean": ["mean", "std"]}
-            )
+            alpha_data = df[df["alpha"] == alpha].groupby("round").agg({"l2_to_benign_mean": ["mean", "std"]})
             rounds = alpha_data.index
             means = alpha_data[("l2_to_benign_mean", "mean")]
             stds = alpha_data[("l2_to_benign_mean", "std")]
 
             label = "IID" if alpha >= 1.0 else f"Non-IID (α={alpha})"
             ax.plot(rounds, means, marker="o", label=label)
-            ax.fill_between(
-                rounds, means - stds, means + stds, alpha=0.2
-            )
+            ax.fill_between(rounds, means - stds, means + stds, alpha=0.2)
 
         ax.set_title("Convergence: L2 Distance Over Rounds")
         ax.set_xlabel("Round")
@@ -527,9 +708,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
         ax = axes[0, 0]
         for agg in final_rounds["aggregation"].unique():
             agg_data = final_rounds[final_rounds["aggregation"] == agg]
-            summary = agg_data.groupby("adversary_fraction")["l2_to_benign_mean"].agg(
-                ["mean", "std"]
-            )
+            summary = agg_data.groupby("adversary_fraction")["l2_to_benign_mean"].agg(["mean", "std"])
             ax.errorbar(
                 summary.index * 100,
                 summary["mean"],
@@ -550,9 +729,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
         ax = axes[0, 1]
         for agg in final_rounds["aggregation"].unique():
             agg_data = final_rounds[final_rounds["aggregation"] == agg]
-            summary = agg_data.groupby("adversary_fraction")["cos_to_benign_mean"].agg(
-                ["mean", "std"]
-            )
+            summary = agg_data.groupby("adversary_fraction")["cos_to_benign_mean"].agg(["mean", "std"])
             ax.errorbar(
                 summary.index * 100,
                 summary["mean"],
@@ -592,13 +769,9 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
         resilience_data = []
         for agg in final_rounds["aggregation"].unique():
             benign_l2 = benign[benign["aggregation"] == agg]["l2_to_benign_mean"].mean()
-            adv_l2 = adversarial[adversarial["aggregation"] == agg][
-                "l2_to_benign_mean"
-            ].mean()
+            adv_l2 = adversarial[adversarial["aggregation"] == agg]["l2_to_benign_mean"].mean()
             degradation = (adv_l2 - benign_l2) / benign_l2 if benign_l2 > 0 else 0
-            resilience_data.append(
-                {"aggregation": agg, "degradation_pct": degradation * 100}
-            )
+            resilience_data.append({"aggregation": agg, "degradation_pct": degradation * 100})
 
         resilience_df = pd.DataFrame(resilience_data)
         sns.barplot(data=resilience_df, x="aggregation", y="degradation_pct", ax=ax)
@@ -627,11 +800,9 @@ def plot_privacy_utility(
     # Plot 1: L2 distance vs DP noise
     if "l2_to_benign_mean" in final_rounds.columns:
         ax = axes[0]
-        dp_data = final_rounds[final_rounds["dp_enabled"] == True]
+        dp_data = final_rounds[final_rounds["dp_enabled"] is True]
         if not dp_data.empty:
-            summary = dp_data.groupby("dp_noise_multiplier")["l2_to_benign_mean"].agg(
-                ["mean", "std"]
-            )
+            summary = dp_data.groupby("dp_noise_multiplier")["l2_to_benign_mean"].agg(["mean", "std"])
             ax.errorbar(
                 summary.index,
                 summary["mean"],
@@ -642,9 +813,7 @@ def plot_privacy_utility(
             )
 
         # Add baseline without DP
-        no_dp = final_rounds[final_rounds["dp_enabled"] == False][
-            "l2_to_benign_mean"
-        ].mean()
+        no_dp = final_rounds[final_rounds["dp_enabled"] is False]["l2_to_benign_mean"].mean()
         ax.axhline(y=no_dp, color="green", linestyle="--", label="No DP (Baseline)")
 
         ax.set_title("Model Accuracy vs DP Noise")
@@ -669,11 +838,7 @@ def plot_privacy_utility(
 
         if comparison_data:
             plot_df = pd.DataFrame(
-                [
-                    {"DP": item["DP"], "Cosine Similarity": val}
-                    for item in comparison_data
-                    for val in item["Cosine Similarity"]
-                ]
+                [{"DP": item["DP"], "Cosine Similarity": val} for item in comparison_data for val in item["Cosine Similarity"]]
             )
             sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
             ax.set_title("Model Alignment with DP")
@@ -742,9 +907,7 @@ def plot_personalization_benefit(df: pd.DataFrame, output_dir: Path):
     # Plot 2: Personalization gain distribution
     ax = axes[1]
     if not enabled.empty:
-        sns.boxplot(
-            data=pers_df, x="personalization_epochs", y="gain", ax=ax
-        )
+        sns.boxplot(data=pers_df, x="personalization_epochs", y="gain", ax=ax)
         ax.set_xlabel("Personalization Epochs")
         ax.set_ylabel("F1 Gain")
         ax.set_title("Personalization Gain Distribution")
@@ -770,9 +933,7 @@ def generate_latex_summary(results_dir: Path, output_dir: Path):
     latex_lines.append("\\label{tab:aggregation_comparison}")
     latex_lines.append("\\begin{tabular}{lcccc}")
     latex_lines.append("\\toprule")
-    latex_lines.append(
-        "Method & L2 Distance & Cosine Sim. & Time (ms) & Resilience \\\\"
-    )
+    latex_lines.append("Method & L2 Distance & Cosine Sim. & Time (ms) & Resilience \\\\")
     latex_lines.append("\\midrule")
     latex_lines.append("FedAvg & 0.XXX & 0.XXX & XX.X & Baseline \\\\")
     latex_lines.append("Krum & 0.XXX & 0.XXX & XX.X & Good \\\\")
@@ -804,9 +965,7 @@ def main():
         default="all",
         help="Which dimension to plot",
     )
-    parser.add_argument(
-        "--runs_dir", type=str, default="runs", help="Directory with experiment runs"
-    )
+    parser.add_argument("--runs_dir", type=str, default="runs", help="Directory with experiment runs")
     parser.add_argument(
         "--output_dir",
         type=str,
@@ -822,7 +981,7 @@ def main():
 
     # Load all data
     print("Loading experiment results...")
-    df = load_experiment_results(runs_dir, args.dimension)
+    df = load_experiment_results(runs_dir)
 
     if df.empty:
         print("No experiment data found!")
