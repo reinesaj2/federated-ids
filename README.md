@@ -57,6 +57,7 @@ You should see “All checks passed”. If this completes, you’re ready to dem
 Run everything from the project root. Use three terminals (one for server, two for clients).
 
 ### 3.1 Create and activate a virtual environment (if not already done)
+
 ```bash
 cd <ABS_PATH>
 python3 -m venv .venv
@@ -66,18 +67,21 @@ python -m pip install -r requirements.txt
 ```
 
 ### 3.2 Start the Flower server (FedAvg, 2 rounds)
+
 ```bash
 export SEED=42
 python server.py --rounds 2 --aggregation fedavg --server_address 127.0.0.1:8099
 ```
 
 Notes:
+
 - Deprecation warnings about `start_server`/`start_client` are expected on flwr==1.21.0.
 - If port 8099 is busy, choose another (e.g., 8100) and use it for both server and clients.
 
 ### 3.3 Start two synthetic clients (in two new terminals)
 
 Terminal B:
+
 ```bash
 cd <ABS_PATH>
 source .venv/bin/activate
@@ -85,6 +89,7 @@ python client.py --server_address 127.0.0.1:8099 --dataset synthetic --samples 2
 ```
 
 Terminal C:
+
 ```bash
 cd <ABS_PATH>
 source .venv/bin/activate
@@ -132,6 +137,7 @@ On each client terminal, you'll see lines such as:
   ```
 - Logs: CSV files are written to `./logs/` (e.g., `metrics.csv`, `client_0_metrics.csv`).
 - Plots: generate figures from any run directory that contains CSVs:
+
   ```bash
   # Create output directory
   mkdir -p ./runs/smoke_metrics
@@ -144,6 +150,7 @@ On each client terminal, you'll see lines such as:
   ```
 
 **Important**: If plotting fails with "Expected X fields, saw Y" error, clean logs between different demo runs:
+
 ```bash
 rm -rf logs/; mkdir logs
 ```
@@ -155,6 +162,7 @@ rm -rf logs/; mkdir logs
 Test the FedProx algorithm with proximal regularization to improve convergence on non-IID data:
 
 ### Single comparison
+
 ```bash
 # Clean logs and run FedAvg baseline
 rm -rf logs/; mkdir logs
@@ -172,6 +180,7 @@ wait
 ```
 
 ### Matrix comparison script
+
 ```bash
 # Test multiple α (non-IID levels) and μ (regularization strengths)
 export ALPHA_VALUES="0.1,0.5" MU_VALUES="0.0,0.01,0.1" ROUNDS=5 LOGDIR="./fedprox_comparison"
@@ -182,6 +191,7 @@ python scripts/analyze_fedprox_comparison.py --artifacts_dir ./fedprox_compariso
 ```
 
 **Parameters**:
+
 - `--fedprox_mu 0.0`: Standard FedAvg (no regularization)
 - `--fedprox_mu 0.01`: Light FedProx regularization
 - `--fedprox_mu 0.1`: Strong FedProx regularization
@@ -193,6 +203,7 @@ python scripts/analyze_fedprox_comparison.py --artifacts_dir ./fedprox_compariso
 After federated training completes, each client can optionally fine-tune the global model on its local data to improve local performance. This is useful in heterogeneous (non-IID) environments where each client has unique traffic patterns.
 
 ### Enable personalization
+
 ```bash
 # Run FL training with 2 local epochs, then 3 personalization epochs
 python server.py --rounds 5 --aggregation fedavg --server_address 127.0.0.1:8099 &
@@ -202,13 +213,16 @@ wait
 ```
 
 **Key points:**
+
 - Personalization happens **after** each FL round, locally on the client
 - The **global model weights** are sent back to the server (personalized weights stay local)
 - Each client logs both global and personalized performance metrics
 - Useful for non-IID data where clients have different data distributions
 
 ### Metrics logged
+
 When `--personalization_epochs > 0` and `D2_EXTENDED_METRICS=1`, client CSVs include:
+
 - `macro_f1_global`: F1 score of global model before personalization
 - `macro_f1_personalized`: F1 score after local fine-tuning
 - `benign_fpr_global`: False positive rate of global model
@@ -216,6 +230,7 @@ When `--personalization_epochs > 0` and `D2_EXTENDED_METRICS=1`, client CSVs inc
 - `personalization_gain`: Improvement from personalization (`personalized - global`)
 
 ### Example: Compare with and without personalization
+
 ```bash
 rm -rf logs/; mkdir logs
 
@@ -248,11 +263,13 @@ Personalization shows **positive gains** when:
 5. **Global model not fully converged** (room for local adaptation)
 
 **When to expect zero gains (this is correct behavior!):**
+
 - IID data (`alpha=1.0` or uniform partitioning)
 - Stratified train/test splits (maintains same class distribution)
 - Global model already achieves >95% F1
 
 **Latest real-data experiments (2025-10-07):**
+
 - `UNSW, α=0.1, 5 epochs, lr=0.01` → mean gain **+7.0%** (client 2: +17%)
 - `UNSW, α=0.05, 10 epochs, lr=0.01` → skewed shard gain **+4.5%**, other shards already saturated
 - `UNSW, α=1.0, 5 epochs, lr=0.01` → mean gain **+0.25%** (IID ≈ zero)
@@ -337,6 +354,7 @@ When using extended metrics (`D2_EXTENDED_METRICS=1`), the following per-class m
 - **`recall_per_class`**: Recall for each class
 
 Example:
+
 ```bash
 export D2_EXTENDED_METRICS=1
 # Run experiment as above, then inspect metrics
@@ -373,9 +391,11 @@ Do not mix synthetic with UNSW/CIC (or different feature configs) on the same se
 
 Nightly CI consumes real UNSW-NB15 and CIC-IDS2017 slices that live under `datasets/real/*.csv.gz`.
 To materialize them locally, run:
+
 ```bash
 python scripts/setup_real_datasets.py
 ```
+
 This inflates the archives into `data/unsw/unsw_nb15_sample.csv` and `data/cic/cic_ids2017_sample.csv`.
 Feel free to regenerate larger or different samples with the helper scripts below—just remember to update the
 archives if CI should pick them up.
@@ -383,6 +403,7 @@ archives if CI should pick them up.
 ### 7.2 UNSW‑NB15 (Dirichlet non‑IID; 3+ clients)
 
 Prepare a fresh sample if you need a different size:
+
 ```bash
 cd <ABS_PATH>
 mkdir -p data/unsw
@@ -400,15 +421,18 @@ python scripts/prepare_unsw_sample.py \
   This demo targets flwr==1.21.0 and is known to work despite the warnings.
 
 - **Address already in use**: change the port (e.g., to 8100) and pass the same port to the clients.
+
   ```bash
   # Find what is using the port 8099 (macOS/Linux)
   lsof -i :8099
   ```
 
 - **CSV plotting errors** ("Expected X fields, saw Y"): Clean logs directory between different demo runs.
+
   ```bash
   rm -rf logs/; mkdir logs
   ```
+
   This happens when CSV files accumulate data from runs with different column structures.
 
 - State dict size mismatch: all clients in a given run must use the same dataset and preprocessing
@@ -445,6 +469,10 @@ python scripts/prepare_unsw_sample.py \
 ---
 
 ## 10) Privacy & robustness disclosure (D2 scope)
+
+For a comprehensive threat model including adversary assumptions, attack scenarios, and defense mechanisms, see [docs/threat_model.md](docs/threat_model.md).
+
+**Current implementation status:**
 
 - Differential Privacy (scaffold): client‑side clipping with Gaussian noise applied to the model update
   before sending. This is not DP‑SGD and does not include privacy accounting.
