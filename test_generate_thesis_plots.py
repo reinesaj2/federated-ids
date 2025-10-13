@@ -352,5 +352,220 @@ def test_privacy_utility_curve_outputs(tmp_path, dp_noise):
     assert pytest.approx(baseline_row["macro_f1_mean"], rel=1e-3) == 0.89
 
 
+def test_compute_f1_degradation_bounded():
+    """Test F1 degradation formula is bounded in [0, 100]."""
+    # Normal case: degradation from 0.9 to 0.7
+    baseline_f1 = 0.9
+    attack_f1 = 0.7
+    degradation = max(0.0, (baseline_f1 - attack_f1) / baseline_f1 * 100) if baseline_f1 > 0 else 0.0
+
+    assert 0.0 <= degradation <= 100.0
+    assert pytest.approx(degradation, rel=1e-3) == 22.222
+
+    # Edge case: improvement (should be 0, not negative)
+    baseline_f1 = 0.8
+    attack_f1 = 0.9
+    degradation = max(0.0, (baseline_f1 - attack_f1) / baseline_f1 * 100) if baseline_f1 > 0 else 0.0
+
+    assert degradation == 0.0
+
+    # Edge case: complete degradation
+    baseline_f1 = 0.9
+    attack_f1 = 0.0
+    degradation = max(0.0, (baseline_f1 - attack_f1) / baseline_f1 * 100) if baseline_f1 > 0 else 0.0
+
+    assert pytest.approx(degradation, rel=1e-3) == 100.0
+
+    # Edge case: zero baseline (avoid division by zero)
+    baseline_f1 = 0.0
+    attack_f1 = 0.5
+    degradation = max(0.0, (baseline_f1 - attack_f1) / baseline_f1 * 100) if baseline_f1 > 0 else 0.0
+
+    assert degradation == 0.0
+
+
+def test_attack_resilience_csv_structure():
+    """Test attack resilience CSV has correct structure and bounded degradation."""
+    import matplotlib.pyplot as plt
+    from scripts.generate_thesis_plots import plot_attack_resilience
+
+    with TemporaryDirectory() as tmpdir:
+        runs_dir = Path(tmpdir) / "runs"
+        runs_dir.mkdir()
+        output_dir = Path(tmpdir) / "output"
+        output_dir.mkdir()
+
+        # Create mock attack experiment data
+        for agg in ["fedavg", "krum", "median"]:
+            for adv_frac in [0.0, 0.1, 0.3]:
+                for seed in [42, 43, 44]:
+                    run_name = f"comp_{agg}_alpha0.5_adv{int(adv_frac*100)}_dp0_pers0_seed{seed}"
+                    run_dir = runs_dir / run_name
+                    run_dir.mkdir(parents=True)
+
+                    # Config
+                    config = {
+                        "aggregation": agg,
+                        "adversary_fraction": adv_frac,
+                        "alpha": 0.5,
+                        "seed": seed,
+                        "num_clients": 6,
+                        "num_rounds": 20,
+                        "dataset": "unsw",
+                    }
+                    (run_dir / "config.json").write_text(json.dumps(config))
+
+                    # Server metrics
+                    server_df = pd.DataFrame([{"round": 20, "aggregation": agg, "adversary_fraction": adv_frac}])
+                    server_df.to_csv(run_dir / "metrics.csv", index=False)
+
+                    # Client metrics (simulate degradation for FedAvg, resilience for robust methods)
+                    for client_id in range(6):
+                        if agg == "fedavg":
+                            # FedAvg degrades significantly
+                            macro_f1 = 0.9 - (adv_frac * 0.4)  # 0.9 -> 0.78 -> 0.66
+                        else:
+                            # Robust methods maintain performance
+                            macro_f1 = 0.9 - (adv_frac * 0.05)  # 0.9 -> 0.885 -> 0.87
+
+                        client_df = pd.DataFrame([{"round": 20, "macro_f1_after": macro_f1}])
+                        (run_dir / f"client_{client_id}_metrics.csv").write_text(client_df.to_csv(index=False))
+
+        # Load data
+        from scripts.generate_thesis_plots import load_experiment_results
+
+        df = load_experiment_results(runs_dir)
+
+        # Generate plot
+        plot_attack_resilience(df, output_dir)
+
+        # Check CSV exists
+        csv_path = output_dir / "attack_resilience_stats.csv"
+        assert csv_path.exists()
+
+        # Load and validate CSV structure
+        stats_df = pd.read_csv(csv_path)
+
+        # Required columns
+        assert "aggregation" in stats_df.columns
+        assert "adversary_fraction" in stats_df.columns
+        assert "macro_f1_mean" in stats_df.columns
+        assert "ci_lower" in stats_df.columns
+        assert "ci_upper" in stats_df.columns
+        assert "n" in stats_df.columns
+        assert "degradation_pct" in stats_df.columns
+
+        # Check degradation is bounded [0, 100]
+        assert (stats_df["degradation_pct"] >= 0.0).all()
+        assert (stats_df["degradation_pct"] <= 100.0).all()
+
+        # Check CIs are valid
+        assert (stats_df["ci_lower"] <= stats_df["macro_f1_mean"]).all()
+        assert (stats_df["ci_upper"] >= stats_df["macro_f1_mean"]).all()
+
+        plt.close("all")
+
+
+def test_extract_threat_model_metadata():
+    """Test extraction of threat model metadata from config."""
+    config = {
+        "dataset": "unsw",
+        "num_clients": 6,
+        "alpha": 0.5,
+        "adversary_fraction": 0.1,
+        "aggregation": "median",
+        "seed": 42,
+        "num_rounds": 20,
+    }
+
+    # Extract metadata
+    dataset = config.get("dataset", "unknown")
+    num_clients = config.get("num_clients", 0)
+    alpha = config.get("alpha", 1.0)
+    adv_frac = config.get("adversary_fraction", 0.0)
+    seed = config.get("seed", 0)
+
+    # Validate extraction
+    assert dataset == "unsw"
+    assert num_clients == 6
+    assert alpha == 0.5
+    assert adv_frac == 0.1
+    assert seed == 42
+
+    # Build subtitle
+    subtitle = (
+        f"Dataset: {dataset.upper()} | Clients: {num_clients} | α={alpha} (Dirichlet) | "
+        f"Attack: grad_ascent | Seeds: n=3"
+    )
+
+    assert "UNSW" in subtitle
+    assert "Clients: 6" in subtitle
+    assert "α=0.5" in subtitle
+    assert "grad_ascent" in subtitle
+
+
+def test_attack_resilience_ci_computation():
+    """Test CI computation for attack resilience across seeds."""
+    # Simulate macro-F1 values across 3 seeds for same config
+    f1_values = np.array([0.85, 0.87, 0.86])
+
+    mean, lower, upper = compute_confidence_interval(f1_values, confidence=0.95)
+
+    # Check mean
+    assert pytest.approx(mean, rel=1e-3) == 0.8600
+
+    # Check CIs are reasonable
+    assert lower < mean < upper
+    assert (upper - lower) < 0.1  # CI width should be reasonable
+
+
+def test_attack_resilience_plot_artifacts():
+    """Test that plot_attack_resilience generates all required artifacts."""
+    import matplotlib.pyplot as plt
+    from scripts.generate_thesis_plots import plot_attack_resilience
+
+    with TemporaryDirectory() as tmpdir:
+        runs_dir = Path(tmpdir) / "runs"
+        runs_dir.mkdir()
+        output_dir = Path(tmpdir) / "output"
+        output_dir.mkdir()
+
+        # Create minimal mock data
+        for agg in ["fedavg", "krum"]:
+            for adv_frac in [0.0, 0.1]:
+                for seed in [42, 43]:
+                    run_name = f"comp_{agg}_alpha0.5_adv{int(adv_frac*100)}_dp0_pers0_seed{seed}"
+                    run_dir = runs_dir / run_name
+                    run_dir.mkdir(parents=True)
+
+                    config = {
+                        "aggregation": agg,
+                        "adversary_fraction": adv_frac,
+                        "alpha": 0.5,
+                        "seed": seed,
+                        "num_clients": 6,
+                    }
+                    (run_dir / "config.json").write_text(json.dumps(config))
+
+                    server_df = pd.DataFrame([{"round": 10, "aggregation": agg}])
+                    server_df.to_csv(run_dir / "metrics.csv", index=False)
+
+                    for client_id in range(2):
+                        client_df = pd.DataFrame([{"round": 10, "macro_f1_after": 0.85}])
+                        (run_dir / f"client_{client_id}_metrics.csv").write_text(client_df.to_csv(index=False))
+
+        from scripts.generate_thesis_plots import load_experiment_results
+
+        df = load_experiment_results(runs_dir)
+        plot_attack_resilience(df, output_dir)
+
+        # Check all artifacts exist
+        assert (output_dir / "attack_resilience.png").exists()
+        assert (output_dir / "attack_resilience.pdf").exists()
+        assert (output_dir / "attack_resilience_stats.csv").exists()
+
+        plt.close("all")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
