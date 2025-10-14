@@ -531,8 +531,7 @@ def _render_timing_plot(ax, df: pd.DataFrame, available_methods: list) -> bool:
     ax.grid(True, alpha=0.3, axis="y")
 
     for i, row in summary_df.iterrows():
-        y_pos = row["mean"] + row["ci"] / 2 + row["mean"] * 0.05
-        ax.text(i, y_pos, f"n={row['n']}", ha="center", va="bottom", fontsize=8)
+        ax.text(i, row["mean"] + row["ci"] / 2 + row["mean"] * 0.05, f"n={row['n']}", ha="center", va="bottom", fontsize=8)
 
     return True
 
@@ -682,160 +681,20 @@ def plot_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
 
 
 def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
-    """Plot attack resilience with macro-F1 as primary metric and bounded degradation."""
+    """Plot attack resilience across aggregation methods."""
     if "adversary_fraction" not in df.columns:
         return
 
-    # Extract threat model metadata from first config
-    first_config = {}
-    if "run_dir" in df.columns:
-        for run_dir_str in df["run_dir"].dropna().unique():
-            config_path = Path(run_dir_str) / "config.json"
-            if config_path.exists():
-                with open(config_path) as f:
-                    first_config = json.load(f)
-                break
-
-    dataset = first_config.get("dataset", "unknown").upper()
-    num_clients = first_config.get("num_clients", 0)
-    alpha = first_config.get("alpha", 0.5)
-    num_seeds = len(df["seed"].unique()) if "seed" in df.columns else 1
-
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    subtitle = f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | " f"Attack: grad_ascent | Seeds: n={num_seeds}"
-    fig.suptitle(f"Attack Resilience Comparison\n{subtitle}", fontsize=14, fontweight="bold")
+    fig.suptitle("Attack Resilience Comparison", fontsize=16, fontweight="bold")
 
+    # Get final round data
     final_rounds = df.groupby(["aggregation", "adversary_fraction", "seed"]).tail(1)
-    method_order = ["fedavg", "krum", "bulyan", "median"]
-    available_methods = [m for m in method_order if m in final_rounds["aggregation"].unique()]
 
-    # Plot 1: Macro-F1 vs Adversary Percentage with 95% CIs
-    if "macro_f1" in final_rounds.columns:
-        ax = axes[0, 0]
-        colors = sns.color_palette("colorblind", len(available_methods))
-
-        for idx, agg in enumerate(available_methods):
-            agg_data = final_rounds[final_rounds["aggregation"] == agg]
-            summary_stats = []
-
-            for adv_frac in sorted(agg_data["adversary_fraction"].unique()):
-                frac_data = agg_data[agg_data["adversary_fraction"] == adv_frac]["macro_f1"].dropna()
-                if len(frac_data) >= 2:
-                    mean, lower, upper = compute_confidence_interval(frac_data.values)
-                    # Clamp CIs to valid macro-F1 range [0, 1]
-                    lower = max(0.0, min(1.0, lower))
-                    upper = max(0.0, min(1.0, upper))
-                    summary_stats.append(
-                        {
-                            "adversary_fraction": adv_frac * 100,
-                            "mean": mean,
-                            "ci_lower": lower,
-                            "ci_upper": upper,
-                        }
-                    )
-                elif len(frac_data) == 1:
-                    val = float(frac_data.iloc[0])
-                    summary_stats.append(
-                        {
-                            "adversary_fraction": adv_frac * 100,
-                            "mean": val,
-                            "ci_lower": val,
-                            "ci_upper": val,
-                        }
-                    )
-
-            if summary_stats:
-                summary_df = pd.DataFrame(summary_stats)
-                ax.plot(
-                    summary_df["adversary_fraction"],
-                    summary_df["mean"],
-                    marker="o",
-                    label=agg.upper(),
-                    color=colors[idx],
-                    linewidth=2,
-                )
-                ax.fill_between(
-                    summary_df["adversary_fraction"],
-                    summary_df["ci_lower"],
-                    summary_df["ci_upper"],
-                    alpha=0.2,
-                    color=colors[idx],
-                )
-
-        ax.set_title("Detection Performance vs Adversary Percentage (Macro-F1, 95% CI)")
-        ax.set_xlabel("Adversary Percentage (%)")
-        ax.set_ylabel("Macro-F1 Score")
-        ax.set_ylim([0, 1.0])
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-    # Plot 2: Degradation bars with 95% CIs (bounded [0, 100])
-    if "macro_f1" in final_rounds.columns:
-        ax = axes[1, 0]
-        benign = final_rounds[final_rounds["adversary_fraction"] == 0.0]
-        adversarial = final_rounds[final_rounds["adversary_fraction"] > 0.0]
-
-        degradation_stats = []
-        for agg in available_methods:
-            benign_f1 = benign[benign["aggregation"] == agg]["macro_f1"].dropna()
-            adv_f1 = adversarial[adversarial["aggregation"] == agg]["macro_f1"].dropna()
-
-            if len(benign_f1) > 0 and len(adv_f1) > 0:
-                benign_mean = float(benign_f1.mean())
-                adv_mean = float(adv_f1.mean())
-
-                degradation_pct = max(0.0, (benign_mean - adv_mean) / benign_mean * 100) if benign_mean > 0 else 0.0
-
-                degradation_values = []
-                for b_val in benign_f1:
-                    for a_val in adv_f1:
-                        deg = max(0.0, (b_val - a_val) / b_val * 100) if b_val > 0 else 0.0
-                        degradation_values.append(deg)
-
-                if len(degradation_values) >= 2:
-                    _, ci_lower, ci_upper = compute_confidence_interval(np.array(degradation_values))
-                    ci_lower = max(0.0, ci_lower)
-                    ci_upper = min(100.0, ci_upper)
-                else:
-                    ci_lower = degradation_pct
-                    ci_upper = degradation_pct
-
-                degradation_stats.append(
-                    {
-                        "aggregation": agg,
-                        "degradation_pct": degradation_pct,
-                        "ci_lower": ci_lower,
-                        "ci_upper": ci_upper,
-                    }
-                )
-
-        if degradation_stats:
-            deg_df = pd.DataFrame(degradation_stats)
-            x_pos = np.arange(len(deg_df))
-            yerr_lower = deg_df["degradation_pct"] - deg_df["ci_lower"]
-            yerr_upper = deg_df["ci_upper"] - deg_df["degradation_pct"]
-
-            ax.bar(
-                x_pos,
-                deg_df["degradation_pct"],
-                yerr=[yerr_lower, yerr_upper],
-                capsize=5,
-                alpha=0.7,
-                color=colors[: len(deg_df)],
-            )
-            ax.set_xticks(x_pos)
-            ax.set_xticklabels([m.upper() for m in deg_df["aggregation"]])
-            ax.set_title("Performance Degradation Under Attack (95% CI, Bounded [0,100])")  # noqa: E501
-            ax.set_xlabel("Aggregation Method")
-            ax.set_ylabel("Degradation (%)")
-            ax.set_ylim([0, 110])
-            ax.axhline(y=0, color="black", linestyle="--", alpha=0.5)
-            ax.grid(True, alpha=0.3, axis="y")
-
-    # Plot 3: Supplementary - L2 distance vs adversary fraction
+    # Plot 1: L2 distance vs adversary fraction
     if "l2_to_benign_mean" in final_rounds.columns:
-        ax = axes[0, 1]
-        for idx, agg in enumerate(available_methods):
+        ax = axes[0, 0]
+        for agg in final_rounds["aggregation"].unique():
             agg_data = final_rounds[final_rounds["aggregation"] == agg]
             summary = agg_data.groupby("adversary_fraction")["l2_to_benign_mean"].agg(["mean", "std"])
             ax.errorbar(
@@ -845,19 +704,18 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
                 marker="o",
                 label=agg.upper(),
                 capsize=5,
-                color=colors[idx],
             )
 
-        ax.set_title("Supplementary: Model Drift (L2 Distance)")
+        ax.set_title("Model Drift vs Adversary Percentage")
         ax.set_xlabel("Adversary Percentage (%)")
         ax.set_ylabel("L2 Distance to Benign Mean")
         ax.legend()
         ax.grid(True, alpha=0.3)
 
-    # Plot 4: Supplementary - Cosine similarity vs adversary fraction
+    # Plot 2: Cosine similarity vs adversary fraction
     if "cos_to_benign_mean" in final_rounds.columns:
-        ax = axes[1, 1]
-        for idx, agg in enumerate(available_methods):
+        ax = axes[0, 1]
+        for agg in final_rounds["aggregation"].unique():
             agg_data = final_rounds[final_rounds["aggregation"] == agg]
             summary = agg_data.groupby("adversary_fraction")["cos_to_benign_mean"].agg(["mean", "std"])
             ax.errorbar(
@@ -867,63 +725,51 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
                 marker="s",
                 label=agg.upper(),
                 capsize=5,
-                color=colors[idx],
             )
 
-        ax.set_title("Supplementary: Model Alignment (Cosine Similarity)")
+        ax.set_title("Model Alignment vs Adversary Percentage")
         ax.set_xlabel("Adversary Percentage (%)")
         ax.set_ylabel("Cosine Similarity")
         ax.legend()
         ax.grid(True, alpha=0.3)
 
+    # Plot 3: Heatmap of degradation
+    if "l2_to_benign_mean" in final_rounds.columns:
+        ax = axes[1, 0]
+        pivot = final_rounds.pivot_table(
+            values="l2_to_benign_mean",
+            index="aggregation",
+            columns="adversary_fraction",
+            aggfunc="mean",
+        )
+        sns.heatmap(pivot, annot=True, fmt=".3f", cmap="YlOrRd", ax=ax)
+        ax.set_title("L2 Distance Heatmap")
+        ax.set_xlabel("Adversary Fraction")
+        ax.set_ylabel("Aggregation Method")
+
+    # Plot 4: Resilience score
+    if "l2_to_benign_mean" in final_rounds.columns:
+        ax = axes[1, 1]
+        # Calculate resilience: smaller increase under attack = better
+        benign = final_rounds[final_rounds["adversary_fraction"] == 0.0]
+        adversarial = final_rounds[final_rounds["adversary_fraction"] > 0.0]
+
+        resilience_data = []
+        for agg in final_rounds["aggregation"].unique():
+            benign_l2 = benign[benign["aggregation"] == agg]["l2_to_benign_mean"].mean()
+            adv_l2 = adversarial[adversarial["aggregation"] == agg]["l2_to_benign_mean"].mean()
+            degradation = (adv_l2 - benign_l2) / benign_l2 if benign_l2 > 0 else 0
+            resilience_data.append({"aggregation": agg, "degradation_pct": degradation * 100})
+
+        resilience_df = pd.DataFrame(resilience_data)
+        sns.barplot(data=resilience_df, x="aggregation", y="degradation_pct", ax=ax)
+        ax.set_title("Performance Degradation Under Attack")
+        ax.set_xlabel("Aggregation Method")
+        ax.set_ylabel("Degradation (%)")
+        ax.axhline(y=0, color="black", linestyle="--", alpha=0.5)
+
     plt.tight_layout()
-
-    # Save PNG and PDF
-    output_dir.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_dir / "attack_resilience.png", dpi=300, bbox_inches="tight")
-    plt.savefig(output_dir / "attack_resilience.pdf", bbox_inches="tight")
-
-    # Export CSV with macro-F1 stats and degradation
-    if "macro_f1" in final_rounds.columns:
-        csv_rows = []
-        for agg in available_methods:
-            for adv_frac in sorted(final_rounds["adversary_fraction"].unique()):
-                mask = (final_rounds["aggregation"] == agg) & (final_rounds["adversary_fraction"] == adv_frac)
-                frac_data = final_rounds[mask]["macro_f1"].dropna()
-
-                if len(frac_data) >= 2:
-                    mean, ci_lower, ci_upper = compute_confidence_interval(frac_data.values)
-                    # Clamp CIs to valid macro-F1 range [0, 1]
-                    ci_lower = max(0.0, min(1.0, ci_lower))
-                    ci_upper = max(0.0, min(1.0, ci_upper))
-                elif len(frac_data) == 1:
-                    mean = float(frac_data.iloc[0])
-                    ci_lower = mean
-                    ci_upper = mean
-                else:
-                    continue
-
-                benign_f1 = benign[benign["aggregation"] == agg]["macro_f1"].dropna()
-                benign_mean = float(benign_f1.mean()) if len(benign_f1) > 0 else 0.0
-
-                degradation_pct = max(0.0, (benign_mean - mean) / benign_mean * 100) if benign_mean > 0 else 0.0
-
-                csv_rows.append(
-                    {
-                        "aggregation": agg,
-                        "adversary_fraction": adv_frac,
-                        "macro_f1_mean": mean,
-                        "ci_lower": ci_lower,
-                        "ci_upper": ci_upper,
-                        "n": len(frac_data),
-                        "degradation_pct": degradation_pct,
-                    }
-                )
-
-        if csv_rows:
-            stats_df = pd.DataFrame(csv_rows)
-            stats_df.to_csv(output_dir / "attack_resilience_stats.csv", index=False)
-
     plt.close()
 
 
@@ -977,8 +823,9 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
                 )
 
         if comparison_data:
-            rows = [{"DP": item["DP"], "Cosine Similarity": val} for item in comparison_data for val in item["Cosine Similarity"]]
-            plot_df = pd.DataFrame(rows)
+            plot_df = pd.DataFrame(
+                [{"DP": item["DP"], "Cosine Similarity": val} for item in comparison_data for val in item["Cosine Similarity"]]
+            )
             sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
             ax.set_title("Model Alignment with DP")
 

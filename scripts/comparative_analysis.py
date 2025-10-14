@@ -77,7 +77,7 @@ class ComparisonMatrix:
         ]
     )
     personalization_epochs: List[int] = field(default_factory=lambda: [0, 5])
-    seeds: List[int] = field(default_factory=lambda: [42, 43, 44, 45, 46])
+    seeds: List[int] = field(default_factory=lambda: [42, 43, 44])
     num_clients: int = 6
     num_rounds: int = 20
 
@@ -469,13 +469,13 @@ def main():
 
     if args.dry_run:
         for i, config in enumerate(configs):
-            print(f"{i+1}. {config.to_preset_name()}")
+            print(f"{i + 1}. {config.to_preset_name()}")
         return
 
     # Run experiments
     results = []
     for i, config in enumerate(configs):
-        print(f"\n[{i+1}/{len(configs)}] Running: {config.to_preset_name()}")
+        print(f"\n[{i + 1}/{len(configs)}] Running: {config.to_preset_name()}")
         try:
             result = run_federated_experiment(config, base_dir)
             results.append(result)
