@@ -50,13 +50,23 @@ def _guess_f_byzantine(n: int) -> int:
     Estimate maximum Byzantine clients to tolerate.
 
     Uses Bulyan's constraint: n >= 4f + 3, which means f <= (n - 3) / 4.
-    This is more conservative than Krum's f < n/2 but ensures compatibility.
+    This is more conservative than Krum's f < n/2 but ensures compatibility
+    across all aggregation methods.
+
+    BREAKING CHANGE (Issue #70): Changed from (n-2)//2 - 1 to (n-3)//4 to
+    satisfy Bulyan's Byzantine resilience requirement. This affects default
+    behavior when byzantine_f is not explicitly specified:
+    - n=6: f=1 -> f=0
+    - n=7: f=1 -> f=1
+    - n=11: f=3 -> f=2
+
+    For reproducibility of prior experiments, always specify byzantine_f explicitly.
 
     Args:
         n: Total number of clients
 
     Returns:
-        Maximum f value that satisfies Bulyan constraint
+        Maximum f value that satisfies Bulyan constraint (f <= (n-3)//4)
     """
     if n <= 4:
         return 0
@@ -124,11 +134,18 @@ def _coordinate_wise_trimmed_mean(stacked: np.ndarray, beta: int) -> np.ndarray:
         Trimmed mean with shape matching stacked[0]
 
     Raises:
-        ValueError: If beta is invalid (not even, too large, or negative)
+        TypeError: If stacked is not a numpy array
+        ValueError: If beta is invalid or stacked has insufficient dimensions
     """
+    # Input type validation
+    if not isinstance(stacked, np.ndarray):
+        raise TypeError(f"stacked must be numpy.ndarray, got {type(stacked).__name__}")
+    if stacked.ndim < 1:
+        raise ValueError(f"stacked must have at least 1 dimension, got shape {stacked.shape}")
+
     n_candidates = stacked.shape[0]
 
-    # Validation
+    # Parameter validation
     if beta < 0:
         raise ValueError(f"beta must be non-negative, got {beta}")
     if beta % 2 != 0:
@@ -155,11 +172,16 @@ def _bulyan_aggregate(weights_per_client: List[List[np.ndarray]], f: int) -> Lis
     """
     True Bulyan aggregation per El Mhamdi et al. 2018.
 
-    Algorithm:
+    Algorithm (Theorem 2 from paper):
     1. Use Multi-Krum to select θ = n - 2f candidates
+       - Rationale: Removes up to f Byzantine-influenced selections
     2. Apply coordinate-wise trimmed mean (trim β = 2f extreme values)
+       - Rationale: From θ candidates, at most f are Byzantine, so trimming
+         2f values (f from each tail) guarantees ≥1 honest value remains
 
     Requires: n ≥ 4f + 3 for Byzantine resilience guarantees
+    - Ensures θ = n - 2f ≥ 2f + 3 (enough candidates for trimming)
+    - Guarantees θ - β = (n - 2f) - 2f = n - 4f > f (more honest than Byzantine)
 
     Args:
         weights_per_client: List of client weight updates (each is list of layers)
@@ -170,6 +192,10 @@ def _bulyan_aggregate(weights_per_client: List[List[np.ndarray]], f: int) -> Lis
 
     Raises:
         ValueError: If n < 4f + 3 (insufficient clients for Byzantine resilience)
+
+    Reference:
+        El Mhamdi et al. "The Hidden Vulnerability of Distributed Learning in
+        Byzantium." ICML 2018. https://arxiv.org/abs/1802.07927
     """
     if not weights_per_client:
         return []
