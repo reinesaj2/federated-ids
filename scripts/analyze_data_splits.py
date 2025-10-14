@@ -74,7 +74,7 @@ def analyze_client_data_split(
 
     if max_diff < 1.0:
         print(
-            "⚠️  WARNING: Train and test have nearly identical " "class distributions!"
+            "[WARNING]  WARNING: Train and test have nearly identical " "class distributions!"
         )
         print(
             "   This is expected for stratified splits but limits "
@@ -98,13 +98,13 @@ def analyze_client_data_split(
     print(f"Average feature std difference: {std_diff:.6f}")
 
     if mean_diff < 0.01 and std_diff < 0.01:
-        print("⚠️  WARNING: Train and test feature distributions are " "very similar!")
+        print("[WARNING]  WARNING: Train and test feature distributions are " "very similar!")
 
     # Recommendation
     print("\nPersonalization Likelihood:")
     if max_diff < 1.0 and mean_diff < 0.01:
         print(
-            "❌ LOW - Train/test distributions are nearly identical "
+            "[LOW] - Train/test distributions are nearly identical "
             "(stratified split)"
         )
         print(
@@ -113,12 +113,12 @@ def analyze_client_data_split(
         )
     elif max_diff < 5.0:
         print(
-            "⚠️  MODERATE - Some distribution difference exists but "
+            "[WARNING]  MODERATE - Some distribution difference exists but "
             "limited benefit expected"
         )
     else:
         print(
-            "✅ HIGH - Significant distribution differences; "
+            "[HIGH] - Significant distribution differences; "
             "personalization should help"
         )
 
@@ -185,7 +185,7 @@ def main() -> None:
     for client_id in range(args.num_clients):
         indices = partitions[client_id]
         if len(indices) == 0:
-            print(f"\n⚠️  Client {client_id}: No data (empty partition)")
+            print(f"\n[WARNING]  Client {client_id}: No data (empty partition)")
             continue
 
         X_client = X[indices]

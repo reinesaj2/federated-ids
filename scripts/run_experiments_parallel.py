@@ -113,7 +113,7 @@ def main():
             if result["status"] == "success":
                 print(
                     f"[{completed_count + completed_tasks}/{total}] "
-                    f"({progress_pct:.1f}%) ✓ {result['preset']}"
+                    f"({progress_pct:.1f}%) [PASS] {result['preset']}"
                 )
             else:
                 failed_tasks += 1
