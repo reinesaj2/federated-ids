@@ -125,4 +125,4 @@ def test_fedprox_different_mu_values():
 if __name__ == "__main__":
     test_fedprox_proximal_term()
     test_fedprox_different_mu_values()
-    print("✓ All FedProx tests passed!")
+    print("[PASS] All FedProx tests passed!")

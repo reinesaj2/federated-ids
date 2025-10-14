@@ -49,7 +49,7 @@ Class      Train %      Test %       Difference
 1          50.00        50.00        0.0000
 
 Max class distribution difference: 0.0000%
-⚠️  WARNING: Train and test have nearly identical class distributions!
+[WARNING]  WARNING: Train and test have nearly identical class distributions!
 ```
 
 **Explanation:** The `train_test_split(..., stratify=y)` in `data_preprocessing.py:293` ensures train and test have proportional class distributions. This is **good for unbiased evaluation** but **limits personalization benefit**.
@@ -64,9 +64,9 @@ Created `scripts/debug_personalization.py` with hyperparameter sweeps:
 - Dirichlet alpha: 0.1 (non-IID), 1.0 (IID)
 
 **Expected results:**
-- ✅ Non-IID (α=0.1) + 5 epochs → positive gains
-- ❌ IID (α=1.0) + 5 epochs → near-zero gains
-- ❌ Insufficient epochs (1-2) → minimal gains
+- [CONFIRMED] Non-IID (alpha=0.1) + 5 epochs -> positive gains
+- [EXPECTED] IID (alpha=1.0) + 5 epochs -> near-zero gains
+- [EXPECTED] Insufficient epochs (1-2) -> minimal gains
 
 ---
 
@@ -108,7 +108,7 @@ y_train = (X_train[:, 0] > 0.3).long()
 # Test data: threshold at 0.0 (distribution shift!)
 y_test = (X_test[:, 0] > 0.0).long()
 
-# Result: personalized_F1=0.8727, global_F1=0.6816, gain=0.191099 ✅
+# Result: personalized_F1=0.8727, global_F1=0.6816, gain=0.191099 [PASS]
 ```
 
 **Requirements for positive gains:**
@@ -253,14 +253,14 @@ $ pytest test_personalization.py test_debug_personalization.py -v
 test_personalization_computes_metrics_and_improves PASSED
   - Personalized F1: 0.8727
   - Global F1: 0.6816
-  - Gain: 0.191099 (19.1% improvement) ✅
+  - Gain: 0.191099 (19.1% improvement) [PASS]
 ```
 
 **Code review:**
-- ✅ Personalization loop runs correctly (`client.py:659-688`)
-- ✅ Global weights restored before return (`client.py:752`)
-- ✅ Metrics logged correctly (`client.py:742-751`)
-- ✅ Debug logging works without breaking flow
+- [VERIFIED] Personalization loop runs correctly (`client.py:659-688`)
+- [VERIFIED] Global weights restored before return (`client.py:752`)
+- [VERIFIED] Metrics logged correctly (`client.py:742-751`)
+- [VERIFIED] Debug logging works without breaking flow
 
 ---
 
