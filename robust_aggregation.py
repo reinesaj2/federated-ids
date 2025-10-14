@@ -20,9 +20,7 @@ class AggregationMethod(Enum):
             return AggregationMethod.FED_AVG
 
 
-def _stack_layers(
-    weights_per_client: List[List[np.ndarray]], layer_idx: int
-) -> np.ndarray:
+def _stack_layers(weights_per_client: List[List[np.ndarray]], layer_idx: int) -> np.ndarray:
     return np.stack([client[layer_idx] for client in weights_per_client], axis=0)
 
 
@@ -48,10 +46,21 @@ def _pairwise_sq_dists(vectors: np.ndarray) -> np.ndarray:
 
 
 def _guess_f_byzantine(n: int) -> int:
-    # Conservative default: tolerate up to floor((n-2)/2) - 1 malicious clients, min 0
+    """
+    Estimate maximum Byzantine clients to tolerate.
+
+    Uses Bulyan's constraint: n >= 4f + 3, which means f <= (n - 3) / 4.
+    This is more conservative than Krum's f < n/2 but ensures compatibility.
+
+    Args:
+        n: Total number of clients
+
+    Returns:
+        Maximum f value that satisfies Bulyan constraint
+    """
     if n <= 4:
         return 0
-    return max(0, (n - 2) // 2 - 1)
+    return max(0, (n - 3) // 4)
 
 
 def _krum_candidate_indices(vectors: np.ndarray, f: int, multi: bool) -> List[int]:
@@ -82,9 +91,7 @@ def _krum_candidate_indices(vectors: np.ndarray, f: int, multi: bool) -> List[in
     return [scores[0][1]]
 
 
-def _average_selected(
-    weights_per_client: List[List[np.ndarray]], selected: Sequence[int]
-) -> List[np.ndarray]:
+def _average_selected(weights_per_client: List[List[np.ndarray]], selected: Sequence[int]) -> List[np.ndarray]:
     num_layers = len(weights_per_client[0])
     aggregated: List[np.ndarray] = []
     for layer_idx in range(num_layers):
@@ -102,25 +109,98 @@ def _median_aggregate(weights_per_client: List[List[np.ndarray]]) -> List[np.nda
     return aggregated
 
 
-def _bulyan_aggregate(
-    weights_per_client: List[List[np.ndarray]], f: int
-) -> List[np.ndarray]:
-    # Simplified Bulyan: Multi-Krum selection followed by coordinate-wise median
+def _coordinate_wise_trimmed_mean(stacked: np.ndarray, beta: int) -> np.ndarray:
+    """
+    Compute coordinate-wise trimmed mean per El Mhamdi et al. 2018.
+
+    For each coordinate (feature), sort values across candidates, remove
+    beta/2 smallest and beta/2 largest values, then average the remaining.
+
+    Args:
+        stacked: Array of shape (n_candidates, ...) where axis 0 is candidates
+        beta: Number of values to trim (must be even, beta/2 from each end)
+
+    Returns:
+        Trimmed mean with shape matching stacked[0]
+
+    Raises:
+        ValueError: If beta is invalid (not even, too large, or negative)
+    """
+    n_candidates = stacked.shape[0]
+
+    # Validation
+    if beta < 0:
+        raise ValueError(f"beta must be non-negative, got {beta}")
+    if beta % 2 != 0:
+        raise ValueError(f"beta must be even for symmetric trimming, got {beta}")
+    if beta >= n_candidates:
+        raise ValueError(f"beta ({beta}) must be less than number of candidates ({n_candidates})")
+
+    # Handle no-trimming case efficiently
+    if beta == 0:
+        return np.mean(stacked, axis=0)
+
+    # Sort along candidate axis (axis=0)
+    sorted_values = np.sort(stacked, axis=0)
+
+    # Trim beta/2 from each end
+    trim_count = beta // 2
+    trimmed = sorted_values[trim_count : n_candidates - trim_count]
+
+    # Return mean of remaining values
+    return np.mean(trimmed, axis=0)
+
+
+def _bulyan_aggregate(weights_per_client: List[List[np.ndarray]], f: int) -> List[np.ndarray]:
+    """
+    True Bulyan aggregation per El Mhamdi et al. 2018.
+
+    Algorithm:
+    1. Use Multi-Krum to select θ = n - 2f candidates
+    2. Apply coordinate-wise trimmed mean (trim β = 2f extreme values)
+
+    Requires: n ≥ 4f + 3 for Byzantine resilience guarantees
+
+    Args:
+        weights_per_client: List of client weight updates (each is list of layers)
+        f: Maximum number of Byzantine (malicious) clients to tolerate
+
+    Returns:
+        Aggregated weight update (list of layer arrays)
+
+    Raises:
+        ValueError: If n < 4f + 3 (insufficient clients for Byzantine resilience)
+    """
     if not weights_per_client:
         return []
-    # Flatten clients
+
+    n = len(weights_per_client)
+
+    # Validate minimum client requirement per El Mhamdi et al. 2018
+    if n < 4 * f + 3:
+        raise ValueError(f"Bulyan requires n >= 4f + 3 for Byzantine resilience. " f"Got n={n}, f={f}, but need n >= {4 * f + 3}")
+
+    # Flatten client updates for distance-based selection
     flats = []
     for client_layers in weights_per_client:
         flat, _ = _flatten_client_update(client_layers)
         flats.append(flat)
     vectors = np.stack(flats, axis=0)
-    selected = _krum_candidate_indices(vectors, f=f, multi=True)
-    # Median over selected candidates per layer
+
+    # Step 1: Multi-Krum selection of θ = n - 2f candidates
+    theta = n - 2 * f
+    krum_candidates = _krum_candidate_indices(vectors, f=f, multi=True)
+    selected = krum_candidates[:theta]
+
+    # Step 2: Coordinate-wise trimmed mean with β = 2f trimming
+    beta = 2 * f
     num_layers = len(weights_per_client[0])
     aggregated: List[np.ndarray] = []
+
     for layer_idx in range(num_layers):
         stacked = np.stack([weights_per_client[i][layer_idx] for i in selected], axis=0)
-        aggregated.append(np.median(stacked, axis=0))
+        aggregated.append(_coordinate_wise_trimmed_mean(stacked, beta))
+
     return aggregated
 
 
@@ -134,7 +214,7 @@ def aggregate_weights(
     - fedavg: simple mean
     - median: coordinate-wise median
     - krum: Krum selection (single candidate)
-    - bulyan: simplified Multi-Krum selection + coordinate-wise median
+    - bulyan: true Bulyan per El Mhamdi et al. 2018 (Multi-Krum + trimmed mean)
     """
     if not weights_per_client:
         return []
@@ -149,11 +229,7 @@ def aggregate_weights(
             flat, _ = _flatten_client_update(client_layers)
             flats.append(flat)
         vectors = np.stack(flats, axis=0)
-        f = (
-            byzantine_f
-            if byzantine_f is not None
-            else _guess_f_byzantine(vectors.shape[0])
-        )
+        f = byzantine_f if byzantine_f is not None else _guess_f_byzantine(vectors.shape[0])
         if method == AggregationMethod.KRUM:
             selected = _krum_candidate_indices(vectors, f=f, multi=False)
             # Return the single selected client's update as the aggregate
@@ -170,9 +246,7 @@ def aggregate_weights(
     return aggregated_mean
 
 
-def aggregate_weighted_mean(
-    weights_per_client: List[List[np.ndarray]], sample_counts: Sequence[float]
-) -> List[np.ndarray]:
+def aggregate_weighted_mean(weights_per_client: List[List[np.ndarray]], sample_counts: Sequence[float]) -> List[np.ndarray]:
     """
     Compute sample-size weighted average of client weights per layer.
     sample_counts can be ints or floats; must be non-negative and length match clients.

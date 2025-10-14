@@ -44,7 +44,7 @@ def test_krum_selects_single_reasonable_candidate():
 
 
 def test_bulyan_behaves_reasonably_with_outliers():
-    clients = _make_client_updates(n_clients=8)
+    clients = _make_client_updates(n_clients=11)  # Bulyan requires n >= 4f+3 (for f=2, need 11)
     # Two outliers
     for l in range(len(clients[2])):
         clients[2][l] = clients[2][l] - 50.0
@@ -66,5 +66,3 @@ def test_krum_and_bulyan_accept_explicit_byzantine_f():
     v1 = np.concatenate([a.reshape(-1) for a in agg1])
     v2 = np.concatenate([a.reshape(-1) for a in agg2])
     assert np.isfinite(v1).all() and np.isfinite(v2).all()
-
-
