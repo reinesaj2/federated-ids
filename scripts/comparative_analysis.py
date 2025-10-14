@@ -28,9 +28,8 @@ from typing import Dict, List, Optional
 DEFAULT_ALPHA_IID = 1.0  # Alpha=1.0 means IID (uniform Dirichlet)
 DEFAULT_ALPHA_NON_IID = 0.5  # Moderate non-IID for multi-dimensional experiments
 DEFAULT_AGGREGATION = "fedavg"  # Baseline aggregation
-# For attack dimension: use subset excluding Bulyan to reduce experiment count
-# while still comparing FedAvg (baseline) vs robust methods (Krum, Median)
-ATTACK_AGGREGATIONS = ["fedavg", "krum", "median"]
+# Attack dimension: compare all robust aggregation methods
+ATTACK_AGGREGATIONS = ["fedavg", "krum", "bulyan", "median"]
 
 
 @dataclass
@@ -66,9 +65,7 @@ class ExperimentConfig:
 class ComparisonMatrix:
     """Defines the full comparison experiment matrix."""
 
-    aggregation_methods: List[str] = field(
-        default_factory=lambda: ["fedavg", "krum", "bulyan", "median"]
-    )
+    aggregation_methods: List[str] = field(default_factory=lambda: ["fedavg", "krum", "bulyan", "median"])
     alpha_values: List[float] = field(default_factory=lambda: [1.0, 0.5, 0.1])
     adversary_fractions: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.3])
     dp_configs: List[Dict] = field(
@@ -120,9 +117,10 @@ class ComparisonMatrix:
     def _generate_attack_configs(self) -> List[ExperimentConfig]:
         """Generate configs for attack resilience comparison.
 
-        Uses subset of aggregation methods (FedAvg, Krum, Median) to reduce
-        computational cost while comparing baseline vs robust approaches.
+        Uses all robust aggregation methods including Bulyan.
         Uses alpha=0.5 for moderate non-IID setting.
+        Uses num_clients=11 to meet Bulyan's n >= 4f + 3 requirement
+        (allows f=2 Byzantine tolerance: 11 >= 4*2 + 3).
         """
         configs = []
         for agg in ATTACK_AGGREGATIONS:
@@ -134,6 +132,7 @@ class ComparisonMatrix:
                             aggregation=agg,
                             alpha=DEFAULT_ALPHA_NON_IID,
                             adversary_fraction=adv_frac,
+                            num_clients=11,  # Bulyan requires n >= 4f + 3
                         )
                     )
         return configs
@@ -199,9 +198,7 @@ class ComparisonMatrix:
                                 )
         return configs
 
-    def generate_configs(
-        self, filter_dimension: Optional[str] = None
-    ) -> List[ExperimentConfig]:
+    def generate_configs(self, filter_dimension: Optional[str] = None) -> List[ExperimentConfig]:
         """Generate experiment configurations for specified dimension.
 
         Args:
@@ -230,8 +227,7 @@ class ComparisonMatrix:
         generator = dimension_map.get(filter_dimension)
         if generator is None:
             raise ValueError(
-                f"Invalid dimension: {filter_dimension}. "
-                f"Must be one of {list(dimension_map.keys())} or None for full factorial."
+                f"Invalid dimension: {filter_dimension}. " f"Must be one of {list(dimension_map.keys())} or None for full factorial."
             )
 
         return generator()
@@ -278,9 +274,7 @@ def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int =
     proc = None
     try:
         with open(log_file, "w") as log:
-            proc = subprocess.Popen(
-                cmd, stdout=log, stderr=subprocess.STDOUT, cwd=cwd
-            )
+            proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=cwd)
         yield proc
     finally:
         if proc is not None:
@@ -399,9 +393,7 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
                     )
 
                 with open(client_log, "w") as log:
-                    proc = subprocess.Popen(
-                        client_cmd, stdout=log, stderr=subprocess.STDOUT, cwd=base_dir
-                    )
+                    proc = subprocess.Popen(client_cmd, stdout=log, stderr=subprocess.STDOUT, cwd=base_dir)
                     client_procs.append(proc)
 
             # Wait for all clients to complete with timeout
@@ -437,9 +429,7 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run comparative analysis experiments"
-    )
+    parser = argparse.ArgumentParser(description="Run comparative analysis experiments")
     parser.add_argument(
         "--dimension",
         type=str,
@@ -474,9 +464,7 @@ def main():
 
     # Generate experiment matrix
     matrix = ComparisonMatrix()
-    configs = matrix.generate_configs(
-        filter_dimension=None if args.dimension == "full" else args.dimension
-    )
+    configs = matrix.generate_configs(filter_dimension=None if args.dimension == "full" else args.dimension)
 
     print(f"Generated {len(configs)} experiment configurations for dimension: {args.dimension}")
 
