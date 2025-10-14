@@ -702,10 +702,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     num_seeds = len(df["seed"].unique()) if "seed" in df.columns else 1
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    subtitle = (
-        f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | "
-        f"Attack: grad_ascent | Seeds: n={num_seeds}"
-    )
+    subtitle = f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | " f"Attack: grad_ascent | Seeds: n={num_seeds}"
     fig.suptitle(f"Attack Resilience Comparison\n{subtitle}", fontsize=14, fontweight="bold")
 
     final_rounds = df.groupby(["aggregation", "adversary_fraction", "seed"]).tail(1)
@@ -725,6 +722,9 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
                 frac_data = agg_data[agg_data["adversary_fraction"] == adv_frac]["macro_f1"].dropna()
                 if len(frac_data) >= 2:
                     mean, lower, upper = compute_confidence_interval(frac_data.values)
+                    # Clamp CIs to valid macro-F1 range [0, 1]
+                    lower = max(0.0, min(1.0, lower))
+                    upper = max(0.0, min(1.0, upper))
                     summary_stats.append(
                         {
                             "adversary_fraction": adv_frac * 100,
@@ -893,6 +893,9 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
 
                 if len(frac_data) >= 2:
                     mean, ci_lower, ci_upper = compute_confidence_interval(frac_data.values)
+                    # Clamp CIs to valid macro-F1 range [0, 1]
+                    ci_lower = max(0.0, min(1.0, ci_lower))
+                    ci_upper = max(0.0, min(1.0, ci_upper))
                 elif len(frac_data) == 1:
                     mean = float(frac_data.iloc[0])
                     ci_lower = mean
@@ -974,11 +977,7 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
                 )
 
         if comparison_data:
-            rows = [
-                {"DP": item["DP"], "Cosine Similarity": val}
-                for item in comparison_data
-                for val in item["Cosine Similarity"]
-            ]
+            rows = [{"DP": item["DP"], "Cosine Similarity": val} for item in comparison_data for val in item["Cosine Similarity"]]
             plot_df = pd.DataFrame(rows)
             sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
             ax.set_title("Model Alignment with DP")
