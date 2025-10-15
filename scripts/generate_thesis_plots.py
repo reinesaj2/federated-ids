@@ -812,8 +812,8 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
         if degradation_stats:
             deg_df = pd.DataFrame(degradation_stats)
             x_pos = np.arange(len(deg_df))
-            yerr_lower = deg_df["degradation_pct"] - deg_df["ci_lower"]
-            yerr_upper = deg_df["ci_upper"] - deg_df["degradation_pct"]
+            yerr_lower = np.maximum(0.0, deg_df["degradation_pct"] - deg_df["ci_lower"])
+            yerr_upper = np.maximum(0.0, deg_df["ci_upper"] - deg_df["degradation_pct"])
 
             ax.bar(
                 x_pos,

@@ -24,10 +24,17 @@ def is_experiment_complete(run_dir: Path) -> bool:
     return (run_dir / "metrics.csv").exists() and (run_dir / "config.json").exists()
 
 
-def run_experiment_safe(config, base_dir):
-    """Wrapper to run experiment with exception handling."""
+def run_experiment_safe(config, base_dir, port_offset=0):
+    """Wrapper to run experiment with exception handling.
+
+    Args:
+        config: Experiment configuration
+        base_dir: Project base directory
+        port_offset: Port offset to avoid conflicts (each experiment uses base + offset * 100)
+    """
     try:
-        result = run_federated_experiment(config, base_dir)
+        port_start = 8080 + (port_offset * 100)
+        result = run_federated_experiment(config, base_dir, port_start=port_start)
         return {"status": "success", "preset": config.to_preset_name(), "result": result}
     except Exception as e:
         return {"status": "error", "preset": config.to_preset_name(), "error": str(e)}
@@ -96,10 +103,10 @@ def main():
     failed_tasks = 0
 
     with ProcessPoolExecutor(max_workers=args.workers) as executor:
-        # Submit all tasks
+        # Submit all tasks with unique port offsets to avoid conflicts
         futures = {
-            executor.submit(run_experiment_safe, config, base_dir): config
-            for config in pending_configs
+            executor.submit(run_experiment_safe, config, base_dir, idx): config
+            for idx, config in enumerate(pending_configs)
         }
 
         # Process as they complete
