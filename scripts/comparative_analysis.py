@@ -66,9 +66,7 @@ class ExperimentConfig:
 class ComparisonMatrix:
     """Defines the full comparison experiment matrix."""
 
-    aggregation_methods: List[str] = field(
-        default_factory=lambda: ["fedavg", "krum", "bulyan", "median"]
-    )
+    aggregation_methods: List[str] = field(default_factory=lambda: ["fedavg", "krum", "bulyan", "median"])
     alpha_values: List[float] = field(default_factory=lambda: [1.0, 0.5, 0.1])
     adversary_fractions: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.3])
     dp_configs: List[Dict] = field(
@@ -199,9 +197,7 @@ class ComparisonMatrix:
                                 )
         return configs
 
-    def generate_configs(
-        self, filter_dimension: Optional[str] = None
-    ) -> List[ExperimentConfig]:
+    def generate_configs(self, filter_dimension: Optional[str] = None) -> List[ExperimentConfig]:
         """Generate experiment configurations for specified dimension.
 
         Args:
@@ -230,8 +226,7 @@ class ComparisonMatrix:
         generator = dimension_map.get(filter_dimension)
         if generator is None:
             raise ValueError(
-                f"Invalid dimension: {filter_dimension}. "
-                f"Must be one of {list(dimension_map.keys())} or None for full factorial."
+                f"Invalid dimension: {filter_dimension}. " f"Must be one of {list(dimension_map.keys())} or None for full factorial."
             )
 
         return generator()
@@ -278,9 +273,7 @@ def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int =
     proc = None
     try:
         with open(log_file, "w") as log:
-            proc = subprocess.Popen(
-                cmd, stdout=log, stderr=subprocess.STDOUT, cwd=cwd
-            )
+            proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=cwd)
         yield proc
     finally:
         if proc is not None:
@@ -399,9 +392,7 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
                     )
 
                 with open(client_log, "w") as log:
-                    proc = subprocess.Popen(
-                        client_cmd, stdout=log, stderr=subprocess.STDOUT, cwd=base_dir
-                    )
+                    proc = subprocess.Popen(client_cmd, stdout=log, stderr=subprocess.STDOUT, cwd=base_dir)
                     client_procs.append(proc)
 
             # Wait for all clients to complete with timeout
@@ -410,7 +401,7 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
                     proc.wait(timeout=600)  # 10 minute timeout per client
                 except subprocess.TimeoutExpired:
                     proc.kill()
-                    raise RuntimeError(f"Client process timed out")
+                    raise RuntimeError("Client process timed out")
 
             # Server will complete after all clients finish
             server_exit_code = server_proc.returncode
@@ -437,9 +428,7 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run comparative analysis experiments"
-    )
+    parser = argparse.ArgumentParser(description="Run comparative analysis experiments")
     parser.add_argument(
         "--dimension",
         type=str,
@@ -474,21 +463,19 @@ def main():
 
     # Generate experiment matrix
     matrix = ComparisonMatrix()
-    configs = matrix.generate_configs(
-        filter_dimension=None if args.dimension == "full" else args.dimension
-    )
+    configs = matrix.generate_configs(filter_dimension=None if args.dimension == "full" else args.dimension)
 
     print(f"Generated {len(configs)} experiment configurations for dimension: {args.dimension}")
 
     if args.dry_run:
         for i, config in enumerate(configs):
-            print(f"{i+1}. {config.to_preset_name()}")
+            print(f"{i + 1}. {config.to_preset_name()}")
         return
 
     # Run experiments
     results = []
     for i, config in enumerate(configs):
-        print(f"\n[{i+1}/{len(configs)}] Running: {config.to_preset_name()}")
+        print(f"\n[{i + 1}/{len(configs)}] Running: {config.to_preset_name()}")
         try:
             result = run_federated_experiment(config, base_dir)
             results.append(result)

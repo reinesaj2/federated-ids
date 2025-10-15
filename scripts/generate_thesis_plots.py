@@ -16,7 +16,7 @@ import argparse
 import json
 import math
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -63,9 +63,7 @@ def _extract_macro_f1(row: pd.Series) -> Optional[float]:
     return None
 
 
-def _compute_epsilon_fallback(
-    row: Dict, final_row: Optional[pd.Series]
-) -> Optional[float]:
+def _compute_epsilon_fallback(row: Dict, final_row: Optional[pd.Series]) -> Optional[float]:
     noise = None
     if final_row is not None and "dp_sigma" in final_row:
         noise = final_row.get("dp_sigma")
@@ -140,9 +138,7 @@ def _compute_epsilon_fallback(
     return float(epsilon)
 
 
-def _prepare_privacy_curve_data(
-    final_rounds: pd.DataFrame, runs_root: Path
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _prepare_privacy_curve_data(final_rounds: pd.DataFrame, runs_root: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     if "run_dir" not in final_rounds.columns:
         return pd.DataFrame(), pd.DataFrame()
 
@@ -196,11 +192,7 @@ def _prepare_privacy_curve_data(
         }
 
         if row.get("dp_enabled"):
-            epsilon = (
-                float(np.mean(epsilon_candidates))
-                if epsilon_candidates
-                else _compute_epsilon_fallback(row, None)
-            )
+            epsilon = float(np.mean(epsilon_candidates)) if epsilon_candidates else _compute_epsilon_fallback(row, None)
             if epsilon is None:
                 continue
             dp_records.append({**base_record, "epsilon": epsilon})
@@ -210,9 +202,7 @@ def _prepare_privacy_curve_data(
     return pd.DataFrame(dp_records), pd.DataFrame(baseline_records)
 
 
-def _render_privacy_curve(
-    dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output_dir: Path
-) -> None:
+def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output_dir: Path) -> None:
     if dp_df.empty:
         return
 
@@ -273,9 +263,7 @@ def _render_privacy_curve(
         return
 
     summary_df = pd.DataFrame(summary_rows)
-    summary_df = summary_df.sort_values(
-        by=["is_baseline", "epsilon"], na_position="last"
-    )
+    summary_df = summary_df.sort_values(by=["is_baseline", "epsilon"], na_position="last")
     summary_path = output_dir / "privacy_utility_curve.csv"
     summary_df.to_csv(summary_path, index=False)
 
@@ -785,9 +773,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     plt.close()
 
 
-def plot_privacy_utility(
-    df: pd.DataFrame, output_dir: Path, runs_dir: Optional[Path] = None
-):
+def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[Path] = None):
     """Plot privacy-utility tradeoff."""
     if "dp_enabled" not in df.columns:
         return
