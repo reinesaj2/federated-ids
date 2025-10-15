@@ -402,7 +402,7 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
                     proc.wait(timeout=600)  # 10 minute timeout per client
                 except subprocess.TimeoutExpired:
                     proc.kill()
-                    raise RuntimeError(f"Client process timed out")
+                    raise RuntimeError("Client process timed out")
 
             # Server will complete after all clients finish
             server_exit_code = server_proc.returncode
@@ -470,13 +470,13 @@ def main():
 
     if args.dry_run:
         for i, config in enumerate(configs):
-            print(f"{i+1}. {config.to_preset_name()}")
+            print(f"{i + 1}. {config.to_preset_name()}")
         return
 
     # Run experiments
     results = []
     for i, config in enumerate(configs):
-        print(f"\n[{i+1}/{len(configs)}] Running: {config.to_preset_name()}")
+        print(f"\n[{i + 1}/{len(configs)}] Running: {config.to_preset_name()}")
         try:
             result = run_federated_experiment(config, base_dir)
             results.append(result)
