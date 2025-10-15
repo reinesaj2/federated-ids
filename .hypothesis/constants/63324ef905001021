@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/robust_aggregation.py
+# hypothesis_version: 6.140.4
+
+[0.0, 2.0, 'AggregationMethod', 'bulyan', 'fedavg', 'krum', 'median']

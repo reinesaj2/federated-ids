@@ -1,0 +1,149 @@
+{
+  "dataset": "cic",
+  "data_path": "data/cic/cic_ids2017_multiclass.csv",
+  "num_clients": 6,
+  "num_rounds": 20,
+  "seeds": [
+    101,
+    202,
+    303,
+    404,
+    505
+  ],
+  "alpha_values": [
+    "inf",
+    "1",
+    "0.5",
+    "0.2",
+    "0.1",
+    "0.05",
+    "0.02"
+  ],
+  "fedprox_mu_values": [
+    "0",
+    "0.002",
+    "0.005",
+    "0.01",
+    "0.02",
+    "0.05",
+    "0.08",
+    "0.1",
+    "0.2"
+  ],
+  "dimensions": [
+    {
+      "dimension": "aggregation",
+      "count": 20,
+      "datasets": [
+        "cic"
+      ],
+      "alpha_values": [
+        "1"
+      ],
+      "mu_values": [
+        "0"
+      ],
+      "sample_presets": [
+        "comp_cic_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed101",
+        "comp_cic_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed202",
+        "comp_cic_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed303",
+        "comp_cic_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed404",
+        "comp_cic_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed505"
+      ]
+    },
+    {
+      "dimension": "attack",
+      "count": 45,
+      "datasets": [
+        "cic"
+      ],
+      "alpha_values": [
+        "0.5"
+      ],
+      "mu_values": [
+        "0"
+      ],
+      "sample_presets": [
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed101",
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed202",
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed303",
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed404",
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed505"
+      ]
+    },
+    {
+      "dimension": "heterogeneity",
+      "count": 315,
+      "datasets": [
+        "cic"
+      ],
+      "alpha_values": [
+        "0.02",
+        "0.05",
+        "0.1",
+        "0.2",
+        "0.5",
+        "1",
+        "inf"
+      ],
+      "mu_values": [
+        "0",
+        "0.002",
+        "0.005",
+        "0.01",
+        "0.02",
+        "0.05",
+        "0.08",
+        "0.1",
+        "0.2"
+      ],
+      "sample_presets": [
+        "comp_cic_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed101",
+        "comp_cic_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed202",
+        "comp_cic_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed303",
+        "comp_cic_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed404",
+        "comp_cic_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed505"
+      ]
+    },
+    {
+      "dimension": "privacy",
+      "count": 20,
+      "datasets": [
+        "cic"
+      ],
+      "alpha_values": [
+        "0.5"
+      ],
+      "mu_values": [
+        "0"
+      ],
+      "sample_presets": [
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed101",
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed202",
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed303",
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed404",
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed505"
+      ]
+    },
+    {
+      "dimension": "personalization",
+      "count": 15,
+      "datasets": [
+        "cic"
+      ],
+      "alpha_values": [
+        "0.5"
+      ],
+      "mu_values": [
+        "0"
+      ],
+      "sample_presets": [
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed101",
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed202",
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed303",
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed404",
+        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed505"
+      ]
+    }
+  ]
+}
