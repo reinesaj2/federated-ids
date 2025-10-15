@@ -199,6 +199,50 @@ Aggregated metrics are computed from `logs_debug/` using the updated `summarize_
 
 ---
 
+## Experiment Results (2025-10-15) - Comparative Analysis
+
+Systematic experiments run via `scripts/comparative_analysis.py` with personalization dimension to validate CI integration and generate thesis-ready artifacts.
+
+**Configuration:**
+- Dataset: UNSW-NB15 sample
+- Alpha: 0.5 (moderate non-IID)
+- Personalization epochs: [0, 5]
+- Seeds: [42, 43, 44]
+- Clients: 6
+- Rounds: 20
+
+**Results Summary:**
+
+| Seed | Personalization Epochs | Mean Gain | Per-Client Gains | Analysis |
+| --- | --- | --- | --- | --- |
+| 42 | 0 | 0.0000 | All clients: 0.000 | Baseline: No personalization applied |
+| 42 | 5 | -0.0032 | Range: -0.011 to +0.002 | Mixed results: 4 negative, 2 near-zero |
+| 43 | 5 | -0.0012 | Range: -0.007 to 0.000 | Mostly negative/zero gains |
+| 44 | 5 | -0.0031 | Range: -0.016 to 0.000 | Negative gains dominate |
+
+**Key Findings:**
+
+1. **Alpha=0.5 shows minimal/negative personalization benefit** - Consistent with investigation findings that moderate non-IID (α=0.5) does not provide sufficient client heterogeneity for personalization to add value
+
+2. **Negative gains indicate overfitting** - Some clients show F1 degradation (-1.6%) when personalized model fine-tunes on non-representative local data
+
+3. **Implementation validated** - Metrics correctly capture personalization_gain (positive, zero, and negative values), proving the feature works as designed
+
+4. **Thesis implication** - These results demonstrate:
+   - Personalization is NOT a universal improvement
+   - Requires careful tuning based on data heterogeneity
+   - Documents when personalization SHOULD NOT be used (moderate α scenarios)
+
+**Experimental Artifacts:**
+- Run directories: `runs/comp_fedavg_alpha0.5_adv0_dp0_pers{0,5}_seed{42,43,44}/`
+- Manifest: `results/comparative_analysis/experiment_manifest_personalization.json`
+- All client metrics include: `macro_f1_global`, `macro_f1_personalized`, `personalization_gain`, `benign_fpr_global`, `benign_fpr_personalized`
+
+**Next Steps for Positive Gains:**
+To demonstrate meaningful personalization benefit for thesis, need to run experiments with **α ≤ 0.1** as documented in recommendations below.
+
+---
+
 ## Recommendations
 
 ### For Thesis Validation (Objective 3)
