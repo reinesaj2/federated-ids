@@ -75,17 +75,17 @@ def stratified_sample(
         available = len(label_df)
 
         if available == 0:
-            print(f"  ⚠️  {label}: 0 available (skipping)")
+            print(f"  [WARNING]  {label}: 0 available (skipping)")
             continue
 
         # If we don't have enough samples, take all available
         n_sample = min(target_count, available)
         if n_sample < target_count:
             print(
-                f"  ⚠️  {label}: {n_sample}/{target_count} (insufficient data)"
+                f"  [WARNING]  {label}: {n_sample}/{target_count} (insufficient data)"
             )
         else:
-            print(f"  ✓  {label}: {n_sample}/{target_count}")
+            print(f"  [PASS]  {label}: {n_sample}/{target_count}")
 
         # Random sample without replacement
         indices = rng.choice(available, size=n_sample, replace=False)
@@ -149,7 +149,7 @@ def main() -> None:
 
     # Save to CSV
     sampled.to_csv(output_path, index=False)
-    print(f"\n✓ Wrote {len(sampled):,} samples to {output_path}")
+    print(f"\n[PASS] Wrote {len(sampled):,} samples to {output_path}")
 
     # Verify final distribution
     print("\nFinal label distribution:")

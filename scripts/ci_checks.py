@@ -106,7 +106,7 @@ def validate_fpr_tolerance(
                             if strict:
                                 raise ArtifactValidationError(message)
                             else:
-                                print(f"⚠️  Warning: {message}")
+                                print(f"[WARNING] {message}")
                     except ValueError:
                         pass  # Skip if conversion fails
         except Exception as e:
@@ -146,7 +146,7 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
     # Validate FPR tolerance if using low_fpr tau mode
     validate_fpr_tolerance(run_dir, target_fpr=0.10, tolerance=0.02, strict=fpr_strict)
 
-    print(f"✓ Run directory {run_dir.name} validation passed")
+    print(f"[PASS] Run directory {run_dir.name} validation passed")
 
 
 def find_run_directories(runs_dir: Path) -> List[Path]:
@@ -215,7 +215,7 @@ def main() -> None:
     fpr_strict = args.fpr_strict or (fpr_strict_env == "1")
 
     if not fpr_strict:
-        print("ℹ️  FPR tolerance check: warnings only (not blocking)")
+        print("[INFO] FPR tolerance check: warnings only (not blocking)")
 
     try:
         runs_dir = Path(args.runs_dir)
@@ -227,13 +227,13 @@ def main() -> None:
         for run_dir in run_directories:
             validate_run_directory(run_dir, fpr_strict=fpr_strict)
 
-        print(f"✓ All {len(run_directories)} run directories passed validation")
+        print(f"[PASS] All {len(run_directories)} run directories passed validation")
 
     except ArtifactValidationError as e:
-        print(f"❌ Validation failed: {e}", file=sys.stderr)
+        print(f"[ERROR] Validation failed: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Unexpected error during validation: {e}", file=sys.stderr)
+        print(f"[ERROR] Unexpected error during validation: {e}", file=sys.stderr)
         sys.exit(1)
 
 

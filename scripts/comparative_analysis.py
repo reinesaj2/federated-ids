@@ -28,9 +28,8 @@ from typing import Dict, List, Optional
 DEFAULT_ALPHA_IID = 1.0  # Alpha=1.0 means IID (uniform Dirichlet)
 DEFAULT_ALPHA_NON_IID = 0.5  # Moderate non-IID for multi-dimensional experiments
 DEFAULT_AGGREGATION = "fedavg"  # Baseline aggregation
-# For attack dimension: use subset excluding Bulyan to reduce experiment count
-# while still comparing FedAvg (baseline) vs robust methods (Krum, Median)
-ATTACK_AGGREGATIONS = ["fedavg", "krum", "median"]
+# Attack dimension: compare all robust aggregation methods
+ATTACK_AGGREGATIONS = ["fedavg", "krum", "bulyan", "median"]
 
 
 @dataclass
@@ -118,9 +117,10 @@ class ComparisonMatrix:
     def _generate_attack_configs(self) -> List[ExperimentConfig]:
         """Generate configs for attack resilience comparison.
 
-        Uses subset of aggregation methods (FedAvg, Krum, Median) to reduce
-        computational cost while comparing baseline vs robust approaches.
+        Uses all robust aggregation methods including Bulyan.
         Uses alpha=0.5 for moderate non-IID setting.
+        Uses num_clients=11 to meet Bulyan's n >= 4f + 3 requirement
+        (allows f=2 Byzantine tolerance: 11 >= 4*2 + 3).
         """
         configs = []
         for agg in ATTACK_AGGREGATIONS:
@@ -132,6 +132,7 @@ class ComparisonMatrix:
                             aggregation=agg,
                             alpha=DEFAULT_ALPHA_NON_IID,
                             adversary_fraction=adv_frac,
+                            num_clients=11,  # Bulyan requires n >= 4f + 3
                         )
                     )
         return configs

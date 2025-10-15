@@ -4,8 +4,6 @@ Tests for comparative analysis framework.
 """
 
 import json
-import tempfile
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -69,15 +67,13 @@ def test_comparison_matrix_aggregation_dimension():
     for config in configs:
         assert config.alpha == 1.0  # IID baseline
         assert config.adversary_fraction == 0.0
-        assert config.dp_enabled == False
+        assert config.dp_enabled is False
         assert config.personalization_epochs == 0
 
 
 def test_comparison_matrix_heterogeneity_dimension():
     """Test matrix generation for heterogeneity dimension."""
-    matrix = ComparisonMatrix(
-        alpha_values=[1.0, 0.5, 0.1], seeds=[42], num_clients=6, num_rounds=10
-    )
+    matrix = ComparisonMatrix(alpha_values=[1.0, 0.5, 0.1], seeds=[42], num_clients=6, num_rounds=10)
 
     configs = matrix.generate_configs(filter_dimension="heterogeneity")
 
@@ -104,7 +100,7 @@ def test_comparison_matrix_attack_dimension():
 
     configs = matrix.generate_configs(filter_dimension="attack")
 
-    # Exact expected count: 3 agg methods (subset) × 2 adv fractions × 1 seed = 6
+    # Exact expected count: 4 agg methods (subset) × 2 adv fractions × 1 seed = 8
     expected_count = len(ATTACK_AGGREGATIONS) * 2 * 1
     assert len(configs) == expected_count
 
@@ -118,6 +114,9 @@ def test_comparison_matrix_attack_dimension():
 
     # Check alpha is fixed to moderate non-IID
     assert all(c.alpha == 0.5 for c in configs)
+
+    # Check all attack configs use n=11 clients for Bulyan requirement
+    assert all(c.num_clients == 11 for c in configs)
 
 
 def test_comparison_matrix_privacy_dimension():
@@ -148,9 +147,7 @@ def test_comparison_matrix_privacy_dimension():
 
 def test_comparison_matrix_personalization_dimension():
     """Test matrix generation for personalization dimension."""
-    matrix = ComparisonMatrix(
-        personalization_epochs=[0, 5], seeds=[42], num_clients=6, num_rounds=10
-    )
+    matrix = ComparisonMatrix(personalization_epochs=[0, 5], seeds=[42], num_clients=6, num_rounds=10)
 
     configs = matrix.generate_configs(filter_dimension="personalization")
 
@@ -275,7 +272,7 @@ def test_experiment_config_serialization():
     reloaded = json.loads(json_str)
     assert reloaded["aggregation"] == "krum"
     assert reloaded["alpha"] == 0.5
-    assert reloaded["dp_enabled"] == True
+    assert reloaded["dp_enabled"] is True
 
 
 def test_is_port_available():
@@ -340,9 +337,7 @@ def test_statistical_tests_ttest():
     df = pd.DataFrame(
         {
             "group": ["A"] * 10 + ["B"] * 10,
-            "metric": np.concatenate(
-                [np.random.normal(5, 1, 10), np.random.normal(7, 1, 10)]
-            ),
+            "metric": np.concatenate([np.random.normal(5, 1, 10), np.random.normal(7, 1, 10)]),
         }
     )
 
@@ -433,7 +428,10 @@ def test_comparison_matrix_attack_uses_subset():
 
     configs = matrix.generate_configs(filter_dimension="attack")
 
-    # Should use ATTACK_AGGREGATIONS (fedavg, krum, median) not all 4
+    # After Issue #70 fix, Bulyan is now included in attack experiments
     aggregations = {c.aggregation for c in configs}
     assert aggregations == set(ATTACK_AGGREGATIONS)
-    assert "bulyan" not in aggregations  # Excluded for efficiency
+    assert "bulyan" in aggregations  # Included after algorithm fix
+
+    # All attack configs should use n=11 clients for Bulyan requirement (n >= 4f + 3)
+    assert all(c.num_clients == 11 for c in configs)
