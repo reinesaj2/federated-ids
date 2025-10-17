@@ -16,10 +16,8 @@ from scripts.comparative_analysis import (
     find_available_port,
     is_port_available,
 )
-from scripts.generate_thesis_plots import (
-    compute_confidence_interval,
-    perform_statistical_tests,
-)
+from scripts.generate_thesis_plots import perform_statistical_tests
+from scripts.plot_metrics_utils import compute_confidence_interval
 
 
 def test_experiment_config_preset_name():
@@ -322,12 +320,13 @@ def test_compute_confidence_interval_single_value():
     """Test confidence interval with single value (edge case)."""
     data = np.array([5.0])
 
-    # Should handle gracefully (though CI will be NaN due to zero std)
+    # Should handle gracefully - returns (mean, mean, mean) for n=1
     mean, lower, upper = compute_confidence_interval(data, confidence=0.95)
 
     assert abs(mean - 5.0) < 1e-6
-    # With single value, CI will be invalid (NaN)
-    assert np.isnan(lower) or np.isnan(upper)
+    # With single value, CI bounds equal the mean (no range)
+    assert abs(lower - 5.0) < 1e-6
+    assert abs(upper - 5.0) < 1e-6
 
 
 def test_statistical_tests_ttest():
