@@ -17,6 +17,7 @@ Outputs:
 import argparse
 import csv
 import json
+import sys
 from pathlib import Path
 from typing import Dict
 
@@ -24,6 +25,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT / "scripts") not in sys.path:
+    sys.path.insert(0, str(ROOT / "scripts"))
+
+from plot_metrics_utils import compute_confidence_interval  # noqa: E402
 
 # Set publication-quality style
 sns.set_style("whitegrid")
@@ -131,9 +138,7 @@ def compute_summary_stats(df: pd.DataFrame) -> Dict:
         "std_gain": float(df["personalization_gain"].std()),
         "max_gain": float(df["personalization_gain"].max()),
         "min_gain": float(df["personalization_gain"].min()),
-        "pct_positive_gains": float(
-            (df["personalization_gain"] > 0.01).sum() / len(df) * 100
-        ),
+        "pct_positive_gains": float((df["personalization_gain"] > 0.01).sum() / len(df) * 100),
     }
 
     # By dataset
@@ -201,37 +206,56 @@ def plot_personalization_gains(df: pd.DataFrame, output_dir: Path) -> None:
     ax6 = fig.add_subplot(gs[2, :])
     plot_global_vs_personalized(df, ax6)
 
-    plt.savefig(
-        output_dir / "personalization_gains_analysis.png", dpi=300, bbox_inches="tight"
-    )
+    plt.savefig(output_dir / "personalization_gains_analysis.png", dpi=300, bbox_inches="tight")
     plt.close()
 
     print(f"Saved visualization to {output_dir / 'personalization_gains_analysis.png'}")
 
 
 def plot_gains_by_config(df: pd.DataFrame, ax: plt.Axes) -> None:
-    """Bar chart showing mean gain by experiment configuration."""
-    # Aggregate by configuration
-    config_df = (
-        df.groupby(["dataset", "alpha", "pers_epochs"])
-        .agg({"personalization_gain": ["mean", "std", "count"]})
-        .reset_index()
-    )
-    config_df.columns = ["dataset", "alpha", "pers_epochs", "mean", "std", "n"]
+    """Bar chart showing mean gain by experiment configuration with 95% CIs."""
+    # Aggregate by configuration - collect raw values for CI computation
+    config_groups = df.groupby(["dataset", "alpha", "pers_epochs"])["personalization_gain"].apply(list).reset_index()
+    config_groups.columns = ["dataset", "alpha", "pers_epochs", "values"]
+
+    # Compute CI for each configuration
+    ci_data = []
+    for _, row in config_groups.iterrows():
+        values = np.array(row["values"])
+        # Remove NaN values before CI computation
+        values = values[~np.isnan(values)]
+        if len(values) == 0:
+            continue  # Skip configurations with no valid data
+        mean, ci_lower, ci_upper = compute_confidence_interval(values, confidence=0.95)
+        ci_data.append(
+            {
+                "dataset": row["dataset"],
+                "alpha": row["alpha"],
+                "pers_epochs": row["pers_epochs"],
+                "mean": mean,
+                "ci_lower": ci_lower,
+                "ci_upper": ci_upper,
+                "n": len(values),
+            }
+        )
+
+    config_df = pd.DataFrame(ci_data)
 
     # Create configuration labels
-    config_df["config"] = config_df.apply(
-        lambda r: f"{r['dataset']}\nα={r['alpha']}\nep={r['pers_epochs']}", axis=1
-    )
+    config_df["config"] = config_df.apply(lambda r: f"{r['dataset']}\nα={r['alpha']}\nep={r['pers_epochs']}", axis=1)
 
     # Sort by mean gain
     config_df = config_df.sort_values("mean", ascending=False)
+
+    # Compute error bars
+    yerr_lower = config_df["mean"] - config_df["ci_lower"]
+    yerr_upper = config_df["ci_upper"] - config_df["mean"]
 
     # Plot
     bars = ax.bar(
         range(len(config_df)),
         config_df["mean"],
-        yerr=config_df["std"],
+        yerr=[yerr_lower, yerr_upper],
         capsize=5,
         alpha=0.7,
         color=sns.color_palette("viridis", len(config_df)),
@@ -249,7 +273,13 @@ def plot_gains_by_config(df: pd.DataFrame, ax: plt.Axes) -> None:
     ax.set_xticks(range(len(config_df)))
     ax.set_xticklabels(config_df["config"], rotation=45, ha="right", fontsize=8)
     ax.set_ylabel("Mean Personalization Gain (F1)")
-    ax.set_title("Personalization Gains by Configuration")
+    ax.set_title("Personalization Gains by Configuration (95% CI)")
+
+    # Add n annotations
+    for i, row in config_df.iterrows():
+        y_pos = row["mean"] + yerr_upper.iloc[i] + 0.005
+        ax.text(i, y_pos, f"n={row['n']}", ha="center", va="bottom", fontsize=7)
+
     ax.axhline(y=0.01, color="orange", linestyle="--", linewidth=1, label="Threshold")
     ax.legend()
     ax.grid(axis="y", alpha=0.3)
@@ -261,9 +291,7 @@ def plot_gains_vs_alpha(df: pd.DataFrame, ax: plt.Axes) -> None:
     pers_df = df[df["pers_epochs"] > 0]
 
     if len(pers_df) == 0:
-        ax.text(
-            0.5, 0.5, "No personalization data", ha="center", va="center", fontsize=12
-        )
+        ax.text(0.5, 0.5, "No personalization data", ha="center", va="center", fontsize=12)
         return
 
     # Scatter with jitter
@@ -284,9 +312,7 @@ def plot_gains_vs_alpha(df: pd.DataFrame, ax: plt.Axes) -> None:
         z = np.polyfit(pers_df["alpha"], pers_df["personalization_gain"], 1)
         p = np.poly1d(z)
         alpha_range = np.linspace(pers_df["alpha"].min(), pers_df["alpha"].max(), 100)
-        ax.plot(
-            alpha_range, p(alpha_range), "r--", linewidth=2, alpha=0.5, label="Trend"
-        )
+        ax.plot(alpha_range, p(alpha_range), "r--", linewidth=2, alpha=0.5, label="Trend")
 
     ax.set_xlabel("Dirichlet α (Heterogeneity)")
     ax.set_ylabel("Personalization Gain")
@@ -302,9 +328,7 @@ def plot_gains_by_epochs(df: pd.DataFrame, ax: plt.Axes) -> None:
     pers_df = df[df["pers_epochs"] > 0]
 
     if len(pers_df) == 0:
-        ax.text(
-            0.5, 0.5, "No personalization data", ha="center", va="center", fontsize=12
-        )
+        ax.text(0.5, 0.5, "No personalization data", ha="center", va="center", fontsize=12)
         return
 
     sns.boxplot(data=pers_df, x="pers_epochs", y="personalization_gain", ax=ax)
@@ -321,9 +345,7 @@ def plot_gains_by_dataset(df: pd.DataFrame, ax: plt.Axes) -> None:
     pers_df = df[df["pers_epochs"] > 0]
 
     if len(pers_df) == 0:
-        ax.text(
-            0.5, 0.5, "No personalization data", ha="center", va="center", fontsize=12
-        )
+        ax.text(0.5, 0.5, "No personalization data", ha="center", va="center", fontsize=12)
         return
 
     sns.violinplot(data=pers_df, x="dataset", y="personalization_gain", ax=ax)
@@ -340,9 +362,7 @@ def plot_per_client_scatter(df: pd.DataFrame, ax: plt.Axes) -> None:
     pers_df = df[df["pers_epochs"] > 0]
 
     if len(pers_df) == 0:
-        ax.text(
-            0.5, 0.5, "No personalization data", ha="center", va="center", fontsize=12
-        )
+        ax.text(0.5, 0.5, "No personalization data", ha="center", va="center", fontsize=12)
         return
 
     # Color by alpha
@@ -369,16 +389,12 @@ def plot_global_vs_personalized(df: pd.DataFrame, ax: plt.Axes) -> None:
     pers_df = df[df["pers_epochs"] > 0]
 
     if len(pers_df) == 0:
-        ax.text(
-            0.5, 0.5, "No personalization data", ha="center", va="center", fontsize=12
-        )
+        ax.text(0.5, 0.5, "No personalization data", ha="center", va="center", fontsize=12)
         return
 
     # Create client labels
     pers_df = pers_df.copy()
-    pers_df["client_label"] = (
-        pers_df["exp_dir"] + "_c" + pers_df["client_id"].astype(str)
-    )
+    pers_df["client_label"] = pers_df["exp_dir"] + "_c" + pers_df["client_id"].astype(str)
 
     # Sort by gain
     pers_df = pers_df.sort_values("personalization_gain")
@@ -439,9 +455,7 @@ def generate_latex_table(df: pd.DataFrame, output_dir: Path) -> None:
     latex_lines = []
     latex_lines.append("\\begin{table}[htbp]")
     latex_lines.append("\\centering")
-    latex_lines.append(
-        "\\caption{Personalization Gains Across Experimental Configurations}"
-    )
+    latex_lines.append("\\caption{Personalization Gains Across Experimental Configurations}")
     latex_lines.append("\\label{tab:personalization-gains}")
     latex_lines.append("\\begin{tabular}{llrrrrr}")
     latex_lines.append("\\hline")
@@ -477,9 +491,7 @@ def generate_latex_table(df: pd.DataFrame, output_dir: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Generate personalization gains visualization"
-    )
+    parser = argparse.ArgumentParser(description="Generate personalization gains visualization")
     parser.add_argument(
         "--logs_dir",
         type=Path,
