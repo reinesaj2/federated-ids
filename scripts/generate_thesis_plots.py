@@ -15,6 +15,7 @@ Includes statistical significance testing and confidence intervals.
 import argparse
 import json
 import math
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -24,8 +25,14 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats
 
-from plot_metrics_utils import compute_confidence_interval
-from privacy_accounting import compute_epsilon
+# Add scripts directory to path for imports
+ROOT = Path(__file__).resolve().parents[1]
+for candidate in (ROOT, ROOT / "scripts"):
+    if str(candidate) not in sys.path:
+        sys.path.insert(0, str(candidate))
+
+from plot_metrics_utils import compute_confidence_interval  # noqa: E402
+from privacy_accounting import compute_epsilon  # noqa: E402
 
 
 def _resolve_run_dir(reference: str, runs_root: Path) -> Optional[Path]:
