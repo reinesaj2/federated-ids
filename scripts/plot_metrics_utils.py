@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
-import matplotlib.collections as mcollections
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -16,6 +14,44 @@ def first_present(df: pd.DataFrame, columns: Sequence[str]) -> pd.Series | None:
         if name in df.columns:
             return pd.to_numeric(df[name], errors="coerce")
     return None
+
+
+def compute_confidence_interval(
+    data: np.ndarray | Sequence[float], confidence: float = 0.95
+) -> Tuple[float, float, float]:
+    """
+    Compute mean and confidence interval using t-distribution.
+
+    Args:
+        data: Array of values (must have length >= 1). NaN values should be
+              removed before calling this function.
+        confidence: Confidence level (default 0.95 for 95% CI)
+
+    Returns:
+        Tuple of (mean, lower_bound, upper_bound)
+
+    Raises:
+        ValueError: If data is empty
+
+    Note:
+        For n=1, returns (mean, mean, mean) with no confidence range.
+        For n>=2, computes proper confidence interval using t-distribution.
+    """
+    from scipy import stats
+
+    data_array = np.asarray(data)
+
+    if len(data_array) == 0:
+        raise ValueError("Cannot compute confidence interval for empty data")
+
+    if len(data_array) == 1:
+        mean = float(data_array[0])
+        return mean, mean, mean
+
+    mean = float(np.mean(data_array))
+    se = stats.sem(data_array)
+    margin = se * stats.t.ppf((1 + confidence) / 2, len(data_array) - 1)
+    return mean, mean - margin, mean + margin
 
 
 def apply_axis_policy(ax, policy):
@@ -51,11 +87,7 @@ def prepare_ci_matrix(df: pd.DataFrame, column: str) -> tuple[np.ndarray, np.nda
     if "seed" not in df.columns:
         return None
 
-    pivot = (
-        df.pivot_table(index="round", columns="seed", values=column)
-        .sort_index()
-        .dropna(how="all")
-    )
+    pivot = df.pivot_table(index="round", columns="seed", values=column).sort_index().dropna(how="all")
     if pivot.empty:
         return None
 
@@ -100,9 +132,7 @@ def write_caption_table(
             handle.write("| " + " | ".join(headers) + " |\n")
             handle.write("| " + " | ".join(["---"] * len(headers)) + " |\n")
             for row in rows:
-                handle.write(
-                    "| " + " | ".join(format_numeric(row.get(header)) for header in headers) + " |\n"
-                )
+                handle.write("| " + " | ".join(format_numeric(row.get(header)) for header in headers) + " |\n")
             handle.write("\n")
         elif fmt == "latex":
             if title:
@@ -110,15 +140,11 @@ def write_caption_table(
             handle.write("\\begin{tabular}{" + "c" * len(headers) + "}\\toprule\n")
             handle.write(" & ".join(headers) + " \\ " + r"\midrule" + "\n")
             for row in rows:
-                handle.write(
-                    " & ".join(format_numeric(row.get(header)) for header in headers) + " \\ \n"
-                )
+                handle.write(" & ".join(format_numeric(row.get(header)) for header in headers) + " \\ \n")
             handle.write(r"\bottomrule\end{tabular}" + "\n")
         else:
             for row in rows:
-                handle.write(
-                    ",".join(format_numeric(row.get(header)) for header in headers) + "\n"
-                )
+                handle.write(",".join(format_numeric(row.get(header)) for header in headers) + "\n")
 
 
 def summarize_final_metric(
@@ -137,9 +163,7 @@ def summarize_final_metric(
 
     if ci_config and ci_config.enabled and "seed" in df.columns:
         last_round = df["round"].max()
-        selection = pd.to_numeric(
-            df.loc[df["round"] == last_round, column], errors="coerce"
-        ).dropna()
+        selection = pd.to_numeric(df.loc[df["round"] == last_round, column], errors="coerce").dropna()
         if len(selection) >= 2:
             from scipy import stats
 
@@ -180,10 +204,7 @@ def render_mu_scatter(
     clients = [clients[i] for i, flag in enumerate(valid) if flag]
 
     unique_clients = sorted(set(clients))
-    client_colors = {
-        client: color
-        for client, color in zip(unique_clients, style.get_colors(len(unique_clients)))
-    }
+    client_colors = {client: color for client, color in zip(unique_clients, style.get_colors(len(unique_clients)))}
 
     rng = np.random.default_rng(42)
     jitter_scale = max(0.01, 0.02 * (mu_values.max() - mu_values.min() or 1.0))

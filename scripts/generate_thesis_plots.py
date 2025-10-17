@@ -16,7 +16,7 @@ import argparse
 import json
 import math
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,6 +24,7 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats
 
+from plot_metrics_utils import compute_confidence_interval
 from privacy_accounting import compute_epsilon
 
 
@@ -385,14 +386,6 @@ def load_experiment_results(runs_dir: Path) -> pd.DataFrame:
     return pd.concat(all_data, ignore_index=True)
 
 
-def compute_confidence_interval(data: np.ndarray, confidence: float = 0.95) -> Tuple[float, float, float]:
-    """Compute mean and confidence interval."""
-    mean = np.mean(data)
-    se = stats.sem(data)
-    ci = se * stats.t.ppf((1 + confidence) / 2, len(data) - 1)
-    return mean, mean - ci, mean + ci
-
-
 def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str) -> Dict:
     """Perform statistical significance tests between groups."""
     groups = df[group_col].unique()
@@ -641,40 +634,112 @@ def plot_aggregation_comparison(df: pd.DataFrame, output_dir: Path):
 
 
 def plot_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
-    """Plot IID vs Non-IID performance."""
+    """Plot IID vs Non-IID performance with 95% CIs."""
     if "alpha" not in df.columns:
         return
 
     fig, axes = plt.subplots(1, 2, figsize=(15, 6))
     fig.suptitle("Data Heterogeneity Impact (IID vs Non-IID)", fontsize=16, fontweight="bold")
 
-    # Plot 1: Convergence over rounds
-    if "l2_to_benign_mean" in df.columns:
+    # Plot 1: Convergence over rounds with 95% CIs
+    if "l2_to_benign_mean" in df.columns and "seed" in df.columns:
         ax = axes[0]
-        for alpha in sorted(df["alpha"].unique()):
-            alpha_data = df[df["alpha"] == alpha].groupby("round").agg({"l2_to_benign_mean": ["mean", "std"]})
-            rounds = alpha_data.index
-            means = alpha_data[("l2_to_benign_mean", "mean")]
-            stds = alpha_data[("l2_to_benign_mean", "std")]
+        colors = sns.color_palette("colorblind", len(df["alpha"].unique()))
 
-            label = "IID" if alpha >= 1.0 else f"Non-IID (α={alpha})"
-            ax.plot(rounds, means, marker="o", label=label)
-            ax.fill_between(rounds, means - stds, means + stds, alpha=0.2)
+        for idx, alpha in enumerate(sorted(df["alpha"].unique())):
+            alpha_data = df[df["alpha"] == alpha]
+            all_rounds = sorted(alpha_data["round"].unique())
 
-        ax.set_title("Convergence: L2 Distance Over Rounds")
+            rounds_with_data = []
+            means_list = []
+            ci_lower_list = []
+            ci_upper_list = []
+
+            for round_num in all_rounds:
+                round_data = alpha_data[alpha_data["round"] == round_num]["l2_to_benign_mean"].dropna().values
+                if len(round_data) == 0:
+                    continue  # Skip rounds with no data
+
+                rounds_with_data.append(round_num)
+
+                if len(round_data) >= 2:
+                    mean, ci_lower, ci_upper = compute_confidence_interval(round_data)
+                    means_list.append(mean)
+                    ci_lower_list.append(ci_lower)
+                    ci_upper_list.append(ci_upper)
+                elif len(round_data) == 1:
+                    val = float(round_data[0])
+                    means_list.append(val)
+                    ci_lower_list.append(val)
+                    ci_upper_list.append(val)
+
+            if means_list:
+                label = "IID" if alpha >= 1.0 else f"Non-IID (α={alpha})"
+                ax.plot(rounds_with_data, means_list, marker="o", label=label, color=colors[idx], linewidth=2)
+                ax.fill_between(rounds_with_data, ci_lower_list, ci_upper_list, alpha=0.2, color=colors[idx])
+
+        ax.set_title("Convergence: L2 Distance Over Rounds (95% CI)")
         ax.set_xlabel("Round")
         ax.set_ylabel("L2 Distance to Benign Mean")
         ax.legend()
         ax.grid(True, alpha=0.3)
 
-    # Plot 2: Final performance by alpha
+    # Plot 2: Final performance by alpha with 95% CIs
     final_rounds = df.groupby(["alpha", "seed"]).tail(1)
     if "cos_to_benign_mean" in final_rounds.columns:
         ax = axes[1]
-        sns.boxplot(data=final_rounds, x="alpha", y="cos_to_benign_mean", ax=ax)
-        ax.set_title("Final Cosine Similarity by α")
-        ax.set_xlabel("Alpha (Dirichlet Parameter)")
-        ax.set_ylabel("Cosine Similarity")
+
+        alpha_values = sorted(final_rounds["alpha"].unique())
+        summary_stats = []
+
+        for alpha in alpha_values:
+            alpha_data = final_rounds[final_rounds["alpha"] == alpha]["cos_to_benign_mean"].dropna().values
+            if len(alpha_data) >= 2:
+                mean, ci_lower, ci_upper = compute_confidence_interval(alpha_data)
+                summary_stats.append(
+                    {
+                        "alpha": alpha,
+                        "mean": mean,
+                        "ci_lower": ci_lower,
+                        "ci_upper": ci_upper,
+                        "n": len(alpha_data),
+                    }
+                )
+            elif len(alpha_data) == 1:
+                val = float(alpha_data[0])
+                summary_stats.append({"alpha": alpha, "mean": val, "ci_lower": val, "ci_upper": val, "n": 1})
+
+        if summary_stats:
+            summary_df = pd.DataFrame(summary_stats)
+            x_pos = np.arange(len(summary_df))
+            yerr_lower = summary_df["mean"] - summary_df["ci_lower"]
+            yerr_upper = summary_df["ci_upper"] - summary_df["mean"]
+
+            ax.bar(
+                x_pos,
+                summary_df["mean"],
+                yerr=[yerr_lower, yerr_upper],
+                capsize=5,
+                alpha=0.7,
+                color=sns.color_palette("colorblind", len(summary_df)),
+            )
+            ax.set_xticks(x_pos)
+            ax.set_xticklabels([f"{a:.2f}" for a in summary_df["alpha"]])
+            ax.set_title("Final Cosine Similarity by α (95% CI)")
+            ax.set_xlabel("Alpha (Dirichlet Parameter)")
+            ax.set_ylabel("Cosine Similarity")
+
+            for i, row in summary_df.iterrows():
+                ax.text(
+                    i,
+                    row["mean"] + yerr_upper.iloc[i] + 0.02,
+                    f"n={row['n']}",
+                    ha="center",
+                    va="bottom",
+                    fontsize=8,
+                )
+
+            ax.grid(True, alpha=0.3, axis="y")
 
     plt.tight_layout()
     plt.savefig(output_dir / "heterogeneity_comparison.png", dpi=300, bbox_inches="tight")
@@ -702,10 +767,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     num_seeds = len(df["seed"].unique()) if "seed" in df.columns else 1
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    subtitle = (
-        f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | "
-        f"Attack: grad_ascent | Seeds: n={num_seeds}"
-    )
+    subtitle = f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | " f"Attack: grad_ascent | Seeds: n={num_seeds}"
     fig.suptitle(f"Attack Resilience Comparison\n{subtitle}", fontsize=14, fontweight="bold")
 
     final_rounds = df.groupby(["aggregation", "adversary_fraction", "seed"]).tail(1)
@@ -974,11 +1036,7 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
                 )
 
         if comparison_data:
-            rows = [
-                {"DP": item["DP"], "Cosine Similarity": val}
-                for item in comparison_data
-                for val in item["Cosine Similarity"]
-            ]
+            rows = [{"DP": item["DP"], "Cosine Similarity": val} for item in comparison_data for val in item["Cosine Similarity"]]
             plot_df = pd.DataFrame(rows)
             sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
             ax.set_title("Model Alignment with DP")
@@ -1044,14 +1102,66 @@ def plot_personalization_benefit(df: pd.DataFrame, output_dir: Path):
         ax.legend()
         ax.grid(True, alpha=0.3)
 
-    # Plot 2: Personalization gain distribution
+    # Plot 2: Personalization gain distribution with 95% CIs
     ax = axes[1]
     if not enabled.empty:
-        sns.boxplot(data=pers_df, x="personalization_epochs", y="gain", ax=ax)
-        ax.set_xlabel("Personalization Epochs")
-        ax.set_ylabel("F1 Gain")
-        ax.set_title("Personalization Gain Distribution")
-        ax.axhline(y=0, color="red", linestyle="--", alpha=0.5)
+        # Compute CI for each epoch value
+        epochs_unique = sorted(pers_df[pers_df["personalization_epochs"] > 0]["personalization_epochs"].unique())
+        summary_stats = []
+
+        for epoch in epochs_unique:
+            epoch_data = pers_df[pers_df["personalization_epochs"] == epoch]["gain"].dropna().values
+            if len(epoch_data) >= 2:
+                mean, ci_lower, ci_upper = compute_confidence_interval(epoch_data)
+                summary_stats.append(
+                    {
+                        "personalization_epochs": epoch,
+                        "mean": mean,
+                        "ci_lower": ci_lower,
+                        "ci_upper": ci_upper,
+                        "n": len(epoch_data),
+                    }
+                )
+            elif len(epoch_data) == 1:
+                val = float(epoch_data[0])
+                summary_stats.append(
+                    {
+                        "personalization_epochs": epoch,
+                        "mean": val,
+                        "ci_lower": val,
+                        "ci_upper": val,
+                        "n": 1,
+                    }
+                )
+
+        if summary_stats:
+            summary_df = pd.DataFrame(summary_stats)
+            x_pos = np.arange(len(summary_df))
+            yerr_lower = summary_df["mean"] - summary_df["ci_lower"]
+            yerr_upper = summary_df["ci_upper"] - summary_df["mean"]
+
+            ax.bar(
+                x_pos,
+                summary_df["mean"],
+                yerr=[yerr_lower, yerr_upper],
+                capsize=5,
+                alpha=0.7,
+                color=sns.color_palette("colorblind", len(summary_df)),
+            )
+            ax.set_xticks(x_pos)
+            ax.set_xticklabels(summary_df["personalization_epochs"].astype(int))
+            ax.set_xlabel("Personalization Epochs")
+            ax.set_ylabel("F1 Gain")
+            ax.set_title("Personalization Gain by Epochs (95% CI)")
+
+            # Add n annotations
+            for i, row in summary_df.iterrows():
+                y_pos = row["mean"] + yerr_upper.iloc[i] + 0.01
+                ax.text(i, y_pos, f"n={row['n']}", ha="center", va="bottom", fontsize=8)
+
+            ax.axhline(y=0, color="red", linestyle="--", alpha=0.5, label="No Gain")
+            ax.legend()
+            ax.grid(True, alpha=0.3, axis="y")
 
     plt.tight_layout()
     plt.savefig(output_dir / "personalization_benefit.png", dpi=300, bbox_inches="tight")
