@@ -2,20 +2,20 @@
 
 **Issue:** fix(metrics): validate cosine similarity computation across all plot dimensions
 **Branch:** `fix/issue-76-cosine-validation`
-**Status:** ✅ **RESOLVED**
+**Status:** [RESOLVED]
 **Date:** 2025-10-18
 
 ---
 
 ## Executive Summary
 
-✅ **Issue #76 is RESOLVED.** Cosine similarity computation is working correctly. All existing experimental data shows values in the mathematically valid range [-1, 1], specifically [0.986, 1.000] which is expected for federated learning with same-architecture models.
+[RESOLVED] **Issue #76 is RESOLVED.** Cosine similarity computation is working correctly. All existing experimental data shows values in the mathematically valid range [-1, 1], specifically [0.986, 1.000] which is expected for federated learning with same-architecture models.
 
 The original issue description was based on preliminary/incomplete analysis. Actual validation of 84 experimental datasets confirms:
-- ✅ Zero impossible values (cosine < -1 or > 1)
-- ✅ All FL experiments show cosine ∈ [0.95, 1.00] (expected range)
-- ⚡ Minor floating-point precision errors in 4 OLD datasets (< 1e-6 deviation)
-- ⚠️ L2=0 warnings are **issue #75** (benign_mean design), NOT a cosine bug
+- [PASS] Zero impossible values (cosine < -1 or > 1)
+- [PASS] All FL experiments show cosine in [0.95, 1.00] (expected range)
+- [INFO] Minor floating-point precision errors in 4 OLD datasets (< 1e-6 deviation)
+- [NOTE] L2=0 warnings are **issue #75** (benign_mean design), NOT a cosine bug
 
 ---
 
@@ -70,11 +70,11 @@ def validate_metrics(
 ```
 
 **Checks:**
-- ✅ Cosine ∈ [-1, 1] (mathematical validity)
-- ⚠️ Cosine < 0.5 (suspicious for FL, triggers warning)
-- ✅ L2 ≥ 0 (non-negative distance)
-- ⚠️ L2 = 0.0 (perfect match, indicates benign_mean issue)
-- ✅ Norm statistics ≥ 0
+- [PASS] Cosine in [-1, 1] (mathematical validity)
+- [NOTE] Cosine < 0.5 (suspicious for FL, triggers warning)
+- [PASS] L2 >= 0 (non-negative distance)
+- [NOTE] L2 = 0.0 (perfect match, indicates benign_mean issue)
+- [PASS] Norm statistics >= 0
 
 **Returns:** List of warning messages for programmatic handling.
 
@@ -85,21 +85,21 @@ def validate_metrics(
 Added **15 new tests** covering:
 
 **Mathematical Properties:**
-- Identical vectors → cosine = 1.0
-- Orthogonal vectors → cosine = 0.0
-- Opposite vectors → cosine = -1.0
-- 45° angle → cosine ≈ 0.707
+- Identical vectors -> cosine = 1.0
+- Orthogonal vectors -> cosine = 0.0
+- Opposite vectors -> cosine = -1.0
+- 45 degree angle -> cosine approximately 0.707
 
 **Error Conditions:**
-- Zero-norm vectors → raises ValueError
-- Bounds violations → raises ValueError
+- Zero-norm vectors -> raises ValueError
+- Bounds violations -> raises ValueError
 
 **Edge Cases:**
-- None/NaN values → handled gracefully
-- Random vectors → always in [-1, 1]
-- Similar FL models → cosine > 0.99
+- None/NaN values -> handled gracefully
+- Random vectors -> always in [-1, 1]
+- Similar FL models -> cosine > 0.99
 
-**Test Results:** ✅ 22/22 passing (100%)
+**Test Results:** [PASS] 22/22 passing (100%)
 
 ---
 
@@ -108,11 +108,11 @@ Added **15 new tests** covering:
 ### Dataset Analysis (84 metrics files)
 
 ```
-✅ Bulyan experiments:  cosine ∈ [0.993, 1.000]  ← VALID
-✅ Krum experiments:    cosine ∈ [0.990, 1.000]  ← VALID
-✅ Median experiments:  cosine ∈ [0.986, 1.000]  ← VALID
-✅ FedAvg experiments:  cosine ∈ [0.999, 1.000]  ← VALID
-✅ FedProx experiments: cosine ∈ [0.999, 1.000]  ← VALID
+[PASS] Bulyan experiments:  cosine in [0.993, 1.000]  <- VALID
+[PASS] Krum experiments:    cosine in [0.990, 1.000]  <- VALID
+[PASS] Median experiments:  cosine in [0.986, 1.000]  <- VALID
+[PASS] FedAvg experiments:  cosine in [0.999, 1.000]  <- VALID
+[PASS] FedProx experiments: cosine in [0.999, 1.000]  <- VALID
 ```
 
 **Distribution:**
@@ -124,7 +124,7 @@ Added **15 new tests** covering:
 
 ## Root Cause Analysis: Issue #76 Misdiagnosis
 
-### Original Claim: "Privacy plot shows cosine ≈ 0.0"
+### Original Claim: "Privacy plot shows cosine approximately 0.0"
 
 **Investigation Findings:**
 1. Privacy experiments (`runs/comp_fedavg_alpha0.5_dp1_*`) contain **no server_metrics.csv**
@@ -139,8 +139,8 @@ Added **15 new tests** covering:
 
 **Investigation Findings:**
 1. Examined actual data from `runs/comp_median_alpha0.5_adv0_dp0_pers0_seed42/`:
-   - L2 = 0.0 ✓ (this is TRUE)
-   - Cosine = 0.9999998807907104 ✓ (THIS IS VALID, not 0.0)
+   - L2 = 0.0 (this is TRUE)
+   - Cosine = 0.9999998807907104 (THIS IS VALID, not 0.0)
 
 2. Root cause: `_estimate_benign_mean()` uses median aggregation
    - With 2 clients: median = average = aggregated result
@@ -151,10 +151,10 @@ Added **15 new tests** covering:
 
 ---
 
-## QCHECK Issues - All Fixed ✅
+## QCHECK Issues - All Fixed [PASS]
 
 ### Issue 1: Test Parameterization (BP-1)
-**Status:** ✅ FIXED
+**Status:** [PASS] FIXED
 
 **Before:**
 ```python
@@ -171,7 +171,7 @@ metrics = {"cos_to_benign_mean": invalid_cosine, "l2_to_benign_mean": valid_l2}
 ---
 
 ### Issue 2: Hardcoded Threshold
-**Status:** ✅ FIXED
+**Status:** [PASS] FIXED
 
 **Before:**
 ```python
@@ -191,11 +191,11 @@ def validate_metrics(metrics, dimension, min_expected_cosine: float = 0.5):
 
 | Tool | Status |
 |------|--------|
-| **Pytest** | ✅ 22/22 tests passing |
-| **Black** | ✅ All files formatted |
-| **Flake8** | ✅ Zero linting errors |
-| **QCHECK** | ✅ All issues resolved |
-| **TDD** | ✅ 15 tests written first |
+| **Pytest** | [PASS] 22/22 tests passing |
+| **Black** | [PASS] All files formatted |
+| **Flake8** | [PASS] Zero linting errors |
+| **QCHECK** | [PASS] All issues resolved |
+| **TDD** | [PASS] 15 tests written first |
 
 ---
 
@@ -213,7 +213,7 @@ validate_cosine_fix.py     | +178 lines (new validation script)
 
 ### Issue #75: L2=0 for Bulyan/Median
 **Problem:** `benign_mean` computed as median of client updates
-**Impact:** With 2 clients, median = aggregated → L2=0
+**Impact:** With 2 clients, median = aggregated -> L2=0
 **Solution:** Redesign reference point (separate issue)
 
 ### Issue #59: Privacy-Utility Curve
@@ -242,10 +242,10 @@ flake8 server_metrics.py test_server_metrics.py
 
 **Issue #76 is RESOLVED.** The cosine similarity computation was never broken. The original issue description conflated three separate problems:
 
-1. ✅ **Cosine computation:** WORKING (this issue)
-2. ⚠️ **Missing privacy metrics:** Need to re-run experiments (issue #59)
-3. ⚠️ **Benign mean design:** L2=0 artifact (issue #75)
+1. [PASS] **Cosine computation:** WORKING (this issue)
+2. [NOTE] **Missing privacy metrics:** Need to re-run experiments (issue #59)
+3. [NOTE] **Benign mean design:** L2=0 artifact (issue #75)
 
 Our implementation adds robust error handling, comprehensive validation, and excellent test coverage that **prevents** the types of data quality issues described in the original issue.
 
-**Confidence:** ✅ **HIGH** - Validated against 84 real experimental datasets.
+**Confidence:** [HIGH] - Validated against 84 real experimental datasets.
