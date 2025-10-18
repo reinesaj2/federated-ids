@@ -1006,7 +1006,7 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
     # Plot 1: L2 distance vs DP noise
     if "l2_to_benign_mean" in final_rounds.columns:
         ax = axes[0]
-        dp_data = final_rounds[final_rounds["dp_enabled"] is True]
+        dp_data = final_rounds[final_rounds["dp_enabled"]]
         if not dp_data.empty:
             summary = dp_data.groupby("dp_noise_multiplier")["l2_to_benign_mean"].agg(["mean", "std"])
             ax.errorbar(
@@ -1019,7 +1019,7 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
             )
 
         # Add baseline without DP
-        no_dp = final_rounds[final_rounds["dp_enabled"] is False]["l2_to_benign_mean"].mean()
+        no_dp = final_rounds[~final_rounds["dp_enabled"]]["l2_to_benign_mean"].mean()
         ax.axhline(y=no_dp, color="green", linestyle="--", label="No DP (Baseline)")
 
         ax.set_title("Model Accuracy vs DP Noise")
