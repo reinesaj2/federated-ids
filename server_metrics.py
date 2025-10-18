@@ -9,6 +9,9 @@ from typing import List, Optional
 import numpy as np
 
 from robust_aggregation import AggregationMethod
+from logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class ServerMetricsLogger:
@@ -27,10 +30,21 @@ class ServerMetricsLogger:
         # Create file with headers if it doesn't exist
         if not self.csv_path.exists():
             headers = [
-                "round", "agg_method", "n_clients", "byzantine_f",
-                "l2_to_benign_mean", "cos_to_benign_mean", "coord_median_agree_pct",
-                "update_norm_mean", "update_norm_std", "t_aggregate_ms", "t_round_ms",
-                "pairwise_cosine_mean", "pairwise_cosine_std", "l2_dispersion_mean", "l2_dispersion_std"
+                "round",
+                "agg_method",
+                "n_clients",
+                "byzantine_f",
+                "l2_to_benign_mean",
+                "cos_to_benign_mean",
+                "coord_median_agree_pct",
+                "update_norm_mean",
+                "update_norm_std",
+                "t_aggregate_ms",
+                "t_round_ms",
+                "pairwise_cosine_mean",
+                "pairwise_cosine_std",
+                "l2_dispersion_mean",
+                "l2_dispersion_std",
             ]
             with open(self.csv_path, 'w', newline='') as f:
                 writer = csv.writer(f)
@@ -99,6 +113,59 @@ class AggregationTimer:
         return self._last_aggregation_time_ms
 
 
+def validate_metrics(metrics: dict[str, float], dimension: str, min_expected_cosine: float = 0.5) -> list[str]:
+    """Validate robustness metrics for data quality issues.
+
+    Args:
+        metrics: Dictionary of computed metrics
+        dimension: Description of what dimension/experiment these metrics are from
+        min_expected_cosine: Minimum expected cosine similarity for same-architecture
+            FL models (default 0.5). Lower values trigger warning but not error.
+
+    Returns:
+        List of warning messages (empty if no issues detected)
+    """
+    warnings = []
+
+    # Validate cosine similarity
+    if "cos_to_benign_mean" in metrics:
+        cosine = metrics["cos_to_benign_mean"]
+        if cosine is not None and not np.isnan(cosine):
+            if not (-1.0 <= cosine <= 1.0):
+                warnings.append(f"{dimension}: Cosine {cosine:.6f} outside valid range [-1, 1]")
+            elif cosine < min_expected_cosine:
+                warnings.append(
+                    f"{dimension}: Suspiciously low cosine {cosine:.6f} for FL models "
+                    f"(expected >{min_expected_cosine} for same-architecture models)"
+                )
+
+    # Validate L2 distance
+    if "l2_to_benign_mean" in metrics:
+        l2 = metrics["l2_to_benign_mean"]
+        if l2 is not None and not np.isnan(l2):
+            if l2 < 0.0:
+                warnings.append(f"{dimension}: Negative L2 distance {l2:.6f}")
+            elif l2 == 0.0:
+                warnings.append(f"{dimension}: L2 distance is exactly 0.0 " "(aggregated model identical to reference)")
+
+    # Validate update norms
+    if "update_norm_mean" in metrics:
+        norm_mean = metrics["update_norm_mean"]
+        if norm_mean is not None and norm_mean < 0.0:
+            warnings.append(f"{dimension}: Negative norm mean {norm_mean:.6f}")
+
+    if "update_norm_std" in metrics:
+        norm_std = metrics["update_norm_std"]
+        if norm_std is not None and norm_std < 0.0:
+            warnings.append(f"{dimension}: Negative norm std {norm_std:.6f}")
+
+    # Log warnings
+    for warning in warnings:
+        logger.warning(warning)
+
+    return warnings
+
+
 def calculate_robustness_metrics(
     client_updates: List[List[np.ndarray]],
     benign_mean: List[np.ndarray],
@@ -118,21 +185,38 @@ def calculate_robustness_metrics(
         return np.sqrt(total_dist_sq)
 
     def _cosine_similarity(a: List[np.ndarray], b: List[np.ndarray]) -> float:
-        """Calculate cosine similarity between two multi-layer updates."""
+        """Calculate cosine similarity between two multi-layer updates.
+
+        Args:
+            a: First multi-layer update
+            b: Second multi-layer update
+
+        Returns:
+            Cosine similarity in range [-1.0, 1.0]
+
+        Raises:
+            ValueError: If either vector has zero norm (cosine undefined)
+        """
         flat_a = _flatten_update(a)
         flat_b = _flatten_update(b)
 
         norm_a = np.linalg.norm(flat_a)
         norm_b = np.linalg.norm(flat_b)
 
-        if norm_a == 0.0 or norm_b == 0.0:
-            return 0.0
+        if norm_a == 0.0:
+            raise ValueError(f"First vector has zero norm (length={len(flat_a)}). " "Cosine similarity is undefined for zero vectors.")
+        if norm_b == 0.0:
+            raise ValueError(f"Second vector has zero norm (length={len(flat_b)}). " "Cosine similarity is undefined for zero vectors.")
 
-        return float(np.dot(flat_a, flat_b) / (norm_a * norm_b))
+        cosine = float(np.dot(flat_a, flat_b) / (norm_a * norm_b))
 
-    def _coordinate_median_agreement(
-        client_updates: List[List[np.ndarray]], aggregated: List[np.ndarray]
-    ) -> float:
+        # Sanity check: cosine must be in [-1, 1] due to Cauchy-Schwarz
+        if not (-1.0 <= cosine <= 1.0):
+            raise ValueError(f"Computed cosine {cosine} outside valid range [-1, 1]. " "This indicates a numerical error.")
+
+        return cosine
+
+    def _coordinate_median_agreement(client_updates: List[List[np.ndarray]], aggregated: List[np.ndarray]) -> float:
         """Calculate percentage of coordinates where aggregated equals coordinate-wise median."""
         if not client_updates:
             return 0.0
