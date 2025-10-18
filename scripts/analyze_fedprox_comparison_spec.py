@@ -11,6 +11,8 @@ from scripts.analyze_fedprox_comparison import (
     aggregate_run_metrics,
     collect_run_metrics,
     compute_weighted_macro_f1,
+    compute_paired_statistics,
+    ensure_minimum_samples,
 )
 
 
@@ -193,3 +195,69 @@ def test_aggregate_run_metrics_computes_mean_and_ci(tmp_path: Path) -> None:
     assert fedprox_row["n"] == 2
     assert fedprox_row["ci_upper"] > fedprox_row["mean"]
     assert fedprox_row["ci_lower"] < fedprox_row["mean"]
+
+
+def test_compute_paired_statistics_returns_effect_size(tmp_path: Path) -> None:
+    runs: list[RunMetrics] = []
+    for seed, fedavg_score, fedprox_score in [
+        (0, 0.80, 0.86),
+        (1, 0.82, 0.90),
+        (2, 0.79, 0.84),
+        (3, 0.81, 0.83),
+        (4, 0.80, 0.88),
+    ]:
+        runs.append(
+            RunMetrics(
+                alpha=0.1,
+                mu=0.0,
+                seed=seed,
+                algorithm="FedAvg",
+                weighted_macro_f1=fedavg_score,
+                mean_aggregation_time_ms=100 + seed,
+                rounds=20,
+                run_dir=tmp_path,
+            )
+        )
+        runs.append(
+            RunMetrics(
+                alpha=0.1,
+                mu=0.1,
+                seed=seed,
+                algorithm="FedProx",
+                weighted_macro_f1=fedprox_score,
+                mean_aggregation_time_ms=120 + seed,
+                rounds=20,
+                run_dir=tmp_path,
+            )
+        )
+
+    stats_rows = compute_paired_statistics(runs, metric_name="weighted_macro_f1")
+    assert len(stats_rows) == 1
+    row = stats_rows[0]
+
+    assert row["alpha"] == pytest.approx(0.1)
+    assert row["mu"] == pytest.approx(0.1)
+    assert row["metric"] == "weighted_macro_f1"
+    assert row["n"] == 5
+    assert row["mean_diff"] > 0
+    assert row["p_value"] < 0.05
+    assert row["effect_size"] > 0
+    assert row["ci_lower"] < row["ci_upper"]
+
+
+def test_ensure_minimum_samples_raises_when_insufficient_runs(tmp_path: Path) -> None:
+    runs = [
+        RunMetrics(
+            alpha=0.1,
+            mu=0.0,
+            seed=0,
+            algorithm="FedAvg",
+            weighted_macro_f1=0.8,
+            mean_aggregation_time_ms=100.0,
+            rounds=10,
+            run_dir=tmp_path,
+        )
+    ]
+
+    with pytest.raises(ValueError, match="alpha=0.1 mu=0.0 algorithm=FedAvg"):
+        ensure_minimum_samples(runs, minimum=5)

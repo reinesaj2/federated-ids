@@ -86,6 +86,36 @@ class TestWorkflowConfiguration:
         assert "--experiment_type fedprox-nightly" in run_command
         assert "--plots_dir plots" in run_command
 
+    def test_artifact_retention_extends_to_ninety_days(self):
+        """Nightly artifacts should be retained for 90 days to support trend analysis."""
+        workflow_path = Path(".github/workflows/fedprox-nightly.yml")
+
+        with open(workflow_path, "r") as f:
+            workflow_content = yaml.safe_load(f)
+
+        comparison_upload = next(
+            step for step in workflow_content["jobs"]["fedprox_comparison"]["steps"] if step.get("uses") == "actions/upload-artifact@v4"
+        )
+        assert comparison_upload["with"]["retention-days"] == 90
+
+        summary_upload = next(
+            step for step in workflow_content["jobs"]["fedprox_summary"]["steps"] if step.get("uses") == "actions/upload-artifact@v4"
+        )
+        assert summary_upload["with"]["retention-days"] >= 90
+
+    def test_manual_artifact_download_guarded_by_event(self):
+        """Manual artifact download should only trigger on workflow_dispatch to avoid failures."""
+        workflow_path = Path(".github/workflows/fedprox-nightly.yml")
+
+        with open(workflow_path, "r") as f:
+            workflow_content = yaml.safe_load(f)
+
+        manual_download_step = next(
+            step for step in workflow_content["jobs"]["commit_plots"]["steps"] if step.get("name") == "Download manual comparison results"
+        )
+        assert manual_download_step.get("if") == "github.event_name == 'workflow_dispatch'"
+        assert manual_download_step.get("continue-on-error") is True
+
 
 class TestWorkflowScriptIntegration:
     """Test integration between workflow and commit_plots script."""
