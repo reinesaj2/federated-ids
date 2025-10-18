@@ -126,7 +126,7 @@ def main():
                 failed_tasks += 1
                 print(
                     f"[{completed_count + completed_tasks}/{total}] "
-                    f"({progress_pct:.1f}%) ✗ {result['preset']}: {result['error']}"
+                    f"({progress_pct:.1f}%) [FAIL] {result['preset']}: {result['error']}"
                 )
 
     # Summary
