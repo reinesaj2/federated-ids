@@ -13,6 +13,7 @@ import argparse
 import json
 import math
 import re
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
@@ -249,6 +250,96 @@ def aggregate_run_metrics(
 
     return pd.DataFrame(rows)
 
+# ---------------------------------------------------------------------------
+# Statistical validation helpers
+
+
+def ensure_minimum_samples(run_metrics: Sequence[RunMetrics], minimum: int = 5) -> None:
+    """Ensure every configuration has at least ``minimum`` seeds available."""
+    sample_counts: dict[tuple[float, float, str], set[int]] = defaultdict(set)
+    for run in run_metrics:
+        sample_counts[(run.alpha, run.mu, run.algorithm)].add(run.seed)
+
+    violations = [
+        (alpha, mu, algorithm, len(seeds))
+        for (alpha, mu, algorithm), seeds in sample_counts.items()
+        if len(seeds) < minimum
+    ]
+
+    if violations:
+        alpha, mu, algorithm, observed = sorted(violations, key=lambda t: (t[0], t[1], t[2]))[0]
+        raise ValueError(
+            f"FedProx nightly runs for alpha={alpha} mu={mu} algorithm={algorithm} "
+            f"have only {observed} seeds; require at least {minimum}."
+        )
+
+
+def compute_paired_statistics(
+    run_metrics: Sequence[RunMetrics],
+    metric_name: str = "weighted_macro_f1",
+    baseline_algorithm: str = "FedAvg",
+) -> list[dict[str, object]]:
+    """Compute paired t-tests and effect sizes comparing FedProx to FedAvg."""
+    baseline_values: dict[tuple[float, int], float] = {}
+    candidate_map: dict[tuple[float, float], list[tuple[int, float, str]]] = defaultdict(list)
+
+    for run in run_metrics:
+        value = getattr(run, metric_name, float("nan"))
+        if math.isnan(value):
+            continue
+        if run.algorithm == baseline_algorithm and math.isclose(run.mu, 0.0, abs_tol=1e-12):
+            baseline_values[(run.alpha, run.seed)] = value
+        else:
+            candidate_map[(run.alpha, run.mu)].append((run.seed, value, run.algorithm))
+
+    results: list[dict[str, object]] = []
+    for (alpha, mu), entries in sorted(candidate_map.items()):
+        diffs: list[float] = []
+        prox_values: list[float] = []
+        fedavg_values: list[float] = []
+        algorithm_label = {label for _, _, label in entries}
+        candidate_algorithm = next(iter(algorithm_label)) if algorithm_label else "FedProx"
+
+        for seed, candidate_value, _ in entries:
+            baseline_value = baseline_values.get((alpha, seed))
+            if baseline_value is None:
+                continue
+            diffs.append(candidate_value - baseline_value)
+            prox_values.append(candidate_value)
+            fedavg_values.append(baseline_value)
+
+        n = len(diffs)
+        if n == 0:
+            continue
+
+        mean_diff, ci_lower, ci_upper = _mean_ci(diffs)
+        if n > 1:
+            std_diff = float(np.std(diffs, ddof=1))
+            effect_size = mean_diff / std_diff if std_diff > 0 else 0.0
+            _, p_value = stats.ttest_rel(prox_values, fedavg_values)
+            p_value = float(p_value)
+        else:
+            effect_size = 0.0
+            p_value = float("nan")
+
+        results.append(
+            {
+                "alpha": alpha,
+                "mu": mu,
+                "metric": metric_name,
+                "n": n,
+                "mean_diff": mean_diff,
+                "ci_lower": ci_lower,
+                "ci_upper": ci_upper,
+                "p_value": p_value,
+                "effect_size": effect_size,
+                "baseline_algorithm": baseline_algorithm,
+                "candidate_algorithm": candidate_algorithm,
+            }
+        )
+
+    return results
+
 
 def plot_aggregated_metrics(aggregated: pd.DataFrame, output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -288,6 +379,7 @@ def plot_aggregated_metrics(aggregated: pd.DataFrame, output_dir: Path) -> None:
 def write_summary(
     run_metrics: Sequence[RunMetrics],
     aggregated: pd.DataFrame,
+    significance: Sequence[dict[str, object]],
     output_dir: Path,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -309,6 +401,7 @@ def write_summary(
     summary = {
         "runs": runs_payload,
         "aggregated": aggregated.to_dict(orient="records"),
+        "significance": list(significance),
     }
 
     (output_dir / "fedprox_comparison_summary.json").write_text(
@@ -318,7 +411,11 @@ def write_summary(
     aggregated.to_csv(output_dir / "fedprox_comparison_summary.csv", index=False)
 
 
-def generate_thesis_tables(aggregated: pd.DataFrame, output_dir: Path) -> None:
+def generate_thesis_tables(
+    aggregated: pd.DataFrame,
+    significance: Sequence[Mapping[str, object]],
+    output_dir: Path,
+) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     macro_df = aggregated[aggregated["metric"] == "weighted_macro_f1"].copy()
     if macro_df.empty:
@@ -345,6 +442,37 @@ def generate_thesis_tables(aggregated: pd.DataFrame, output_dir: Path) -> None:
         lines.append(f"{row['algorithm']} & {row['alpha']} & {row['mu']} & " f"{mean:.4f} $\\pm$ {ci_width:.4f} \\\\")
 
     lines.extend(["\\bottomrule", "\\end{tabular}", "\\end{table}"])
+
+    diff_rows = [row for row in significance if row["metric"] == "weighted_macro_f1"]
+    if diff_rows:
+        lines.extend(
+            [
+                "",
+                "\\begin{table}[ht]",
+                "\\centering",
+                "\\caption{FedProx vs FedAvg macro-F1 improvements (paired t-test)}",
+                "\\label{tab:fedprox_macro_f1_diffs}",
+                "\\begin{tabular}{lccccl}",
+                "\\toprule",
+                "$\\alpha$ & $\\mu$ & $n$ & $\\Delta$ Macro-F1 $\\pm$ CI & $p$-value & Cohen's $d$ \\\\",
+                "\\midrule",
+            ]
+        )
+
+        for row in diff_rows:
+            mean_diff = row["mean_diff"]
+            ci_lower = row["ci_lower"]
+            ci_upper = row["ci_upper"]
+            ci_width = (ci_upper - ci_lower) / 2 if not math.isnan(ci_upper) else 0.0
+            p_value = row["p_value"]
+            effect_size = row["effect_size"]
+            lines.append(
+                f"{row['alpha']} & {row['mu']} & {int(row['n'])} & "
+                f"{mean_diff:.4f} $\\pm$ {ci_width:.4f} & {p_value:.3g} & {effect_size:.3f} \\\\"
+            )
+
+        lines.extend(["\\bottomrule", "\\end{tabular}", "\\end{table}"])
+
     (output_dir / "fedprox_thesis_tables.tex").write_text(
         "\n".join(lines),
         encoding="utf-8",
@@ -375,14 +503,20 @@ def main() -> None:
         print("No FedProx artifacts found; nothing to summarize.")
         return
 
+    ensure_minimum_samples(run_metrics, minimum=5)
+
     aggregated = aggregate_run_metrics(run_metrics)
     if aggregated.empty:
         print("No valid metrics found across runs.")
         return
 
-    write_summary(run_metrics, aggregated, args.output_dir)
+    significance_rows: list[dict[str, object]] = []
+    for metric_name in ("weighted_macro_f1", "mean_aggregation_time_ms"):
+        significance_rows.extend(compute_paired_statistics(run_metrics, metric_name=metric_name))
+
+    write_summary(run_metrics, aggregated, significance_rows, args.output_dir)
     plot_aggregated_metrics(aggregated, args.output_dir)
-    generate_thesis_tables(aggregated, args.output_dir)
+    generate_thesis_tables(aggregated, significance_rows, args.output_dir)
 
 
 if __name__ == "__main__":

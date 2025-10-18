@@ -6,6 +6,7 @@ Validates schemas and basic sanity of generated metrics files.
 
 import argparse
 import csv
+import math
 import re
 import sys
 from collections import defaultdict
@@ -17,6 +18,27 @@ class ArtifactValidationError(Exception):
     """Raised when artifact validation fails."""
 
     pass
+
+
+MIN_WEIGHTED_MACRO_F1 = 0.70
+MIN_WEIGHTED_ACCURACY = 0.70
+MAX_FINAL_L2_DISTANCE = 1.5
+
+
+def _safe_float(value: str | None) -> float | None:
+    if value in ("", None):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _load_csv_rows(csv_path: Path) -> List[Dict[str, str]]:
+    """Load all rows from a CSV file as dictionaries."""
+    with open(csv_path, "r", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        return list(reader)
 
 
 def validate_csv_schema(csv_path: Path, expected_columns: Set[str]) -> None:
@@ -142,6 +164,67 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
 
     # Validate plot files - required
     validate_plot_files(run_dir)
+
+    # Compute convergence metrics from client summaries
+    macro_weight = 0.0
+    macro_sum = 0.0
+    macro_samples = 0
+    acc_weight = 0.0
+    acc_sum = 0.0
+    acc_samples = 0
+
+    for client_file in client_metrics_files:
+        rows = _load_csv_rows(client_file)
+        if not rows:
+            continue
+        last_row = rows[-1]
+        dataset_size = _safe_float(last_row.get("dataset_size")) or 0.0
+        weight = dataset_size if dataset_size > 0 else 1.0
+
+        macro_value = _safe_float(last_row.get("macro_f1_after"))
+        if macro_value is not None:
+            macro_sum += weight * macro_value
+            macro_weight += weight
+            macro_samples += 1
+
+        acc_value = _safe_float(last_row.get("acc_after"))
+        if acc_value is not None:
+            acc_sum += weight * acc_value
+            acc_weight += weight
+            acc_samples += 1
+
+    if macro_samples == 0 or macro_weight == 0:
+        raise ArtifactValidationError(f"No macro_f1_after values found in {run_dir}")
+
+    weighted_macro_f1 = macro_sum / macro_weight
+    if not math.isfinite(weighted_macro_f1) or weighted_macro_f1 < MIN_WEIGHTED_MACRO_F1:
+        raise ArtifactValidationError(
+            f"Weighted macro_f1_after={weighted_macro_f1:.3f} below minimum {MIN_WEIGHTED_MACRO_F1:.2f}"
+        )
+
+    if acc_samples == 0 or acc_weight == 0:
+        raise ArtifactValidationError(f"No acc_after values found in {run_dir}")
+
+    weighted_accuracy = acc_sum / acc_weight
+    if not math.isfinite(weighted_accuracy) or weighted_accuracy < MIN_WEIGHTED_ACCURACY:
+        raise ArtifactValidationError(
+            f"Weighted acc_after={weighted_accuracy:.3f} below minimum {MIN_WEIGHTED_ACCURACY:.2f}"
+        )
+
+    # Validate server convergence metrics (L2 distance)
+    server_rows = _load_csv_rows(server_metrics_path)
+    if not server_rows:
+        raise ArtifactValidationError(f"No server metrics rows found in {server_metrics_path}")
+    final_server_row = server_rows[-1]
+    l2_value = _safe_float(final_server_row.get("l2_to_benign_mean"))
+    if l2_value is None:
+        raise ArtifactValidationError(
+            f"Server metrics missing l2_to_benign_mean in {server_metrics_path}"
+        )
+    if not math.isfinite(l2_value) or l2_value > MAX_FINAL_L2_DISTANCE:
+        raise ArtifactValidationError(
+            f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {MAX_FINAL_L2_DISTANCE:.1f}"
+        )
 
     # Validate FPR tolerance if using low_fpr tau mode
     validate_fpr_tolerance(run_dir, target_fpr=0.10, tolerance=0.02, strict=fpr_strict)

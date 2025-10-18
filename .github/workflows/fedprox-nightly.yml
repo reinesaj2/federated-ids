@@ -207,7 +207,7 @@ jobs:
             runs/**/client_metrics_plot.png
             runs/**/thesis_plots/**/*.png
             runs/**/thesis_plots/**/*.pdf
-          retention-days: 30
+          retention-days: 90
 
   fedprox_summary:
     needs: fedprox_comparison
@@ -247,7 +247,7 @@ jobs:
             fedprox-summary/fedprox_thesis_tables.tex
             fedprox-summary/thesis_plots/**/*.png
             fedprox-summary/thesis_plots/**/*.pdf
-          retention-days: 60
+          retention-days: 90
 
       - name: Locate baseline summary run
         id: find_baseline
@@ -368,6 +368,7 @@ jobs:
 
       - name: Download manual comparison results
         uses: actions/download-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           name: manual-fedprox-comparison-${{ github.sha }}
           path: manual-comparison
