@@ -103,9 +103,7 @@ def main() -> None:
             "aggregation": agg_method.value,
         },
     )
-    secure_agg_enabled = bool(
-        args.secure_aggregation or os.environ.get("D2_SECURE_AGG", "0").lower() not in ("0", "false", "no", "")
-    )
+    secure_agg_enabled = bool(args.secure_aggregation or os.environ.get("D2_SECURE_AGG", "0").lower() not in ("0", "false", "no", ""))
     logger.info(
         "secure_aggregation_mode",
         extra={"enabled": bool(secure_agg_enabled), "note": "stub"},
@@ -145,9 +143,7 @@ def main() -> None:
                 if agg_method == AggregationMethod.FED_AVG:
                     aggregated = aggregate_weighted_mean(client_weights, sample_counts)
                 else:
-                    aggregated = aggregate_weights(
-                        client_weights, agg_method, byzantine_f=f_arg
-                    )
+                    aggregated = aggregate_weights(client_weights, agg_method, byzantine_f=f_arg)
 
             # Calculate metrics
             t_aggregate_ms = agg_timer.get_last_aggregation_time_ms()
@@ -158,9 +154,7 @@ def main() -> None:
             # For research metrics, estimate benign mean as simple average (excluding outliers)
             # This is a simplified approach for demo purposes
             benign_mean = self._estimate_benign_mean(client_weights)
-            robustness_metrics = calculate_robustness_metrics(
-                client_weights, benign_mean, aggregated
-            )
+            robustness_metrics = calculate_robustness_metrics(client_weights, benign_mean, aggregated)
 
             # Compute pairwise dispersion metrics
             def _flatten(update: List[np.ndarray]) -> np.ndarray:
@@ -172,6 +166,7 @@ def main() -> None:
                 flats = [_flatten(u) for u in client_weights]
                 if len(flats) >= 2:
                     import numpy as _np
+
                     # pairwise cosine
                     norms = [_np.linalg.norm(v) for v in flats]
                     for i in range(len(flats)):
@@ -208,18 +203,15 @@ def main() -> None:
             metrics = {}
             return parameters, metrics
 
-        def _estimate_benign_mean(
-            self, client_weights: List[List[np.ndarray]]
-        ) -> List[np.ndarray]:
-            """Estimate benign mean by using simple average (placeholder for research)."""
+        def _estimate_benign_mean(self, client_weights: List[List[np.ndarray]]) -> List[np.ndarray]:
+            """Estimate benign mean by using a simple average (FedAvg)."""
             if not client_weights:
                 return []
 
-            # Simple approach: use median aggregation as benign estimate
-            # This assumes majority of clients are benign
-            from robust_aggregation import _median_aggregate
-
-            return _median_aggregate(client_weights)
+            # Use FedAvg (unweighted) as the reference for what a 'benign'
+            # model should look like. This provides a stable, independent
+            # reference point to compare robust aggregation methods against.
+            return aggregate_weights(client_weights, AggregationMethod.FED_AVG)
 
     def _on_fit_config(rnd: int):
         # Pass through seed and default hyperparameters; rounds can adjust epochs if desired
@@ -230,9 +222,7 @@ def main() -> None:
         if not results:
             return {}
         total = sum(n for n, _ in results)
-        mean_accuracy = sum(n * m.get("accuracy", 0.0) for n, m in results) / max(
-            total, 1
-        )
+        mean_accuracy = sum(n * m.get("accuracy", 0.0) for n, m in results) / max(total, 1)
         return {"accuracy": float(mean_accuracy)}
 
     strategy = RobustStrategy(
