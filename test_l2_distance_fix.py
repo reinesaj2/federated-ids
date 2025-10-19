@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from server_metrics import calculate_robustness_metrics
 from robust_aggregation import aggregate_weights, AggregationMethod
@@ -33,20 +32,9 @@ def test_l2_distance_is_not_zero_for_median_aggregation():
     assert np.isclose(metrics_before_fix["l2_to_benign_mean"], 0.0)
     assert np.isclose(metrics_before_fix["cos_to_benign_mean"], 1.0)
 
-    # 4. Simulate the NEW, correct logic where benign_mean is always FedAvg
-    # The reference is now independent of the aggregation method being tested.
-    correct_benign_mean = aggregate_weights(client_updates, AggregationMethod.FED_AVG)
-
-    # We still use Median for the actual aggregation result being tested
-    aggregated_result_median = aggregate_weights(client_updates, AggregationMethod.MEDIAN)
-
-    # 5. Calculate metrics with the corrected reference point
-    metrics_after_fix = calculate_robustness_metrics(client_updates, correct_benign_mean, aggregated_result_median)
-
-    # With FedAvg as the reference, the L2 distance should now be non-zero.
-    # For Median with 2 clients, the result is the same as FedAvg, so the
-    # distance will still be 0. This test needs a more complex scenario.
-    # Let's add a third client to make Median and FedAvg different.
+    # 4. With 2 clients, Median equals FedAvg, so L2 would still be 0.
+    # The test needs a more complex scenario with 3+ clients to demonstrate
+    # that FedAvg and Median produce different results.
 
     client_updates_3 = [
         [np.array([1.0, 2.0])],  # Client 1
