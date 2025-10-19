@@ -46,7 +46,7 @@ class ExperimentConfig:
     num_rounds: int
     seed: int
     dataset: str = "unsw"
-    data_path: str = "data/unsw/unsw_nb15_sample.csv"
+    data_path: str = "data/unsw/UNSW_NB15_training-set.csv"
 
     def to_preset_name(self) -> str:
         """Generate unique preset name for this configuration."""
