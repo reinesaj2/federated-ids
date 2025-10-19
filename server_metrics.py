@@ -210,6 +210,12 @@ def calculate_robustness_metrics(
 
         cosine = float(np.dot(flat_a, flat_b) / (norm_a * norm_b))
 
+        # Handle floating point inaccuracies
+        if np.isclose(cosine, 1.0):
+            cosine = 1.0
+        elif np.isclose(cosine, -1.0):
+            cosine = -1.0
+
         # Sanity check: cosine must be in [-1, 1] due to Cauchy-Schwarz
         if not (-1.0 <= cosine <= 1.0):
             raise ValueError(f"Computed cosine {cosine} outside valid range [-1, 1]. " "This indicates a numerical error.")
