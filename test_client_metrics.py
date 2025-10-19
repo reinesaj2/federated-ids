@@ -22,20 +22,20 @@ def test_client_metrics_csv_creation():
         # Check file exists after creation
         assert metrics_path.exists()
 
-        # Check headers - expect extended headers if D2_EXTENDED_METRICS is set
+        # Check headers - expect extended headers by default (Issue #77 fix)
         with open(metrics_path, "r") as f:
             reader = csv.reader(f)
             headers = next(reader)
 
-            # Check if running in extended mode
-            extended_mode = os.environ.get("D2_EXTENDED_METRICS", "0").lower() not in (
+            # After Issue #77, extended metrics are enabled by default
+            extended_mode_env = os.environ.get("D2_EXTENDED_METRICS", "1").lower() not in (
                 "0",
                 "false",
                 "no",
                 "",
             )
 
-            if extended_mode:
+            if extended_mode_env or "D2_EXTENDED_METRICS" not in os.environ:
                 expected = [
                     "client_id",
                     "round",
@@ -308,9 +308,7 @@ def test_calculate_weight_update_norm():
 def test_client_metrics_directory_creation():
     """Test that parent directories are created if they don't exist."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        nested_path = (
-            Path(temp_dir) / "client_logs" / "experiment_1" / "client_metrics.csv"
-        )
+        nested_path = Path(temp_dir) / "client_logs" / "experiment_1" / "client_metrics.csv"
 
         from client_metrics import ClientMetricsLogger
 
@@ -343,3 +341,112 @@ def test_client_data_distribution_analysis():
     single_stats = analyze_data_distribution(single_class_labels)
     assert single_stats["n_classes"] == 1
     assert single_stats["dataset_size"] == 4
+
+
+def test_client_metrics_extended_enabled_by_default_issue77():
+    """Test Issue #77 fix: Extended metrics are enabled by default (not just when env var set)."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        metrics_path = Path(temp_dir) / "client_metrics_extended.csv"
+
+        from client_metrics import ClientMetricsLogger
+
+        old_env = os.environ.get("D2_EXTENDED_METRICS")
+        try:
+            if old_env is not None:
+                del os.environ["D2_EXTENDED_METRICS"]
+
+            logger = ClientMetricsLogger(str(metrics_path), client_id=0)
+
+            with open(metrics_path, "r") as f:
+                reader = csv.reader(f)
+                headers = next(reader)
+
+            expected_f1_columns = [
+                "macro_f1_before",
+                "macro_f1_after",
+                "macro_f1_argmax",
+                "f1_per_class_after",
+            ]
+
+            for col in expected_f1_columns:
+                assert col in headers, (
+                    f"Column {col} not found in headers. " "Extended metrics should be enabled by default."
+                )
+
+        finally:
+            if old_env is not None:
+                os.environ["D2_EXTENDED_METRICS"] = old_env
+
+
+def test_client_metrics_extended_explicit_false():
+    """Test that extended metrics can still be disabled explicitly."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        metrics_path = Path(temp_dir) / "client_metrics_basic.csv"
+
+        from client_metrics import ClientMetricsLogger
+
+        logger = ClientMetricsLogger(str(metrics_path), client_id=0, extended=False)
+
+        with open(metrics_path, "r") as f:
+            reader = csv.reader(f)
+            headers = next(reader)
+
+        expected_basic_columns = [
+            "client_id",
+            "round",
+            "loss_before",
+            "acc_before",
+            "loss_after",
+            "acc_after",
+        ]
+
+        for col in expected_basic_columns:
+            assert col in headers
+
+        unexpected_f1_columns = ["macro_f1_after", "macro_f1_before"]
+        for col in unexpected_f1_columns:
+            assert col not in headers, (
+                f"Column {col} should not be in basic mode, " "but extended=False was set explicitly"
+            )
+
+
+def test_client_metrics_logs_macro_f1_values_issue77():
+    """Test Issue #77 fix: Verify macro_f1 values are correctly logged."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        metrics_path = Path(temp_dir) / "client_f1_test.csv"
+
+        from client_metrics import ClientMetricsLogger
+
+        logger = ClientMetricsLogger(str(metrics_path), client_id=1)
+
+        test_macro_f1_before = 0.75
+        test_macro_f1_after = 0.92
+        test_macro_f1_argmax = 0.91
+
+        logger.log_round_metrics(
+            round_num=1,
+            dataset_size=1000,
+            n_classes=2,
+            loss_before=0.5,
+            acc_before=0.7,
+            loss_after=0.1,
+            acc_after=0.95,
+            macro_f1_before=test_macro_f1_before,
+            macro_f1_after=test_macro_f1_after,
+            macro_f1_argmax=test_macro_f1_argmax,
+            weight_norm_before=1.0,
+            weight_norm_after=2.0,
+        )
+
+        with open(metrics_path, "r") as f:
+            reader = csv.reader(f)
+            headers = next(reader)
+            row = next(reader)
+
+        f1_before_idx = headers.index("macro_f1_before")
+        f1_after_idx = headers.index("macro_f1_after")
+        f1_argmax_idx = headers.index("macro_f1_argmax")
+
+        assert float(row[f1_before_idx]) == test_macro_f1_before
+        assert float(row[f1_after_idx]) == test_macro_f1_after
+        assert float(row[f1_argmax_idx]) == test_macro_f1_argmax
