@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/scripts/check_regressions.py
+# hypothesis_version: 6.140.4
+
+[1e-12, 0.002, 0.05, 0.1, 1.0, '--baseline', '--candidate', '--output', 'Current summary JSON', '__main__', 'avg_aggregation_time', 'baseline_missing', 'convergence_analysis', 'final_l2_distance', 'inf', 'r', 'raw_analysis_results', 'regressions', 'total_compared', 'utf-8', 'w']

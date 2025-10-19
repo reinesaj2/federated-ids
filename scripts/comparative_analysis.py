@@ -259,14 +259,14 @@ def find_available_port(start_port: int = 8080, max_attempts: int = 100) -> int:
 
 
 @contextmanager
-def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int = 600):
+def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int = 3600):
     """Context manager for subprocess with proper cleanup.
 
     Args:
         cmd: Command and arguments
         log_file: Path to log file for stdout/stderr
         cwd: Working directory
-        timeout: Timeout in seconds for process wait
+        timeout: Timeout in seconds for process wait (default 60 min for full datasets)
 
     Yields:
         subprocess.Popen object
@@ -337,8 +337,8 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
 
     client_procs = []
     try:
-        # Start server with managed subprocess
-        with managed_subprocess(server_cmd, server_log, base_dir, timeout=120) as server_proc:
+        # Start server with managed subprocess (longer timeout for full datasets)
+        with managed_subprocess(server_cmd, server_log, base_dir, timeout=7200) as server_proc:
             # Wait for server startup with basic health check
             max_retries = 10
             for _ in range(max_retries):
@@ -396,10 +396,10 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
                     proc = subprocess.Popen(client_cmd, stdout=log, stderr=subprocess.STDOUT, cwd=base_dir)
                     client_procs.append(proc)
 
-            # Wait for all clients to complete with timeout
+            # Wait for all clients to complete with timeout (longer for full datasets)
             for proc in client_procs:
                 try:
-                    proc.wait(timeout=600)  # 10 minute timeout per client
+                    proc.wait(timeout=3600)  # 60 minute timeout per client for full datasets
                 except subprocess.TimeoutExpired:
                     proc.kill()
                     raise RuntimeError("Client process timed out")

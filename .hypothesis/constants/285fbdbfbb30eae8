@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/scripts/plot_metrics_server_spec.py
+# hypothesis_version: 6.140.4
+
+[0.1, 0.15, 0.2, 0.25, 0.3, 0.7, 0.75, 0.8, 0.9, 0.92, 0.94, 100, 105, 110, 115, 120, 'Agg', 'Aggregation Time', 'caption', 'cos_to_benign_mean', 'dispersion', 'enabled', 'l2_dispersion_mean', 'l2_to_benign_mean', 'metrics.csv', 'nan', 'norms', 'pairwise_cosine_mean', 'path', 'robustness', 'round', 'scripts', 'seed', 'server_caption.md', 'server_plot.png', 't_aggregate_ms', 'timing', 'update_norm_mean']

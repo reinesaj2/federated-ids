@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/scripts/plot_metrics_client_spec.py
+# hypothesis_version: 6.140.4
+
+[0.0, 0.1, 0.5, 0.52, 0.55, 0.58, 0.6, 0.61, 0.62, 0.63, 0.65, 0.67, 0.68, 0.7, 0.72, 0.74, 0.75, 0.78, 0.8, 0.85, 0.9, 1.0, 1.1, 1.2, '#00ff00', '#112233', '#123456', '#654321', '#abcdef', '#ff0000', 'A', 'Agg', 'B', 'C', 'Client', 'D', 'acc_after', 'accuracy', 'benign_fpr_bin_tau', 'caption', 'client', 'client_0_metrics.csv', 'client_1_metrics.csv', 'clients_caption.md', 'clients_plot.png', 'enabled', 'f1_bin_tau', 'f1_comparison', 'fpr', 'grad_norm_l2', 'grad_norms', 'loss', 'loss_after', 'macro_f1_argmax', 'metric', 'mu', 'nan', 'norms', 'path', 'round', 'scripts', 'tau_bin', 'threshold', 'weight_norm_after']

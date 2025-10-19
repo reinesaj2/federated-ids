@@ -40,9 +40,7 @@ DEFAULT_CLIENT_LR = 1e-3
 DEFAULT_WEIGHT_DECAY = 1e-4
 
 
-def create_adamw_optimizer(
-    parameters, lr: float, weight_decay: float = DEFAULT_WEIGHT_DECAY
-) -> torch.optim.Optimizer:
+def create_adamw_optimizer(parameters, lr: float, weight_decay: float = DEFAULT_WEIGHT_DECAY) -> torch.optim.Optimizer:
     return torch.optim.AdamW(parameters, lr=lr, weight_decay=weight_decay)
 
 
@@ -97,10 +95,7 @@ def train_epoch(
     # Convert global parameters to tensors if FedProx is enabled
     global_tensors = None
     if fedprox_mu > 0.0 and global_params is not None:
-        global_tensors = [
-            torch.tensor(param, dtype=torch.float32).to(device)
-            for param in global_params
-        ]
+        global_tensors = [torch.tensor(param, dtype=torch.float32).to(device) for param in global_params]
 
     for xb, yb in loader:
         xb = xb.to(device)
@@ -123,9 +118,7 @@ def train_epoch(
     return total_loss / max(num_batches, 1)
 
 
-def evaluate(
-    model: nn.Module, loader: DataLoader, device: torch.device
-) -> Tuple[float, float, np.ndarray, np.ndarray]:
+def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> Tuple[float, float, np.ndarray, np.ndarray]:
     model.eval()
     criterion = nn.CrossEntropyLoss()
     correct = 0
@@ -198,9 +191,7 @@ def _select_tau_for_target_fpr(
     return best_tau
 
 
-def _select_tau_for_max_f1(
-    precision: np.ndarray, recall: np.ndarray, thresholds: np.ndarray
-) -> float:
+def _select_tau_for_max_f1(precision: np.ndarray, recall: np.ndarray, thresholds: np.ndarray) -> float:
     """
     Select threshold tau to maximize F1 score.
 
@@ -252,9 +243,7 @@ def select_threshold_tau(
         return 0.5
 
     if tau_mode == "low_fpr":
-        return _select_tau_for_target_fpr(
-            y_true_val, attack_probs_val, thresholds, target_fpr
-        )
+        return _select_tau_for_target_fpr(y_true_val, attack_probs_val, thresholds, target_fpr)
     else:  # max_f1 mode
         return _select_tau_for_max_f1(precision, recall, thresholds)
 
@@ -291,11 +280,7 @@ class TorchClient(fl.client.NumPyClient):
         # Get training hyperparameters
         epochs = int(config.get("epoch", self.runtime_config.get("local_epochs", 1)))
         lr = float(config.get("lr", self.runtime_config.get("lr", DEFAULT_CLIENT_LR)))
-        weight_decay = float(
-            config.get(
-                "weight_decay", self.runtime_config.get("weight_decay", DEFAULT_WEIGHT_DECAY)
-            )
-        )
+        weight_decay = float(config.get("weight_decay", self.runtime_config.get("weight_decay", DEFAULT_WEIGHT_DECAY)))
         batch_size = self.train_loader.batch_size or 32
 
         # Set initial parameters and capture before metrics
@@ -307,15 +292,11 @@ class TorchClient(fl.client.NumPyClient):
         macro_f1_before = None
         try:
             if len(self.test_loader.dataset) > 0:
-                loss_before, acc_before, probs_before, labels_before = evaluate(
-                    self.model, self.test_loader, self.device
-                )
+                loss_before, acc_before, probs_before, labels_before = evaluate(self.model, self.test_loader, self.device)
                 # macro-F1 from hard predictions
                 if probs_before.size > 0:
                     preds_before = np.argmax(probs_before, axis=1)
-                    macro_f1_before = float(
-                        f1_score(labels_before, preds_before, average="macro")
-                    )
+                    macro_f1_before = float(f1_score(labels_before, preds_before, average="macro"))
         except Exception:
             # Skip evaluation if it fails (e.g., empty test set)
             pass
@@ -331,18 +312,13 @@ class TorchClient(fl.client.NumPyClient):
                     # Perform gradient ascent by negating the loss
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = create_adamw_optimizer(
-                        self.model.parameters(), lr=lr, weight_decay=weight_decay
-                    )
+                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
                     # Get FedProx parameters
                     fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
                     global_tensors = None
                     if fedprox_mu > 0.0:
-                        global_tensors = [
-                            torch.tensor(param, dtype=torch.float32).to(self.device)
-                            for param in parameters
-                        ]
+                        global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -354,31 +330,30 @@ class TorchClient(fl.client.NumPyClient):
                         # Add FedProx proximal term (even for adversarial training)
                         if fedprox_mu > 0.0 and global_tensors is not None:
                             prox_term = 0.0
-                            for param, global_param in zip(
-                                self.model.parameters(), global_tensors
-                            ):
+                            for param, global_param in zip(self.model.parameters(), global_tensors):
                                 prox_term += torch.sum((param - global_param) ** 2)
                             loss = loss + (fedprox_mu / 2.0) * prox_term
 
                         loss.backward()
+
+                        # Clip gradients for adversarial attacks to realistic bounds
+                        clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
+                        if clip_factor > 0:
+                            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=clip_factor * 100.0, norm_type=2.0)
+
                         optimizer.step()
                 elif mode == "label_flip":
                     # Train on intentionally wrong labels: rotate class index by +1
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = create_adamw_optimizer(
-                        self.model.parameters(), lr=lr, weight_decay=weight_decay
-                    )
+                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
                     n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
 
                     # Get FedProx parameters
                     fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
                     global_tensors = None
                     if fedprox_mu > 0.0:
-                        global_tensors = [
-                            torch.tensor(param, dtype=torch.float32).to(self.device)
-                            for param in parameters
-                        ]
+                        global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -392,9 +367,7 @@ class TorchClient(fl.client.NumPyClient):
                         # Add FedProx proximal term
                         if fedprox_mu > 0.0 and global_tensors is not None:
                             prox_term = 0.0
-                            for param, global_param in zip(
-                                self.model.parameters(), global_tensors
-                            ):
+                            for param, global_param in zip(self.model.parameters(), global_tensors):
                                 prox_term += torch.sum((param - global_param) ** 2)
                             loss = loss + (fedprox_mu / 2.0) * prox_term
 
@@ -429,15 +402,9 @@ class TorchClient(fl.client.NumPyClient):
                 clip = float(self.runtime_config.get("dp_clip", 1.0))
                 noise_mult = float(self.runtime_config.get("dp_noise_multiplier", 0.0))
                 # Build update (delta)
-                deltas: List[np.ndarray] = [
-                    wa - wb for wb, wa in zip(weights_before, weights_after)
-                ]
+                deltas: List[np.ndarray] = [wa - wb for wb, wa in zip(weights_before, weights_after)]
                 # Compute global L2 norm of concatenated delta
-                flat = (
-                    np.concatenate([d.reshape(-1) for d in deltas])
-                    if deltas
-                    else np.zeros(1, dtype=np.float32)
-                )
+                flat = np.concatenate([d.reshape(-1) for d in deltas]) if deltas else np.zeros(1, dtype=np.float32)
                 l2 = float(np.linalg.norm(flat))
                 scale = 1.0
                 if l2 > 0.0:
@@ -450,10 +417,7 @@ class TorchClient(fl.client.NumPyClient):
                 if dp_seed < 0:
                     dp_seed = int(os.environ.get("SEED", "42"))
                 rng = np.random.default_rng(dp_seed + self.round_num)
-                noisy: List[np.ndarray] = [
-                    c + rng.normal(loc=0.0, scale=sigma, size=c.shape).astype(c.dtype)
-                    for c in clipped
-                ]
+                noisy: List[np.ndarray] = [c + rng.normal(loc=0.0, scale=sigma, size=c.shape).astype(c.dtype) for c in clipped]
                 # Reconstruct noisy weights as weights_before + noisy_delta
                 weights_after = [wb + nd for wb, nd in zip(weights_before, noisy)]
 
@@ -476,9 +440,7 @@ class TorchClient(fl.client.NumPyClient):
         grad_norm_l2 = None
         try:
             if lr > 0:
-                scaled = [
-                    (wa - wb) / lr for wb, wa in zip(weights_before, weights_after)
-                ]
+                scaled = [(wa - wb) / lr for wb, wa in zip(weights_before, weights_after)]
                 grad_norm_l2 = calculate_weight_norms(scaled)
         except Exception:
             pass
@@ -499,24 +461,17 @@ class TorchClient(fl.client.NumPyClient):
         tau_bin = None
         try:
             if len(self.test_loader.dataset) > 0:
-                loss_after, acc_after, probs_after, labels_after = evaluate(
-                    self.model, self.test_loader, self.device
-                )
+                loss_after, acc_after, probs_after, labels_after = evaluate(self.model, self.test_loader, self.device)
                 if probs_after.size > 0:
                     preds_after = np.argmax(probs_after, axis=1)
-                    macro_f1_after = float(
-                        f1_score(labels_after, preds_after, average="macro")
-                    )
+                    macro_f1_after = float(f1_score(labels_after, preds_after, average="macro"))
                     # Argmax metrics
                     macro_f1_argmax = macro_f1_after
                     benign_idx = 0
                     if np.sum(labels_after == benign_idx) > 0:
-                        benign_recall = float(
-                            np.sum(
-                                (labels_after == benign_idx)
-                                & (preds_after == benign_idx)
-                            )
-                        ) / float(np.sum(labels_after == benign_idx))
+                        benign_recall = float(np.sum((labels_after == benign_idx) & (preds_after == benign_idx))) / float(
+                            np.sum(labels_after == benign_idx)
+                        )
                         benign_fpr_argmax = float(max(0.0, 1.0 - benign_recall))
                     # Per-class F1
                     num_classes = probs_after.shape[1]
@@ -535,9 +490,7 @@ class TorchClient(fl.client.NumPyClient):
                         )
                     import json as _json
 
-                    f1_per_class_after_json = _json.dumps(
-                        {str(i): f for i, f in enumerate(f1s)}
-                    )
+                    f1_per_class_after_json = _json.dumps({str(i): f for i, f in enumerate(f1s)})
                     # Per-class Precision
                     precisions = []
                     for c in range(num_classes):
@@ -552,9 +505,7 @@ class TorchClient(fl.client.NumPyClient):
                                 )[c]
                             )
                         )
-                    precision_per_class_json = _json.dumps(
-                        {str(i): p for i, p in enumerate(precisions)}
-                    )
+                    precision_per_class_json = _json.dumps({str(i): p for i, p in enumerate(precisions)})
                     # Per-class Recall
                     recalls = []
                     for c in range(num_classes):
@@ -569,9 +520,7 @@ class TorchClient(fl.client.NumPyClient):
                                 )[c]
                             )
                         )
-                    recall_per_class_json = _json.dumps(
-                        {str(i): r for i, r in enumerate(recalls)}
-                    )
+                    recall_per_class_json = _json.dumps({str(i): r for i, r in enumerate(recalls)})
                     # BENIGN is class 0 by construction in preprocessing
                     if num_classes >= 2:
                         benign_idx = 0
@@ -580,9 +529,7 @@ class TorchClient(fl.client.NumPyClient):
                         attack_probs = 1.0 - benign_probs
                         # PR-AUC (average precision) on full test
                         y_true_bin_full = (labels_after != benign_idx).astype(int)
-                        pr_auc_after = float(
-                            average_precision_score(y_true_bin_full, attack_probs)
-                        )
+                        pr_auc_after = float(average_precision_score(y_true_bin_full, attack_probs))
 
                         # Select tau on validation subset based on mode
                         tau_mode = str(self.runtime_config.get("tau_mode", "low_fpr"))
@@ -591,17 +538,13 @@ class TorchClient(fl.client.NumPyClient):
                         n = attack_probs.shape[0]
                         if n > 1:
                             # Split into validation subset for tau selection
-                            rng = np.random.default_rng(
-                                int(os.environ.get("SEED", "42")) + self.round_num
-                            )
+                            rng = np.random.default_rng(int(os.environ.get("SEED", "42")) + self.round_num)
                             n_val = max(1, int(0.4 * n))
                             val_idx = rng.choice(n, size=n_val, replace=False)
                             y_true_bin_val = y_true_bin_full[val_idx]
                             attack_probs_val = attack_probs[val_idx]
 
-                            threshold_tau = select_threshold_tau(
-                                y_true_bin_val, attack_probs_val, tau_mode, target_fpr
-                            )
+                            threshold_tau = select_threshold_tau(y_true_bin_val, attack_probs_val, tau_mode, target_fpr)
                         else:
                             threshold_tau = 0.5
 
@@ -646,11 +589,7 @@ class TorchClient(fl.client.NumPyClient):
             f1_bin_tau=f1_bin_tau,
             benign_fpr_bin_tau=benign_fpr_bin_tau,
             tau_bin=tau_bin,
-            seed=(
-                int(os.environ.get("SEED", str(config.get("seed", 0))))
-                if isinstance(config, dict)
-                else None
-            ),
+            seed=(int(os.environ.get("SEED", str(config.get("seed", 0)))) if isinstance(config, dict) else None),
             weight_norm_before=weight_norm_before,
             weight_norm_after=weight_norm_after,
             weight_update_norm=weight_update_norm,
@@ -666,9 +605,7 @@ class TorchClient(fl.client.NumPyClient):
         )
 
         # Personalization: post-FL local fine-tuning (if enabled)
-        personalization_epochs = int(
-            self.runtime_config.get("personalization_epochs", 0)
-        )
+        personalization_epochs = int(self.runtime_config.get("personalization_epochs", 0))
 
         # Early exit if personalization disabled or no test data
         if personalization_epochs == 0 or len(self.test_loader.dataset) == 0:
@@ -707,10 +644,7 @@ class TorchClient(fl.client.NumPyClient):
                 f"global F1={macro_f1_global:.4f}, "
                 f"weight_norm={norm_before:.4f}"
             )
-            print(
-                f"[Client {cid}] Train size: {len(self.train_loader.dataset)}, "
-                f"Test size: {len(self.test_loader.dataset)}"
-            )
+            print(f"[Client {cid}] Train size: {len(self.train_loader.dataset)}, " f"Test size: {len(self.test_loader.dataset)}")
 
         # Fine-tune on local train data
         for epoch_idx in range(personalization_epochs):
@@ -725,17 +659,8 @@ class TorchClient(fl.client.NumPyClient):
             if debug_enabled and epoch_idx == 0:
                 # Check if weights changed after first epoch
                 weights_after_first = get_parameters(self.model)
-                norm_after_first = float(
-                    np.sqrt(sum(np.sum(w**2) for w in weights_after_first))
-                )
-                weight_delta = float(
-                    np.sqrt(
-                        sum(
-                            np.sum((w1 - w2) ** 2)
-                            for w1, w2 in zip(weights_after_first, weights_before_pers)
-                        )
-                    )
-                )
+                norm_after_first = float(np.sqrt(sum(np.sum(w**2) for w in weights_after_first)))
+                weight_delta = float(np.sqrt(sum(np.sum((w1 - w2) ** 2) for w1, w2 in zip(weights_after_first, weights_before_pers))))
                 cid = self.metrics_logger.client_id
                 logging.getLogger("client").info(
                     "personalization_epoch",
@@ -747,17 +672,11 @@ class TorchClient(fl.client.NumPyClient):
                         "delta": weight_delta,
                     },
                 )
-                print(
-                    f"[Client {cid}] After epoch 1: "
-                    f"weight_norm={norm_after_first:.4f}, "
-                    f"delta={weight_delta:.6f}"
-                )
+                print(f"[Client {cid}] After epoch 1: " f"weight_norm={norm_after_first:.4f}, " f"delta={weight_delta:.6f}")
 
         # Evaluate personalized model
         try:
-            _, _, probs_pers, labels_pers = evaluate(
-                self.model, self.test_loader, self.device
-            )
+            _, _, probs_pers, labels_pers = evaluate(self.model, self.test_loader, self.device)
 
             macro_f1_personalized = None
             benign_fpr_personalized = None
@@ -768,18 +687,14 @@ class TorchClient(fl.client.NumPyClient):
                 pass
             else:
                 preds_pers = np.argmax(probs_pers, axis=1)
-                macro_f1_personalized = float(
-                    f1_score(labels_pers, preds_pers, average="macro")
-                )
+                macro_f1_personalized = float(f1_score(labels_pers, preds_pers, average="macro"))
 
                 # Compute FPR for personalized model using same threshold
                 if probs_pers.shape[1] >= 2 and threshold_tau is not None:
                     benign_idx = 0
                     benign_probs_pers = probs_pers[:, benign_idx]
                     attack_probs_pers = 1.0 - benign_probs_pers
-                    y_pred_attack_pers = (attack_probs_pers >= threshold_tau).astype(
-                        int
-                    )
+                    y_pred_attack_pers = (attack_probs_pers >= threshold_tau).astype(int)
                     benign_mask_pers = labels_pers == benign_idx
                     fp_pers = int(np.sum(y_pred_attack_pers[benign_mask_pers] == 1))
                     tn_pers = int(np.sum(y_pred_attack_pers[benign_mask_pers] == 0))
@@ -834,9 +749,7 @@ class TorchClient(fl.client.NumPyClient):
             )
         except Exception as e:
             # If personalization evaluation fails, log warning but continue
-            logging.getLogger("client").warning(
-                "personalization_eval_failed", extra={"error": str(e)}
-            )
+            logging.getLogger("client").warning("personalization_eval_failed", extra={"error": str(e)})
 
         # CRITICAL: Restore global model weights before returning to server
         set_parameters(self.model, weights_after)
@@ -857,12 +770,8 @@ def main() -> None:
     logger = get_logger("client")
     parser = argparse.ArgumentParser(description="Flower client for Federated IDS demo")
     parser.add_argument("--server_address", type=str, default="127.0.0.1:8080")
-    parser.add_argument(
-        "--dataset", type=str, default="synthetic", choices=["synthetic", "unsw", "cic"]
-    )
-    parser.add_argument(
-        "--data_path", type=str, default="", help="Path to dataset CSV for unsw/cic"
-    )
+    parser.add_argument("--dataset", type=str, default="synthetic", choices=["synthetic", "unsw", "cic"])
+    parser.add_argument("--data_path", type=str, default="", help="Path to dataset CSV for unsw/cic")
     parser.add_argument(
         "--partition_strategy",
         type=str,
@@ -870,12 +779,8 @@ def main() -> None:
         choices=["iid", "dirichlet", "protocol"],
     )
     parser.add_argument("--num_clients", type=int, default=2)
-    parser.add_argument(
-        "--client_id", type=int, default=0, help="Client index in [0, num_clients)"
-    )
-    parser.add_argument(
-        "--alpha", type=float, default=0.1, help="Dirichlet alpha for non-IID"
-    )
+    parser.add_argument("--client_id", type=int, default=0, help="Client index in [0, num_clients)")
+    parser.add_argument("--alpha", type=float, default=0.1, help="Dirichlet alpha for non-IID")
     parser.add_argument(
         "--protocol_col",
         type=str,
@@ -903,6 +808,12 @@ def main() -> None:
         default="none",
         choices=["none", "label_flip", "grad_ascent"],
         help="Adversarial client behavior for robustness smoke tests",
+    )
+    parser.add_argument(
+        "--adversary_clip_factor",
+        type=float,
+        default=2.0,
+        help="Gradient clipping factor for adversarial attacks (multiplier of 100x base norm)",
     )
     parser.add_argument("--local_epochs", type=int, default=1)
     parser.add_argument("--lr", type=float, default=DEFAULT_CLIENT_LR)
@@ -975,16 +886,10 @@ def main() -> None:
 
     set_global_seed(args.seed)
 
-    device = torch.device(
-        "mps"
-        if torch.backends.mps.is_available()
-        else ("cuda" if torch.cuda.is_available() else "cpu")
-    )
+    device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
 
     # Initialize metrics logging
-    client_metrics_path = os.path.join(
-        args.logdir, f"client_{args.client_id}_metrics.csv"
-    )
+    client_metrics_path = os.path.join(args.logdir, f"client_{args.client_id}_metrics.csv")
     metrics_logger = ClientMetricsLogger(client_metrics_path, args.client_id)
     fit_timer = ClientFitTimer()
     logger.info(
@@ -1002,9 +907,7 @@ def main() -> None:
         )
         model = SimpleNet(num_features=args.features, num_classes=args.num_classes)
         # Analyze data distribution for synthetic data
-        synthetic_labels = np.random.randint(
-            0, args.num_classes, size=args.samples
-        )  # Approximate for metrics
+        synthetic_labels = np.random.randint(0, args.num_classes, size=args.samples)  # Approximate for metrics
         data_stats = analyze_data_distribution(synthetic_labels)
         label_hist_json = create_label_histogram_json(synthetic_labels)
         num_classes_global = args.num_classes
@@ -1039,9 +942,7 @@ def main() -> None:
                     "num_classes_global": num_classes_global,
                 },
             )
-        train_loader, test_loader = numpy_to_loaders(
-            X_client, y_client, batch_size=args.batch_size, seed=args.seed
-        )
+        train_loader, test_loader = numpy_to_loaders(X_client, y_client, batch_size=args.batch_size, seed=args.seed)
         num_features = X_client.shape[1]
         model = SimpleNet(num_features=num_features, num_classes=num_classes_global)
         # Analyze actual data distribution
@@ -1051,9 +952,7 @@ def main() -> None:
     # Model validation guard: assert output features match global num_classes
     model_output_features = None
     for name, module in model.named_modules():
-        if (
-            isinstance(module, torch.nn.Linear) and "net.4" in name
-        ):  # Last layer of SimpleNet
+        if isinstance(module, torch.nn.Linear) and "net.4" in name:  # Last layer of SimpleNet
             model_output_features = module.out_features
             break
 
@@ -1101,27 +1000,18 @@ def main() -> None:
         data_stats=data_stats,
         runtime_config={
             "adversary_mode": args.adversary_mode,
+            "adversary_clip_factor": float(os.environ.get("D2_ADVERSARY_CLIP_FACTOR", str(args.adversary_clip_factor))),
             "local_epochs": args.local_epochs,
             "lr": args.lr,
-            "weight_decay": float(
-                os.environ.get("D2_WEIGHT_DECAY", str(args.weight_decay))
-            ),
+            "weight_decay": float(os.environ.get("D2_WEIGHT_DECAY", str(args.weight_decay))),
             "fedprox_mu": float(os.environ.get("D2_FEDPROX_MU", str(args.fedprox_mu))),
             # Privacy/robustness toggles
             "secure_aggregation": bool(
-                args.secure_aggregation
-                or os.environ.get("D2_SECURE_AGG", "0").lower()
-                not in ("0", "false", "no", "")
+                args.secure_aggregation or os.environ.get("D2_SECURE_AGG", "0").lower() not in ("0", "false", "no", "")
             ),
-            "dp_enabled": bool(
-                args.dp_enabled
-                or os.environ.get("D2_DP_ENABLED", "0").lower()
-                not in ("0", "false", "no", "")
-            ),
+            "dp_enabled": bool(args.dp_enabled or os.environ.get("D2_DP_ENABLED", "0").lower() not in ("0", "false", "no", "")),
             "dp_clip": float(os.environ.get("D2_DP_CLIP", str(args.dp_clip))),
-            "dp_noise_multiplier": float(
-                os.environ.get("D2_DP_NOISE_MULTIPLIER", str(args.dp_noise_multiplier))
-            ),
+            "dp_noise_multiplier": float(os.environ.get("D2_DP_NOISE_MULTIPLIER", str(args.dp_noise_multiplier))),
             "dp_seed": int(os.environ.get("D2_DP_SEED", str(args.dp_seed))),
             # Threshold selection
             "tau_mode": args.tau_mode,

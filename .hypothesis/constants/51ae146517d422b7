@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/scripts/analyze_fedprox_comparison_spec.py
+# hypothesis_version: 6.140.4
+
+[0.0, 0.1, 0.7, 0.75, 0.8, 0.82, 0.84, 0.85, 0.86, 0.88, 0.9, 100.0, 105.0, 110.0, 120.0, 150.0, 155.0, 160.0, 180.0, 100, 'FedAvg', 'FedProx', 'algorithm', 'alpha', 'ci_lower', 'ci_upper', 'dataset_size', 'macro_f1_after', 'mean', 'metadata.json', 'metric', 'metrics.csv', 'mu', 'n', 'round', 'runs', 'seed', 't_aggregate_ms', 'utf-8', 'weighted_macro_f1']

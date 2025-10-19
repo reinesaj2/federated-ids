@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/scripts/ci_checks_spec.py
+# hypothesis_version: 6.140.4
+
+[b'0', '0.01', '0.1', 'client_0_metrics.csv', 'metrics.csv', 'other_run', 'round\n1\n', 'utf-8']

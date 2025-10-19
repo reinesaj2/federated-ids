@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/scripts/check_regressions_spec.py
+# hypothesis_version: 6.140.4
+
+[0.4, 0.43, 0.5, 0.525, 0.55, 0.56, 0.98, 0.9895, 0.99, 1.0, 1.05, 1.2, 'Regression detected', 'alpha_0.1_mu_0.0', 'avg_aggregation_time', 'convergence_analysis', 'final_l2_distance', 'raw_analysis_results']

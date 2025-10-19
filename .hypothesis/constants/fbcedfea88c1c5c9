@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/scripts/plot_metrics_client.py
+# hypothesis_version: 6.140.4
+
+[0.1, 0.2, 0.3, '.md', 'Accuracy', 'Benign FPR', 'Client ', 'Client Accuracy', 'Client Loss', 'Client Norms', 'Decision Threshold τ', 'FPR', 'Loss', 'Macro F1', 'Macro F1 Comparison', 'Norm', 'Round', 'accuracy', 'accuracy_final', 'axes', 'caption', 'ci', 'ci_lower', 'ci_upper', 'client', 'client_', 'client_id', 'coerce', 'detector', 'enabled', 'f1_bin_tau', 'f1_comparison', 'format', 'fpr', 'fpr_final', 'grad_norms', 'layout', 'loss', 'loss_final', 'macro_f1_final', 'macro_f1_mean', 'markdown', 'metric', 'mu', 'norm_final', 'norms', 'o-', 'off', 'path', 'round', 's--', 'style', 'tau_final', 'threshold', 'tight', 'title', 'value', 'μ Scatter Summary', 'τ']

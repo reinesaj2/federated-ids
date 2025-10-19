@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/scripts/plot_metrics_utils_spec.py
+# hypothesis_version: 6.140.4
+
+[1e-10, 0.0001, 0.9, 0.95, 0.975, 1.0, 2.0, 3.0, 4.0, 5.0, 8.0, 9.0, 10.0, 11.0, 12.0, 14.0, 95.0, 100.0, 105.0, 'scripts']
