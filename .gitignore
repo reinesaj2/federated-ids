@@ -18,3 +18,12 @@ __pycache__/
 
 # Include plots directory for repository storage
 !/plots/
+
+# Testing artifacts
+.hypothesis/
+
+# Logs
+*.log
+
+# Experiment summaries (generated artifacts)
+EXPERIMENT_*.md

@@ -22,8 +22,8 @@ def _make_client_updates(n_clients: int = 5, n_layers: int = 3, shape=(4,)):
 def test_median_robust_to_outliers_coordinatewise():
     clients = _make_client_updates(n_clients=7)
     # Inject a strong outlier on client 0
-    for l in range(len(clients[0])):
-        clients[0][l] = clients[0][l] + 1000.0
+    for layer_idx in range(len(clients[0])):
+        clients[0][layer_idx] = clients[0][layer_idx] + 1000.0
     agg = aggregate_weights(clients, AggregationMethod.MEDIAN)
     # Median should not be ~1000 shifted; check it's finite and near typical scale
     vals = np.concatenate([a.reshape(-1) for a in agg])
@@ -33,8 +33,8 @@ def test_median_robust_to_outliers_coordinatewise():
 def test_krum_selects_single_reasonable_candidate():
     clients = _make_client_updates(n_clients=6)
     # Make one malicious far-away
-    for l in range(len(clients[1])):
-        clients[1][l] = clients[1][l] + 50.0
+    for layer_idx in range(len(clients[1])):
+        clients[1][layer_idx] = clients[1][layer_idx] + 50.0
     agg = aggregate_weights(clients, AggregationMethod.KRUM)
     # Krum returns a single candidate's update; verify shapes match and values are finite
     assert len(agg) == len(clients[0])
@@ -46,10 +46,10 @@ def test_krum_selects_single_reasonable_candidate():
 def test_bulyan_behaves_reasonably_with_outliers():
     clients = _make_client_updates(n_clients=11)  # Bulyan requires n >= 4f+3 (for f=2, need 11)
     # Two outliers
-    for l in range(len(clients[2])):
-        clients[2][l] = clients[2][l] - 50.0
-    for l in range(len(clients[5])):
-        clients[5][l] = clients[5][l] + 50.0
+    for layer_idx in range(len(clients[2])):
+        clients[2][layer_idx] = clients[2][layer_idx] - 50.0
+    for layer_idx in range(len(clients[5])):
+        clients[5][layer_idx] = clients[5][layer_idx] + 50.0
     agg = aggregate_weights(clients, AggregationMethod.BULYAN)
     vals = np.concatenate([a.reshape(-1) for a in agg])
     assert np.isfinite(vals).all()
@@ -59,8 +59,8 @@ def test_bulyan_behaves_reasonably_with_outliers():
 
 def test_krum_and_bulyan_accept_explicit_byzantine_f():
     clients = _make_client_updates(n_clients=7)
-    for l in range(len(clients[0])):
-        clients[0][l] = clients[0][l] + 80.0
+    for layer_idx in range(len(clients[0])):
+        clients[0][layer_idx] = clients[0][layer_idx] + 80.0
     agg1 = aggregate_weights(clients, AggregationMethod.KRUM, byzantine_f=1)
     agg2 = aggregate_weights(clients, AggregationMethod.BULYAN, byzantine_f=1)
     v1 = np.concatenate([a.reshape(-1) for a in agg1])
