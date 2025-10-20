@@ -14,6 +14,7 @@ Includes statistical significance testing and confidence intervals.
 
 import argparse
 import json
+import logging
 import math
 import sys
 from pathlib import Path
@@ -33,6 +34,8 @@ for candidate in (ROOT, ROOT / "scripts"):
 
 from plot_metrics_utils import compute_confidence_interval  # noqa: E402
 from privacy_accounting import compute_epsilon  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_run_dir(reference: str, runs_root: Path) -> Optional[Path]:
@@ -476,16 +479,51 @@ def _render_macro_f1_plot(ax, final_rounds: pd.DataFrame, available_methods: lis
     for i, row in summary_df.iterrows():
         ax.text(i, row["mean"] + row["ci"] / 2 + 0.02, f"n={row['n']}", ha="center", va="bottom", fontsize=8)
 
-    stats_result = perform_statistical_tests(macro_f1_data, "aggregation", "macro_f1")
-    if stats_result.get("p_value"):
+    # Issue #77 fix: Only perform ANOVA if sufficient data points
+    min_data_for_anova = 3
+    total_valid_points = len(macro_f1_data)
+
+    if total_valid_points >= min_data_for_anova:
+        stats_result = perform_statistical_tests(macro_f1_data, "aggregation", "macro_f1")
+        if stats_result.get("p_value") is not None and not np.isnan(stats_result["p_value"]):
+            ax.text(
+                0.02,
+                0.02,
+                f"ANOVA p={stats_result['p_value']:.4f}",
+                transform=ax.transAxes,
+                va="bottom",
+                fontsize=9,
+                bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+            )
+        else:
+            logger.warning(
+                f"ANOVA computation failed or returned NaN for macro-F1 data ({total_valid_points} points). "
+                "This may occur with small sample sizes or identical values across groups."
+            )
+            ax.text(
+                0.02,
+                0.02,
+                f"n={total_valid_points} (ANOVA inconclusive)",
+                transform=ax.transAxes,
+                va="bottom",
+                fontsize=8,
+                bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.5),
+            )
+    else:
+        logger.warning(
+            f"Insufficient macro-F1 data ({total_valid_points}/{len(final_rounds)}) "
+            f"for ANOVA (minimum {min_data_for_anova} required). "
+            "Skipping statistical annotation. Consider enabling D2_EXTENDED_METRICS=1 "
+            "or running experiments with extended client metrics logging."
+        )
         ax.text(
             0.02,
             0.02,
-            f"ANOVA p={stats_result['p_value']:.4f}",
+            f"n={total_valid_points} (insufficient for ANOVA)",
             transform=ax.transAxes,
             va="bottom",
-            fontsize=9,
-            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+            fontsize=8,
+            bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.5),
         )
 
     return True
@@ -774,7 +812,10 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     num_seeds = len(df["seed"].unique()) if "seed" in df.columns else 1
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    subtitle = f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | " f"Attack: grad_ascent | Seeds: n={num_seeds}"
+    subtitle = (
+        f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | "
+        f"Attack: grad_ascent | Seeds: n={num_seeds}"
+    )
     fig.suptitle(f"Attack Resilience Comparison\n{subtitle}", fontsize=14, fontweight="bold")
 
     final_rounds = df.groupby(["aggregation", "adversary_fraction", "seed"]).tail(1)
@@ -1043,7 +1084,11 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
                 )
 
         if comparison_data:
-            rows = [{"DP": item["DP"], "Cosine Similarity": val} for item in comparison_data for val in item["Cosine Similarity"]]
+            rows = [
+                {"DP": item["DP"], "Cosine Similarity": val}
+                for item in comparison_data
+                for val in item["Cosine Similarity"]
+            ]
             plot_df = pd.DataFrame(rows)
             sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
             ax.set_title("Model Alignment with DP")

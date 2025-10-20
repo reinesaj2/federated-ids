@@ -12,16 +12,15 @@ import numpy as np
 class ClientMetricsLogger:
     """Handles CSV logging of client-side federated learning metrics."""
 
-    def __init__(
-        self, csv_path: str, client_id: int, extended: Optional[bool] = None
-    ) -> None:
+    def __init__(self, csv_path: str, client_id: int, extended: Optional[bool] = None) -> None:
         """Initialize the client metrics logger with a CSV file path and client ID."""
         self.csv_path = Path(csv_path)
         self.client_id = client_id
         if extended is None:
             import os as _os
 
-            self.extended = _os.environ.get("D2_EXTENDED_METRICS", "0").lower() not in (
+            extended_env = _os.environ.get("D2_EXTENDED_METRICS", "1").lower()
+            self.extended = extended_env not in (
                 "0",
                 "false",
                 "no",
@@ -230,11 +229,7 @@ class ClientMetricsLogger:
             rows.append(header)
 
             for idx, row in enumerate(reader):
-                if (
-                    len(row) > 1
-                    and row[0] == str(self.client_id)
-                    and row[1] == str(round_num)
-                ):
+                if len(row) > 1 and row[0] == str(self.client_id) and row[1] == str(round_num):
                     target_row_idx = idx + 1  # +1 because header is row 0
                 rows.append(row)
 
@@ -253,27 +248,15 @@ class ClientMetricsLogger:
                 gain_idx = header.index("personalization_gain")
 
                 # Update the row
-                rows[target_row_idx][global_f1_idx] = (
-                    str(macro_f1_global) if macro_f1_global is not None else ""
-                )
+                rows[target_row_idx][global_f1_idx] = str(macro_f1_global) if macro_f1_global is not None else ""
                 rows[target_row_idx][pers_f1_idx] = (
-                    str(macro_f1_personalized)
-                    if macro_f1_personalized is not None
-                    else ""
+                    str(macro_f1_personalized) if macro_f1_personalized is not None else ""
                 )
-                rows[target_row_idx][global_fpr_idx] = (
-                    str(benign_fpr_global) if benign_fpr_global is not None else ""
-                )
+                rows[target_row_idx][global_fpr_idx] = str(benign_fpr_global) if benign_fpr_global is not None else ""
                 rows[target_row_idx][pers_fpr_idx] = (
-                    str(benign_fpr_personalized)
-                    if benign_fpr_personalized is not None
-                    else ""
+                    str(benign_fpr_personalized) if benign_fpr_personalized is not None else ""
                 )
-                rows[target_row_idx][gain_idx] = (
-                    str(personalization_gain)
-                    if personalization_gain is not None
-                    else ""
-                )
+                rows[target_row_idx][gain_idx] = str(personalization_gain) if personalization_gain is not None else ""
 
                 # Write back the entire CSV
                 with open(self.csv_path, "w", newline="") as f:
@@ -313,9 +296,7 @@ def calculate_weight_norms(weights: List[np.ndarray]) -> float:
     return np.sqrt(total_norm_sq)
 
 
-def calculate_weight_update_norm(
-    weights_before: List[np.ndarray], weights_after: List[np.ndarray]
-) -> float:
+def calculate_weight_update_norm(weights_before: List[np.ndarray], weights_after: List[np.ndarray]) -> float:
     """Calculate the L2 norm of the weight update (difference)."""
     total_norm_sq = 0.0
     for arr_before, arr_after in zip(weights_before, weights_after):
