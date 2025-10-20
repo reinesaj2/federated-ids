@@ -274,7 +274,7 @@ def print_resource_status():
         import psutil
         cpu = psutil.cpu_percent(interval=1)
         mem = psutil.virtual_memory()
-        print(f"\n📊 Resources: CPU {cpu:.1f}% | RAM {mem.percent:.1f}% ({mem.available/(1024**3):.1f}GB free)")
+        print(f"\nResources: CPU {cpu:.1f}% | RAM {mem.percent:.1f}% ({mem.available/(1024**3):.1f}GB free)")
     except:
         pass  # Silent fail if psutil not available
 
@@ -355,7 +355,7 @@ def main():
         
         if args.skip_completed and is_experiment_complete(run_dir):
             completed_count += 1
-            print(f"✅ [COMPLETE] {config.to_preset_name()}")
+            print(f"[COMPLETE] {config.to_preset_name()}")
         elif is_experiment_stuck(run_dir):
             stuck_count += 1
             print(f"⚠️  [STUCK] {config.to_preset_name()} - will retry")
@@ -379,18 +379,18 @@ def main():
     
     eta_hours = (pending * avg_minutes_per_exp) / (60 * args.workers)
     
-    print(f"\n📊 EXPERIMENT SUMMARY:")
+    print(f"\nEXPERIMENT SUMMARY:")
     print(f"  Total configurations: {total}")
-    print(f"  ✅ Already completed: {completed_count}")
-    print(f"  ⚠️  Stuck/retry: {stuck_count}")
-    print(f"  ⏳ Pending: {pending}")
-    print(f"  👷 Parallel workers: {args.workers}")
-    print(f"  ⏰ Estimated time: {eta_hours:.1f} hours")
-    print(f"  📁 Dataset type: {args.dataset_type}")
+    print(f"  Already completed: {completed_count}")
+    print(f"  Stuck/retry: {stuck_count}")
+    print(f"  Pending: {pending}")
+    print(f"  Parallel workers: {args.workers}")
+    print(f"  Estimated time: {eta_hours:.1f} hours")
+    print(f"  Dataset type: {args.dataset_type}")
     print(f"{'='*70}\n")
     
     if pending == 0:
-        print("✅ All experiments already completed!")
+        print("All experiments already completed!")
         return
     
     # Run experiments with progress tracking
@@ -437,7 +437,7 @@ def main():
                 duration = result.get("duration", 0)
                 print(
                     f"[{completed_count + completed_tasks}/{total}] "
-                    f"({progress_pct:.1f}%) ✅ {result['preset']} "
+                    f"({progress_pct:.1f}%) [COMPLETE] {result['preset']} "
                     f"[{duration/60:.1f}m on worker {result.get('worker', '?')}] "
                     f"ETA: {eta_str}"
                 )
@@ -460,18 +460,18 @@ def main():
     # Final summary
     total_time = time.time() - start_time
     print(f"\n{'='*70}")
-    print("📊 FINAL SUMMARY")
+    print("FINAL SUMMARY")
     print(f"{'='*70}")
-    print(f"✅ Completed: {completed_tasks}")
-    print(f"❌ Failed: {failed_tasks}")
-    print(f"⏱️  Total time: {total_time/3600:.1f} hours")
-    print(f"⚡ Avg time per experiment: {total_time/max(1,completed_tasks)/60:.1f} minutes")
-    print(f"📈 Total now complete: {completed_count + completed_tasks}/{total}")
+    print(f"Completed: {completed_tasks}")
+    print(f"Failed: {failed_tasks}")
+    print(f"Total time: {total_time/3600:.1f} hours")
+    print(f"Avg time per experiment: {total_time/max(1,completed_tasks)/60:.1f} minutes")
+    print(f"Total now complete: {completed_count + completed_tasks}/{total}")
     
     if failed_tasks > 0:
-        print(f"\n⚠️  {failed_tasks} experiments failed. Run again to retry.")
+        print(f"\n{failed_tasks} experiments failed. Run again to retry.")
     else:
-        print(f"\n✅ All experiments completed successfully!")
+        print(f"\nAll experiments completed successfully!")
     
     print(f"{'='*70}\n")
 

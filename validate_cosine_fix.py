@@ -119,7 +119,7 @@ def main():
             print(f"⚠️  {csv_path.parent.name}: Suspicious cosine < 0.5")
             print(f"   Values: {results['suspicious_cosine']}")
         else:
-            status = "✅" if results["cosine_values"] else "⊘"
+            status = "[PASS]" if results["cosine_values"] else "[FAIL]"
             if results["cosine_values"]:
                 print(f"{status} {csv_path.parent.name}: "
                       f"cosine ∈ [{results['cosine_min']:.6f}, {results['cosine_max']:.6f}]")
@@ -134,7 +134,7 @@ def main():
     print("=" * 80)
 
     if all_valid:
-        print("✅ All cosine similarity values are in valid range [-1, 1]")
+        print("All cosine similarity values are in valid range [-1, 1]")
     else:
         print(f"❌ Found {len(invalid_files)} files with INVALID cosine values")
         for f in invalid_files:
@@ -163,8 +163,8 @@ def main():
     print("=" * 80)
 
     if all_valid and not invalid_files:
-        print("✅ Issue #76 FIX VERIFIED: Cosine similarity computation is correct")
-        print("✅ No impossible values (outside [-1, 1]) detected")
+        print("Issue #76 FIX VERIFIED: Cosine similarity computation is correct")
+        print("No impossible values (outside [-1, 1]) detected")
         print()
         print("NOTE: L2=0 and cosine=1.0 values indicate benign_mean issue (#75)")
         print("      This is a separate problem with the reference point, not the metric.")
