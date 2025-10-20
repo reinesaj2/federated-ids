@@ -308,13 +308,16 @@ def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int =
                 proc.wait()
 
 
-def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_start: int = 8080) -> Dict:
+def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_start: int = 8080, 
+                           server_timeout: int = 300, client_timeout: int = 900) -> Dict:
     """Run a single federated learning experiment with proper error handling.
 
     Args:
         config: Experiment configuration
         base_dir: Base directory for project
         port_start: Starting port for server (will find next available)
+        server_timeout: Timeout in seconds for server process (default: 300)
+        client_timeout: Timeout in seconds for client processes (default: 900)
 
     Returns:
         Dictionary with experiment results and metadata
@@ -363,7 +366,7 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
     client_procs = []
     try:
         # Start server with managed subprocess
-        with managed_subprocess(server_cmd, server_log, base_dir, timeout=300) as server_proc:
+        with managed_subprocess(server_cmd, server_log, base_dir, timeout=server_timeout) as server_proc:
             # Wait for server startup with basic health check
             max_retries = 10
             for _ in range(max_retries):
@@ -424,7 +427,7 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
             # Wait for all clients to complete with timeout
             for proc in client_procs:
                 try:
-                    proc.wait(timeout=900)  # 15 minute timeout per client for full dataset
+                    proc.wait(timeout=client_timeout)
                 except subprocess.TimeoutExpired:
                     proc.kill()
                     raise RuntimeError("Client process timed out")
@@ -481,6 +484,18 @@ def main():
         action="store_true",
         help="Print configs without running experiments",
     )
+    parser.add_argument(
+        "--server_timeout",
+        type=int,
+        default=300,
+        help="Server process timeout in seconds (default: 300)",
+    )
+    parser.add_argument(
+        "--client_timeout", 
+        type=int,
+        default=900,
+        help="Client process timeout in seconds (default: 900)",
+    )
 
     args = parser.parse_args()
 
@@ -509,7 +524,9 @@ def main():
         print(f"  Progress: {successful_experiments} successful, {failed_experiments} failed")
         
         try:
-            result = run_federated_experiment(config, base_dir)
+            result = run_federated_experiment(config, base_dir, 
+                                            server_timeout=args.server_timeout,
+                                            client_timeout=args.client_timeout)
             results.append(result)
             
             if result.get('metrics_exist', False):
