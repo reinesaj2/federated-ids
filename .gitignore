@@ -27,3 +27,4 @@ __pycache__/
 
 # Experiment summaries (generated artifacts)
 EXPERIMENT_*.md
+QPLAN_*.md
