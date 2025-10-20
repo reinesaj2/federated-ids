@@ -1,0 +1,2 @@
+aggregation_method,macro_f1_mean,macro_f1_std,n_seeds
+fedavg,0.89941384863124,0.0,1

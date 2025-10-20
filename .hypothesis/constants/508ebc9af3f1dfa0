@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/client_metrics.py
+# hypothesis_version: 6.140.4
+
+[0.0, 1000.0, '0', 'D2_EXTENDED_METRICS', 'a', 'acc_after', 'acc_before', 'batch_size', 'benign_fpr_argmax', 'benign_fpr_bin_tau', 'benign_fpr_global', 'client_id', 'dataset_size', 'dp_clip_norm', 'dp_delta', 'dp_epsilon', 'dp_sigma', 'epochs_completed', 'f1_bin_tau', 'f1_per_class_after', 'false', 'fpr_after', 'grad_norm_l2', 'loss_after', 'loss_before', 'lr', 'macro_f1_after', 'macro_f1_argmax', 'macro_f1_before', 'macro_f1_global', 'n_classes', 'no', 'personalization_gain', 'pr_auc_after', 'precision_per_class', 'r', 'recall_per_class', 'round', 'seed', 't_fit_ms', 'tau_bin', 'threshold_tau', 'w', 'weight_norm_after', 'weight_norm_before', 'weight_update_norm']

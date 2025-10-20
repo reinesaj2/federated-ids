@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/server_metrics.py
+# hypothesis_version: 6.140.4
+
+[-1.0, 0.0, 1e-10, 0.5, 1.0, 100.0, 1000.0, 'a', 'agg_method', 'byzantine_f', 'cos_to_benign_mean', 'l2_dispersion_mean', 'l2_dispersion_std', 'l2_to_benign_mean', 'n_clients', 'pairwise_cosine_mean', 'pairwise_cosine_std', 'round', 't_aggregate_ms', 't_round_ms', 'update_norm_mean', 'update_norm_std', 'w']

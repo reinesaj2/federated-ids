@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/logging_utils_spec.py
+# hypothesis_version: 6.140.4
+
+[0.85, 0.95, 100, 'DEBUG', 'ERROR', 'INFO', 'INVALID_LEVEL', 'LOG_LEVEL', 'ValueError', 'WARNING', 'client', 'client.py', 'client_id', 'error occurred', 'exc_info', 'integration_test', 'level', 'logger', 'macro_f1', 'message', 'metric', 'round', 'test', 'test exception', 'test message', 'test.py', 'test_event', 'test_logger', 'test_module', 'ts', 'weird_obj']

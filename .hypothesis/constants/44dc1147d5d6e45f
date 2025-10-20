@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/data_preprocessing.py
+# hypothesis_version: 6.140.4
+
+[1e-12, 1e-06, 0.1, 0.15, 0.2, 0.3, 0.7, 1.0, 2.0, 100, '0', 'Attack', 'BENIGN', 'Class', 'Dst IP', 'Dst Port', 'Flow ID', 'Label', 'NORMAL', 'OHE_SPARSE', 'Protocol', 'ProtocolName', 'Src IP', 'Src Port', 'Timestamp', 'all', 'attack', 'cat', 'category', 'class', 'dirichlet', 'false', 'ignore', 'iid', 'label', 'no', 'num', 'object', 'proto', 'protocol']

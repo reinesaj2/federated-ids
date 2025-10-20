@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import os
 from enum import Enum
 from typing import List, Sequence, Tuple, Optional
 
 import numpy as np
+
+DEBUG_AGGREGATION = os.environ.get("DEBUG_AGGREGATION", "0").lower() in ("1", "true", "yes")
 
 
 class AggregationMethod(Enum):
@@ -96,9 +99,20 @@ def _krum_candidate_indices(vectors: np.ndarray, f: int, multi: bool) -> List[in
     if multi:
         # Select top k candidates (Multi-Krum), average their updates
         k = max(1, min(n - f - 2, n))
-        return [idx for _, idx in scores[:k]]
-    # Krum: select single best
-    return [scores[0][1]]
+        selected = [idx for _, idx in scores[:k]]
+    else:
+        # Krum: select single best
+        selected = [scores[0][1]]
+
+    if DEBUG_AGGREGATION:
+        grad_norms = np.linalg.norm(vectors.reshape(n, -1), axis=1)
+        print(
+            f"[AGGREGATION] Krum: selected={selected}, "
+            f"grad_norms (min/median/max)={grad_norms.min():.3f}/{np.median(grad_norms):.3f}/{grad_norms.max():.3f}, "
+            f"f={f}, multi={multi}"
+        )
+
+    return selected
 
 
 def _average_selected(weights_per_client: List[List[np.ndarray]], selected: Sequence[int]) -> List[np.ndarray]:
@@ -244,6 +258,9 @@ def aggregate_weights(
     """
     if not weights_per_client:
         return []
+
+    if DEBUG_AGGREGATION:
+        print(f"[AGGREGATION] Starting aggregation: method={method.value}, num_clients={len(weights_per_client)}")
 
     if method == AggregationMethod.MEDIAN:
         return _median_aggregate(weights_per_client)

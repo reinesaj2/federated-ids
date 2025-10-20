@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/scripts/plot_metrics_utils.py
+# hypothesis_version: 6.140.4
+
+[0.01, 0.02, 0.1, 0.5, 0.95, 1.0, ' & ', ' \\ ', ' \\ \n', ' |\n', ' | ', ',', '---', 'Global Mean', 'Macro F1', '\\begin{tabular}{', '\\midrule', 'a', 'all', 'black', 'c', 'ci_lower', 'ci_upper', 'client', 'coerce', 'latex', 'linear', 'markdown', 'metric', 'mu', 'o-', 'round', 'seed', 'utf-8', 'value', 'w', 'x_label', 'x_scale', 'y_label', 'y_scale', '| ', '}\\toprule\n', 'μ (FedProx)']

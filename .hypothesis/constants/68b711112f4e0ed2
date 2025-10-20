@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/scripts/commit_plots.py
+# hypothesis_version: 6.140.4
+
+['%Y-%m-%d', '*.html', '*.jpeg', '*.jpg', '*.pdf', '*.png', '*.svg', '--cached', '--date', '--experiment_type', '--plots_dir', '--quiet', '--retention_days', '--skip_commit', '--source_dir', '-m', '.matplotlib', 'GitHub Actions', 'No changes to commit', 'No plots to commit', '__main__', 'actions@github.com', 'add', 'commit', 'config', 'core.autocrlf', 'diff', 'false', 'git', 'plots', 'store_true', 'temp', 'user.email', 'user.name']

@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/scripts/ci_checks.py
+# hypothesis_version: 6.140.4
+
+[0.02, 0.1, '--fpr_strict', '--runs_dir', '.', '0', '1', 'FPR_STRICT', '__main__', 'alpha', 'benign_fpr_bin_tau', 'client_*_metrics.csv', 'metrics.csv', 'mu', 'r', 'round', 'runs', 'seed', 'store_true']

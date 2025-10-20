@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/logging_utils.py
+# hypothesis_version: 6.140.4
+
+['INFO', 'LOG_LEVEL', 'args', 'created', 'exc_info', 'exc_text', 'filename', 'funcName', 'level', 'levelname', 'levelno', 'lineno', 'logger', 'message', 'module', 'msecs', 'msg', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'stack_info', 'thread', 'threadName', 'ts']

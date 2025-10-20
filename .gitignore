@@ -15,6 +15,21 @@ __pycache__/
 
 # Run artifacts
 /runs/
+/runs_buggy_*/
+/runs_incomplete_*/
 
 # Include plots directory for repository storage
 !/plots/
+
+# Testing artifacts
+.hypothesis/
+
+# Logs
+*.log
+
+# Experiment summaries (generated artifacts - exclude documentation)
+EXPERIMENT_SUMMARY_*.md
+QPLAN_*.md
+
+# Exception: Keep constraint documentation
+!EXPERIMENT_CONSTRAINTS.md

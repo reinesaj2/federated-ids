@@ -1,0 +1,4 @@
+# file: /Users/abrahamreines/Documents/Thesis/federated-ids/scripts/debug_personalization.py
+# hypothesis_version: 6.140.4
+
+[0.001, 0.01, 0.1, 1.0, 8100, '\nTests will vary:', '--aggregation', '--alpha', '--client_id', '--data_path', '--dataset', '--local_epochs', '--logdir', '--lr', '--num_clients', '--num_rounds', '--partition_strategy', '--rounds', '--server_address', '.', '1', '2', '42', '=', 'D2_EXTENDED_METRICS', 'Path to dataset CSV', 'Results Summary', 'SEED', '__main__', 'cic', 'client.py', 'dirichlet', 'fedavg', 'logs_debug', 'macro_f1_after', 'macro_f1_before', 'macro_f1_global', 'nan', 'none', 'p', 'personalization_gain', 'python', 'server.py', 'unsw', 'utf-8']
