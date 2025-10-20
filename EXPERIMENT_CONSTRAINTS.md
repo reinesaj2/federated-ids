@@ -133,9 +133,35 @@ Upon completion of the 4 running experiments, the thesis will have **100% of ach
 
 ## References
 
-- Bulyan algorithm: El Mhamdi et al. "The Hidden Vulnerability of Distributed Learning in Byzantium" (ICML 2018)
-- Implementation: `robust_aggregation.py:221` enforces n ≥ 4f+3 constraint
-- Attack dimension config: `comparative_analysis.py:122-138`
+### Primary Literature
+
+**Bulyan Algorithm**:
+- El Mhamdi, E. M., Guerraoui, R., & Rouault, S. (2018). "The Hidden Vulnerability of Distributed Learning in Byzantium." In Proceedings of the 35th International Conference on Machine Learning (ICML 2018), pp. 3521-3530.
+- Paper URL: http://proceedings.mlr.press/v80/mhamdi18a/mhamdi18a.pdf
+- Establishes the **n ≥ 4f+3** requirement for Bulyan's two-phase aggregation
+
+**Krum Algorithm** (for comparison):
+- Blanchard, P., El Mhamdi, E. M., Guerraoui, R., & Stainer, J. (2017). "Machine Learning with Adversaries: Byzantine Tolerant Gradient Descent." In Advances in Neural Information Processing Systems (NIPS 2017), pp. 119-129.
+- Paper URL: https://arxiv.org/abs/1703.02757
+- Establishes the **n ≥ 2f+3** requirement for Krum
+
+### Context in Byzantine Fault Tolerance
+
+The 4f+3 bound is **specific to Bulyan** and not a standard Byzantine consensus threshold. Standard BFT protocols use:
+- **3f+1**: Standard PBFT (requires quorum of 2f+1)
+- **2f+1**: With trusted hardware components
+- **5f+1**: Fast Byzantine consensus (2-step latency)
+
+Bulyan's stricter 4f+3 requirement arises from its two-phase design:
+1. Phase 1: Apply Krum (requires n ≥ 2f+3) to select θ = n-2f gradients
+2. Phase 2: Compute coordinate-wise median of selected gradients
+
+This achieves stronger robustness guarantees (O(1/√d) attack bound) at the cost of requiring more participants.
+
+### Implementation
+
+- `robust_aggregation.py:221` enforces n ≥ 4f+3 constraint with explicit error
+- `comparative_analysis.py:122-138` documents the constraint in attack dimension config
 
 ## Date Documented
 
