@@ -210,10 +210,11 @@ def calculate_robustness_metrics(
 
         cosine = float(np.dot(flat_a, flat_b) / (norm_a * norm_b))
 
-        # Handle floating point inaccuracies
-        if np.isclose(cosine, 1.0):
+        # Handle floating point inaccuracies with strict tolerance
+        # Use rtol=1e-10 to avoid rounding DP-induced variations (0.99999x) to 1.0
+        if np.isclose(cosine, 1.0, rtol=1e-10, atol=1e-12):
             cosine = 1.0
-        elif np.isclose(cosine, -1.0):
+        elif np.isclose(cosine, -1.0, rtol=1e-10, atol=1e-12):
             cosine = -1.0
 
         # Sanity check: cosine must be in [-1, 1] due to Cauchy-Schwarz

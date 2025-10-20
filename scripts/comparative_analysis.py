@@ -333,6 +333,8 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
         str(config.num_clients),
         "--min_available_clients",
         str(config.num_clients),
+        "--byzantine_f",
+        str(num_adversaries),
     ]
 
     client_procs = []
