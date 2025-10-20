@@ -361,6 +361,17 @@ class TorchClient(fl.client.NumPyClient):
                             loss = loss + (fedprox_mu / 2.0) * prox_term
 
                         loss.backward()
+                        
+                        # Apply gradient clipping ONLY to adversarial clients
+                        if mode in ["grad_ascent", "label_flip"]:
+                            clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
+                            if clip_factor > 0:
+                                torch.nn.utils.clip_grad_norm_(
+                                    self.model.parameters(), 
+                                    max_norm=clip_factor,
+                                    norm_type=2.0
+                                )
+                        
                         optimizer.step()
                 elif mode == "label_flip":
                     # Train on intentionally wrong labels: rotate class index by +1
@@ -399,6 +410,17 @@ class TorchClient(fl.client.NumPyClient):
                             loss = loss + (fedprox_mu / 2.0) * prox_term
 
                         loss.backward()
+                        
+                        # Apply gradient clipping ONLY to adversarial clients
+                        if mode in ["grad_ascent", "label_flip"]:
+                            clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
+                            if clip_factor > 0:
+                                torch.nn.utils.clip_grad_norm_(
+                                    self.model.parameters(), 
+                                    max_norm=clip_factor,
+                                    norm_type=2.0
+                                )
+                        
                         optimizer.step()
                 else:
                     fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
@@ -1123,6 +1145,8 @@ def main() -> None:
                 os.environ.get("D2_DP_NOISE_MULTIPLIER", str(args.dp_noise_multiplier))
             ),
             "dp_seed": int(os.environ.get("D2_DP_SEED", str(args.dp_seed))),
+            # Adversarial gradient clipping
+            "adversary_clip_factor": float(os.environ.get("D2_ADVERSARY_CLIP_FACTOR", "2.0")),
             # Threshold selection
             "tau_mode": args.tau_mode,
             "target_fpr": args.target_fpr,
