@@ -678,6 +678,95 @@ def plot_aggregation_comparison(df: pd.DataFrame, output_dir: Path):
     plt.close()
 
 
+def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
+    """Plot FedProx effectiveness across heterogeneity levels."""
+    if "alpha" not in df.columns or "fedprox_mu" not in df.columns:
+        print("Warning: Missing alpha or fedprox_mu columns for FedProx heterogeneity plots")
+        return
+
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle("FedProx Heterogeneity Matrix Analysis", fontsize=16, fontweight="bold")
+
+    # Plot 1: Final L2 Distance by Alpha and Mu
+    ax1 = axes[0, 0]
+    alpha_mu_data = df.groupby(['alpha', 'fedprox_mu'])['l2_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
+    
+    for alpha in sorted(df['alpha'].unique()):
+        alpha_data = alpha_mu_data[alpha_mu_data['alpha'] == alpha]
+        mu_values = alpha_data['fedprox_mu'].values
+        means = alpha_data['mean'].values
+        stds = alpha_data['std'].values
+        
+        ax1.errorbar(mu_values, means, yerr=stds, marker='o', label=f'Alpha={alpha}', linewidth=2, markersize=8)
+    
+    ax1.set_xlabel('FedProx Mu Value')
+    ax1.set_ylabel('Final L2 Distance to Benign Model')
+    ax1.set_title('L2 Distance vs FedProx Strength by Heterogeneity Level')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    ax1.set_xscale('log')
+
+    # Plot 2: Final Cosine Similarity by Alpha and Mu
+    ax2 = axes[0, 1]
+    alpha_mu_cos_data = df.groupby(['alpha', 'fedprox_mu'])['cos_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
+    
+    for alpha in sorted(df['alpha'].unique()):
+        alpha_data = alpha_mu_cos_data[alpha_mu_cos_data['alpha'] == alpha]
+        mu_values = alpha_data['fedprox_mu'].values
+        means = alpha_data['mean'].values
+        stds = alpha_data['std'].values
+        
+        ax2.errorbar(mu_values, means, yerr=stds, marker='s', label=f'Alpha={alpha}', linewidth=2, markersize=8)
+    
+    ax2.set_xlabel('FedProx Mu Value')
+    ax2.set_ylabel('Final Cosine Similarity to Benign Model')
+    ax2.set_title('Cosine Similarity vs FedProx Strength by Heterogeneity Level')
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    ax2.set_xscale('log')
+
+    # Plot 3: Convergence Curves for Different Mu Values (Alpha=0.1)
+    ax3 = axes[1, 0]
+    extreme_non_iid = df[df['alpha'] == 0.1]
+    
+    for mu in sorted(extreme_non_iid['fedprox_mu'].unique()):
+        mu_data = extreme_non_iid[extreme_non_iid['fedprox_mu'] == mu]
+        if 'round' in mu_data.columns and 'l2_to_benign_mean' in mu_data.columns:
+            round_means = mu_data.groupby('round')['l2_to_benign_mean'].mean()
+            ax3.plot(round_means.index, round_means.values, marker='o', label=f'Mu={mu}', linewidth=2)
+    
+    ax3.set_xlabel('Round')
+    ax3.set_ylabel('L2 Distance to Benign Model')
+    ax3.set_title('Convergence Curves: Extreme Non-IID (Alpha=0.1)')
+    ax3.legend()
+    ax3.grid(True, alpha=0.3)
+
+    # Plot 4: Heatmap of Final Performance
+    ax4 = axes[1, 1]
+    pivot_data = df.groupby(['alpha', 'fedprox_mu'])['l2_to_benign_mean'].mean().unstack()
+    
+    im = ax4.imshow(pivot_data.values, cmap='viridis', aspect='auto')
+    ax4.set_xticks(range(len(pivot_data.columns)))
+    ax4.set_xticklabels([f'{mu:.2f}' for mu in pivot_data.columns])
+    ax4.set_yticks(range(len(pivot_data.index)))
+    ax4.set_yticklabels([f'{alpha:.1f}' for alpha in pivot_data.index])
+    ax4.set_xlabel('FedProx Mu Value')
+    ax4.set_ylabel('Alpha (Heterogeneity Level)')
+    ax4.set_title('L2 Distance Heatmap: Alpha vs Mu')
+    
+    # Add colorbar
+    cbar = plt.colorbar(im, ax=ax4)
+    cbar.set_label('Final L2 Distance')
+
+    plt.tight_layout()
+    
+    # Save plot
+    output_file = output_dir / "fedprox_heterogeneity_analysis.png"
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    print(f"Saved FedProx heterogeneity plot: {output_file}")
+    plt.close()
+
+
 def plot_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     """Plot IID vs Non-IID performance with 95% CIs."""
     if "alpha" not in df.columns:
@@ -1259,6 +1348,7 @@ def main():
         choices=[
             "aggregation",
             "heterogeneity",
+            "heterogeneity_fedprox",
             "attack",
             "privacy",
             "personalization",
@@ -1311,6 +1401,10 @@ def main():
     if args.dimension in ["personalization", "all"]:
         print("Generating personalization benefit plots...")
         plot_personalization_benefit(df, output_dir)
+
+    if args.dimension in ["heterogeneity_fedprox", "all"]:
+        print("Generating FedProx heterogeneity plots...")
+        plot_fedprox_heterogeneity_comparison(df, output_dir)
 
     # Generate LaTeX tables
     print("Generating LaTeX summary tables...")

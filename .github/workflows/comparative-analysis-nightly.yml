@@ -37,7 +37,7 @@ jobs:
       fail-fast: false
       matrix:
         dimension:
-          [aggregation, heterogeneity, attack, privacy, personalization]
+          [aggregation, heterogeneity, heterogeneity_fedprox, attack, privacy, personalization]
     steps:
       - uses: actions/checkout@v4
         with:

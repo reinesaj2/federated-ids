@@ -45,6 +45,7 @@ class ExperimentConfig:
     num_clients: int
     num_rounds: int
     seed: int
+    fedprox_mu: float = 0.0
     dataset: str = "unsw"
     data_path: str = "data/unsw/unsw_nb15_sample.csv"
 
@@ -56,6 +57,7 @@ class ExperimentConfig:
             f"adv{int(self.adversary_fraction * 100)}",
             f"dp{int(self.dp_enabled)}",
             f"pers{self.personalization_epochs}",
+            f"mu{self.fedprox_mu}",
             f"seed{self.seed}",
         ]
         return "_".join(parts)
@@ -76,6 +78,7 @@ class ComparisonMatrix:
         ]
     )
     personalization_epochs: List[int] = field(default_factory=lambda: [0, 5])
+    fedprox_mu_values: List[float] = field(default_factory=lambda: [0.01, 0.1, 1.0])
     seeds: List[int] = field(default_factory=lambda: [42, 43, 44])
     num_clients: int = 6
     num_rounds: int = 20
@@ -89,6 +92,7 @@ class ComparisonMatrix:
             "dp_enabled": False,
             "dp_noise_multiplier": 0.0,
             "personalization_epochs": 0,
+            "fedprox_mu": 0.0,
             "num_clients": self.num_clients,
             "num_rounds": self.num_rounds,
             "seed": seed,
@@ -112,6 +116,23 @@ class ComparisonMatrix:
         for alpha in self.alpha_values:
             for seed in self.seeds:
                 configs.append(self._create_config(self._base_config(seed), alpha=alpha))
+        return configs
+
+    def _generate_heterogeneity_fedprox_configs(self) -> List[ExperimentConfig]:
+        """Generate FedProx configs for heterogeneity comparison.
+        
+        Tests FedProx algorithm across different alpha values (data heterogeneity)
+        and mu values (proximal term strength) to evaluate heterogeneity mitigation.
+        """
+        configs = []
+        for alpha in self.alpha_values:
+            for mu in self.fedprox_mu_values:
+                for seed in self.seeds:
+                    configs.append(self._create_config(
+                        self._base_config(seed), 
+                        alpha=alpha,
+                        fedprox_mu=mu
+                    ))
         return configs
 
     def _generate_attack_configs(self) -> List[ExperimentConfig]:
@@ -205,6 +226,7 @@ class ComparisonMatrix:
             filter_dimension: Dimension to vary. Options:
                 - 'aggregation': Compare aggregation methods
                 - 'heterogeneity': Compare IID vs Non-IID
+                - 'heterogeneity_fedprox': Compare FedProx across heterogeneity levels
                 - 'attack': Compare attack resilience
                 - 'privacy': Compare privacy-utility tradeoff
                 - 'personalization': Compare personalization benefit
@@ -216,6 +238,7 @@ class ComparisonMatrix:
         dimension_map = {
             "aggregation": self._generate_aggregation_configs,
             "heterogeneity": self._generate_heterogeneity_configs,
+            "heterogeneity_fedprox": self._generate_heterogeneity_fedprox_configs,
             "attack": self._generate_attack_configs,
             "privacy": self._generate_privacy_configs,
             "personalization": self._generate_personalization_configs,
@@ -333,6 +356,8 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
         str(config.num_clients),
         "--min_available_clients",
         str(config.num_clients),
+        "--fedprox_mu",
+        str(config.fedprox_mu),
     ]
 
     client_procs = []
@@ -436,6 +461,7 @@ def main():
         choices=[
             "aggregation",
             "heterogeneity",
+            "heterogeneity_fedprox",
             "attack",
             "privacy",
             "personalization",

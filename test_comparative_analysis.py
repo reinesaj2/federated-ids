@@ -434,3 +434,154 @@ def test_comparison_matrix_attack_uses_subset():
 
     # All attack configs should use n=11 clients for Bulyan requirement (n >= 4f + 3)
     assert all(c.num_clients == 11 for c in configs)
+
+
+def test_experiment_config_fedprox_mu_field():
+    """Test that ExperimentConfig includes fedprox_mu field."""
+    config = ExperimentConfig(
+        aggregation="fedavg",
+        alpha=0.5,
+        adversary_fraction=0.0,
+        dp_enabled=False,
+        dp_noise_multiplier=0.0,
+        personalization_epochs=0,
+        num_clients=6,
+        num_rounds=20,
+        seed=42,
+        fedprox_mu=0.1,
+    )
+
+    assert config.fedprox_mu == 0.1
+    assert hasattr(config, "fedprox_mu")
+
+
+def test_experiment_config_fedprox_mu_default():
+    """Test that fedprox_mu defaults to 0.0."""
+    config = ExperimentConfig(
+        aggregation="fedavg",
+        alpha=0.5,
+        adversary_fraction=0.0,
+        dp_enabled=False,
+        dp_noise_multiplier=0.0,
+        personalization_epochs=0,
+        num_clients=6,
+        num_rounds=20,
+        seed=42,
+    )
+
+    assert config.fedprox_mu == 0.0
+
+
+def test_experiment_config_preset_name_includes_mu():
+    """Test that preset name includes fedprox_mu parameter."""
+    config = ExperimentConfig(
+        aggregation="fedavg",
+        alpha=0.5,
+        adversary_fraction=0.0,
+        dp_enabled=False,
+        dp_noise_multiplier=0.0,
+        personalization_epochs=0,
+        num_clients=6,
+        num_rounds=20,
+        seed=42,
+        fedprox_mu=0.1,
+    )
+
+    preset = config.to_preset_name()
+    assert "mu0.1" in preset
+    assert "fedavg" in preset
+    assert "alpha0.5" in preset
+    assert "seed42" in preset
+
+
+def test_comparison_matrix_fedprox_mu_values():
+    """Test that ComparisonMatrix includes fedprox_mu_values field."""
+    matrix = ComparisonMatrix()
+    
+    assert hasattr(matrix, "fedprox_mu_values")
+    assert len(matrix.fedprox_mu_values) == 3
+    assert 0.01 in matrix.fedprox_mu_values
+    assert 0.1 in matrix.fedprox_mu_values
+    assert 1.0 in matrix.fedprox_mu_values
+
+
+def test_comparison_matrix_heterogeneity_fedprox_dimension():
+    """Test matrix generation for FedProx heterogeneity dimension."""
+    matrix = ComparisonMatrix(
+        alpha_values=[1.0, 0.5, 0.1],
+        fedprox_mu_values=[0.01, 0.1],
+        seeds=[42, 43],
+        num_clients=6,
+        num_rounds=10,
+    )
+
+    configs = matrix.generate_configs(filter_dimension="heterogeneity_fedprox")
+
+    # Exact expected count: 3 alpha × 2 mu × 2 seeds = 12 configs
+    assert len(configs) == 12
+
+    # Check all use fedavg baseline
+    assert all(c.aggregation == "fedavg" for c in configs)
+
+    # Check alpha values are varied
+    alphas = {c.alpha for c in configs}
+    assert alphas == {1.0, 0.5, 0.1}
+
+    # Check mu values are varied
+    mus = {c.fedprox_mu for c in configs}
+    assert mus == {0.01, 0.1}
+
+    # Check seeds are varied
+    seeds = {c.seed for c in configs}
+    assert seeds == {42, 43}
+
+    # Check other params are fixed to baseline
+    for config in configs:
+        assert config.adversary_fraction == 0.0
+        assert config.dp_enabled is False
+        assert config.personalization_epochs == 0
+
+
+def test_comparison_matrix_heterogeneity_fedprox_preset_names():
+    """Test that FedProx heterogeneity configs generate unique preset names."""
+    matrix = ComparisonMatrix(
+        alpha_values=[0.5, 0.1],
+        fedprox_mu_values=[0.01, 0.1],
+        seeds=[42],
+        num_clients=6,
+        num_rounds=10,
+    )
+
+    configs = matrix.generate_configs(filter_dimension="heterogeneity_fedprox")
+    preset_names = [c.to_preset_name() for c in configs]
+
+    # Should have unique preset names
+    assert len(preset_names) == len(set(preset_names))
+
+    # Should include expected components
+    for preset in preset_names:
+        assert "comp_fedavg" in preset
+        assert "mu0.01" in preset or "mu0.1" in preset
+        assert "alpha0.5" in preset or "alpha0.1" in preset
+        assert "seed42" in preset
+
+
+def test_comparison_matrix_heterogeneity_fedprox_invalid_dimension():
+    """Test that invalid dimension still raises ValueError."""
+    matrix = ComparisonMatrix()
+
+    with pytest.raises(ValueError, match="Invalid dimension"):
+        matrix.generate_configs(filter_dimension="invalid_dimension")
+
+    # But valid new dimension should work
+    configs = matrix.generate_configs(filter_dimension="heterogeneity_fedprox")
+    assert len(configs) > 0
+
+
+def test_comparison_matrix_base_config_includes_fedprox_mu():
+    """Test that _base_config includes fedprox_mu field."""
+    matrix = ComparisonMatrix()
+    base_config = matrix._base_config(seed=42)
+
+    assert "fedprox_mu" in base_config
+    assert base_config["fedprox_mu"] == 0.0

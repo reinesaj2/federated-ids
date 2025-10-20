@@ -91,6 +91,12 @@ def main() -> None:
         default=1.0,
         help="Fraction of clients participating in evaluation per round",
     )
+    parser.add_argument(
+        "--fedprox_mu",
+        type=float,
+        default=0.0,
+        help="FedProx proximal term coefficient (mu) for heterogeneity mitigation",
+    )
     args = parser.parse_args()
 
     seed = int(os.environ.get("SEED", "42"))
@@ -215,7 +221,12 @@ def main() -> None:
 
     def _on_fit_config(rnd: int):
         # Pass through seed and default hyperparameters; rounds can adjust epochs if desired
-        return {"epoch": 1, "lr": 0.01, "seed": seed}
+        return {
+            "epoch": 1, 
+            "lr": 0.01, 
+            "seed": seed,
+            "fedprox_mu": args.fedprox_mu
+        }
 
     def _eval_metrics_agg(results: List[Tuple[int, dict]]):
         # results: list of (num_examples, metrics)
