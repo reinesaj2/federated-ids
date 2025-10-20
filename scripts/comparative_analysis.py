@@ -121,6 +121,10 @@ class ComparisonMatrix:
         Uses alpha=0.5 for moderate non-IID setting.
         Uses num_clients=11 to meet Bulyan's n >= 4f + 3 requirement
         (allows f=2 Byzantine tolerance: 11 >= 4*2 + 3).
+
+        IMPORTANT: With n=11 clients, Bulyan can safely tolerate f <= 2 adversaries (18.2%).
+        The 30% adversary configuration (f=3) violates this constraint and will fail.
+        See EXPERIMENT_CONSTRAINTS.md for details.
         """
         configs = []
         for agg in ATTACK_AGGREGATIONS:
@@ -339,8 +343,8 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
 
     client_procs = []
     try:
-        # Start server with managed subprocess (longer timeout for full datasets)
-        with managed_subprocess(server_cmd, server_log, base_dir, timeout=7200) as server_proc:
+        # Start server with managed subprocess (extended timeout for edge cases: Bulyan+high adversary, IID)
+        with managed_subprocess(server_cmd, server_log, base_dir, timeout=10800) as server_proc:
             # Wait for server startup with basic health check
             max_retries = 10
             for _ in range(max_retries):
@@ -398,10 +402,10 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
                     proc = subprocess.Popen(client_cmd, stdout=log, stderr=subprocess.STDOUT, cwd=base_dir)
                     client_procs.append(proc)
 
-            # Wait for all clients to complete with timeout (longer for full datasets)
+            # Wait for all clients to complete with timeout (extended for edge cases: Bulyan+high adversary, IID)
             for proc in client_procs:
                 try:
-                    proc.wait(timeout=3600)  # 60 minute timeout per client for full datasets
+                    proc.wait(timeout=10800)  # 180 minute timeout per client for edge cases
                 except subprocess.TimeoutExpired:
                     proc.kill()
                     raise RuntimeError("Client process timed out")
