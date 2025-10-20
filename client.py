@@ -336,10 +336,15 @@ class TorchClient(fl.client.NumPyClient):
 
                         loss.backward()
 
-                        # Clip gradients for adversarial attacks to realistic bounds
-                        clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
-                        if clip_factor > 0:
-                            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=clip_factor * 100.0, norm_type=2.0)
+                        # Apply gradient clipping ONLY to adversarial clients
+                        if mode in ["grad_ascent", "label_flip"]:
+                            clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
+                            if clip_factor > 0:
+                                torch.nn.utils.clip_grad_norm_(
+                                    self.model.parameters(), 
+                                    max_norm=clip_factor,
+                                    norm_type=2.0
+                                )
 
                         optimizer.step()
                 elif mode == "label_flip":
@@ -372,6 +377,17 @@ class TorchClient(fl.client.NumPyClient):
                             loss = loss + (fedprox_mu / 2.0) * prox_term
 
                         loss.backward()
+                        
+                        # Apply gradient clipping ONLY to adversarial clients
+                        if mode in ["grad_ascent", "label_flip"]:
+                            clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
+                            if clip_factor > 0:
+                                torch.nn.utils.clip_grad_norm_(
+                                    self.model.parameters(), 
+                                    max_norm=clip_factor,
+                                    norm_type=2.0
+                                )
+                        
                         optimizer.step()
                 else:
                     fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
