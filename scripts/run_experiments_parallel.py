@@ -48,7 +48,7 @@ def main():
         "--dimension",
         type=str,
         default="attack",
-        choices=["aggregation", "heterogeneity", "attack", "privacy", "personalization"],
+        choices=["aggregation", "heterogeneity", "heterogeneity_fedprox", "attack", "privacy", "personalization"],
         help="Experiment dimension",
     )
     parser.add_argument(

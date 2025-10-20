@@ -335,8 +335,8 @@ class TorchClient(fl.client.NumPyClient):
                         self.model.parameters(), lr=lr, weight_decay=weight_decay
                     )
 
-                    # Get FedProx parameters
-                    fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
+                    # Get FedProx parameters (server config takes precedence)
+                    fedprox_mu = float(config.get("fedprox_mu", self.runtime_config.get("fedprox_mu", 0.0)))
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [
@@ -371,8 +371,8 @@ class TorchClient(fl.client.NumPyClient):
                     )
                     n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
 
-                    # Get FedProx parameters
-                    fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
+                    # Get FedProx parameters (server config takes precedence)
+                    fedprox_mu = float(config.get("fedprox_mu", self.runtime_config.get("fedprox_mu", 0.0)))
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [
