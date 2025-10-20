@@ -567,5 +567,132 @@ def test_attack_resilience_plot_artifacts():
         plt.close("all")
 
 
+def test_render_macro_f1_plot_insufficient_data_issue77():
+    """Test Issue #77 fix: ANOVA annotation skipped when macro_f1 data is sparse."""
+    import matplotlib.pyplot as plt
+
+    final_rounds = pd.DataFrame(
+        {
+            "aggregation": ["fedavg", "fedavg", "fedavg", "krum", "krum", "bulyan", "median"],
+            "seed": [42, 43, 44, 42, 43, 42, 42],
+            "macro_f1": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 0.85],
+        }
+    )
+    fig, ax = plt.subplots()
+    available_methods = ["fedavg", "krum", "bulyan", "median"]
+
+    result = _render_macro_f1_plot(ax, final_rounds, available_methods)
+
+    assert result is True
+    texts = [t.get_text() for t in ax.texts]
+
+    anova_p_texts = [t for t in texts if "ANOVA p=" in t]
+    assert len(anova_p_texts) == 0, "ANOVA p-value should not appear with insufficient data"
+
+    insufficient_texts = [t for t in texts if "insufficient" in t.lower()]
+    assert len(insufficient_texts) > 0, "Should display message about insufficient data"
+    plt.close(fig)
+
+
+def test_render_macro_f1_plot_sufficient_data_for_anova():
+    """Test Issue #77 fix: ANOVA annotation displayed when sufficient macro_f1 data."""
+    import matplotlib.pyplot as plt
+
+    final_rounds = pd.DataFrame(
+        {
+            "aggregation": ["fedavg", "fedavg", "fedavg", "krum", "krum", "krum"],
+            "seed": [42, 43, 44, 42, 43, 44],
+            "macro_f1": [0.85, 0.86, 0.85, 0.90, 0.91, 0.89],
+        }
+    )
+    fig, ax = plt.subplots()
+    available_methods = ["fedavg", "krum"]
+
+    result = _render_macro_f1_plot(ax, final_rounds, available_methods)
+
+    assert result is True
+    texts = [t.get_text() for t in ax.texts]
+
+    anova_texts = [t for t in texts if "ANOVA" in t and "p=" in t]
+    assert len(anova_texts) > 0, "ANOVA annotation should appear with sufficient data"
+
+    insufficient_texts = [t for t in texts if "insufficient" in t.lower()]
+    assert len(insufficient_texts) == 0, "Should not display insufficient data warning"
+    plt.close(fig)
+
+
+def test_render_macro_f1_plot_edge_case_exactly_three_points():
+    """Test Issue #77 fix: Edge case with exactly 3 data points (minimum for ANOVA)."""
+    import matplotlib.pyplot as plt
+
+    final_rounds = pd.DataFrame(
+        {
+            "aggregation": ["fedavg", "krum", "bulyan"],
+            "seed": [42, 42, 42],
+            "macro_f1": [0.85, 0.90, 0.88],
+        }
+    )
+    fig, ax = plt.subplots()
+    available_methods = ["fedavg", "krum", "bulyan"]
+
+    result = _render_macro_f1_plot(ax, final_rounds, available_methods)
+
+    assert result is True
+    texts = [t.get_text() for t in ax.texts]
+
+    annotation_texts = [
+        t for t in texts if "ANOVA p=" in t or "inconclusive" in t.lower() or "insufficient" in t.lower()
+    ]
+    assert len(annotation_texts) >= 1, (
+        "Should have ANOVA p-value, inconclusive, or insufficient data annotation. " f"Got texts: {texts}"
+    )
+    plt.close(fig)
+
+
+def test_render_macro_f1_plot_two_data_points_below_threshold():
+    """Test Issue #77 fix: With 2 points (below minimum 3), ANOVA skipped."""
+    import matplotlib.pyplot as plt
+
+    final_rounds = pd.DataFrame(
+        {
+            "aggregation": ["fedavg", "krum"],
+            "seed": [42, 42],
+            "macro_f1": [0.85, 0.90],
+        }
+    )
+    fig, ax = plt.subplots()
+    available_methods = ["fedavg", "krum"]
+
+    result = _render_macro_f1_plot(ax, final_rounds, available_methods)
+
+    assert result is True
+    texts = [t.get_text() for t in ax.texts]
+
+    anova_texts = [t for t in texts if "ANOVA" in t and "p=" in t]
+    assert len(anova_texts) == 0, "ANOVA should not run with < 3 data points"
+
+    insufficient_texts = [t for t in texts if "insufficient" in t.lower()]
+    assert len(insufficient_texts) > 0, "Should display insufficient data message"
+    plt.close(fig)
+
+
+def test_perform_statistical_tests_all_identical_values():
+    """Test ANOVA robustness when all values are identical."""
+    df = pd.DataFrame(
+        {
+            "aggregation": ["fedavg", "fedavg", "fedavg", "krum", "krum", "krum"],
+            "macro_f1": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        }
+    )
+
+    result = perform_statistical_tests(df, "aggregation", "macro_f1")
+
+    assert "test" in result
+    assert "p_value" in result
+
+    if result.get("p_value") is not None:
+        assert np.isnan(result["p_value"]) or result["p_value"] >= 0.05, "Identical values should not show significance"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

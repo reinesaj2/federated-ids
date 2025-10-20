@@ -14,6 +14,7 @@ Includes statistical significance testing and confidence intervals.
 
 import argparse
 import json
+import logging
 import math
 import sys
 from pathlib import Path
@@ -33,6 +34,8 @@ for candidate in (ROOT, ROOT / "scripts"):
 
 from plot_metrics_utils import compute_confidence_interval  # noqa: E402
 from privacy_accounting import compute_epsilon  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_run_dir(reference: str, runs_root: Path) -> Optional[Path]:
@@ -476,16 +479,51 @@ def _render_macro_f1_plot(ax, final_rounds: pd.DataFrame, available_methods: lis
     for i, row in summary_df.iterrows():
         ax.text(i, row["mean"] + row["ci"] / 2 + 0.02, f"n={row['n']}", ha="center", va="bottom", fontsize=8)
 
-    stats_result = perform_statistical_tests(macro_f1_data, "aggregation", "macro_f1")
-    if stats_result.get("p_value"):
+    # Issue #77 fix: Only perform ANOVA if sufficient data points
+    min_data_for_anova = 3
+    total_valid_points = len(macro_f1_data)
+
+    if total_valid_points >= min_data_for_anova:
+        stats_result = perform_statistical_tests(macro_f1_data, "aggregation", "macro_f1")
+        if stats_result.get("p_value") is not None and not np.isnan(stats_result["p_value"]):
+            ax.text(
+                0.02,
+                0.02,
+                f"ANOVA p={stats_result['p_value']:.4f}",
+                transform=ax.transAxes,
+                va="bottom",
+                fontsize=9,
+                bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+            )
+        else:
+            logger.warning(
+                f"ANOVA computation failed or returned NaN for macro-F1 data ({total_valid_points} points). "
+                "This may occur with small sample sizes or identical values across groups."
+            )
+            ax.text(
+                0.02,
+                0.02,
+                f"n={total_valid_points} (ANOVA inconclusive)",
+                transform=ax.transAxes,
+                va="bottom",
+                fontsize=8,
+                bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.5),
+            )
+    else:
+        logger.warning(
+            f"Insufficient macro-F1 data ({total_valid_points}/{len(final_rounds)}) "
+            f"for ANOVA (minimum {min_data_for_anova} required). "
+            "Skipping statistical annotation. Consider enabling D2_EXTENDED_METRICS=1 "
+            "or running experiments with extended client metrics logging."
+        )
         ax.text(
             0.02,
             0.02,
-            f"ANOVA p={stats_result['p_value']:.4f}",
+            f"n={total_valid_points} (insufficient for ANOVA)",
             transform=ax.transAxes,
             va="bottom",
-            fontsize=9,
-            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+            fontsize=8,
+            bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.5),
         )
 
     return True
@@ -640,6 +678,95 @@ def plot_aggregation_comparison(df: pd.DataFrame, output_dir: Path):
     plt.close()
 
 
+def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
+    """Plot FedProx effectiveness across heterogeneity levels."""
+    if "alpha" not in df.columns or "fedprox_mu" not in df.columns:
+        print("Warning: Missing alpha or fedprox_mu columns for FedProx heterogeneity plots")
+        return
+
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle("FedProx Heterogeneity Matrix Analysis", fontsize=16, fontweight="bold")
+
+    # Plot 1: Final L2 Distance by Alpha and Mu
+    ax1 = axes[0, 0]
+    alpha_mu_data = df.groupby(['alpha', 'fedprox_mu'])['l2_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
+    
+    for alpha in sorted(df['alpha'].unique()):
+        alpha_data = alpha_mu_data[alpha_mu_data['alpha'] == alpha]
+        mu_values = alpha_data['fedprox_mu'].values
+        means = alpha_data['mean'].values
+        stds = alpha_data['std'].values
+        
+        ax1.errorbar(mu_values, means, yerr=stds, marker='o', label=f'Alpha={alpha}', linewidth=2, markersize=8)
+    
+    ax1.set_xlabel('FedProx Mu Value')
+    ax1.set_ylabel('Final L2 Distance to Benign Model')
+    ax1.set_title('L2 Distance vs FedProx Strength by Heterogeneity Level')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    ax1.set_xscale('log')
+
+    # Plot 2: Final Cosine Similarity by Alpha and Mu
+    ax2 = axes[0, 1]
+    alpha_mu_cos_data = df.groupby(['alpha', 'fedprox_mu'])['cos_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
+    
+    for alpha in sorted(df['alpha'].unique()):
+        alpha_data = alpha_mu_cos_data[alpha_mu_cos_data['alpha'] == alpha]
+        mu_values = alpha_data['fedprox_mu'].values
+        means = alpha_data['mean'].values
+        stds = alpha_data['std'].values
+        
+        ax2.errorbar(mu_values, means, yerr=stds, marker='s', label=f'Alpha={alpha}', linewidth=2, markersize=8)
+    
+    ax2.set_xlabel('FedProx Mu Value')
+    ax2.set_ylabel('Final Cosine Similarity to Benign Model')
+    ax2.set_title('Cosine Similarity vs FedProx Strength by Heterogeneity Level')
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    ax2.set_xscale('log')
+
+    # Plot 3: Convergence Curves for Different Mu Values (Alpha=0.1)
+    ax3 = axes[1, 0]
+    extreme_non_iid = df[df['alpha'] == 0.1]
+    
+    for mu in sorted(extreme_non_iid['fedprox_mu'].unique()):
+        mu_data = extreme_non_iid[extreme_non_iid['fedprox_mu'] == mu]
+        if 'round' in mu_data.columns and 'l2_to_benign_mean' in mu_data.columns:
+            round_means = mu_data.groupby('round')['l2_to_benign_mean'].mean()
+            ax3.plot(round_means.index, round_means.values, marker='o', label=f'Mu={mu}', linewidth=2)
+    
+    ax3.set_xlabel('Round')
+    ax3.set_ylabel('L2 Distance to Benign Model')
+    ax3.set_title('Convergence Curves: Extreme Non-IID (Alpha=0.1)')
+    ax3.legend()
+    ax3.grid(True, alpha=0.3)
+
+    # Plot 4: Heatmap of Final Performance
+    ax4 = axes[1, 1]
+    pivot_data = df.groupby(['alpha', 'fedprox_mu'])['l2_to_benign_mean'].mean().unstack()
+    
+    im = ax4.imshow(pivot_data.values, cmap='viridis', aspect='auto')
+    ax4.set_xticks(range(len(pivot_data.columns)))
+    ax4.set_xticklabels([f'{mu:.2f}' for mu in pivot_data.columns])
+    ax4.set_yticks(range(len(pivot_data.index)))
+    ax4.set_yticklabels([f'{alpha:.1f}' for alpha in pivot_data.index])
+    ax4.set_xlabel('FedProx Mu Value')
+    ax4.set_ylabel('Alpha (Heterogeneity Level)')
+    ax4.set_title('L2 Distance Heatmap: Alpha vs Mu')
+    
+    # Add colorbar
+    cbar = plt.colorbar(im, ax=ax4)
+    cbar.set_label('Final L2 Distance')
+
+    plt.tight_layout()
+    
+    # Save plot
+    output_file = output_dir / "fedprox_heterogeneity_analysis.png"
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    print(f"Saved FedProx heterogeneity plot: {output_file}")
+    plt.close()
+
+
 def plot_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     """Plot IID vs Non-IID performance with 95% CIs."""
     if "alpha" not in df.columns:
@@ -774,7 +901,10 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     num_seeds = len(df["seed"].unique()) if "seed" in df.columns else 1
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    subtitle = f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | " f"Attack: grad_ascent | Seeds: n={num_seeds}"
+    subtitle = (
+        f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | "
+        f"Attack: grad_ascent | Seeds: n={num_seeds}"
+    )
     fig.suptitle(f"Attack Resilience Comparison\n{subtitle}", fontsize=14, fontweight="bold")
 
     final_rounds = df.groupby(["aggregation", "adversary_fraction", "seed"]).tail(1)
@@ -1043,7 +1173,11 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
                 )
 
         if comparison_data:
-            rows = [{"DP": item["DP"], "Cosine Similarity": val} for item in comparison_data for val in item["Cosine Similarity"]]
+            rows = [
+                {"DP": item["DP"], "Cosine Similarity": val}
+                for item in comparison_data
+                for val in item["Cosine Similarity"]
+            ]
             plot_df = pd.DataFrame(rows)
             sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
             ax.set_title("Model Alignment with DP")
@@ -1214,6 +1348,7 @@ def main():
         choices=[
             "aggregation",
             "heterogeneity",
+            "heterogeneity_fedprox",
             "attack",
             "privacy",
             "personalization",
@@ -1266,6 +1401,10 @@ def main():
     if args.dimension in ["personalization", "all"]:
         print("Generating personalization benefit plots...")
         plot_personalization_benefit(df, output_dir)
+
+    if args.dimension in ["heterogeneity_fedprox", "all"]:
+        print("Generating FedProx heterogeneity plots...")
+        plot_fedprox_heterogeneity_comparison(df, output_dir)
 
     # Generate LaTeX tables
     print("Generating LaTeX summary tables...")
