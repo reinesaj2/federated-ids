@@ -62,23 +62,41 @@ jobs:
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
-      - name: Run comparative analysis
+      - name: Run comparative analysis (UNSW dataset)
         env:
           D2_EXTENDED_METRICS: "1"
         run: |
           CLIENTS=${{ github.event.inputs.num_clients || '6' }}
           ROUNDS=${{ github.event.inputs.num_rounds || '20' }}
 
-          echo "Starting comparative analysis for dimension: ${{ matrix.dimension }}"
+          echo "Starting comparative analysis for dimension: ${{ matrix.dimension }} (UNSW)"
           echo "System resources:"
           echo "  Memory: $(free -h | grep '^Mem:' | awk '{print $2}')"
           echo "  CPU cores: $(nproc)"
           echo "  Disk space: $(df -h . | tail -1 | awk '{print $4}')"
           
-          # Monitor memory usage during execution
+          # Run UNSW experiments
           python scripts/comparative_analysis.py \
             --dimension ${{ matrix.dimension }} \
-            --output_dir results/comparative_analysis
+            --dataset unsw \
+            --output_dir results/comparative_analysis/unsw
+
+      - name: Run comparative analysis (CIC dataset)
+        env:
+          D2_EXTENDED_METRICS: "1"
+        run: |
+          echo "Starting comparative analysis for dimension: ${{ matrix.dimension }} (CIC-IDS2017)"
+          
+          # Run CIC experiments
+          python scripts/comparative_analysis.py \
+            --dimension ${{ matrix.dimension }} \
+            --dataset cic \
+            --output_dir results/comparative_analysis/cic
+
+      - name: Validate gradient norms
+        run: |
+          echo "Validating gradient norms for dimension: ${{ matrix.dimension }}"
+          python scripts/validate_grad_norms.py --runs_dir runs --fail_on_missing
 
       - name: Generate thesis plots
         run: |

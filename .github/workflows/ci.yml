@@ -273,6 +273,14 @@ jobs:
               exit 1
             fi
           done
+          
+          # Validate gradient norms in client metrics
+          if [ -n "$(find runs -name 'client_*_metrics.csv' 2>/dev/null)" ]; then
+            echo "Validating gradient norms..."
+            python scripts/validate_grad_norms.py --runs_dir runs
+          else
+            echo "No client metrics found, skipping gradient norm validation"
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
