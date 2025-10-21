@@ -34,6 +34,7 @@ for candidate in (ROOT, ROOT / "scripts"):
 
 from plot_metrics_utils import compute_confidence_interval  # noqa: E402
 from privacy_accounting import compute_epsilon  # noqa: E402
+from metric_validation import MetricValidator, validate_experiment_data  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -393,7 +394,20 @@ def load_experiment_results(runs_dir: Path) -> pd.DataFrame:
     if not all_data:
         return pd.DataFrame()
 
-    return pd.concat(all_data, ignore_index=True)
+    combined_df = pd.concat(all_data, ignore_index=True)
+    
+    # Validate metrics before returning
+    validator = MetricValidator()
+    warnings = validator.validate_plot_metrics(combined_df, "experiment_data")
+    
+    if warnings:
+        logger.warning(f"Metric validation warnings: {len(warnings)} issues found")
+        for warning in warnings[:5]:  # Show first 5 warnings
+            logger.warning(f"  {warning}")
+        if len(warnings) > 5:
+            logger.warning(f"  ... and {len(warnings) - 5} more warnings")
+    
+    return combined_df
 
 
 def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str) -> Dict:
