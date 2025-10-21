@@ -1,6 +1,8 @@
 name: Comparative Analysis Nightly
 
 on:
+  push:
+    branches: ["exp/issue-44-comprehensive-experiments", "milestone/m1-experiments-core"]
   schedule:
     - cron: "0 3 * * 0" # 3 AM UTC every Sunday
   workflow_dispatch:
@@ -20,6 +22,11 @@ on:
         required: false
         default: "20"
         type: string
+      run_cic:
+        description: "Run CIC-IDS2017 experiments (doubles execution time)"
+        required: false
+        default: "true"
+        type: boolean
 
 permissions:
   contents: write
@@ -32,10 +39,10 @@ concurrency:
 jobs:
   comparative_analysis:
     runs-on: ubuntu-latest
-    timeout-minutes: 480 # 8 hours for full dataset experiments
+    timeout-minutes: 720 # 12 hours for expanded grids (Issue #44)
     strategy:
       fail-fast: false
-      max-parallel: 2 # Limit parallel jobs to prevent resource exhaustion
+      max-parallel: 1 # Sequential execution for expanded grids
       matrix:
         dimension:
           [aggregation, heterogeneity, heterogeneity_fedprox, attack, privacy, personalization]
@@ -82,12 +89,14 @@ jobs:
             --output_dir results/comparative_analysis/unsw
 
       - name: Run comparative analysis (CIC dataset)
+        if: github.event.inputs.run_cic != 'false'
         env:
           D2_EXTENDED_METRICS: "1"
         run: |
           echo "Starting comparative analysis for dimension: ${{ matrix.dimension }} (CIC-IDS2017)"
+          echo "Using expanded grids per Issue #44 acceptance criteria"
           
-          # Run CIC experiments
+          # Run CIC experiments with expanded grids
           python scripts/comparative_analysis.py \
             --dimension ${{ matrix.dimension }} \
             --dataset cic \

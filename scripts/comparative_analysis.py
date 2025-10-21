@@ -76,21 +76,25 @@ class ExperimentConfig:
 
 @dataclass
 class ComparisonMatrix:
-    """Defines the full comparison experiment matrix."""
+    """Defines the full comparison experiment matrix.
+
+    Expanded grids per Issue #44 acceptance criteria for thesis validation.
+    """
 
     aggregation_methods: List[str] = field(default_factory=lambda: ["fedavg", "krum", "bulyan", "median"])
-    alpha_values: List[float] = field(default_factory=lambda: [1.0, 0.5, 0.1])
+    alpha_values: List[float] = field(default_factory=lambda: [0.02, 0.05, 0.1, 0.2, 0.5, 1.0, float('inf')])
     adversary_fractions: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.3])
     dp_configs: List[Dict] = field(
         default_factory=lambda: [
             {"enabled": False, "noise": 0.0},
             {"enabled": True, "noise": 0.5},
             {"enabled": True, "noise": 1.0},
+            {"enabled": True, "noise": 1.5},
         ]
     )
-    personalization_epochs: List[int] = field(default_factory=lambda: [0, 5])
-    fedprox_mu_values: List[float] = field(default_factory=lambda: [0.01, 0.1, 1.0])
-    seeds: List[int] = field(default_factory=lambda: [42, 43, 44])
+    personalization_epochs: List[int] = field(default_factory=lambda: [0, 3, 5])
+    fedprox_mu_values: List[float] = field(default_factory=lambda: [0.0, 0.002, 0.005, 0.01, 0.02, 0.05, 0.08, 0.1, 0.2])
+    seeds: List[int] = field(default_factory=lambda: [42, 43, 44, 45, 46])
     num_clients: int = 6
     num_rounds: int = 20
     dataset: str = "unsw"
