@@ -30,6 +30,8 @@ __pycache__/
 # Experiment summaries (generated artifacts - exclude documentation)
 EXPERIMENT_SUMMARY_*.md
 QPLAN_*.md
+*plan*.md
+*PLAN*.md
 
 # Exception: Keep constraint documentation
 !EXPERIMENT_CONSTRAINTS.md
