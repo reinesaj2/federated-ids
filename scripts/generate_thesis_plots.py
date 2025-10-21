@@ -18,7 +18,7 @@ import logging
 import math
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -35,12 +35,14 @@ for candidate in (ROOT, ROOT / "scripts"):
 
 from plot_metrics_utils import compute_confidence_interval  # noqa: E402
 from privacy_accounting import compute_epsilon  # noqa: E402
-from metric_validation import MetricValidator, validate_experiment_data  # noqa: E402
+from metric_validation import MetricValidator  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 
-def compute_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int, normalize: bool = False) -> np.ndarray:
+def compute_confusion_matrix(
+    y_true: np.ndarray, y_pred: np.ndarray, num_classes: int, normalize: bool = False
+) -> np.ndarray:
     """
     Compute confusion matrix for multi-class classification.
 
@@ -141,7 +143,9 @@ def aggregate_confusion_matrices(cms: List[np.ndarray]) -> np.ndarray:
     first_shape = cms[0].shape
     for i, cm in enumerate(cms[1:], start=1):
         if cm.shape != first_shape:
-            raise ValueError(f"Confusion matrix shape mismatch: cms[0].shape={first_shape}, " f"cms[{i}].shape={cm.shape}")
+            raise ValueError(
+                f"Confusion matrix shape mismatch: cms[0].shape={first_shape}, " f"cms[{i}].shape={cm.shape}"
+            )
 
     return np.sum(cms, axis=0)
 
@@ -829,7 +833,9 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
 
     # Plot 2: Final Cosine Similarity by Alpha and Mu
     ax2 = axes[0, 1]
-    alpha_mu_cos_data = df.groupby(['alpha', 'fedprox_mu'])['cos_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
+    alpha_mu_cos_data = (
+        df.groupby(['alpha', 'fedprox_mu'])['cos_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
+    )
 
     for alpha in sorted(df['alpha'].unique()):
         alpha_data = alpha_mu_cos_data[alpha_mu_cos_data['alpha'] == alpha]
@@ -1022,7 +1028,10 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     num_seeds = len(df["seed"].unique()) if "seed" in df.columns else 1
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    subtitle = f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | " f"Attack: grad_ascent | Seeds: n={num_seeds}"
+    subtitle = (
+        f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | "
+        f"Attack: grad_ascent | Seeds: n={num_seeds}"
+    )
     fig.suptitle(f"Attack Resilience Comparison\n{subtitle}", fontsize=14, fontweight="bold")
 
     final_rounds = df.groupby(["aggregation", "adversary_fraction", "seed"]).tail(1)
@@ -1291,7 +1300,11 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
                 )
 
         if comparison_data:
-            rows = [{"DP": item["DP"], "Cosine Similarity": val} for item in comparison_data for val in item["Cosine Similarity"]]
+            rows = [
+                {"DP": item["DP"], "Cosine Similarity": val}
+                for item in comparison_data
+                for val in item["Cosine Similarity"]
+            ]
             plot_df = pd.DataFrame(rows)
             sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
             ax.set_title("Model Alignment with DP")
