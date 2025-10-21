@@ -49,6 +49,17 @@ class ExperimentConfig:
     dataset: str = "unsw"
     data_path: str = "data/unsw/UNSW_NB15_training-set.csv"
 
+    @classmethod
+    def with_dataset(cls, dataset: str, **kwargs):
+        """Create config with dataset-specific defaults."""
+        dataset_paths = {
+            "unsw": "data/unsw/UNSW_NB15_training-set.csv",
+            "cic": "data/cic/cic_ids2017_multiclass.csv",
+        }
+        if dataset not in dataset_paths:
+            raise ValueError(f"Unknown dataset: {dataset}. Supported: {list(dataset_paths.keys())}")
+        return cls(dataset=dataset, data_path=dataset_paths[dataset], **kwargs)
+
     def to_preset_name(self) -> str:
         """Generate unique preset name for this configuration."""
         parts = [
@@ -82,10 +93,12 @@ class ComparisonMatrix:
     seeds: List[int] = field(default_factory=lambda: [42, 43, 44])
     num_clients: int = 6
     num_rounds: int = 20
+    dataset: str = "unsw"
+    data_path: Optional[str] = None
 
     def _base_config(self, seed: int) -> Dict:
         """Get baseline config with fixed parameters for controlled experiments."""
-        return {
+        base = {
             "aggregation": DEFAULT_AGGREGATION,
             "alpha": DEFAULT_ALPHA_IID,
             "adversary_fraction": 0.0,
@@ -96,7 +109,11 @@ class ComparisonMatrix:
             "num_clients": self.num_clients,
             "num_rounds": self.num_rounds,
             "seed": seed,
+            "dataset": self.dataset,
         }
+        if self.data_path:
+            base["data_path"] = self.data_path
+        return base
 
     def _create_config(self, base: Dict, **overrides) -> ExperimentConfig:
         """Create config with overrides applied to base."""
@@ -120,7 +137,7 @@ class ComparisonMatrix:
 
     def _generate_heterogeneity_fedprox_configs(self) -> List[ExperimentConfig]:
         """Generate FedProx configs for heterogeneity comparison.
-        
+
         Tests FedProx algorithm across different alpha values (data heterogeneity)
         and mu values (proximal term strength) to evaluate heterogeneity mitigation.
         """
@@ -128,11 +145,7 @@ class ComparisonMatrix:
         for alpha in self.alpha_values:
             for mu in self.fedprox_mu_values:
                 for seed in self.seeds:
-                    configs.append(self._create_config(
-                        self._base_config(seed), 
-                        alpha=alpha,
-                        fedprox_mu=mu
-                    ))
+                    configs.append(self._create_config(self._base_config(seed), alpha=alpha, fedprox_mu=mu))
         return configs
 
     def _generate_attack_configs(self) -> List[ExperimentConfig]:
@@ -308,8 +321,9 @@ def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int =
                 proc.wait()
 
 
-def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_start: int = 8080, 
-                           server_timeout: int = 300, client_timeout: int = 900) -> Dict:
+def run_federated_experiment(
+    config: ExperimentConfig, base_dir: Path, port_start: int = 8080, server_timeout: int = 300, client_timeout: int = 900
+) -> Dict:
     """Run a single federated learning experiment with proper error handling.
 
     Args:
@@ -491,10 +505,22 @@ def main():
         help="Server process timeout in seconds (default: 300)",
     )
     parser.add_argument(
-        "--client_timeout", 
+        "--client_timeout",
         type=int,
         default=900,
         help="Client process timeout in seconds (default: 900)",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        choices=["unsw", "cic"],
+        default="unsw",
+        help="Dataset to use (unsw=UNSW-NB15, cic=CIC-IDS2017)",
+    )
+    parser.add_argument(
+        "--data_path",
+        type=str,
+        help="Override default dataset path",
     )
 
     args = parser.parse_args()
@@ -503,11 +529,18 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate experiment matrix
-    matrix = ComparisonMatrix()
+    # Generate experiment matrix with dataset configuration
+    dataset_paths = {
+        "unsw": "data/unsw/UNSW_NB15_training-set.csv",
+        "cic": "data/cic/cic_ids2017_multiclass.csv",
+    }
+    data_path = args.data_path if args.data_path else dataset_paths[args.dataset]
+
+    matrix = ComparisonMatrix(dataset=args.dataset, data_path=data_path)
     configs = matrix.generate_configs(filter_dimension=None if args.dimension == "full" else args.dimension)
 
     print(f"Generated {len(configs)} experiment configurations for dimension: {args.dimension}")
+    print(f"Dataset: {args.dataset} ({data_path})")
 
     if args.dry_run:
         for i, config in enumerate(configs):
@@ -518,24 +551,22 @@ def main():
     results = []
     successful_experiments = 0
     failed_experiments = 0
-    
+
     for i, config in enumerate(configs):
         print(f"\n[{i + 1}/{len(configs)}] Running: {config.to_preset_name()}")
         print(f"  Progress: {successful_experiments} successful, {failed_experiments} failed")
-        
+
         try:
-            result = run_federated_experiment(config, base_dir, 
-                                            server_timeout=args.server_timeout,
-                                            client_timeout=args.client_timeout)
+            result = run_federated_experiment(config, base_dir, server_timeout=args.server_timeout, client_timeout=args.client_timeout)
             results.append(result)
-            
+
             if result.get('metrics_exist', False):
                 successful_experiments += 1
                 print(f"  SUCCESS: Exit code {result['server_exit_code']}, metrics generated")
             else:
                 failed_experiments += 1
                 print(f"  WARNING: Exit code {result['server_exit_code']}, no metrics generated")
-                
+
         except subprocess.TimeoutExpired as e:
             failed_experiments += 1
             print(f"  TIMEOUT: {e}")
@@ -544,7 +575,7 @@ def main():
             failed_experiments += 1
             print(f"  FAILED: {e}")
             results.append({"preset": config.to_preset_name(), "error": str(e)})
-    
+
     print(f"\nEXPERIMENT SUMMARY:")
     print(f"  Total experiments: {len(configs)}")
     print(f"  Successful: {successful_experiments}")
