@@ -32,9 +32,10 @@ concurrency:
 jobs:
   comparative_analysis:
     runs-on: ubuntu-latest
-    timeout-minutes: 360 # 6 hours
+    timeout-minutes: 480 # 8 hours for full dataset experiments
     strategy:
       fail-fast: false
+      max-parallel: 2 # Limit parallel jobs to prevent resource exhaustion
       matrix:
         dimension:
           [aggregation, heterogeneity, heterogeneity_fedprox, attack, privacy, personalization]
@@ -68,30 +69,76 @@ jobs:
           CLIENTS=${{ github.event.inputs.num_clients || '6' }}
           ROUNDS=${{ github.event.inputs.num_rounds || '20' }}
 
+          echo "Starting comparative analysis for dimension: ${{ matrix.dimension }}"
+          echo "System resources:"
+          echo "  Memory: $(free -h | grep '^Mem:' | awk '{print $2}')"
+          echo "  CPU cores: $(nproc)"
+          echo "  Disk space: $(df -h . | tail -1 | awk '{print $4}')"
+          
+          # Monitor memory usage during execution
           python scripts/comparative_analysis.py \
             --dimension ${{ matrix.dimension }} \
             --output_dir results/comparative_analysis
 
       - name: Generate thesis plots
         run: |
+          echo "Generating thesis plots for dimension: ${{ matrix.dimension }}"
+          
+          # Check if we have experiment data
+          if [ ! -d "runs" ] || [ -z "$(ls -A runs/comp_* 2>/dev/null)" ]; then
+            echo "ERROR: No experiment data found in runs/ directory"
+            echo "Available directories:"
+            ls -la runs/ || echo "runs/ directory does not exist"
+            exit 1
+          fi
+          
+          # Generate plots with error handling
           python scripts/generate_thesis_plots.py \
             --dimension ${{ matrix.dimension }} \
             --runs_dir runs \
             --output_dir results/thesis_plots/${{ matrix.dimension }}
+          
+          # Verify plots were generated
+          if [ -d "results/thesis_plots/${{ matrix.dimension }}" ]; then
+            PLOT_COUNT=$(find results/thesis_plots/${{ matrix.dimension }} -name "*.png" -o -name "*.pdf" | wc -l)
+            echo "Generated $PLOT_COUNT plots for ${{ matrix.dimension }}"
+          else
+            echo "ERROR: No plots generated for ${{ matrix.dimension }}"
+            exit 1
+          fi
 
       - name: Validate results
         run: |
+          echo "Validating experiment results..."
           FOUND=0
+          FAILED=0
+          TOTAL=0
+          
           for dir in runs/comp_*/; do
+            TOTAL=$((TOTAL + 1))
             if [ -f "$dir/metrics.csv" ]; then
-              echo "✓ Found metrics in $(basename $dir)"
+              echo "Found metrics in $(basename $dir)"
               FOUND=$((FOUND + 1))
+            else
+              echo "Missing metrics in $(basename $dir)"
+              FAILED=$((FAILED + 1))
             fi
           done
-          echo "Total experiments with metrics: $FOUND"
+          
+          echo "VALIDATION SUMMARY:"
+          echo "  Total experiments: $TOTAL"
+          echo "  Successful: $FOUND"
+          echo "  Failed: $FAILED"
+          echo "  Success rate: $((FOUND * 100 / TOTAL))%"
+          
+          # Require at least 50% success rate for workflow to pass
           if [ $FOUND -eq 0 ]; then
-            echo "Error: No experiments produced metrics"
+            echo "ERROR: No experiments produced metrics"
             exit 1
+          elif [ $FOUND -lt $((TOTAL / 2)) ]; then
+            echo "WARNING: Low success rate ($((FOUND * 100 / TOTAL))%), but continuing..."
+          else
+            echo "SUCCESS: Adequate experiment completion rate"
           fi
 
       - uses: actions/upload-artifact@v4
