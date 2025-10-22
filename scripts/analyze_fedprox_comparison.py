@@ -215,6 +215,39 @@ def _mean_ci(values: Sequence[float], confidence: float = 0.95) -> tuple[float, 
     return mean, mean - margin, mean + margin
 
 
+def cohens_d(group1: Sequence[float], group2: Sequence[float]) -> float:
+    """Compute Cohen's d effect size between two groups.
+    
+    Args:
+        group1: First group of values
+        group2: Second group of values
+    
+    Returns:
+        Cohen's d effect size (mean difference / pooled std)
+    """
+    arr1 = np.array([v for v in group1 if not math.isnan(v)], dtype=float)
+    arr2 = np.array([v for v in group2 if not math.isnan(v)], dtype=float)
+    
+    if arr1.size == 0 or arr2.size == 0:
+        return float("nan")
+    
+    mean_diff = float(arr1.mean() - arr2.mean())
+    n1, n2 = arr1.size, arr2.size
+    
+    if n1 == 1 and n2 == 1:
+        return mean_diff
+    
+    var1 = float(arr1.var(ddof=1)) if n1 > 1 else 0.0
+    var2 = float(arr2.var(ddof=1)) if n2 > 1 else 0.0
+    
+    pooled_std = math.sqrt((var1 * (n1 - 1) + var2 * (n2 - 1)) / (n1 + n2 - 2))
+    
+    if pooled_std == 0.0:
+        return float("nan")
+    
+    return mean_diff / pooled_std
+
+
 def aggregate_run_metrics(
     run_metrics: Sequence[RunMetrics],
     metrics: Sequence[str] = ("weighted_macro_f1", "mean_aggregation_time_ms"),
@@ -315,11 +348,11 @@ def compute_paired_statistics(
         mean_diff, ci_lower, ci_upper = _mean_ci(diffs)
         if n > 1:
             std_diff = float(np.std(diffs, ddof=1))
-            effect_size = mean_diff / std_diff if std_diff > 0 else 0.0
+            effect_size = cohens_d(prox_values, fedavg_values)
             _, p_value = stats.ttest_rel(prox_values, fedavg_values)
             p_value = float(p_value)
         else:
-            effect_size = 0.0
+            effect_size = float("nan")
             p_value = float("nan")
 
         results.append(
