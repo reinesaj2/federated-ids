@@ -67,6 +67,57 @@ def validate_csv_schema(csv_path: Path, expected_columns: Set[str]) -> None:
         raise ArtifactValidationError(f"Failed to read CSV {csv_path}: {e}")
 
 
+def check_convergence_quality(rows: List[Dict[str, str]]) -> None:
+    """Validate convergence quality: accuracy should improve over rounds."""
+    if not rows:
+        raise ArtifactValidationError("No data rows to validate convergence")
+    
+    # Check for NaN or Inf in critical columns
+    for row in rows:
+        for col in ["weighted_macro_f1", "weighted_accuracy"]:
+            val = row.get(col, "")
+            if val and val.lower() in ("nan", "inf", "-inf"):
+                raise ArtifactValidationError(f"Found {val} in {col}: {row}")
+    
+    # Check final accuracy meets minimum threshold
+    final_f1_vals = [_safe_float(row.get("weighted_macro_f1")) for row in rows[-5:] if row.get("weighted_macro_f1")]
+    final_f1_vals = [v for v in final_f1_vals if v is not None]
+    
+    if final_f1_vals and min(final_f1_vals) < MIN_WEIGHTED_MACRO_F1:
+        avg_final = sum(final_f1_vals) / len(final_f1_vals)
+        raise ArtifactValidationError(f"Final F1 {avg_final:.4f} below minimum {MIN_WEIGHTED_MACRO_F1}")
+
+
+def check_no_nans_or_infs(rows: List[Dict[str, str]], critical_columns: List[str]) -> None:
+    """Ensure no NaN or Inf values in critical metric columns."""
+    for i, row in enumerate(rows):
+        for col in critical_columns:
+            val = row.get(col, "")
+            if val and val.lower() in ("nan", "inf", "-inf", ""):
+                raise ArtifactValidationError(f"Row {i} column {col} has invalid value: {val}")
+
+
+def check_seed_consistency(rows: List[Dict[str, str]], expected_seeds: int = 5) -> None:
+    """Validate that sufficient seeds are present in results."""
+    try:
+        seed_col = "seed" if "seed" in rows[0] else None
+        if not seed_col:
+            return
+        
+        seeds = set()
+        for row in rows:
+            if row.get(seed_col):
+                try:
+                    seeds.add(int(row[seed_col]))
+                except (ValueError, KeyError):
+                    pass
+        
+        if len(seeds) < expected_seeds:
+            raise ArtifactValidationError(f"Only {len(seeds)} seeds found; expected at least {expected_seeds}")
+    except (KeyError, IndexError):
+        pass
+
+
 def validate_plot_files(run_dir: Path) -> None:
     """Validate that required plot files exist."""
     required_plots = ["client_metrics_plot.png", "server_metrics_plot.png"]
