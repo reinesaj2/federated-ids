@@ -179,6 +179,198 @@ def _render_client_scatter_mu_plot(scatter_df: pd.DataFrame, metric: str, output
     logger.info(f"Saved FedProx scatter plot: {output_path}")
 
 
+def _prepare_personalization_delta_f1_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Prepare personalization delta F1 data for analysis.
+
+    Computes per-client delta F1 = F1_personalized - F1_global from final round metrics,
+    preserving alpha stratification for heterogeneity analysis.
+
+    Args:
+        df: Combined metrics DataFrame with columns:
+            client_id, seed, alpha, round, macro_f1_global, macro_f1_personalized
+
+    Returns:
+        DataFrame with columns: client_id, seed, alpha, round,
+                               f1_global, f1_personalized, delta_f1
+        Filtered to last available round per (client, seed, alpha).
+    """
+    required_cols = ["client_id", "seed", "alpha", "round", "macro_f1_global", "macro_f1_personalized"]
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        logger.warning(f"Missing columns for personalization delta F1: {missing_cols}")
+        return pd.DataFrame(
+            columns=[
+                "client_id",
+                "seed",
+                "alpha",
+                "round",
+                "f1_global",
+                "f1_personalized",
+                "delta_f1",
+            ]
+        )
+
+    if df.empty:
+        return pd.DataFrame(
+            columns=[
+                "client_id",
+                "seed",
+                "alpha",
+                "round",
+                "f1_global",
+                "f1_personalized",
+                "delta_f1",
+            ]
+        )
+
+    final_rounds = df.groupby(["client_id", "seed", "alpha"]).tail(1).copy()
+    final_rounds = final_rounds.dropna(subset=["macro_f1_global", "macro_f1_personalized"])
+
+    if final_rounds.empty:
+        return pd.DataFrame(
+            columns=[
+                "client_id",
+                "seed",
+                "alpha",
+                "round",
+                "f1_global",
+                "f1_personalized",
+                "delta_f1",
+            ]
+        )
+
+    final_rounds["f1_global"] = final_rounds["macro_f1_global"]
+    final_rounds["f1_personalized"] = final_rounds["macro_f1_personalized"]
+    final_rounds["delta_f1"] = final_rounds["f1_personalized"] - final_rounds["f1_global"]
+
+    return final_rounds[["client_id", "seed", "alpha", "round", "f1_global", "f1_personalized", "delta_f1"]]
+
+
+def _analyze_delta_f1_by_alpha(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Analyze personalization delta F1 statistics stratified by alpha.
+
+    Computes mean, median, 95% CI, and percentage of clients with positive gains
+    for each alpha (heterogeneity) level.
+
+    Args:
+        df: DataFrame with columns: alpha, delta_f1, client_id, seed
+
+    Returns:
+        DataFrame with columns: alpha, mean_delta, median_delta,
+                               ci_lower, ci_upper, pct_positive, n
+        Sorted by alpha ascending.
+    """
+    if df.empty or "alpha" not in df.columns or "delta_f1" not in df.columns:
+        return pd.DataFrame(columns=["alpha", "mean_delta", "median_delta", "ci_lower", "ci_upper", "pct_positive", "n"])
+
+    stats = []
+    for alpha in sorted(df["alpha"].unique()):
+        alpha_data = df[df["alpha"] == alpha]["delta_f1"].dropna().values
+        if len(alpha_data) == 0:
+            continue
+
+        mean_delta = float(np.mean(alpha_data))
+        median_delta = float(np.median(alpha_data))
+        pct_positive = float((alpha_data > 0).sum() / len(alpha_data) * 100)
+
+        if len(alpha_data) >= 2:
+            mean_ci, ci_lower, ci_upper = compute_confidence_interval(alpha_data)
+        else:
+            ci_lower = ci_upper = mean_delta
+
+        stats.append(
+            {
+                "alpha": alpha,
+                "mean_delta": mean_delta,
+                "median_delta": median_delta,
+                "ci_lower": ci_lower,
+                "ci_upper": ci_upper,
+                "pct_positive": pct_positive,
+                "n": len(alpha_data),
+            }
+        )
+
+    return pd.DataFrame(stats)
+
+
+def _render_personalization_delta_f1_plots(scatter_df: pd.DataFrame, stats_df: pd.DataFrame, output_path: Path) -> None:
+    """
+    Render 3-panel personalization delta F1 analysis figure.
+
+    Creates visualization showing:
+    1. Violin plot: Delta F1 distribution by alpha
+    2. Scatter plot: F1_global vs F1_personalized with y=x baseline
+    3. Bar chart: Percentage of clients with positive delta by alpha
+
+    Args:
+        scatter_df: DataFrame with columns: alpha, delta_f1, f1_global, f1_personalized
+        stats_df: DataFrame with columns: alpha, mean_delta, pct_positive
+        output_path: Path to save PNG
+
+    Raises:
+        ValueError: If scatter_df is empty
+    """
+    if scatter_df.empty:
+        raise ValueError("Cannot render personalization delta F1 plots: empty data")
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig.suptitle("Personalization Benefit Analysis: Delta F1 by Heterogeneity", fontsize=14, fontweight="bold")
+
+    ax1, ax2, ax3 = axes
+
+    sns.violinplot(data=scatter_df, x="alpha", y="delta_f1", ax=ax1)
+    ax1.axhline(0, color="red", linestyle="--", alpha=0.5, linewidth=2, label="No benefit (y=0)")
+    ax1.set_xlabel("Alpha (Dirichlet Parameter)")
+    ax1.set_ylabel("Delta F1 (Personalized - Global)")
+    ax1.set_title("Delta F1 Distribution by Heterogeneity")
+    ax1.legend()
+    ax1.grid(True, alpha=0.3, axis="y")
+
+    ax2.scatter(
+        scatter_df["f1_global"],
+        scatter_df["f1_personalized"],
+        alpha=0.5,
+        s=30,
+        c=scatter_df["alpha"].astype("category").cat.codes,
+        cmap="viridis",
+    )
+    lims = [
+        min(scatter_df["f1_global"].min(), scatter_df["f1_personalized"].min()) - 0.02,
+        max(scatter_df["f1_global"].max(), scatter_df["f1_personalized"].max()) + 0.02,
+    ]
+    ax2.plot(lims, lims, "r--", alpha=0.5, linewidth=2, label="y=x (no benefit)")
+    ax2.set_xlabel("F1 Global")
+    ax2.set_ylabel("F1 Personalized")
+    ax2.set_title("Global vs Personalized Performance")
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    ax2.set_xlim(lims)
+    ax2.set_ylim(lims)
+
+    if not stats_df.empty:
+        ax3.bar(
+            range(len(stats_df)),
+            stats_df["pct_positive"],
+            color=sns.color_palette("viridis", len(stats_df)),
+            alpha=0.7,
+        )
+        ax3.set_xticks(range(len(stats_df)))
+        ax3.set_xticklabels([f"{a:.2f}" for a in stats_df["alpha"]])
+        ax3.set_xlabel("Alpha (Dirichlet Parameter)")
+        ax3.set_ylabel("% Clients with Positive Delta F1")
+        ax3.set_title("Proportion of Clients Benefiting from Personalization")
+        ax3.axhline(50, color="red", linestyle="--", alpha=0.3, linewidth=1)
+        ax3.set_ylim([0, 100])
+        ax3.grid(True, alpha=0.3, axis="y")
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Saved personalization delta F1 plots: {output_path}")
+
+
 def compute_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int, normalize: bool = False) -> np.ndarray:
     """
     Compute confusion matrix for multi-class classification.
@@ -1469,9 +1661,22 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
 
 
 def plot_personalization_benefit(df: pd.DataFrame, output_dir: Path):
-    """Plot personalization benefit."""
+    """Plot personalization benefit with delta F1 analysis."""
     if "personalization_epochs" not in df.columns:
         return
+
+    # Generate delta F1 analysis plots (Issue #58)
+    delta_df = _prepare_personalization_delta_f1_data(df)
+    if not delta_df.empty:
+        stats_df = _analyze_delta_f1_by_alpha(delta_df)
+        if not stats_df.empty:
+            output_path = output_dir / "personalization_delta_f1_analysis.png"
+            _render_personalization_delta_f1_plots(delta_df, stats_df, output_path)
+
+            # Export CSV summary
+            summary_csv = output_dir / "personalization_delta_f1_summary.csv"
+            stats_df.to_csv(summary_csv, index=False)
+            print(f"Saved personalization delta F1 summary: {summary_csv}")
 
     # Load client metrics for personalization data
     # This requires reading client metrics CSVs
