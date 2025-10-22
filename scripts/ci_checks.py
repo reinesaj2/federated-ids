@@ -53,7 +53,9 @@ def validate_csv_schema(csv_path: Path, expected_columns: Set[str]) -> None:
 
             if not expected_columns.issubset(actual_columns):
                 missing = expected_columns - actual_columns
-                raise ArtifactValidationError(f"CSV {csv_path} missing required columns: {missing}. " f"Found: {actual_columns}")
+                raise ArtifactValidationError(
+                    f"CSV {csv_path} missing required columns: {missing}. " f"Found: {actual_columns}"
+                )
 
             # Validate at least one data row exists
             try:
@@ -71,18 +73,18 @@ def check_convergence_quality(rows: List[Dict[str, str]]) -> None:
     """Validate convergence quality: accuracy should improve over rounds."""
     if not rows:
         raise ArtifactValidationError("No data rows to validate convergence")
-    
+
     # Check for NaN or Inf in critical columns
     for row in rows:
         for col in ["weighted_macro_f1", "weighted_accuracy"]:
             val = row.get(col, "")
             if val and val.lower() in ("nan", "inf", "-inf"):
                 raise ArtifactValidationError(f"Found {val} in {col}: {row}")
-    
+
     # Check final accuracy meets minimum threshold
     final_f1_vals = [_safe_float(row.get("weighted_macro_f1")) for row in rows[-5:] if row.get("weighted_macro_f1")]
     final_f1_vals = [v for v in final_f1_vals if v is not None]
-    
+
     if final_f1_vals and min(final_f1_vals) < MIN_WEIGHTED_MACRO_F1:
         avg_final = sum(final_f1_vals) / len(final_f1_vals)
         raise ArtifactValidationError(f"Final F1 {avg_final:.4f} below minimum {MIN_WEIGHTED_MACRO_F1}")
@@ -103,7 +105,7 @@ def check_seed_consistency(rows: List[Dict[str, str]], expected_seeds: int = 5) 
         seed_col = "seed" if "seed" in rows[0] else None
         if not seed_col:
             return
-        
+
         seeds = set()
         for row in rows:
             if row.get(seed_col):
@@ -111,7 +113,7 @@ def check_seed_consistency(rows: List[Dict[str, str]], expected_seeds: int = 5) 
                     seeds.add(int(row[seed_col]))
                 except (ValueError, KeyError):
                     pass
-        
+
         if len(seeds) < expected_seeds:
             raise ArtifactValidationError(f"Only {len(seeds)} seeds found; expected at least {expected_seeds}")
     except (KeyError, IndexError):
@@ -269,9 +271,7 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
     final_server_row = server_rows[-1]
     l2_value = _safe_float(final_server_row.get("l2_to_benign_mean"))
     if l2_value is None:
-        raise ArtifactValidationError(
-            f"Server metrics missing l2_to_benign_mean in {server_metrics_path}"
-        )
+        raise ArtifactValidationError(f"Server metrics missing l2_to_benign_mean in {server_metrics_path}")
     if not math.isfinite(l2_value) or l2_value > MAX_FINAL_L2_DISTANCE:
         raise ArtifactValidationError(
             f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {MAX_FINAL_L2_DISTANCE:.1f}"
@@ -318,7 +318,8 @@ def validate_seed_coverage(run_directories: List[Path], minimum_seeds: int = 5) 
     for (alpha, mu), seeds in seed_map.items():
         if len(seeds) < minimum_seeds:
             raise ArtifactValidationError(
-                f"FedProx nightly runs for alpha={alpha} mu={mu} have only {len(seeds)} seeds; " f"require at least {minimum_seeds}."
+                f"FedProx nightly runs for alpha={alpha} mu={mu} have only {len(seeds)} seeds; "
+                f"require at least {minimum_seeds}."
             )
 
 
