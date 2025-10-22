@@ -28,10 +28,10 @@ def compute_fairness_metrics(client_metrics_df: pd.DataFrame) -> Dict:
 
     Returns:
         Dictionary with fairness metrics:
-        - worst_client_macro_f1_argmax: Minimum F1 across clients (final round)
-        - best_client_macro_f1_argmax: Maximum F1 across clients (final round)
-        - cv_macro_f1_argmax: Coefficient of variation of F1 across clients
-        - fraction_clients_fpr_le_0_10: Fraction of clients with FPR <= 0.10
+        - worst_client_macro_f1_argmax: Minimum F1 across clients (highest round per client)
+        - best_client_macro_f1_argmax: Maximum F1 across clients (highest round per client)
+        - cv_macro_f1_argmax: Coefficient of variation of F1 across clients (highest round per client)
+        - fraction_clients_fpr_le_0_10: Fraction of clients with FPR <= 0.10 (highest round per client)
         - rare_class_f1_mean: Mean F1 for rare classes (not implemented yet)
         - rare_class_f1_min: Min F1 for rare classes (not implemented yet)
     """
@@ -41,7 +41,7 @@ def compute_fairness_metrics(client_metrics_df: pd.DataFrame) -> Dict:
     fairness = {}
 
     if "macro_f1_argmax" in client_metrics_df.columns and "client_id" in client_metrics_df.columns:
-        f1_by_client = client_metrics_df.groupby("client_id")["macro_f1_argmax"].last()
+        f1_by_client = client_metrics_df.sort_values("round").groupby("client_id")["macro_f1_argmax"].last()
 
         if not f1_by_client.empty:
             fairness["worst_client_macro_f1_argmax"] = float(f1_by_client.min())
@@ -52,7 +52,7 @@ def compute_fairness_metrics(client_metrics_df: pd.DataFrame) -> Dict:
             fairness["cv_macro_f1_argmax"] = float(std_f1 / mean_f1) if mean_f1 > 0 else 0.0
 
     if "benign_fpr_argmax" in client_metrics_df.columns and "client_id" in client_metrics_df.columns:
-        fpr_by_client = client_metrics_df.groupby("client_id")["benign_fpr_argmax"].last()
+        fpr_by_client = client_metrics_df.sort_values("round").groupby("client_id")["benign_fpr_argmax"].last()
 
         if not fpr_by_client.empty:
             low_fpr_count = (fpr_by_client <= 0.10).sum()

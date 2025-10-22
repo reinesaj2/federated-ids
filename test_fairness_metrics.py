@@ -179,3 +179,35 @@ def test_compute_fairness_metrics_zero_mean_f1():
     result = compute_fairness_metrics(df)
 
     assert result["cv_macro_f1_argmax"] == 0.0
+
+
+def test_compute_fairness_metrics_unsorted_rounds():
+    """Extract final round correctly even when data is unsorted."""
+    data = {
+        "client_id": [0, 0, 0, 1, 1, 1],
+        "round": [5, 1, 3, 3, 5, 1],
+        "macro_f1_argmax": [0.90, 0.70, 0.75, 0.80, 0.88, 0.65],
+    }
+    df = pd.DataFrame(data)
+
+    result = compute_fairness_metrics(df)
+
+    assert result["worst_client_macro_f1_argmax"] == pytest.approx(0.88, abs=0.001)
+    assert result["best_client_macro_f1_argmax"] == pytest.approx(0.90, abs=0.001)
+
+
+def test_compute_fairness_metrics_unsorted_rounds_with_fpr():
+    """Extract final round FPR correctly even when data is unsorted."""
+    data = {
+        "client_id": [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        "round": [5, 1, 3, 3, 5, 1, 1, 5, 3],
+        "benign_fpr_argmax": [0.05, 0.15, 0.10, 0.12, 0.08, 0.20, 0.25, 0.09, 0.18],
+    }
+    df = pd.DataFrame(data)
+
+    result = compute_fairness_metrics(df)
+
+    low_fpr_count = 3
+    total_clients = 3
+    expected_fraction = low_fpr_count / total_clients
+    assert result["fraction_clients_fpr_le_0_10"] == pytest.approx(expected_fraction, abs=0.001)
