@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-Integration tests for fedprox-nightly workflow and plot commit functionality.
+Integration tests for workflow configurations and plot commit functionality.
 
 Tests workflow configuration, job dependencies, and end-to-end integration
 between GitHub Actions and plot repository storage.
+
+Includes tests for:
+- fedprox-nightly workflow
+- robust-agg-weekly workflow
 """
 
 import os
@@ -365,3 +369,194 @@ class TestEdgeCases:
 
         assert manual_step is not None
         assert manual_step.get("continue-on-error") is True
+
+
+class TestRobustAggWeeklyWorkflow:
+    """Test robust aggregation weekly workflow configuration."""
+
+    def test_robust_agg_workflow_has_valid_yaml_syntax(self):
+        """Test that robust-agg-weekly workflow YAML syntax is valid."""
+        workflow_path = Path(".github/workflows/robust-agg-weekly.yml")
+        assert workflow_path.exists(), "Robust-agg-weekly workflow file must exist"
+
+        with open(workflow_path, 'r') as f:
+            workflow_content = yaml.safe_load(f)
+
+        # Verify basic workflow structure
+        assert "name" in workflow_content
+        assert True in workflow_content or "on" in workflow_content
+        assert "jobs" in workflow_content
+        assert workflow_content["name"] == "Robust Aggregation Weekly"
+
+    def test_workflow_has_saturday_schedule(self):
+        """Test that workflow runs on Saturday (weekly)."""
+        workflow_path = Path(".github/workflows/robust-agg-weekly.yml")
+
+        with open(workflow_path, 'r') as f:
+            workflow_content = yaml.safe_load(f)
+
+        # Get schedule trigger
+        schedule = workflow_content.get(True, {}).get("schedule") or workflow_content.get("on", {}).get("schedule")
+        assert schedule is not None, "Workflow must have schedule trigger"
+
+        # Verify cron expression runs on Saturday (day 6)
+        cron_expr = schedule[0]["cron"]
+        # Format: "0 4 * * 6" = 4 AM UTC every Saturday
+        assert "* * 6" in cron_expr, "Should run on Saturday (day 6)"
+
+    def test_workflow_matrix_has_correct_dimensions(self):
+        """Test that workflow matrix covers all algorithm and adversary combinations."""
+        workflow_path = Path(".github/workflows/robust-agg-weekly.yml")
+
+        with open(workflow_path, 'r') as f:
+            workflow_content = yaml.safe_load(f)
+
+        jobs = workflow_content["jobs"]
+        assert "robust_agg_experiments" in jobs
+
+        matrix = jobs["robust_agg_experiments"]["strategy"]["matrix"]
+
+        # Verify algorithms
+        assert set(matrix["aggregation"]) == {"fedavg", "krum", "bulyan", "median"}
+
+        # Verify adversary fractions
+        assert set(matrix["adv_fraction"]) == {0.0, 0.2, 0.4}
+
+    def test_workflow_calls_adversarial_validation(self):
+        """Test that workflow calls ci_checks.py with adversarial validation."""
+        workflow_path = Path(".github/workflows/robust-agg-weekly.yml")
+
+        with open(workflow_path, 'r') as f:
+            workflow_content = yaml.safe_load(f)
+
+        experiment_job = workflow_content["jobs"]["robust_agg_experiments"]
+        steps = experiment_job["steps"]
+
+        # Find validation step
+        validation_step = None
+        for step in steps:
+            if "run" in step and "ci_checks.py" in step.get("run", ""):
+                validation_step = step
+                break
+
+        assert validation_step is not None, "ci_checks.py validation step not found"
+
+        # Verify adversarial validation is enabled
+        run_command = validation_step["run"]
+        assert "--adversarial_validation" in run_command
+
+    def test_workflow_generates_summary_statistics(self):
+        """Test that workflow calls summarize_robust_agg.py."""
+        workflow_path = Path(".github/workflows/robust-agg-weekly.yml")
+
+        with open(workflow_path, 'r') as f:
+            workflow_content = yaml.safe_load(f)
+
+        experiment_job = workflow_content["jobs"]["robust_agg_experiments"]
+        steps = experiment_job["steps"]
+
+        # Find summary generation step
+        summary_step = None
+        for step in steps:
+            if "run" in step and "summarize_robust_agg.py" in step.get("run", ""):
+                summary_step = step
+                break
+
+        assert summary_step is not None, "summarize_robust_agg.py step not found"
+
+    def test_workflow_generates_comparison_plots(self):
+        """Test that consolidated analysis job generates comparison plots."""
+        workflow_path = Path(".github/workflows/robust-agg-weekly.yml")
+
+        with open(workflow_path, 'r') as f:
+            workflow_content = yaml.safe_load(f)
+
+        consolidated_job = workflow_content["jobs"]["consolidated_analysis"]
+        steps = consolidated_job["steps"]
+
+        # Find plot generation step
+        plot_step = None
+        for step in steps:
+            if "run" in step and "plot_robust_agg_comparison.py" in step.get("run", ""):
+                plot_step = step
+                break
+
+        assert plot_step is not None, "plot_robust_agg_comparison.py step not found"
+
+    def test_artifacts_have_90_day_retention(self):
+        """Test that artifacts are retained for 90 days."""
+        workflow_path = Path(".github/workflows/robust-agg-weekly.yml")
+
+        with open(workflow_path, 'r') as f:
+            workflow_content = yaml.safe_load(f)
+
+        # Check experiment artifacts
+        experiment_upload = next(
+            step for step in workflow_content["jobs"]["robust_agg_experiments"]["steps"]
+            if step.get("uses") == "actions/upload-artifact@v4"
+        )
+        assert experiment_upload["with"]["retention-days"] == 90
+
+        # Check consolidated artifacts
+        consolidated_upload = next(
+            step for step in workflow_content["jobs"]["consolidated_analysis"]["steps"]
+            if step.get("uses") == "actions/upload-artifact@v4"
+        )
+        assert consolidated_upload["with"]["retention-days"] == 90
+
+    def test_analysis_results_committed_to_repo(self):
+        """Test that analysis results are committed to analysis/robust_agg_weekly/."""
+        workflow_path = Path(".github/workflows/robust-agg-weekly.yml")
+
+        with open(workflow_path, 'r') as f:
+            workflow_content = yaml.safe_load(f)
+
+        commit_job = workflow_content["jobs"]["commit_analysis_results"]
+        steps = commit_job["steps"]
+
+        # Find commit step
+        commit_step = None
+        for step in steps:
+            if "Commit analysis results" in step.get("name", ""):
+                commit_step = step
+                break
+
+        assert commit_step is not None
+        assert "analysis/robust_agg_weekly/" in commit_step["run"]
+
+
+class TestRobustAggScripts:
+    """Test robust aggregation scripts work correctly."""
+
+    def test_summarize_robust_agg_script_exists(self):
+        """Test that summarize_robust_agg.py script exists and is executable."""
+        script_path = Path("scripts/summarize_robust_agg.py")
+        assert script_path.exists()
+        assert script_path.stat().st_mode & 0o111  # Check executable bit
+
+    def test_plot_robust_agg_comparison_script_exists(self):
+        """Test that plot_robust_agg_comparison.py script exists."""
+        script_path = Path("scripts/plot_robust_agg_comparison.py")
+        assert script_path.exists()
+
+    def test_ci_checks_has_adversarial_validation_argument(self):
+        """Test that ci_checks.py accepts --adversarial_validation argument."""
+        import subprocess
+
+        result = subprocess.run(
+            ["python", "scripts/ci_checks.py", "--help"],
+            capture_output=True,
+            text=True
+        )
+
+        assert result.returncode == 0
+        assert "--adversarial_validation" in result.stdout
+
+    def test_analysis_directory_structure_exists(self):
+        """Test that analysis/robust_agg_weekly/ directory exists with README."""
+        analysis_dir = Path("analysis/robust_agg_weekly")
+        assert analysis_dir.exists()
+        assert analysis_dir.is_dir()
+
+        readme_path = analysis_dir / "README.md"
+        assert readme_path.exists()

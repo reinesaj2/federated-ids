@@ -1,0 +1,346 @@
+name: Robust Aggregation Weekly
+
+on:
+  schedule:
+    - cron: "0 4 * * 6" # 4 AM UTC every Saturday
+  workflow_dispatch:
+    inputs:
+      algorithms:
+        description: 'Aggregation algorithms (comma-separated: fedavg,krum,bulyan,median,all)'
+        required: false
+        default: "all"
+        type: string
+      adversary_rates:
+        description: 'Adversary fractions (comma-separated: 0.0,0.2,0.4)'
+        required: false
+        default: "0.0,0.2,0.4"
+        type: string
+      num_clients:
+        description: "Number of clients"
+        required: false
+        default: "10"
+        type: string
+      num_rounds:
+        description: "Number of rounds"
+        required: false
+        default: "10"
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  robust_agg_experiments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180 # 3 hours for full matrix
+    strategy:
+      fail-fast: false
+      max-parallel: 2 # Limit parallel jobs to prevent resource exhaustion
+      matrix:
+        aggregation: [fedavg, krum, bulyan, median]
+        adv_fraction: [0.0, 0.2, 0.4]
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      SEED_LIST: "0 1 2"  # 3 seeds for statistical significance
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Run robust aggregation experiments
+        env:
+          D2_EXTENDED_METRICS: "1"
+        run: |
+          set -euo pipefail
+          trap 'pkill -P $$ || true' EXIT
+
+          CLIENTS=${{ github.event.inputs.num_clients || '10' }}
+          ROUNDS=${{ github.event.inputs.num_rounds || '10' }}
+          AGGREGATION="${{ matrix.aggregation }}"
+          ADV_FRACTION="${{ matrix.adv_fraction }}"
+
+          echo "=========================================="
+          echo "Robust Aggregation Weekly Experiment"
+          echo "=========================================="
+          echo "Configuration:"
+          echo "  Aggregation: $AGGREGATION"
+          echo "  Adversary Fraction: $ADV_FRACTION"
+          echo "  Clients: $CLIENTS"
+          echo "  Rounds: $ROUNDS"
+          echo "  Seeds: $SEED_LIST"
+          echo ""
+          echo "System resources:"
+          echo "  Memory: $(free -h | grep '^Mem:' | awk '{print $2}')"
+          echo "  CPU cores: $(nproc)"
+          echo "  Disk space: $(df -h . | tail -1 | awk '{print $4}')"
+          echo "=========================================="
+
+          # Run experiments for each seed
+          for SEED in $SEED_LIST; do
+            PRESET="robust_agg_${AGGREGATION}_adv${ADV_FRACTION}_seed${SEED}"
+            LOGDIR="runs/$PRESET"
+            mkdir -p "$LOGDIR"
+
+            echo ""
+            echo "[Seed $SEED] Starting $AGGREGATION with adv_fraction=$ADV_FRACTION"
+
+            # Start server
+            python server.py \
+              --rounds $ROUNDS \
+              --aggregation $AGGREGATION \
+              --server_address 127.0.0.1:8080 \
+              --logdir "$LOGDIR" > "$LOGDIR/server.log" 2>&1 &
+            SERVER_PID=$!
+
+            # Wait for server to start
+            sleep 3
+
+            # Calculate adversarial client count
+            ADV_COUNT=$(python -c "import math; print(int($CLIENTS * $ADV_FRACTION))")
+            BENIGN_COUNT=$(($CLIENTS - $ADV_COUNT))
+
+            echo "  Benign clients: $BENIGN_COUNT, Adversarial clients: $ADV_COUNT"
+
+            # Start benign clients
+            for CLIENT_ID in $(seq 0 $(($BENIGN_COUNT - 1))); do
+              python client.py \
+                --server_address 127.0.0.1:8080 \
+                --dataset synthetic \
+                --samples 1000 \
+                --features 20 \
+                --num_classes 2 \
+                --seed $SEED \
+                --client_id $CLIENT_ID \
+                --num_clients $CLIENTS \
+                --partition_strategy dirichlet \
+                --dirichlet_alpha 0.1 \
+                --local_epochs 2 \
+                --logdir "$LOGDIR" > "$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
+            done
+
+            # Start adversarial clients (Byzantine attacks)
+            for CLIENT_ID in $(seq $BENIGN_COUNT $(($CLIENTS - 1))); do
+              python client.py \
+                --server_address 127.0.0.1:8080 \
+                --dataset synthetic \
+                --samples 1000 \
+                --features 20 \
+                --num_classes 2 \
+                --seed $SEED \
+                --client_id $CLIENT_ID \
+                --num_clients $CLIENTS \
+                --partition_strategy dirichlet \
+                --dirichlet_alpha 0.1 \
+                --local_epochs 2 \
+                --byzantine \
+                --logdir "$LOGDIR" > "$LOGDIR/client_${CLIENT_ID}_adv.log" 2>&1 &
+            done
+
+            # Wait for server to complete
+            wait $SERVER_PID || {
+              echo "[ERROR] Server failed for seed $SEED"
+              pkill -P $$ || true
+              exit 1
+            }
+
+            echo "[Seed $SEED] Experiment completed successfully"
+
+            # Generate plots
+            python scripts/plot_metrics.py \
+              --run_dir "$LOGDIR" \
+              --output_dir "$LOGDIR"
+
+            # Brief cooldown between seeds
+            sleep 2
+          done
+
+      - name: Validate experiment results
+        run: |
+          echo "Validating robust aggregation experiments..."
+
+          # Use ci_checks.py with adversarial validation
+          python scripts/ci_checks.py \
+            --runs_dir runs \
+            --adversarial_validation \
+            --aggregation ${{ matrix.aggregation }} \
+            --adv_fraction ${{ matrix.adv_fraction }}
+
+      - name: Generate summary statistics
+        run: |
+          mkdir -p analysis/robust_agg_weekly/${{ github.run_number }}
+
+          # Collect all metrics into summary
+          python scripts/summarize_robust_agg.py \
+            --runs_dir runs \
+            --aggregation ${{ matrix.aggregation }} \
+            --adv_fraction ${{ matrix.adv_fraction }} \
+            --output_dir analysis/robust_agg_weekly/${{ github.run_number }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: robust-agg-${{ matrix.aggregation }}-adv${{ matrix.adv_fraction }}-${{ github.sha }}
+          path: |
+            runs/robust_agg_*/metrics.csv
+            runs/robust_agg_*/client_*_metrics.csv
+            runs/robust_agg_*/config.json
+            runs/robust_agg_*/*.log
+            runs/robust_agg_*/*.png
+            analysis/robust_agg_weekly/${{ github.run_number }}/**/*
+          retention-days: 90
+
+  consolidated_analysis:
+    needs: robust_agg_experiments
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pandas matplotlib seaborn numpy scipy
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: robust-agg-artifacts
+
+      - name: Generate consolidated comparison plots
+        run: |
+          mkdir -p analysis/robust_agg_weekly/consolidated
+
+          # Generate algorithm vs adversary comparison plots
+          python scripts/plot_robust_agg_comparison.py \
+            --artifacts_dir robust-agg-artifacts \
+            --output_dir analysis/robust_agg_weekly/consolidated
+
+          # Create summary report
+          cat > analysis/robust_agg_weekly/consolidated/README.md << 'EOF'
+          # Robust Aggregation Weekly Analysis
+
+          Auto-generated on $(date)
+
+          ## Experiment Configuration
+
+          - **Algorithms**: FedAvg, Krum, Bulyan, Median
+          - **Adversary Rates**: 0.0, 0.2, 0.4
+          - **Clients**: 10
+          - **Rounds**: 10
+          - **Seeds**: 3 (for statistical significance)
+
+          ## Results Summary
+
+          See generated plots for algorithm performance under Byzantine attacks.
+
+          ### Key Metrics
+
+          - **Macro F1**: Model classification performance
+          - **L2 Distance**: Divergence from benign mean
+          - **Cosine Similarity**: Agreement with benign models
+
+          EOF
+
+      - name: Upload consolidated analysis
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: robust-agg-consolidated-${{ github.sha }}
+          path: analysis/robust_agg_weekly/consolidated/**
+          retention-days: 90
+
+  commit_analysis_results:
+    needs: [consolidated_analysis]
+    runs-on: ubuntu-latest
+    if: always() && needs.consolidated_analysis.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download consolidated results
+        uses: actions/download-artifact@v4
+        with:
+          name: robust-agg-consolidated-${{ github.sha }}
+          path: analysis/robust_agg_weekly/consolidated
+
+      - name: Commit analysis results to repository
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          # Create timestamped directory
+          TIMESTAMP=$(date +%Y-%m-%d)
+          TARGET_DIR="analysis/robust_agg_weekly/${TIMESTAMP}"
+          mkdir -p "$TARGET_DIR"
+
+          # Copy consolidated results
+          if [ -d "analysis/robust_agg_weekly/consolidated" ]; then
+            cp -r analysis/robust_agg_weekly/consolidated/* "$TARGET_DIR/"
+          fi
+
+          # Add to git
+          git add analysis/robust_agg_weekly/
+
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "feat(analysis): add robust aggregation weekly results for ${TIMESTAMP}" \
+              -m "Generated by GitHub Actions workflow: robust-agg-weekly" \
+              -m "Run ID: ${{ github.run_id }}" \
+              -m "Commit: ${{ github.sha }}"
+          fi
+
+      - name: Push analysis results
+        run: |
+          # Check if there are unpushed commits
+          if git log origin/${{ github.ref_name }}..HEAD --oneline | grep -q .; then
+            git push origin ${{ github.ref_name }}
+          else
+            echo "No commits to push"
+          fi
+
+  notify_failure:
+    needs: robust_agg_experiments
+    runs-on: ubuntu-latest
+    if: always() && needs.robust_agg_experiments.result == 'failure'
+    steps:
+      - name: Log robust aggregation failure
+        run: |
+          echo "🚨 Robust Aggregation Weekly Failed"
+          echo "Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Failed at: $(date)"

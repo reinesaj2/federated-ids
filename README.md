@@ -468,7 +468,77 @@ python scripts/prepare_unsw_sample.py \
 
 ---
 
-## 10) Privacy & robustness disclosure (D2 scope)
+## 10) Automated Robust Aggregation Testing
+
+The repository includes automated weekly experiments comparing robust aggregation algorithms under Byzantine attacks.
+
+### Robust Aggregation Weekly Workflow
+
+A GitHub Actions workflow runs every Saturday to validate robust aggregator claims:
+
+**Configuration:**
+- **Schedule**: Saturdays at 4 AM UTC
+- **Algorithms**: FedAvg, Krum, Bulyan, Median
+- **Adversary Rates**: 0%, 20%, 40% Byzantine clients
+- **Dataset**: Synthetic data with Dirichlet non-IID (α=0.1)
+- **Rounds**: 10 training rounds, 3 seeds for statistical significance
+
+**Expected Behavior:**
+- **FedAvg**: High performance with no adversaries, significant degradation under attack
+- **Krum/Bulyan/Median**: Robust to Byzantine attacks, maintain F1 >0.60 with adversaries
+
+**Results Location:**
+- Committed to `analysis/robust_agg_weekly/YYYY-MM-DD/`
+- Includes comparison plots (F1 vs adversary rate, L2 distance, heatmaps)
+- Artifacts retained for 90 days in GitHub Actions
+
+**Manual Trigger:**
+```bash
+gh workflow run robust-agg-weekly.yml
+```
+
+**Local Execution:**
+```bash
+# Run a single configuration
+python scripts/comparative_analysis.py \
+  --dimension aggregation \
+  --adv_fraction 0.2 \
+  --aggregation bulyan \
+  --num_clients 10 \
+  --rounds 10
+
+# Generate summary
+python scripts/summarize_robust_agg.py \
+  --runs_dir runs \
+  --output_dir analysis/robust_agg_weekly/test
+
+# Create comparison plots
+python scripts/plot_robust_agg_comparison.py \
+  --artifacts_dir runs \
+  --output_dir analysis/robust_agg_weekly/test
+```
+
+**Validation:**
+
+The workflow includes adversarial validation via `scripts/ci_checks.py`:
+
+```bash
+python scripts/ci_checks.py \
+  --adversarial_validation \
+  --aggregation bulyan \
+  --adv_fraction 0.2
+```
+
+Validation ensures:
+- Minimum F1 thresholds based on adversary rate
+- Maximum L2 distance bounds for robust aggregators
+- Correct client type distribution (benign vs adversarial)
+
+See `analysis/robust_agg_weekly/README.md` for detailed metrics and interpretation.
+
+---
+
+## 11) Privacy & robustness disclosure (D2 scope)
 
 For a comprehensive threat model including adversary assumptions, attack scenarios, and defense mechanisms, see [docs/threat_model.md](docs/threat_model.md).
 
