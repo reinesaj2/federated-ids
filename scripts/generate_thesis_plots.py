@@ -34,7 +34,7 @@ for candidate in (ROOT, ROOT / "scripts"):
 
 from plot_metrics_utils import compute_confidence_interval  # noqa: E402
 from privacy_accounting import compute_epsilon  # noqa: E402
-from metric_validation import MetricValidator, validate_experiment_data  # noqa: E402
+from metric_validation import MetricValidator  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -395,18 +395,18 @@ def load_experiment_results(runs_dir: Path) -> pd.DataFrame:
         return pd.DataFrame()
 
     combined_df = pd.concat(all_data, ignore_index=True)
-    
+
     # Validate metrics before returning
     validator = MetricValidator()
     warnings = validator.validate_plot_metrics(combined_df, "experiment_data")
-    
+
     if warnings:
         logger.warning(f"Metric validation warnings: {len(warnings)} issues found")
         for warning in warnings[:5]:  # Show first 5 warnings
             logger.warning(f"  {warning}")
         if len(warnings) > 5:
             logger.warning(f"  ... and {len(warnings) - 5} more warnings")
-    
+
     return combined_df
 
 
@@ -704,15 +704,15 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 1: Final L2 Distance by Alpha and Mu
     ax1 = axes[0, 0]
     alpha_mu_data = df.groupby(['alpha', 'fedprox_mu'])['l2_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
-    
+
     for alpha in sorted(df['alpha'].unique()):
         alpha_data = alpha_mu_data[alpha_mu_data['alpha'] == alpha]
         mu_values = alpha_data['fedprox_mu'].values
         means = alpha_data['mean'].values
         stds = alpha_data['std'].values
-        
+
         ax1.errorbar(mu_values, means, yerr=stds, marker='o', label=f'Alpha={alpha}', linewidth=2, markersize=8)
-    
+
     ax1.set_xlabel('FedProx Mu Value')
     ax1.set_ylabel('Final L2 Distance to Benign Model')
     ax1.set_title('L2 Distance vs FedProx Strength by Heterogeneity Level')
@@ -723,15 +723,15 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 2: Final Cosine Similarity by Alpha and Mu
     ax2 = axes[0, 1]
     alpha_mu_cos_data = df.groupby(['alpha', 'fedprox_mu'])['cos_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
-    
+
     for alpha in sorted(df['alpha'].unique()):
         alpha_data = alpha_mu_cos_data[alpha_mu_cos_data['alpha'] == alpha]
         mu_values = alpha_data['fedprox_mu'].values
         means = alpha_data['mean'].values
         stds = alpha_data['std'].values
-        
+
         ax2.errorbar(mu_values, means, yerr=stds, marker='s', label=f'Alpha={alpha}', linewidth=2, markersize=8)
-    
+
     ax2.set_xlabel('FedProx Mu Value')
     ax2.set_ylabel('Final Cosine Similarity to Benign Model')
     ax2.set_title('Cosine Similarity vs FedProx Strength by Heterogeneity Level')
@@ -742,13 +742,13 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 3: Convergence Curves for Different Mu Values (Alpha=0.1)
     ax3 = axes[1, 0]
     extreme_non_iid = df[df['alpha'] == 0.1]
-    
+
     for mu in sorted(extreme_non_iid['fedprox_mu'].unique()):
         mu_data = extreme_non_iid[extreme_non_iid['fedprox_mu'] == mu]
         if 'round' in mu_data.columns and 'l2_to_benign_mean' in mu_data.columns:
             round_means = mu_data.groupby('round')['l2_to_benign_mean'].mean()
             ax3.plot(round_means.index, round_means.values, marker='o', label=f'Mu={mu}', linewidth=2)
-    
+
     ax3.set_xlabel('Round')
     ax3.set_ylabel('L2 Distance to Benign Model')
     ax3.set_title('Convergence Curves: Extreme Non-IID (Alpha=0.1)')
@@ -758,7 +758,7 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 4: Heatmap of Final Performance
     ax4 = axes[1, 1]
     pivot_data = df.groupby(['alpha', 'fedprox_mu'])['l2_to_benign_mean'].mean().unstack()
-    
+
     im = ax4.imshow(pivot_data.values, cmap='viridis', aspect='auto')
     ax4.set_xticks(range(len(pivot_data.columns)))
     ax4.set_xticklabels([f'{mu:.2f}' for mu in pivot_data.columns])
@@ -767,13 +767,13 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     ax4.set_xlabel('FedProx Mu Value')
     ax4.set_ylabel('Alpha (Heterogeneity Level)')
     ax4.set_title('L2 Distance Heatmap: Alpha vs Mu')
-    
+
     # Add colorbar
     cbar = plt.colorbar(im, ax=ax4)
     cbar.set_label('Final L2 Distance')
 
     plt.tight_layout()
-    
+
     # Save plot
     output_file = output_dir / "fedprox_heterogeneity_analysis.png"
     plt.savefig(output_file, dpi=300, bbox_inches='tight')
@@ -915,10 +915,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     num_seeds = len(df["seed"].unique()) if "seed" in df.columns else 1
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    subtitle = (
-        f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | "
-        f"Attack: grad_ascent | Seeds: n={num_seeds}"
-    )
+    subtitle = f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | " f"Attack: grad_ascent | Seeds: n={num_seeds}"
     fig.suptitle(f"Attack Resilience Comparison\n{subtitle}", fontsize=14, fontweight="bold")
 
     final_rounds = df.groupby(["aggregation", "adversary_fraction", "seed"]).tail(1)
@@ -1137,72 +1134,56 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     plt.close()
 
 
-def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[Path] = None):
-    """Plot privacy-utility tradeoff."""
-    if "dp_enabled" not in df.columns:
+def generate_privacy_utility_curve(df: pd.DataFrame, output_dir: Path, runs_dir: Path) -> None:
+    """
+    Generate privacy-utility curve visualization with formal epsilon accounting.
+
+    Creates curve showing macro-F1 vs epsilon (privacy budget) for DP-enabled experiments.
+    Aggregates multiple seeds with 95% confidence intervals.
+
+    Args:
+        df: Experiment results dataframe with final metrics per run
+        output_dir: Directory to save plots and CSV summaries
+        runs_dir: Root directory containing individual run outputs
+
+    This function:
+    1. Filters DP-enabled experiments from results
+    2. Prepares privacy curve data (epsilon, macro-F1, seed)
+    3. Aggregates across seeds with confidence intervals
+    4. Renders epsilon-utility tradeoff visualization
+    5. Saves summary CSV for thesis tables
+    """
+    if df.empty:
         return
 
-    final_rounds = df.groupby(["dp_enabled", "dp_noise_multiplier", "seed"]).tail(1)
+    # Filter to experiments with privacy data
+    dp_experiments = df[df.get("dp_enabled", False)]
+    if dp_experiments.empty:
+        return
 
-    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
-    fig.suptitle("Privacy-Utility Tradeoff", fontsize=16, fontweight="bold")
+    # Prepare data for privacy curve (aggregates clients, computes epsilon)
+    dp_df, baseline_df = _prepare_privacy_curve_data(dp_experiments, runs_dir)
 
-    # Plot 1: L2 distance vs DP noise
-    if "l2_to_benign_mean" in final_rounds.columns:
-        ax = axes[0]
-        dp_data = final_rounds[final_rounds["dp_enabled"]]
-        if not dp_data.empty:
-            summary = dp_data.groupby("dp_noise_multiplier")["l2_to_benign_mean"].agg(["mean", "std"])
-            ax.errorbar(
-                summary.index,
-                summary["mean"],
-                yerr=summary["std"],
-                marker="o",
-                capsize=5,
-                label="DP Enabled",
-            )
+    if dp_df.empty:
+        return
 
-        # Add baseline without DP
-        no_dp = final_rounds[~final_rounds["dp_enabled"]]["l2_to_benign_mean"].mean()
-        ax.axhline(y=no_dp, color="green", linestyle="--", label="No DP (Baseline)")
-
-        ax.set_title("Model Accuracy vs DP Noise")
-        ax.set_xlabel("DP Noise Multiplier (σ)")
-        ax.set_ylabel("L2 Distance to Benign Mean")
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-    # Plot 2: Cosine similarity vs DP
-    if "cos_to_benign_mean" in final_rounds.columns:
-        ax = axes[1]
-        comparison_data = []
-        for enabled in [False, True]:
-            subset = final_rounds[final_rounds["dp_enabled"] == enabled]
-            if not subset.empty:
-                comparison_data.append(
-                    {
-                        "DP": "Enabled" if enabled else "Disabled",
-                        "Cosine Similarity": subset["cos_to_benign_mean"].values,
-                    }
-                )
-
-        if comparison_data:
-            rows = [
-                {"DP": item["DP"], "Cosine Similarity": val}
-                for item in comparison_data
-                for val in item["Cosine Similarity"]
-            ]
-            plot_df = pd.DataFrame(rows)
-            sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
-            ax.set_title("Model Alignment with DP")
-
-    plt.tight_layout()
-    plt.savefig(output_dir / "privacy_utility.png", dpi=300, bbox_inches="tight")
-    plt.close()
-
-    runs_root = Path(runs_dir) if runs_dir is not None else Path("runs")
-    dp_df, baseline_df = _prepare_privacy_curve_data(final_rounds, runs_root)
+    # Render curve with summary stats
     _render_privacy_curve(dp_df, baseline_df, output_dir)
+
+
+def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Path) -> None:
+    """
+    Plot privacy-utility tradeoff for DP experiments.
+
+    Wrapper for thesis dimension: "privacy".
+    Generates formal privacy-utility curve showing macro-F1 vs epsilon.
+
+    Args:
+        df: Experiment results
+        output_dir: Output directory
+        runs_dir: Run directory root
+    """
+    generate_privacy_utility_curve(df, output_dir, runs_dir)
 
 
 def plot_personalization_benefit(df: pd.DataFrame, output_dir: Path):
