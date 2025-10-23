@@ -28,19 +28,23 @@ class TestExtractMacroF1:
 
     def test_extract_from_macro_f1_after_column(self):
         """Should extract macro_f1_after if present."""
-        row = pd.Series({
-            "macro_f1_after": 0.85,
-            "macro_f1_global": 0.80,
-        })
+        row = pd.Series(
+            {
+                "macro_f1_after": 0.85,
+                "macro_f1_global": 0.80,
+            }
+        )
         result = _extract_macro_f1(row)
         assert result == 0.85
 
     def test_extract_from_macro_f1_global_column(self):
         """Should extract macro_f1_global if _after not present."""
-        row = pd.Series({
-            "macro_f1_global": 0.80,
-            "macro_f1_personalized": 0.82,
-        })
+        row = pd.Series(
+            {
+                "macro_f1_global": 0.80,
+                "macro_f1_personalized": 0.82,
+            }
+        )
         result = _extract_macro_f1(row)
         assert result == 0.80
 
@@ -52,10 +56,12 @@ class TestExtractMacroF1:
 
     def test_extract_skips_nan_values(self):
         """Should skip NaN values and try next column."""
-        row = pd.Series({
-            "macro_f1_after": float("nan"),
-            "macro_f1_global": 0.80,
-        })
+        row = pd.Series(
+            {
+                "macro_f1_after": float("nan"),
+                "macro_f1_global": 0.80,
+            }
+        )
         result = _extract_macro_f1(row)
         assert result == 0.80
 
@@ -97,12 +103,14 @@ class TestComputeEpsilonFallback:
     def test_uses_final_row_values_when_available(self):
         """Should prefer dp_sigma from final_row if available."""
         row = {"dp_noise_multiplier": 0.5}
-        final_row = pd.Series({
-            "dp_sigma": 1.0,
-            "round": 20,
-            "dp_delta": 1e-5,
-            "dp_sample_rate": 1.0,
-        })
+        final_row = pd.Series(
+            {
+                "dp_sigma": 1.0,
+                "round": 20,
+                "dp_delta": 1e-5,
+                "dp_sample_rate": 1.0,
+            }
+        )
         epsilon = _compute_epsilon_fallback(row, final_row)
         assert epsilon is not None
         # Noise 1.0 should give different epsilon than 0.5
@@ -115,10 +123,12 @@ class TestPreparePrivacyCurveData:
 
     def test_returns_empty_dataframes_without_run_dir_column(self):
         """Should return empty dataframes when run_dir column missing."""
-        final_rounds = pd.DataFrame({
-            "seed": [42],
-            "dp_enabled": [True],
-        })
+        final_rounds = pd.DataFrame(
+            {
+                "seed": [42],
+                "dp_enabled": [True],
+            }
+        )
         with tempfile.TemporaryDirectory() as tmpdir:
             runs_root = Path(tmpdir)
             dp_df, baseline_df = _prepare_privacy_curve_data(final_rounds, runs_root)
@@ -127,11 +137,13 @@ class TestPreparePrivacyCurveData:
 
     def test_returns_empty_dataframes_when_run_dir_not_found(self):
         """Should return empty dataframes when run directories don't exist."""
-        final_rounds = pd.DataFrame({
-            "run_dir": ["nonexistent_run"],
-            "seed": [42],
-            "dp_enabled": [True],
-        })
+        final_rounds = pd.DataFrame(
+            {
+                "run_dir": ["nonexistent_run"],
+                "seed": [42],
+                "dp_enabled": [True],
+            }
+        )
         with tempfile.TemporaryDirectory() as tmpdir:
             runs_root = Path(tmpdir)
             dp_df, baseline_df = _prepare_privacy_curve_data(final_rounds, runs_root)
@@ -146,19 +158,23 @@ class TestPreparePrivacyCurveData:
             run_dir.mkdir(parents=True)
 
             # Create client metrics files
-            client_df = pd.DataFrame({
-                "round": [1, 2, 3],
-                "macro_f1_after": [0.70, 0.75, 0.80],
-            })
+            client_df = pd.DataFrame(
+                {
+                    "round": [1, 2, 3],
+                    "macro_f1_after": [0.70, 0.75, 0.80],
+                }
+            )
             (run_dir / "client_0_metrics.csv").write_text(client_df.to_csv(index=False))
             (run_dir / "client_1_metrics.csv").write_text(client_df.to_csv(index=False))
 
-            final_rounds = pd.DataFrame({
-                "run_dir": [str(run_dir)],
-                "seed": [42],
-                "dp_enabled": [False],
-                "dp_noise_multiplier": [0.0],
-            })
+            final_rounds = pd.DataFrame(
+                {
+                    "run_dir": [str(run_dir)],
+                    "seed": [42],
+                    "dp_enabled": [False],
+                    "dp_noise_multiplier": [0.0],
+                }
+            )
 
             dp_df, baseline_df = _prepare_privacy_curve_data(final_rounds, runs_root)
 
@@ -175,23 +191,27 @@ class TestPreparePrivacyCurveData:
             run_dir.mkdir(parents=True)
 
             # Create client metrics files with DP fields
-            client_df = pd.DataFrame({
-                "round": [1, 2, 3],
-                "macro_f1_after": [0.70, 0.75, 0.80],
-                "dp_sigma": [1.0, 1.0, 1.0],
-                "dp_delta": [1e-5, 1e-5, 1e-5],
-            })
+            client_df = pd.DataFrame(
+                {
+                    "round": [1, 2, 3],
+                    "macro_f1_after": [0.70, 0.75, 0.80],
+                    "dp_sigma": [1.0, 1.0, 1.0],
+                    "dp_delta": [1e-5, 1e-5, 1e-5],
+                }
+            )
             (run_dir / "client_0_metrics.csv").write_text(client_df.to_csv(index=False))
             (run_dir / "client_1_metrics.csv").write_text(client_df.to_csv(index=False))
 
-            final_rounds = pd.DataFrame({
-                "run_dir": [str(run_dir)],
-                "seed": [42],
-                "dp_enabled": [True],
-                "dp_noise_multiplier": [1.0],
-                "dp_delta": [1e-5],
-                "round": [3],
-            })
+            final_rounds = pd.DataFrame(
+                {
+                    "run_dir": [str(run_dir)],
+                    "seed": [42],
+                    "dp_enabled": [True],
+                    "dp_noise_multiplier": [1.0],
+                    "dp_delta": [1e-5],
+                    "round": [3],
+                }
+            )
 
             dp_df, baseline_df = _prepare_privacy_curve_data(final_rounds, runs_root)
 
@@ -218,12 +238,14 @@ class TestRenderPrivacyCurve:
 
     def test_generates_summary_csv(self):
         """Should generate privacy_utility_curve.csv summary."""
-        dp_df = pd.DataFrame({
-            "epsilon": [0.5, 1.0, 2.0, 0.5, 1.0, 2.0],
-            "macro_f1": [0.70, 0.75, 0.80, 0.72, 0.76, 0.82],
-            "seed": [42, 42, 42, 43, 43, 43],
-            "dp_noise_multiplier": [2.0, 1.0, 0.5, 2.0, 1.0, 0.5],
-        })
+        dp_df = pd.DataFrame(
+            {
+                "epsilon": [0.5, 1.0, 2.0, 0.5, 1.0, 2.0],
+                "macro_f1": [0.70, 0.75, 0.80, 0.72, 0.76, 0.82],
+                "seed": [42, 42, 42, 43, 43, 43],
+                "dp_noise_multiplier": [2.0, 1.0, 0.5, 2.0, 1.0, 0.5],
+            }
+        )
         baseline_df = pd.DataFrame()
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -243,12 +265,14 @@ class TestRenderPrivacyCurve:
     def test_confidence_intervals_are_valid(self):
         """Should compute valid confidence intervals (ci_lower <= mean <= ci_upper)."""
         # Multi-seed data for CI computation
-        dp_df = pd.DataFrame({
-            "epsilon": [1.0] * 5,
-            "macro_f1": [0.75, 0.76, 0.74, 0.77, 0.76],
-            "seed": [42, 43, 44, 45, 46],
-            "dp_noise_multiplier": [1.0] * 5,
-        })
+        dp_df = pd.DataFrame(
+            {
+                "epsilon": [1.0] * 5,
+                "macro_f1": [0.75, 0.76, 0.74, 0.77, 0.76],
+                "seed": [42, 43, 44, 45, 46],
+                "dp_noise_multiplier": [1.0] * 5,
+            }
+        )
         baseline_df = pd.DataFrame()
 
         with tempfile.TemporaryDirectory() as tmpdir:
