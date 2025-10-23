@@ -228,11 +228,28 @@ jobs:
         with:
           path: nightly-artifacts
 
+      - name: Download historical baseline
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: fedprox-baseline-90d
+          path: baseline-artifacts
+
       - name: Generate FedProx comparison summary
         run: |
           python scripts/analyze_fedprox_comparison.py \
             --artifacts_dir nightly-artifacts \
+            --baseline_dir baseline-artifacts \
             --output_dir fedprox-summary
+
+      - name: Validate regression report
+        if: always()
+        run: |
+          if [ -f fedprox-summary/historical/regression_report.json ]; then
+            python scripts/ci_checks.py \
+              --runs_dir runs \
+              --regression_report fedprox-summary/historical/regression_report.json
+          fi
 
       - name: Upload consolidated results
         uses: actions/upload-artifact@v4
@@ -247,6 +264,15 @@ jobs:
             fedprox-summary/fedprox_thesis_tables.tex
             fedprox-summary/thesis_plots/**/*.png
             fedprox-summary/thesis_plots/**/*.pdf
+            fedprox-summary/historical/**/*
+          retention-days: 90
+
+      - name: Upload historical baseline for next run
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fedprox-baseline-90d
+          path: fedprox-summary/historical/baselines.csv
           retention-days: 90
 
       - name: Locate baseline summary run
@@ -278,25 +304,20 @@ jobs:
               run_id: baseline.id,
               per_page: 20,
             });
-
-            const summary = artifacts.data.artifacts.find(artifact => artifact.name.startsWith('fedprox-nightly-summary-'));
-            if (!summary) {
-              core.info('Prior successful run did not publish a summary artifact.');
+            const summaryArtifact = artifacts.data.artifacts.find(a => a.name === 'fedprox-nightly-summary-' + baseline.head_sha);
+            if (!summaryArtifact) {
+              core.info('Baseline summary artifact not found; skipping regression comparison.');
               core.setOutput('run_id', '');
               core.setOutput('artifact_name', '');
               return;
             }
 
-            core.info(`Using baseline run ${baseline.id} artifact ${summary.name}`);
-            core.setOutput('run_id', String(baseline.id));
-            core.setOutput('artifact_name', summary.name);
+            core.setOutput('run_id', baseline.id);
+            core.setOutput('artifact_name', summaryArtifact.name);
 
-      - name: Download baseline summary artifact
+      - uses: actions/download-artifact@v4
         if: steps.find_baseline.outputs.artifact_name != ''
-        uses: actions/download-artifact@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ steps.find_baseline.outputs.run_id }}
           name: ${{ steps.find_baseline.outputs.artifact_name }}
           path: baseline-summary
 
@@ -343,7 +364,7 @@ jobs:
         with:
           name: fedprox-regression-report-${{ github.sha }}
           path: regression-report
-          retention-days: 30
+          retention-days: 90
 
   commit_plots:
     needs: [fedprox_summary]
@@ -565,4 +586,4 @@ jobs:
           name: manual-fedprox-comparison-${{ github.sha }}
           path: runs/**
           include-hidden-files: false
-          retention-days: 14
+          retention-days: 90
