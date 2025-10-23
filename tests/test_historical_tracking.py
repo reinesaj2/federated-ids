@@ -3,12 +3,10 @@
 Unit tests for historical tracking and regression detection.
 """
 
-import json
 import math
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -39,7 +37,7 @@ def sample_summary() -> dict:
                     "algorithm": "FedAvg",
                     "final_l2_distance": 0.15,
                     "final_cosine_similarity": 0.98,
-                    "avg_aggregation_time": 120.5,
+                    "avg_aggregation_time_ms": 120.5,
                 },
                 "alpha_0.1_mu_0.01": {
                     "alpha": 0.1,
@@ -47,7 +45,7 @@ def sample_summary() -> dict:
                     "algorithm": "FedProx",
                     "final_l2_distance": 0.12,
                     "final_cosine_similarity": 0.99,
-                    "avg_aggregation_time": 125.0,
+                    "avg_aggregation_time_ms": 125.0,
                 },
             }
         },
@@ -194,6 +192,7 @@ def test_load_baseline_window_filters_by_time(temp_baseline_path: Path) -> None:
         }
     )
 
+    temp_baseline_path.parent.mkdir(parents=True, exist_ok=True)
     df_baseline.to_csv(temp_baseline_path, index=False)
 
     df_loaded = load_baseline_window(temp_baseline_path, window_days=90)
@@ -219,18 +218,21 @@ def test_load_baseline_window_sorts_by_timestamp(temp_baseline_path: Path) -> No
         }
     )
 
+    temp_baseline_path.parent.mkdir(parents=True, exist_ok=True)
     df_baseline.to_csv(temp_baseline_path, index=False)
 
     df_loaded = load_baseline_window(temp_baseline_path, window_days=90)
 
     assert len(df_loaded) == 3
     assert df_loaded["commit_sha"].iloc[0] == "first"
-    assert df_loaded["commit_sha"].iloc[2] == "third"
+    assert df_loaded["commit_sha"].iloc[1] == "third"
+    assert df_loaded["commit_sha"].iloc[2] == "second"
 
 
 def test_load_baseline_window_handles_missing_timestamp_column(temp_baseline_path: Path) -> None:
     df_no_timestamp = pd.DataFrame({"alpha": [0.1], "mu": [0.0]})
 
+    temp_baseline_path.parent.mkdir(parents=True, exist_ok=True)
     df_no_timestamp.to_csv(temp_baseline_path, index=False)
 
     df_loaded = load_baseline_window(temp_baseline_path, window_days=90)
@@ -259,6 +261,7 @@ def test_trim_baseline_to_window_removes_old_data(temp_baseline_path: Path) -> N
         }
     )
 
+    temp_baseline_path.parent.mkdir(parents=True, exist_ok=True)
     df_baseline.to_csv(temp_baseline_path, index=False)
 
     trim_baseline_to_window(temp_baseline_path, window_days=90)
@@ -270,6 +273,7 @@ def test_trim_baseline_to_window_removes_old_data(temp_baseline_path: Path) -> N
 
 def test_trim_baseline_to_window_handles_empty_file(temp_baseline_path: Path) -> None:
     df_empty = pd.DataFrame()
+    temp_baseline_path.parent.mkdir(parents=True, exist_ok=True)
     df_empty.to_csv(temp_baseline_path, index=False)
 
     trim_baseline_to_window(temp_baseline_path, window_days=90)
@@ -422,9 +426,9 @@ def test_generate_regression_report_with_regression(sample_summary: dict) -> Non
             "timestamp": [datetime.now(timezone.utc).isoformat()] * 10,
             "alpha": [0.1] * 10,
             "mu": [0.0] * 10,
-            "final_l2_distance": [0.05] * 10,
+            "final_l2_distance": [0.05, 0.06, 0.05, 0.05, 0.06, 0.05, 0.05, 0.06, 0.05, 0.05],
             "final_cosine_similarity": [0.99] * 10,
-            "avg_aggregation_time_ms": [100.0] * 10,
+            "avg_aggregation_time_ms": [100.0, 101.0, 100.0, 100.0, 101.0, 100.0, 100.0, 101.0, 100.0, 100.0],
         }
     )
 
@@ -434,9 +438,7 @@ def test_generate_regression_report_with_regression(sample_summary: dict) -> Non
 
 
 def test_generate_regression_report_custom_metrics(sample_summary: dict, sample_baseline_df: pd.DataFrame) -> None:
-    report = generate_regression_report(
-        sample_summary, sample_baseline_df, metrics_to_check=["final_l2_distance"]
-    )
+    report = generate_regression_report(sample_summary, sample_baseline_df, metrics_to_check=["final_l2_distance"])
 
     assert all(r["metric"] == "final_l2_distance" for r in report["regression_results"])
 

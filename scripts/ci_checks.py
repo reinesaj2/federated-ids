@@ -350,9 +350,7 @@ def validate_no_regression(
             return
 
         regression_results = regression_report.get("regression_results", [])
-        regressed_metrics = [
-            r for r in regression_results if r.get("regression_detected", False)
-        ]
+        regressed_metrics = [r for r in regression_results if r.get("regression_detected", False)]
 
         if not regressed_metrics:
             return

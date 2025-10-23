@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 
@@ -92,17 +91,20 @@ def load_baseline_window(baseline_path: Path, window_days: int = 90) -> pd.DataF
     if not baseline_path.exists():
         return pd.DataFrame()
 
-    df = pd.read_csv(baseline_path)
+    try:
+        df = pd.read_csv(baseline_path)
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame()
+
     if df.empty:
         return df
 
     if "timestamp" not in df.columns:
         return df
 
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=window_days)
-    cutoff = cutoff.replace(tzinfo=None)
 
     df_filtered = df[df["timestamp"] >= cutoff].copy()
 
@@ -310,9 +312,10 @@ def generate_regression_report(
         if alpha is None or mu is None:
             continue
 
-        config_baseline = baseline_df[
-            (baseline_df["alpha"] == alpha) & (baseline_df["mu"] == mu)
-        ].copy()
+        if baseline_df.empty or "alpha" not in baseline_df.columns or "mu" not in baseline_df.columns:
+            config_baseline = pd.DataFrame()
+        else:
+            config_baseline = baseline_df[(baseline_df["alpha"] == alpha) & (baseline_df["mu"] == mu)].copy()
 
         for metric_name in metrics_to_check:
             current_value = config_data.get(metric_name)
@@ -320,9 +323,7 @@ def generate_regression_report(
                 continue
 
             current_metrics = {metric_name: current_value}
-            regression_result = detect_regression(
-                current_metrics, config_baseline, metric_name, threshold_std
-            )
+            regression_result = detect_regression(current_metrics, config_baseline, metric_name, threshold_std)
 
             regression_result["alpha"] = alpha
             regression_result["mu"] = mu
