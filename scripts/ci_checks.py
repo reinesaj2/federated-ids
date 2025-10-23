@@ -323,6 +323,72 @@ def validate_seed_coverage(run_directories: List[Path], minimum_seeds: int = 5) 
             )
 
 
+def validate_no_regression(
+    regression_report_path: Path,
+    fail_on_regression: bool = True,
+) -> None:
+    """Validate that no performance regression occurred compared to baseline.
+
+    Args:
+        regression_report_path: Path to regression report JSON file
+        fail_on_regression: If True, raise error on regression; otherwise warn
+
+    Raises:
+        ArtifactValidationError: If regression detected and fail_on_regression is True
+    """
+    if not regression_report_path.exists():
+        return
+
+    try:
+        import json
+
+        with open(regression_report_path, "r", encoding="utf-8") as f:
+            regression_report = json.load(f)
+
+        if not regression_report.get("any_regression_detected", False):
+            print("[PASS] No performance regression detected vs 90-day baseline")
+            return
+
+        regression_results = regression_report.get("regression_results", [])
+        regressed_metrics = [
+            r for r in regression_results if r.get("regression_detected", False)
+        ]
+
+        if not regressed_metrics:
+            return
+
+        threshold = regression_report.get("threshold_std", 2.0)
+        messages = []
+
+        for result in regressed_metrics:
+            metric = result.get("metric", "unknown")
+            z_score = result.get("z_score", 0.0)
+            current = result.get("current", 0.0)
+            baseline_mean = result.get("baseline_mean", 0.0)
+            alpha = result.get("alpha", "N/A")
+            mu = result.get("mu", "N/A")
+
+            messages.append(
+                f"  - {metric} (alpha={alpha}, mu={mu}): "
+                f"z-score={z_score:.2f} > {threshold:.1f}, "
+                f"current={current:.4f}, baseline_mean={baseline_mean:.4f}"
+            )
+
+        msg = "Performance regression detected:\n" + "\n".join(messages)
+
+        if fail_on_regression:
+            raise ArtifactValidationError(msg)
+        else:
+            print(f"[WARNING] {msg}")
+
+    except json.JSONDecodeError as e:
+        print(f"[WARNING] Failed to parse regression report: {e}")
+    except ArtifactValidationError:
+        raise
+    except Exception as e:
+        print(f"[WARNING] Regression validation error: {e}")
+
+
 def main() -> None:
     """Main CI validation entry point."""
     import os
@@ -342,15 +408,32 @@ def main() -> None:
         help="Enforce strict FPR tolerance (raises error on violations). Default: warnings only.",
     )
 
+    parser.add_argument(
+        "--regression_report",
+        type=str,
+        required=False,
+        help="Path to regression report JSON for validation",
+    )
+
+    parser.add_argument(
+        "--regression_strict",
+        action="store_true",
+        help="Fail CI if regression detected. Default: warnings only.",
+    )
+
     args = parser.parse_args()
 
-    # Allow environment variable to override FPR strictness
-    # FPR_STRICT=1 for strict validation (errors), FPR_STRICT=0 for warnings only
     fpr_strict_env = os.environ.get("FPR_STRICT", "0")
     fpr_strict = args.fpr_strict or (fpr_strict_env == "1")
 
+    regression_strict_env = os.environ.get("REGRESSION_STRICT", "0")
+    regression_strict = args.regression_strict or (regression_strict_env == "1")
+
     if not fpr_strict:
         print("[INFO] FPR tolerance check: warnings only (not blocking)")
+
+    if not regression_strict:
+        print("[INFO] Regression check: warnings only (not blocking)")
 
     try:
         runs_dir = Path(args.runs_dir)
@@ -363,6 +446,10 @@ def main() -> None:
             validate_run_directory(run_dir, fpr_strict=fpr_strict)
 
         print(f"[PASS] All {len(run_directories)} run directories passed validation")
+
+        if args.regression_report:
+            regression_report_path = Path(args.regression_report)
+            validate_no_regression(regression_report_path, fail_on_regression=regression_strict)
 
     except ArtifactValidationError as e:
         print(f"[ERROR] Validation failed: {e}", file=sys.stderr)

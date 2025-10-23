@@ -12,11 +12,13 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Mapping, Optional, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -416,8 +418,12 @@ def write_summary(
     aggregated: pd.DataFrame,
     significance: Sequence[dict[str, object]],
     output_dir: Path,
-) -> None:
+    run_timestamp: Optional[str] = None,
+) -> dict[str, object]:
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    if run_timestamp is None:
+        run_timestamp = datetime.now(timezone.utc).isoformat()
 
     runs_payload = [
         {
@@ -433,10 +439,25 @@ def write_summary(
         for run in run_metrics
     ]
 
+    convergence_analysis = {}
+    for run in run_metrics:
+        key = f"alpha_{run.alpha}_mu_{run.mu}"
+        if key not in convergence_analysis:
+            convergence_analysis[key] = {
+                "alpha": run.alpha,
+                "mu": run.mu,
+                "algorithm": run.algorithm,
+                "final_l2_distance": float("nan"),
+                "final_cosine_similarity": float("nan"),
+                "avg_aggregation_time": run.mean_aggregation_time_ms,
+            }
+
     summary = {
+        "run_timestamp": run_timestamp,
         "runs": runs_payload,
         "aggregated": aggregated.to_dict(orient="records"),
         "significance": list(significance),
+        "raw_analysis_results": {"convergence_analysis": convergence_analysis},
     }
 
     (output_dir / "fedprox_comparison_summary.json").write_text(
@@ -444,6 +465,8 @@ def write_summary(
         encoding="utf-8",
     )
     aggregated.to_csv(output_dir / "fedprox_comparison_summary.csv", index=False)
+
+    return summary
 
 
 def generate_thesis_tables(
@@ -528,6 +551,12 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="Directory where outputs (plots/tables) will be written.",
     )
+    parser.add_argument(
+        "--baseline_dir",
+        type=Path,
+        required=False,
+        help="Directory containing historical baseline artifacts for regression detection.",
+    )
     return parser.parse_args()
 
 
@@ -549,9 +578,57 @@ def main() -> None:
     for metric_name in ("weighted_macro_f1", "mean_aggregation_time_ms"):
         significance_rows.extend(compute_paired_statistics(run_metrics, metric_name=metric_name))
 
-    write_summary(run_metrics, aggregated, significance_rows, args.output_dir)
+    summary = write_summary(run_metrics, aggregated, significance_rows, args.output_dir)
     plot_aggregated_metrics(aggregated, args.output_dir)
     generate_thesis_tables(aggregated, significance_rows, args.output_dir)
+
+    if args.baseline_dir:
+        try:
+            from scripts.historical_tracking import (
+                append_to_baseline,
+                generate_regression_report,
+                load_baseline_window,
+                plot_metric_trend_90d,
+                trim_baseline_to_window,
+            )
+
+            baseline_path = args.output_dir / "historical" / "baselines.csv"
+            commit_sha = os.getenv("GITHUB_SHA", "local")
+
+            append_to_baseline(summary, baseline_path, commit_sha)
+            trim_baseline_to_window(baseline_path, window_days=90)
+
+            baseline_df = load_baseline_window(baseline_path, window_days=90)
+
+            if not baseline_df.empty and len(baseline_df) >= 5:
+                regression_report = generate_regression_report(summary, baseline_df, threshold_std=2.0)
+
+                regression_path = args.output_dir / "historical" / "regression_report.json"
+                regression_path.write_text(json.dumps(regression_report, indent=2), encoding="utf-8")
+
+                trend_dir = args.output_dir / "historical" / "trend_plots"
+                trend_dir.mkdir(parents=True, exist_ok=True)
+
+                metrics_to_plot = [
+                    ("final_l2_distance", "L2 Distance to Benign Mean"),
+                    ("final_cosine_similarity", "Cosine Similarity to Benign Mean"),
+                    ("avg_aggregation_time_ms", "Aggregation Time (ms)"),
+                ]
+
+                for metric_name, metric_label in metrics_to_plot:
+                    plot_path = trend_dir / f"{metric_name}_trend_90d.png"
+                    plot_metric_trend_90d(baseline_df, None, metric_name, plot_path, metric_label)
+
+                print(f"Historical tracking: baseline updated, {len(baseline_df)} records in 90-day window")
+                if regression_report["any_regression_detected"]:
+                    print("WARNING: Regression detected in one or more metrics")
+            else:
+                print("Historical tracking: insufficient baseline data for regression detection")
+
+        except ImportError as e:
+            print(f"Historical tracking disabled: {e}")
+        except Exception as e:
+            print(f"Historical tracking failed: {e}")
 
 
 if __name__ == "__main__":

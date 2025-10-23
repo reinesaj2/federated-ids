@@ -228,11 +228,28 @@ jobs:
         with:
           path: nightly-artifacts
 
+      - name: Download historical baseline
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: fedprox-baseline-90d
+          path: baseline-artifacts
+
       - name: Generate FedProx comparison summary
         run: |
           python scripts/analyze_fedprox_comparison.py \
             --artifacts_dir nightly-artifacts \
+            --baseline_dir baseline-artifacts \
             --output_dir fedprox-summary
+
+      - name: Validate regression report
+        if: always()
+        run: |
+          if [ -f fedprox-summary/historical/regression_report.json ]; then
+            python scripts/ci_checks.py \
+              --runs_dir runs \
+              --regression_report fedprox-summary/historical/regression_report.json
+          fi
 
       - name: Upload consolidated results
         uses: actions/upload-artifact@v4
@@ -247,6 +264,15 @@ jobs:
             fedprox-summary/fedprox_thesis_tables.tex
             fedprox-summary/thesis_plots/**/*.png
             fedprox-summary/thesis_plots/**/*.pdf
+            fedprox-summary/historical/**/*
+          retention-days: 90
+
+      - name: Upload historical baseline for next run
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fedprox-baseline-90d
+          path: fedprox-summary/historical/baselines.csv
           retention-days: 90
 
       - name: Locate baseline summary run
