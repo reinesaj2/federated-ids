@@ -61,13 +61,20 @@ jobs:
           key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: pip-${{ runner.os }}-
 
-      - name: Prepare real dataset samples
-        run: python scripts/setup_real_datasets.py
-
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Validate experiment matrix
+        run: |
+          echo "Pre-flight check: Validating experiment matrix feasibility"
+          python scripts/validate_experiment_matrix.py > matrix_validation.log
+          cat matrix_validation.log
+          echo "Matrix validation complete. Proceeding with experiments."
+
+      - name: Prepare real dataset samples
+        run: python scripts/setup_real_datasets.py
 
       - name: Run comparative analysis (UNSW dataset)
         env:
@@ -159,14 +166,20 @@ jobs:
           echo "  Failed: $FAILED"
           echo "  Success rate: $((FOUND * 100 / TOTAL))%"
           
-          # Require at least 50% success rate for workflow to pass
+          # Require at least 95% success rate (allow max 3 transient failures out of 54 viable experiments)
+          THRESHOLD=$((TOTAL * 95 / 100))
           if [ $FOUND -eq 0 ]; then
             echo "ERROR: No experiments produced metrics"
             exit 1
-          elif [ $FOUND -lt $((TOTAL / 2)) ]; then
-            echo "WARNING: Low success rate ($((FOUND * 100 / TOTAL))%), but continuing..."
+          elif [ $FOUND -lt $THRESHOLD ]; then
+            echo "ERROR: Success rate $((FOUND * 100 / TOTAL))% below required 95% ($FOUND/$TOTAL experiments)"
+            echo "This indicates systematic issues. Please review:"
+            echo "  - Byzantine constraint violations"
+            echo "  - Resource exhaustion"
+            echo "  - Port conflicts"
+            exit 1
           else
-            echo "SUCCESS: Adequate experiment completion rate"
+            echo "SUCCESS: Adequate experiment completion rate ($((FOUND * 100 / TOTAL))%)"
           fi
 
       - uses: actions/upload-artifact@v4
