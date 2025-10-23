@@ -1156,15 +1156,17 @@ def generate_privacy_utility_curve(df: pd.DataFrame, output_dir: Path, runs_dir:
     if df.empty:
         return
 
-    # Filter to experiments with privacy data
-    dp_experiments = df[df.get("dp_enabled", False)]
-    if dp_experiments.empty:
+    # Get final round metrics (groupby run, seed, take last row)
+    final_rounds = df.groupby(["run_dir", "seed"]).tail(1).reset_index(drop=True)
+
+    if final_rounds.empty:
         return
 
     # Prepare data for privacy curve (aggregates clients, computes epsilon)
-    dp_df, baseline_df = _prepare_privacy_curve_data(dp_experiments, runs_dir)
+    # Includes both DP-enabled and baseline experiments
+    dp_df, baseline_df = _prepare_privacy_curve_data(final_rounds, runs_dir)
 
-    if dp_df.empty:
+    if dp_df.empty and baseline_df.empty:
         return
 
     # Render curve with summary stats
