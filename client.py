@@ -32,7 +32,7 @@ from client_metrics import (
     analyze_data_distribution,
     create_label_histogram_json,
 )
-from privacy_accounting import compute_epsilon
+from privacy_accounting import DPAccountant
 from logging_utils import configure_logging, get_logger
 
 
@@ -281,6 +281,8 @@ class TorchClient(fl.client.NumPyClient):
         self.model.to(self.device)
         self.round_num = 0
         self.runtime_config = runtime_config
+        dp_delta = 1e-5  # Standard delta for (epsilon, delta)-DP
+        self.dp_accountant = DPAccountant(delta=dp_delta)
 
     def get_parameters(self, config):
         return get_parameters(self.model)
@@ -479,19 +481,28 @@ class TorchClient(fl.client.NumPyClient):
                 # Reconstruct noisy weights as weights_before + noisy_delta
                 weights_after = [wb + nd for wb, nd in zip(weights_before, noisy)]
 
-                # Compute epsilon privacy budget for this round
-                dp_delta = 1e-5  # Standard delta for (epsilon, delta)-DP
-                dp_epsilon = compute_epsilon(
-                    noise_multiplier=noise_mult,
-                    delta=dp_delta,
-                    num_steps=self.round_num,  # Cumulative across rounds
-                    sample_rate=1.0,  # Full batch per round
-                )
+                # Update privacy accountant and get cumulative epsilon
+                self.dp_accountant.step(noise_multiplier=noise_mult, sample_rate=1.0)
+                dp_epsilon = self.dp_accountant.get_epsilon()
+                dp_delta = self.dp_accountant.delta
                 dp_sigma = noise_mult
                 dp_clip_norm = clip
         except Exception:
             # Fail-open: if DP step errors, proceed with original weights_after
             pass
+        
+        # Secure Aggregation: log if enabled (functional stub)
+        try:
+            secagg_enabled = bool(self.runtime_config.get("secure_aggregation", False))
+            if secagg_enabled:
+                logger = get_logger("client")
+                logger.info(
+                    "secure_aggregation_enabled",
+                    extra={"client_id": self.metrics_logger.client_id, "round": self.round_num},
+                )
+        except Exception:
+            pass
+
         weight_norm_after = calculate_weight_norms(weights_after)
         weight_update_norm = calculate_weight_update_norm(weights_before, weights_after)
         # Compute a simple gradient norm proxy: norm of (weights_after - weights_before) / lr
@@ -943,7 +954,7 @@ def main() -> None:
     parser.add_argument(
         "--secure_aggregation",
         action="store_true",
-        help="Enable secure aggregation mode (stub toggle; no functional change)",
+        help="Enable secure aggregation mode (logs when enabled, no crypto)",
     )
     parser.add_argument(
         "--dp_enabled",
