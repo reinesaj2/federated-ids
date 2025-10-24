@@ -452,9 +452,7 @@ def test_generate_regression_report_empty_baseline(sample_summary: dict) -> None
     assert len(report["regression_results"]) > 0
 
 
-def test_generate_regression_report_includes_config_info(
-    sample_summary: dict, sample_baseline_df: pd.DataFrame
-) -> None:
+def test_generate_regression_report_includes_config_info(sample_summary: dict, sample_baseline_df: pd.DataFrame) -> None:
     report = generate_regression_report(sample_summary, sample_baseline_df)
 
     for result in report["regression_results"]:

@@ -157,9 +157,7 @@ def collect_run_metrics(artifacts_dir: Path) -> list[RunMetrics]:
         candidate_run_dirs: list[Path]
         if identifiers is not None:
             alpha, mu, seed = identifiers
-            candidate_run_dirs = list(artifact_dir.glob(f"**/nightly_fedprox_alpha{alpha}_mu{mu}_seed{seed}")) or [
-                artifact_dir
-            ]
+            candidate_run_dirs = list(artifact_dir.glob(f"**/nightly_fedprox_alpha{alpha}_mu{mu}_seed{seed}")) or [artifact_dir]
         else:
             candidate_run_dirs = [p for p in artifact_dir.rglob("nightly_fedprox_alpha*_mu*_seed*") if p.is_dir()]
 
@@ -298,11 +296,7 @@ def ensure_minimum_samples(run_metrics: Sequence[RunMetrics], minimum: int = 5) 
     for run in run_metrics:
         sample_counts[(run.alpha, run.mu, run.algorithm)].add(run.seed)
 
-    violations = [
-        (alpha, mu, algorithm, len(seeds))
-        for (alpha, mu, algorithm), seeds in sample_counts.items()
-        if len(seeds) < minimum
-    ]
+    violations = [(alpha, mu, algorithm, len(seeds)) for (alpha, mu, algorithm), seeds in sample_counts.items() if len(seeds) < minimum]
 
     if violations:
         alpha, mu, algorithm, observed = sorted(violations, key=lambda t: (t[0], t[1], t[2]))[0]
