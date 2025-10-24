@@ -408,34 +408,34 @@ def validate_privacy_utility_curve_data(curve_csv: Path) -> None:
         # Validate epsilon values
         if epsilon is not None:
             if epsilon <= 0 or epsilon > 50:
-                raise ArtifactValidationError(f"Epsilon values out of range: {epsilon} in row {i+1}")
+                raise ArtifactValidationError(f"Epsilon values out of range: {epsilon} in row {i + 1}")
 
         # Validate macro F1 values
         if macro_f1 is not None:
             if macro_f1 < 0 or macro_f1 > 1:
-                raise ArtifactValidationError(f"Invalid macro F1 value: {macro_f1} in row {i+1}")
+                raise ArtifactValidationError(f"Invalid macro F1 value: {macro_f1} in row {i + 1}")
 
         # Validate confidence intervals
         if ci_lower is not None and ci_upper is not None and macro_f1 is not None:
             if ci_lower > ci_upper:
-                raise ArtifactValidationError(f"Invalid confidence intervals: ci_lower={ci_lower} > ci_upper={ci_upper} in row {i+1}")
+                raise ArtifactValidationError(f"Invalid confidence intervals: ci_lower={ci_lower} > ci_upper={ci_upper} in row {i + 1}")
 
             if ci_lower > macro_f1 or ci_upper < macro_f1:
                 raise ArtifactValidationError(
-                    f"Confidence intervals don't contain mean: {ci_lower} <= {macro_f1} <= {ci_upper} in row {i+1}"
+                    f"Confidence intervals don't contain mean: {ci_lower} <= {macro_f1} <= {ci_upper} in row {i + 1}"
                 )
 
         # Validate sample size
         if n is not None and n < 1:
-            raise ArtifactValidationError(f"Invalid sample size: {n} in row {i+1}")
+            raise ArtifactValidationError(f"Invalid sample size: {n} in row {i + 1}")
 
 
 def _extract_epsilon_values(privacy_dirs: List[Path]) -> Dict[float, List[float]]:
     """Extract epsilon values grouped by noise multiplier from privacy experiment directories.
-    
+
     Args:
         privacy_dirs: List of privacy experiment directories
-        
+
     Returns:
         Dictionary mapping noise multiplier to list of epsilon values
     """

@@ -4,14 +4,13 @@ Unit tests for expanded DP configuration in privacy-utility curve analysis.
 Tests the enhanced noise level coverage and statistical rigor.
 """
 
-import pytest
 import sys
 from pathlib import Path
 
 # Add scripts to path for imports
 sys.path.append(str(Path(__file__).parent / "scripts"))
 
-from comparative_analysis import ComparisonMatrix
+from comparative_analysis import ComparisonMatrix  # noqa: E402
 
 
 class TestDPConfigExpansion:
@@ -121,7 +120,7 @@ class TestDPConfigExpansion:
         # Should have reasonable spacing between levels
         for i in range(1, len(noise_levels)):
             ratio = noise_levels[i] / noise_levels[i - 1]
-            assert 1.2 <= ratio <= 3.0, f"Poor spacing between noise levels: {noise_levels[i-1]} -> {noise_levels[i]}"
+            assert 1.2 <= ratio <= 3.0, f"Poor spacing between noise levels: {noise_levels[i - 1]} -> {noise_levels[i]}"
 
 
 class TestDPConfigValidation:

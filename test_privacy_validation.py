@@ -6,16 +6,14 @@ Tests validation of DP parameters, epsilon computation, and privacy-utility curv
 
 import pytest
 import tempfile
-import json
 import csv
 from pathlib import Path
-from unittest.mock import patch, mock_open
 import sys
 
 # Add scripts to path for imports
 sys.path.append(str(Path(__file__).parent / "scripts"))
 
-from ci_checks import (
+from ci_checks import (  # noqa: E402
     validate_privacy_experiments,
     check_privacy_regressions,
     validate_privacy_utility_curve_data,
