@@ -414,7 +414,7 @@ def test_comparison_matrix_default_values():
     assert 0.0 in matrix.adversary_fractions  # Benign
     assert matrix.num_clients == 6
     assert matrix.num_rounds == 20
-    assert len(matrix.seeds) == 3  # Multiple seeds for statistical validity
+    assert len(matrix.seeds) == 5  # Multiple seeds for statistical validity
 
 
 def test_comparison_matrix_attack_uses_subset():

@@ -85,6 +85,13 @@ jobs:
           if command -v flake8 >/dev/null 2>&1; then flake8 ; fi
           pytest -q
 
+      - name: Privacy validation tests
+        env:
+          D2_EXTENDED_METRICS: "1"
+        run: |
+          python -m pytest test_privacy_validation.py -v
+          python -m pytest test_dp_config_expansion.py -v
+
       - name: Smoke FL (only on feature branches)
         if: startsWith(github.ref, 'refs/heads/feat/')
         env:

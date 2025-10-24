@@ -29,7 +29,7 @@ def _safe_float(value: str | None) -> float | None:
     if value in ("", None):
         return None
     try:
-        return float(value)
+        return float(str(value))
     except (TypeError, ValueError):
         return None
 
@@ -198,18 +198,14 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
 
     weighted_macro_f1 = macro_sum / macro_weight
     if not math.isfinite(weighted_macro_f1) or weighted_macro_f1 < MIN_WEIGHTED_MACRO_F1:
-        raise ArtifactValidationError(
-            f"Weighted macro_f1_after={weighted_macro_f1:.3f} below minimum {MIN_WEIGHTED_MACRO_F1:.2f}"
-        )
+        raise ArtifactValidationError(f"Weighted macro_f1_after={weighted_macro_f1:.3f} below minimum {MIN_WEIGHTED_MACRO_F1:.2f}")
 
     if acc_samples == 0 or acc_weight == 0:
         raise ArtifactValidationError(f"No acc_after values found in {run_dir}")
 
     weighted_accuracy = acc_sum / acc_weight
     if not math.isfinite(weighted_accuracy) or weighted_accuracy < MIN_WEIGHTED_ACCURACY:
-        raise ArtifactValidationError(
-            f"Weighted acc_after={weighted_accuracy:.3f} below minimum {MIN_WEIGHTED_ACCURACY:.2f}"
-        )
+        raise ArtifactValidationError(f"Weighted acc_after={weighted_accuracy:.3f} below minimum {MIN_WEIGHTED_ACCURACY:.2f}")
 
     # Validate server convergence metrics (L2 distance)
     server_rows = _load_csv_rows(server_metrics_path)
@@ -218,13 +214,9 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
     final_server_row = server_rows[-1]
     l2_value = _safe_float(final_server_row.get("l2_to_benign_mean"))
     if l2_value is None:
-        raise ArtifactValidationError(
-            f"Server metrics missing l2_to_benign_mean in {server_metrics_path}"
-        )
+        raise ArtifactValidationError(f"Server metrics missing l2_to_benign_mean in {server_metrics_path}")
     if not math.isfinite(l2_value) or l2_value > MAX_FINAL_L2_DISTANCE:
-        raise ArtifactValidationError(
-            f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {MAX_FINAL_L2_DISTANCE:.1f}"
-        )
+        raise ArtifactValidationError(f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {MAX_FINAL_L2_DISTANCE:.1f}")
 
     # Validate FPR tolerance if using low_fpr tau mode
     validate_fpr_tolerance(run_dir, target_fpr=0.10, tolerance=0.02, strict=fpr_strict)
@@ -271,6 +263,213 @@ def validate_seed_coverage(run_directories: List[Path], minimum_seeds: int = 5) 
             )
 
 
+def validate_privacy_experiments(runs_dir: Path) -> None:
+    """Validate that privacy experiments have proper DP parameters and epsilon computation.
+
+    Args:
+        runs_dir: Directory containing experiment results
+
+    Raises:
+        ArtifactValidationError: If privacy experiments are invalid
+    """
+    all_dirs = find_run_directories(runs_dir)
+    privacy_dirs = [d for d in all_dirs if "comparative-analysis-privacy" in d.name]
+
+    if not privacy_dirs:
+        raise ArtifactValidationError("No privacy experiment directories found")
+
+    for exp_dir in privacy_dirs:
+        client_metrics_files = list(exp_dir.glob("client_*_metrics.csv"))
+
+        if not client_metrics_files:
+            raise ArtifactValidationError(f"No client metrics found in {exp_dir}")
+
+        for metrics_file in client_metrics_files:
+            rows = _load_csv_rows(metrics_file)
+
+            if not rows:
+                raise ArtifactValidationError(f"Empty metrics file: {metrics_file}")
+
+            # Check for required DP columns
+            required_dp_columns = {"dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta"}
+            if not required_dp_columns.issubset(rows[0].keys()):
+                missing = required_dp_columns - set(rows[0].keys())
+                raise ArtifactValidationError(f"Missing DP parameters in {metrics_file}: {missing}")
+
+            # Validate DP parameters
+            dp_enabled_values = set(row.get("dp_enabled", "") for row in rows)
+            if "True" not in dp_enabled_values and "true" not in dp_enabled_values:
+                raise ArtifactValidationError(f"DP not enabled in {metrics_file}")
+
+            # Validate epsilon values
+            epsilon_values = []
+            noise_multipliers = []
+
+            for row in rows:
+                epsilon_val = _safe_float(row.get("dp_epsilon"))
+                noise_val = _safe_float(row.get("dp_noise_multiplier"))
+
+                if epsilon_val is not None:
+                    epsilon_values.append(epsilon_val)
+                if noise_val is not None:
+                    noise_multipliers.append(noise_val)
+
+            if not epsilon_values:
+                raise ArtifactValidationError(f"No valid epsilon values in {metrics_file}")
+
+            # Check epsilon values are reasonable
+            for epsilon in epsilon_values:
+                if epsilon <= 0 or epsilon > 100:
+                    raise ArtifactValidationError(f"Invalid epsilon value {epsilon} in {metrics_file}")
+
+            # Check noise multiplier consistency
+            if len(set(noise_multipliers)) > 1:
+                raise ArtifactValidationError(f"Inconsistent noise multiplier in {metrics_file}")
+
+
+def check_privacy_regressions(baseline_dir: Path, current_dir: Path, tolerance: float = 0.1) -> None:
+    """Check for privacy regressions between baseline and current runs.
+
+    Args:
+        baseline_dir: Directory containing baseline experiment results
+        current_dir: Directory containing current experiment results
+        tolerance: Tolerance for epsilon value changes (default: 0.1)
+
+    Raises:
+        ArtifactValidationError: If privacy regression detected
+    """
+    baseline_all_dirs = find_run_directories(baseline_dir)
+    current_all_dirs = find_run_directories(current_dir)
+    baseline_privacy_dirs = [d for d in baseline_all_dirs if "comparative-analysis-privacy" in d.name]
+    current_privacy_dirs = [d for d in current_all_dirs if "comparative-analysis-privacy" in d.name]
+
+    if not baseline_privacy_dirs or not current_privacy_dirs:
+        return  # No privacy experiments to compare
+
+    # Compare epsilon values for similar experiments
+    baseline_epsilons = _extract_epsilon_values(baseline_privacy_dirs)
+    current_epsilons = _extract_epsilon_values(current_privacy_dirs)
+
+    for noise_level in baseline_epsilons:
+        if noise_level not in current_epsilons:
+            continue
+
+        baseline_eps = baseline_epsilons[noise_level]
+        current_eps = current_epsilons[noise_level]
+
+        if len(baseline_eps) != len(current_eps):
+            continue
+
+        # Check for significant changes in epsilon values
+        for i, (baseline_eps_val, current_eps_val) in enumerate(zip(baseline_eps, current_eps)):
+            if abs(baseline_eps_val - current_eps_val) > tolerance:
+                raise ArtifactValidationError(
+                    f"Privacy regression detected: epsilon changed from {baseline_eps_val} to {current_eps_val} "
+                    f"for noise level {noise_level} (tolerance: {tolerance})"
+                )
+
+
+def validate_privacy_utility_curve_data(curve_csv: Path) -> None:
+    """Validate privacy-utility curve CSV data structure and values.
+
+    Args:
+        curve_csv: Path to privacy-utility curve CSV file
+
+    Raises:
+        ArtifactValidationError: If curve data is invalid
+    """
+    if not curve_csv.exists():
+        raise ArtifactValidationError(f"Privacy-utility curve CSV not found: {curve_csv}")
+
+    rows = _load_csv_rows(curve_csv)
+
+    if not rows:
+        raise ArtifactValidationError(f"Empty privacy-utility curve CSV: {curve_csv}")
+
+    # Check required columns
+    required_columns = {"epsilon", "macro_f1_mean", "ci_lower", "ci_upper", "n", "dp_noise_multiplier", "is_baseline"}
+    if not required_columns.issubset(rows[0].keys()):
+        missing = required_columns - set(rows[0].keys())
+        raise ArtifactValidationError(f"Missing required columns in {curve_csv}: {missing}")
+
+    # Validate data values
+    for i, row in enumerate(rows):
+        epsilon = _safe_float(row.get("epsilon"))
+        macro_f1 = _safe_float(row.get("macro_f1_mean"))
+        ci_lower = _safe_float(row.get("ci_lower"))
+        ci_upper = _safe_float(row.get("ci_upper"))
+        n = _safe_float(row.get("n"))
+        is_baseline = row.get("is_baseline", "0")
+
+        # Skip baseline rows (epsilon can be None)
+        if is_baseline in ("1", "True", "true"):
+            continue
+
+        # Validate epsilon values
+        if epsilon is not None:
+            if epsilon <= 0 or epsilon > 50:
+                raise ArtifactValidationError(f"Epsilon values out of range: {epsilon} in row {i + 1}")
+
+        # Validate macro F1 values
+        if macro_f1 is not None:
+            if macro_f1 < 0 or macro_f1 > 1:
+                raise ArtifactValidationError(f"Invalid macro F1 value: {macro_f1} in row {i + 1}")
+
+        # Validate confidence intervals
+        if ci_lower is not None and ci_upper is not None and macro_f1 is not None:
+            if ci_lower > ci_upper:
+                raise ArtifactValidationError(f"Invalid confidence intervals: ci_lower={ci_lower} > ci_upper={ci_upper} in row {i + 1}")
+
+            if ci_lower > macro_f1 or ci_upper < macro_f1:
+                raise ArtifactValidationError(
+                    f"Confidence intervals don't contain mean: {ci_lower} <= {macro_f1} <= {ci_upper} in row {i + 1}"
+                )
+
+        # Validate sample size
+        if n is not None and n < 1:
+            raise ArtifactValidationError(f"Invalid sample size: {n} in row {i + 1}")
+
+
+def _extract_epsilon_values(privacy_dirs: List[Path]) -> Dict[float, List[float]]:
+    """Extract epsilon values grouped by noise multiplier from privacy experiment directories.
+
+    Args:
+        privacy_dirs: List of privacy experiment directories
+
+    Returns:
+        Dictionary mapping noise multiplier to list of epsilon values
+    """
+    epsilon_by_noise: Dict[float, List[float]] = {}
+
+    for exp_dir in privacy_dirs:
+        client_metrics_files = list(exp_dir.glob("client_*_metrics.csv"))
+
+        for metrics_file in client_metrics_files:
+            rows = _load_csv_rows(metrics_file)
+
+            if not rows:
+                continue
+
+            # Get noise multiplier from first row
+            noise_multiplier = _safe_float(rows[0].get("dp_noise_multiplier"))
+            if noise_multiplier is None:
+                continue
+
+            # Extract epsilon values
+            epsilon_values = []
+            for row in rows:
+                epsilon = _safe_float(row.get("dp_epsilon"))
+                if epsilon is not None:
+                    epsilon_values.append(epsilon)
+
+            if epsilon_values:
+                if noise_multiplier not in epsilon_by_noise:
+                    epsilon_by_noise[noise_multiplier] = []
+                epsilon_by_noise[noise_multiplier].extend(epsilon_values)
+
+    return epsilon_by_noise
+
+
 def main() -> None:
     """Main CI validation entry point."""
     import os
@@ -288,6 +487,12 @@ def main() -> None:
         "--fpr_strict",
         action="store_true",
         help="Enforce strict FPR tolerance (raises error on violations). Default: warnings only.",
+    )
+
+    parser.add_argument(
+        "--validate_privacy",
+        action="store_true",
+        help="Validate privacy experiments for DP parameters and epsilon computation.",
     )
 
     args = parser.parse_args()
@@ -311,6 +516,12 @@ def main() -> None:
             validate_run_directory(run_dir, fpr_strict=fpr_strict)
 
         print(f"[PASS] All {len(run_directories)} run directories passed validation")
+
+        # Validate privacy experiments if requested
+        if args.validate_privacy:
+            print("Validating privacy experiments...")
+            validate_privacy_experiments(runs_dir)
+            print("[PASS] Privacy experiments validation passed")
 
     except ArtifactValidationError as e:
         print(f"[ERROR] Validation failed: {e}", file=sys.stderr)

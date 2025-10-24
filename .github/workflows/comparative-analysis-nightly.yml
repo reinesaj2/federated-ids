@@ -107,6 +107,12 @@ jobs:
             exit 1
           fi
 
+          # Validate privacy experiments if privacy dimension
+          if [ "${{ matrix.dimension }}" = "privacy" ]; then
+            echo "Validating privacy experiments..."
+            python scripts/ci_checks.py --runs_dir runs --validate_privacy
+          fi
+
       - name: Validate results
         run: |
           echo "Validating experiment results..."
