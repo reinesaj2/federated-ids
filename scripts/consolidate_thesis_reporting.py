@@ -97,9 +97,7 @@ def _infer_dimension(config: dict[str, Any], run_dir_name: str) -> str:
     return "aggregation"
 
 
-def _extract_final_macro_f1(
-    metrics_file: Path, client_metrics_files: list[Path]
-) -> float | None:
+def _extract_final_macro_f1(metrics_file: Path, client_metrics_files: list[Path]) -> float | None:
     """Extract final macro-F1 from client metrics."""
     if not client_metrics_files:
         return None
@@ -126,8 +124,8 @@ def _extract_final_macro_f1(
     return None
 
 
-def build_manifest(experiments: list[ExperimentMetadata], output_file: Path) -> None:
-    """Write experiment manifest as JSON."""
+def build_manifest(experiments: list[ExperimentMetadata], output_file: Path) -> dict:
+    """Write experiment manifest as JSON and return it."""
     manifest = {
         "version": "1.0",
         "total_experiments": len(experiments),
@@ -147,6 +145,8 @@ def build_manifest(experiments: list[ExperimentMetadata], output_file: Path) -> 
     print(f"  Total experiments: {len(experiments)}")
     for dim, count in manifest["by_dimension"].items():
         print(f"    {dim}: {count}")
+
+    return manifest
 
 
 def main() -> None:
@@ -182,7 +182,7 @@ def main() -> None:
         return
 
     manifest_file = args.output_dir / "manifest.json"
-    build_manifest(experiments, manifest_file)
+    manifest = build_manifest(experiments, manifest_file)
 
     if args.manifest_only:
         print("Manifest-only mode; skipping plot generation")
