@@ -53,7 +53,9 @@ def validate_csv_schema(csv_path: Path, expected_columns: Set[str]) -> None:
 
             if not expected_columns.issubset(actual_columns):
                 missing = expected_columns - actual_columns
-                raise ArtifactValidationError(f"CSV {csv_path} missing required columns: {missing}. " f"Found: {actual_columns}")
+                raise ArtifactValidationError(
+                    f"CSV {csv_path} missing required columns: {missing}. " f"Found: {actual_columns}"
+                )
 
             # Validate at least one data row exists
             try:
@@ -65,6 +67,57 @@ def validate_csv_schema(csv_path: Path, expected_columns: Set[str]) -> None:
         if isinstance(e, ArtifactValidationError):
             raise
         raise ArtifactValidationError(f"Failed to read CSV {csv_path}: {e}")
+
+
+def check_convergence_quality(rows: List[Dict[str, str]]) -> None:
+    """Validate convergence quality: accuracy should improve over rounds."""
+    if not rows:
+        raise ArtifactValidationError("No data rows to validate convergence")
+
+    # Check for NaN or Inf in critical columns
+    for row in rows:
+        for col in ["weighted_macro_f1", "weighted_accuracy"]:
+            val = row.get(col, "")
+            if val and val.lower() in ("nan", "inf", "-inf"):
+                raise ArtifactValidationError(f"Found {val} in {col}: {row}")
+
+    # Check final accuracy meets minimum threshold
+    final_f1_vals = [_safe_float(row.get("weighted_macro_f1")) for row in rows[-5:] if row.get("weighted_macro_f1")]
+    final_f1_vals = [v for v in final_f1_vals if v is not None]
+
+    if final_f1_vals and min(final_f1_vals) < MIN_WEIGHTED_MACRO_F1:
+        avg_final = sum(final_f1_vals) / len(final_f1_vals)
+        raise ArtifactValidationError(f"Final F1 {avg_final:.4f} below minimum {MIN_WEIGHTED_MACRO_F1}")
+
+
+def check_no_nans_or_infs(rows: List[Dict[str, str]], critical_columns: List[str]) -> None:
+    """Ensure no NaN or Inf values in critical metric columns."""
+    for i, row in enumerate(rows):
+        for col in critical_columns:
+            val = row.get(col, "")
+            if val and val.lower() in ("nan", "inf", "-inf", ""):
+                raise ArtifactValidationError(f"Row {i} column {col} has invalid value: {val}")
+
+
+def check_seed_consistency(rows: List[Dict[str, str]], expected_seeds: int = 5) -> None:
+    """Validate that sufficient seeds are present in results."""
+    try:
+        seed_col = "seed" if "seed" in rows[0] else None
+        if not seed_col:
+            return
+
+        seeds = set()
+        for row in rows:
+            if row.get(seed_col):
+                try:
+                    seeds.add(int(row[seed_col]))
+                except (ValueError, KeyError):
+                    pass
+
+        if len(seeds) < expected_seeds:
+            raise ArtifactValidationError(f"Only {len(seeds)} seeds found; expected at least {expected_seeds}")
+    except (KeyError, IndexError):
+        pass
 
 
 def validate_plot_files(run_dir: Path) -> None:
@@ -218,9 +271,7 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
     final_server_row = server_rows[-1]
     l2_value = _safe_float(final_server_row.get("l2_to_benign_mean"))
     if l2_value is None:
-        raise ArtifactValidationError(
-            f"Server metrics missing l2_to_benign_mean in {server_metrics_path}"
-        )
+        raise ArtifactValidationError(f"Server metrics missing l2_to_benign_mean in {server_metrics_path}")
     if not math.isfinite(l2_value) or l2_value > MAX_FINAL_L2_DISTANCE:
         raise ArtifactValidationError(
             f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {MAX_FINAL_L2_DISTANCE:.1f}"
@@ -267,8 +318,73 @@ def validate_seed_coverage(run_directories: List[Path], minimum_seeds: int = 5) 
     for (alpha, mu), seeds in seed_map.items():
         if len(seeds) < minimum_seeds:
             raise ArtifactValidationError(
-                f"FedProx nightly runs for alpha={alpha} mu={mu} have only {len(seeds)} seeds; " f"require at least {minimum_seeds}."
+                f"FedProx nightly runs for alpha={alpha} mu={mu} have only {len(seeds)} seeds; "
+                f"require at least {minimum_seeds}."
             )
+
+
+def validate_no_regression(
+    regression_report_path: Path,
+    fail_on_regression: bool = True,
+) -> None:
+    """Validate that no performance regression occurred compared to baseline.
+
+    Args:
+        regression_report_path: Path to regression report JSON file
+        fail_on_regression: If True, raise error on regression; otherwise warn
+
+    Raises:
+        ArtifactValidationError: If regression detected and fail_on_regression is True
+    """
+    if not regression_report_path.exists():
+        return
+
+    try:
+        import json
+
+        with open(regression_report_path, "r", encoding="utf-8") as f:
+            regression_report = json.load(f)
+
+        if not regression_report.get("any_regression_detected", False):
+            print("[PASS] No performance regression detected vs 90-day baseline")
+            return
+
+        regression_results = regression_report.get("regression_results", [])
+        regressed_metrics = [r for r in regression_results if r.get("regression_detected", False)]
+
+        if not regressed_metrics:
+            return
+
+        threshold = regression_report.get("threshold_std", 2.0)
+        messages = []
+
+        for result in regressed_metrics:
+            metric = result.get("metric", "unknown")
+            z_score = result.get("z_score", 0.0)
+            current = result.get("current", 0.0)
+            baseline_mean = result.get("baseline_mean", 0.0)
+            alpha = result.get("alpha", "N/A")
+            mu = result.get("mu", "N/A")
+
+            messages.append(
+                f"  - {metric} (alpha={alpha}, mu={mu}): "
+                f"z-score={z_score:.2f} > {threshold:.1f}, "
+                f"current={current:.4f}, baseline_mean={baseline_mean:.4f}"
+            )
+
+        msg = "Performance regression detected:\n" + "\n".join(messages)
+
+        if fail_on_regression:
+            raise ArtifactValidationError(msg)
+        else:
+            print(f"[WARNING] {msg}")
+
+    except json.JSONDecodeError as e:
+        print(f"[WARNING] Failed to parse regression report: {e}")
+    except ArtifactValidationError:
+        raise
+    except Exception as e:
+        print(f"[WARNING] Regression validation error: {e}")
 
 
 def main() -> None:
@@ -290,15 +406,32 @@ def main() -> None:
         help="Enforce strict FPR tolerance (raises error on violations). Default: warnings only.",
     )
 
+    parser.add_argument(
+        "--regression_report",
+        type=str,
+        required=False,
+        help="Path to regression report JSON for validation",
+    )
+
+    parser.add_argument(
+        "--regression_strict",
+        action="store_true",
+        help="Fail CI if regression detected. Default: warnings only.",
+    )
+
     args = parser.parse_args()
 
-    # Allow environment variable to override FPR strictness
-    # FPR_STRICT=1 for strict validation (errors), FPR_STRICT=0 for warnings only
     fpr_strict_env = os.environ.get("FPR_STRICT", "0")
     fpr_strict = args.fpr_strict or (fpr_strict_env == "1")
 
+    regression_strict_env = os.environ.get("REGRESSION_STRICT", "0")
+    regression_strict = args.regression_strict or (regression_strict_env == "1")
+
     if not fpr_strict:
         print("[INFO] FPR tolerance check: warnings only (not blocking)")
+
+    if not regression_strict:
+        print("[INFO] Regression check: warnings only (not blocking)")
 
     try:
         runs_dir = Path(args.runs_dir)
@@ -311,6 +444,10 @@ def main() -> None:
             validate_run_directory(run_dir, fpr_strict=fpr_strict)
 
         print(f"[PASS] All {len(run_directories)} run directories passed validation")
+
+        if args.regression_report:
+            regression_report_path = Path(args.regression_report)
+            validate_no_regression(regression_report_path, fail_on_regression=regression_strict)
 
     except ArtifactValidationError as e:
         print(f"[ERROR] Validation failed: {e}", file=sys.stderr)
