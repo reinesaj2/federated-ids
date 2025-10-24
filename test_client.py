@@ -1,6 +1,5 @@
 import unittest
 from unittest.mock import MagicMock, patch
-import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -10,7 +9,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 
-from client import TorchClient, SimpleNet
+from client import TorchClient, SimpleNet  # noqa: E402
 
 
 class TestTorchClient(unittest.TestCase):
@@ -62,9 +61,7 @@ class TestTorchClient(unittest.TestCase):
         client.fit(initial_params, {})
 
         # Assertions
-        mock_instance.step.assert_called_once_with(
-            noise_multiplier=1.0, sample_rate=1.0
-        )
+        mock_instance.step.assert_called_once_with(noise_multiplier=1.0, sample_rate=1.0)
         self.mock_metrics_logger.log_round_metrics.assert_called()
         # Check that dp_epsilon was passed to the logger
         call_args = self.mock_metrics_logger.log_round_metrics.call_args[1]
