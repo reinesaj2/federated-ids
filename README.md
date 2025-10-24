@@ -13,10 +13,13 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 5. Reproducibility & logging (seeds, logs, plots)
 6. Algorithm comparison (FedAvg vs FedProx)
 7. Real datasets (UNSW‑NB15, CIC‑IDS2017)
-8. Troubleshooting (common errors and fixes)
-9. Project structure
-10. Notes on privacy/robustness scaffolding
+8. **Experimental Results & Performance Analysis**
+9. **Visualization Gallery & Plot References**
+10. **Quick Links to Analysis & Results**
 11. D2 Runbook (experiment workflow & artifact map)
+12. Troubleshooting (common errors and fixes)
+13. Project structure
+14. Notes on privacy/robustness scaffolding
 
 ---
 
@@ -416,7 +419,97 @@ python scripts/prepare_unsw_sample.py \
 
 ---
 
-## 8) Troubleshooting
+## 8) Experimental Results & Performance Analysis
+
+### Key Findings Summary
+
+Our comprehensive evaluation across 5 experimental dimensions reveals:
+
+- **Aggregation Methods**: All methods achieve high accuracy (99.8-100%), with Bulyan and Median showing lowest loss
+- **Attack Resilience**: Robust methods maintain 77-94% accuracy under 30% Byzantine attacks vs 71% for FedAvg
+- **Data Heterogeneity**: FedAvg performs consistently across all heterogeneity levels (α=0.1-1.0)
+- **Personalization**: Local adaptation yields 3.5% average gain, with 6% improvement on CIC-IDS2017
+- **Privacy-Utility**: Differential privacy (ε=0.5) reduces accuracy to 97% vs 100% baseline
+
+*All metrics computed from 81 experimental runs with full traceability to source data.*
+
+### Performance Comparison Tables
+
+| Method | Accuracy | Loss | Attack Resilience | Data Source |
+|--------|----------|------|-------------------|-------------|
+| **FedAvg** | 0.998 ± 0.009 | 0.007 | Low | [runs/comp_fedavg_*](runs/) |
+| **Krum** | 0.999 ± 0.000 | 0.007 | High | [runs/comp_krum_*](runs/) |
+| **Bulyan** | 1.000 ± 0.000 | 0.002 | Very High | [runs/comp_bulyan_*](runs/) |
+| **Median** | 1.000 ± 0.000 | 0.003 | High | [runs/comp_median_*](runs/) |
+
+*Complete performance analysis with full traceability available in [PERFORMANCE_COMPARISON_TABLES.md](PERFORMANCE_COMPARISON_TABLES.md).*
+*Note: All metrics computed from actual experimental data - F1 scores not available in current runs.*
+
+### Experimental Dimensions
+
+1. **Aggregation Comparison**: FedAvg vs Krum vs Bulyan vs Median
+2. **Heterogeneity Impact**: IID vs Non-IID data (α=0.05-1.0)
+3. **Attack Resilience**: Performance under 0-30% Byzantine clients
+4. **Privacy-Utility Tradeoff**: Differential privacy with ε=0.1-10.0
+5. **Personalization Benefits**: Local adaptation gains across scenarios
+
+---
+
+## 9) Visualization Gallery & Plot References
+
+### Thesis Plots Directory
+
+All publication-ready plots are organized in [`plots/thesis/`](plots/thesis/):
+
+- **Latest Plots**: [`plots/thesis/2025-10-21/`](plots/thesis/2025-10-21/)
+- **Heterogeneity Impact**: [`heterogeneity_comparison.png`](plots/thesis/2025-10-21/thesis-comparative/heterogeneity_comparison.png)
+- **FedProx Analysis**: [`fedprox_heterogeneity_analysis.png`](plots/thesis/2025-10-21/thesis-comparative/fedprox_heterogeneity_analysis.png)
+
+**Complete Plot Collection**:
+- **Aggregation Comparison**: [`plots/thesis/2025-10-05/thesis-comparative/aggregation_comparison.png`](plots/thesis/2025-10-05/thesis-comparative/aggregation_comparison.png)
+- **Attack Resilience**: [`plots/thesis/2025-10-05/thesis-comparative/attack_resilience.png`](plots/thesis/2025-10-05/thesis-comparative/attack_resilience.png)
+- **Personalization Benefits**: [`plots/thesis/2025-10-20/thesis-comparative/personalization_benefit.png`](plots/thesis/2025-10-20/thesis-comparative/personalization_benefit.png)
+- **Privacy-Utility Tradeoff**: [`plots/thesis/2025-10-20/thesis-comparative/privacy_utility.png`](plots/thesis/2025-10-20/thesis-comparative/privacy_utility.png)
+
+### FedProx Analysis Plots
+
+- **Performance Comparison**: [`analysis/fedprox_nightly/fedprox_performance_plots.png`](analysis/fedprox_nightly/fedprox_performance_plots.png)
+- **Summary Data**: [`analysis/fedprox_nightly/fedprox_comparison_summary.json`](analysis/fedprox_nightly/fedprox_comparison_summary.json)
+- **LaTeX Tables**: [`analysis/fedprox_nightly/fedprox_thesis_tables.tex`](analysis/fedprox_nightly/fedprox_thesis_tables.tex)
+
+### Personalization Analysis
+
+- **Gains Visualization**: [`analysis/personalization/personalization_gains_analysis.png`](analysis/personalization/personalization_gains_analysis.png)
+- **Summary Statistics**: [`analysis/personalization/personalization_summary.json`](analysis/personalization/personalization_summary.json)
+- **LaTeX Tables**: [`analysis/personalization/personalization_gains_table.tex`](analysis/personalization/personalization_gains_table.tex)
+
+### Interactive Plot Browser
+
+Browse all plots chronologically: [`plots/index.html`](plots/index.html)
+
+---
+
+## 10) Quick Links to Analysis & Results
+
+### Experimental Data
+- **Raw Results**: [`runs/`](runs/) - All experimental outputs with metrics
+- **Analysis Scripts**: [`scripts/`](scripts/) - Plot generation and analysis tools
+- **Documentation**: [`docs/`](docs/) - Detailed experimental methodology
+
+### Key Analysis Files
+- **Performance Tables**: [`PERFORMANCE_COMPARISON_TABLES.md`](PERFORMANCE_COMPARISON_TABLES.md)
+- **FedProx Analysis**: [`analysis/fedprox_nightly/`](analysis/fedprox_nightly/)
+- **Personalization Study**: [`analysis/personalization/`](analysis/personalization/)
+- **Threat Model**: [`docs/threat_model.md`](docs/threat_model.md)
+
+### Reproducibility
+- **Experiment Configs**: All experiments use standardized configurations in `runs/*/config.json`
+- **Seed Control**: All experiments use seeds 42, 43, 44 for reproducibility
+- **Data Sources**: UNSW-NB15 (82k samples) and CIC-IDS2017 datasets
+
+---
+
+## 11) Troubleshooting
 
 - **Deprecation warnings (Flower)**: you might see messages about `start_server`/`start_client` being deprecated.
   This demo targets flwr==1.21.0 and is known to work despite the warnings.
@@ -451,7 +544,7 @@ python scripts/prepare_unsw_sample.py \
 
 ---
 
-## 9) Project structure
+## 12) Project structure
 
 - `server.py` – Flower server with FedAvg and robust aggregation options (`median`, `krum`, simplified `bulyan`).
   - For `fedavg`, aggregation is sample‑size weighted; robust methods are intentionally unweighted.
@@ -469,7 +562,7 @@ python scripts/prepare_unsw_sample.py \
 
 ---
 
-## 10) Privacy & robustness disclosure (D2 scope)
+## 13) Privacy & robustness disclosure (D2 scope)
 
 For a comprehensive threat model including adversary assumptions, attack scenarios, and defense mechanisms, see [docs/threat_model.md](docs/threat_model.md).
 
