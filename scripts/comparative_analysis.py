@@ -526,6 +526,53 @@ def main():
         type=str,
         help="Override default dataset path",
     )
+    parser.add_argument(
+        "--aggregation-methods",
+        type=str,
+        help="Comma-separated list of aggregation methods to evaluate.",
+    )
+    parser.add_argument(
+        "--alpha-values",
+        type=str,
+        help="Comma-separated list of alpha values to evaluate.",
+    )
+    parser.add_argument(
+        "--fedprox-mu-values",
+        type=str,
+        help="Comma-separated list of FedProx mu values to evaluate.",
+    )
+    parser.add_argument(
+        "--adversary-fractions",
+        type=str,
+        help="Comma-separated list of adversary fractions to evaluate.",
+    )
+    parser.add_argument(
+        "--dp-noise-multipliers",
+        type=str,
+        help="Comma-separated list of DP noise multipliers to evaluate.",
+    )
+    parser.add_argument(
+        "--personalization-epochs",
+        type=str,
+        help="Comma-separated list of personalization epochs to evaluate.",
+    )
+    parser.add_argument(
+        "--seeds",
+        type=str,
+        help="Comma-separated list of random seeds to evaluate.",
+    )
+    parser.add_argument(
+        "--split-index",
+        type=int,
+        default=0,
+        help="Zero-based split index when dividing experiment configs across jobs.",
+    )
+    parser.add_argument(
+        "--split-total",
+        type=int,
+        default=1,
+        help="Total number of splits when dividing experiment configs across jobs.",
+    )
 
     args = parser.parse_args()
 
@@ -541,10 +588,41 @@ def main():
     data_path = args.data_path if args.data_path else dataset_paths[args.dataset]
 
     matrix = ComparisonMatrix(dataset=args.dataset, data_path=data_path)
+    if args.aggregation_methods:
+        matrix.aggregation_methods = [method.strip() for method in args.aggregation_methods.split(",") if method.strip()]
+    if args.alpha_values:
+        matrix.alpha_values = [
+            float("inf") if value.strip().lower() in {"inf", "infinity"} else float(value.strip())
+            for value in args.alpha_values.split(",")
+            if value.strip()
+        ]
+    if args.fedprox_mu_values:
+        matrix.fedprox_mu_values = [float(value.strip()) for value in args.fedprox_mu_values.split(",") if value.strip()]
+    if args.adversary_fractions:
+        matrix.adversary_fractions = [float(value.strip()) for value in args.adversary_fractions.split(",") if value.strip()]
+    if args.dp_noise_multipliers:
+        matrix.dp_configs = [
+            {"enabled": float(value.strip()) > 0.0, "noise": float(value.strip())}
+            for value in args.dp_noise_multipliers.split(",")
+            if value.strip()
+        ]
+    if args.personalization_epochs:
+        matrix.personalization_epochs = [int(value.strip()) for value in args.personalization_epochs.split(",") if value.strip()]
+    if args.seeds:
+        matrix.seeds = [int(value.strip()) for value in args.seeds.split(",") if value.strip()]
+    if args.split_total < 1:
+        raise ValueError("--split-total must be >= 1")
+    if args.split_index < 0 or args.split_index >= args.split_total:
+        raise ValueError("--split-index must satisfy 0 <= split_index < split_total")
+
     configs = matrix.generate_configs(filter_dimension=None if args.dimension == "full" else args.dimension)
+    if args.split_total > 1:
+        configs = configs[args.split_index :: args.split_total]
 
     print(f"Generated {len(configs)} experiment configurations for dimension: {args.dimension}")
     print(f"Dataset: {args.dataset} ({data_path})")
+    if args.split_total > 1:
+        print(f"Split {args.split_index + 1}/{args.split_total}")
 
     if args.dry_run:
         for i, config in enumerate(configs):
@@ -587,7 +665,10 @@ def main():
     print(f"  Success rate: {successful_experiments/len(configs)*100:.1f}%")
 
     # Save experiment manifest
-    manifest_path = output_dir / f"experiment_manifest_{args.dimension}.json"
+    manifest_name = f"experiment_manifest_{args.dimension}"
+    if args.split_total > 1:
+        manifest_name += f"_split{args.split_index + 1}of{args.split_total}"
+    manifest_path = output_dir / f"{manifest_name}.json"
     with open(manifest_path, "w") as f:
         json.dump(
             {"dimension": args.dimension, "total_experiments": len(results), "results": results},

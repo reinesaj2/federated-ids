@@ -327,20 +327,9 @@ jobs:
             if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
       - name: Prepare full datasets
         run: |
-          mkdir -p data/unsw data/cic
-          # Copy full datasets if they exist, otherwise use samples
-          if [ -f "data/unsw/UNSW_NB15_training-set.csv" ]; then
-            echo "Using full UNSW dataset"
-          else
-            echo "Full UNSW dataset not found, using sample"
-            python scripts/setup_real_datasets.py
-          fi
-          if [ -f "data/cic/cic_ids2017_multiclass.csv" ]; then
-            echo "Using full CIC dataset"
-          else
-            echo "Full CIC dataset not found, using sample"
-            python scripts/setup_real_datasets.py
-          fi
+          python scripts/setup_real_datasets.py --full-only
+          test -f "data/unsw/UNSW_NB15_training-set.csv"
+          test -f "data/cic/cic_ids2017_multiclass.csv"
       - name: Full sweep (real-data 5c×20r) - ${{ matrix.scenario }} (optimized)
         uses: nick-fields/retry@v3
         with:

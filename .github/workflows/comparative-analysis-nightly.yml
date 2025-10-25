@@ -80,50 +80,122 @@ jobs:
             dataset: unsw
             timeout: 120
             priority: high
+            split_total: 1
+            split_index: 0
           - dimension: aggregation
             dataset: cic
             timeout: 180
             priority: high
+            split_total: 1
+            split_index: 0
           - dimension: heterogeneity
             dataset: unsw
             timeout: 120
             priority: high
+            split_total: 1
+            split_index: 0
           - dimension: heterogeneity
             dataset: cic
             timeout: 180
             priority: high
+            split_total: 1
+            split_index: 0
           - dimension: heterogeneity_fedprox
             dataset: unsw
-            timeout: 150
+            timeout: 90
             priority: medium
+            split_total: 5
+            split_index: 0
+          - dimension: heterogeneity_fedprox
+            dataset: unsw
+            timeout: 90
+            priority: medium
+            split_total: 5
+            split_index: 1
+          - dimension: heterogeneity_fedprox
+            dataset: unsw
+            timeout: 90
+            priority: medium
+            split_total: 5
+            split_index: 2
+          - dimension: heterogeneity_fedprox
+            dataset: unsw
+            timeout: 90
+            priority: medium
+            split_total: 5
+            split_index: 3
+          - dimension: heterogeneity_fedprox
+            dataset: unsw
+            timeout: 90
+            priority: medium
+            split_total: 5
+            split_index: 4
           - dimension: heterogeneity_fedprox
             dataset: cic
-            timeout: 200
+            timeout: 120
             priority: medium
+            split_total: 5
+            split_index: 0
+          - dimension: heterogeneity_fedprox
+            dataset: cic
+            timeout: 120
+            priority: medium
+            split_total: 5
+            split_index: 1
+          - dimension: heterogeneity_fedprox
+            dataset: cic
+            timeout: 120
+            priority: medium
+            split_total: 5
+            split_index: 2
+          - dimension: heterogeneity_fedprox
+            dataset: cic
+            timeout: 120
+            priority: medium
+            split_total: 5
+            split_index: 3
+          - dimension: heterogeneity_fedprox
+            dataset: cic
+            timeout: 120
+            priority: medium
+            split_total: 5
+            split_index: 4
           - dimension: attack
             dataset: unsw
             timeout: 100
             priority: high
+            split_total: 1
+            split_index: 0
           - dimension: attack
             dataset: cic
             timeout: 150
             priority: high
+            split_total: 1
+            split_index: 0
           - dimension: privacy
             dataset: unsw
             timeout: 120
             priority: medium
+            split_total: 1
+            split_index: 0
           - dimension: privacy
             dataset: cic
             timeout: 180
             priority: medium
+            split_total: 1
+            split_index: 0
           - dimension: personalization
             dataset: unsw
             timeout: 100
             priority: low
+            split_total: 1
+            split_index: 0
           - dimension: personalization
             dataset: cic
             timeout: 150
             priority: low
+            split_total: 1
+            split_index: 0
     steps:
       - uses: actions/checkout@v4
         with:
@@ -143,20 +215,9 @@ jobs:
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
       - name: Prepare full datasets
         run: |
-          mkdir -p data/unsw data/cic
-          # Copy full datasets if they exist, otherwise use samples
-          if [ -f "data/unsw/UNSW_NB15_training-set.csv" ]; then
-            echo "Using full UNSW dataset (15MB)"
-          else
-            echo "Full UNSW dataset not found, using sample"
-            python scripts/setup_real_datasets.py
-          fi
-          if [ -f "data/cic/cic_ids2017_multiclass.csv" ]; then
-            echo "Using full CIC dataset (3.3MB)"
-          else
-            echo "Full CIC dataset not found, using sample"
-            python scripts/setup_real_datasets.py
-          fi
+          python scripts/setup_real_datasets.py --full-only
+          test -f "data/unsw/UNSW_NB15_training-set.csv"
+          test -f "data/cic/cic_ids2017_multiclass.csv"
       - name: Monitor system resources
         run: |
           echo "=== SYSTEM RESOURCES ==="
@@ -168,21 +229,8 @@ jobs:
       - name: Check for cached results
         id: cache_check
         run: |
-          CACHE_KEY="${{ matrix.dimension }}-${{ matrix.dataset }}-${{ github.sha }}"
-          echo "cache-key=$CACHE_KEY" >> $GITHUB_OUTPUT
-
-          # Check if results already exist
-          if [ -d "results/comparative_analysis/${{ matrix.dataset }}" ]; then
-            RESULT_COUNT=$(find results/comparative_analysis/${{ matrix.dataset }} -name "metrics.csv" | wc -l)
-            if [ $RESULT_COUNT -gt 0 ]; then
-              echo "Found $RESULT_COUNT cached results, skipping experiment"
-              echo "cached=true" >> $GITHUB_OUTPUT
-            else
-              echo "cached=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "cached=false" >> $GITHUB_OUTPUT
-          fi
+          echo "cache-key=${{ matrix.dimension }}-${{ matrix.dataset }}-${{ matrix.split_index }}-${{ matrix.split_total }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "cached=false" >> $GITHUB_OUTPUT
       - name: Run comparative analysis (optimized parallel execution)
         if: steps.cache_check.outputs.cached == 'false'
         env:
@@ -210,7 +258,9 @@ jobs:
             --dataset ${{ matrix.dataset }} \
             --output_dir results/comparative_analysis/${{ matrix.dataset }} \
             --server_timeout $((TIMEOUT * 60 / 2)) \
-            --client_timeout $((TIMEOUT * 60))
+            --client_timeout $((TIMEOUT * 60)) \
+            --split-index ${{ matrix.split_index }} \
+            --split-total ${{ matrix.split_total }}
       - name: Use cached results
         if: steps.cache_check.outputs.cached == 'true'
         run: |

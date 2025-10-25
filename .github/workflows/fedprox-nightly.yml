@@ -34,54 +34,19 @@ concurrency:
 jobs:
   fedprox_comparison:
     runs-on: ubuntu-latest
-    timeout-minutes: 120  # 2 hours (optimized from 4 hours)
+    timeout-minutes: 180
     strategy:
       fail-fast: false
-      max-parallel: 9  # Parallel execution for all combinations
+      max-parallel: 9
       matrix:
-        include:
-          - alpha: 0.05
-            mu: 0.0
-            timeout: 60
-            priority: high
-          - alpha: 0.05
-            mu: 0.01
-            timeout: 80
-            priority: high
-          - alpha: 0.05
-            mu: 0.1
-            timeout: 100
-            priority: high
-          - alpha: 0.1
-            mu: 0.0
-            timeout: 60
-            priority: high
-          - alpha: 0.1
-            mu: 0.01
-            timeout: 80
-            priority: high
-          - alpha: 0.1
-            mu: 0.1
-            timeout: 100
-            priority: high
-          - alpha: 0.5
-            mu: 0.0
-            timeout: 80
-            priority: medium
-          - alpha: 0.5
-            mu: 0.01
-            timeout: 100
-            priority: medium
-          - alpha: 0.5
-            mu: 0.1
-            timeout: 120
-            priority: medium
+        alpha: [0.05, 0.1, 0.5]
+        mu: [0.0, 0.01, 0.1]
+        seed_chunk: ["0 1", "2 3", "4"]
     env:
       OMP_NUM_THREADS: '1'
       OPENBLAS_NUM_THREADS: '1'
       MKL_NUM_THREADS: '1'
       NUMEXPR_NUM_THREADS: '1'
-      SEED_LIST: 0 1 2 3 4
     steps:
       - uses: actions/checkout@v4
         with:
@@ -96,20 +61,9 @@ jobs:
           restore-keys: pip-${{ runner.os }}-
       - name: Prepare full datasets
         run: |
-          mkdir -p data/unsw data/cic
-          # Copy full datasets if they exist, otherwise use samples
-          if [ -f "data/unsw/UNSW_NB15_training-set.csv" ]; then
-            echo "Using full UNSW dataset (15MB)"
-          else
-            echo "Full UNSW dataset not found, using sample"
-            python scripts/setup_real_datasets.py
-          fi
-          if [ -f "data/cic/cic_ids2017_multiclass.csv" ]; then
-            echo "Using full CIC dataset (3.3MB)"
-          else
-            echo "Full CIC dataset not found, using sample"
-            python scripts/setup_real_datasets.py
-          fi
+          python scripts/setup_real_datasets.py --full-only
+          test -f "data/unsw/UNSW_NB15_training-set.csv"
+          test -f "data/cic/cic_ids2017_multiclass.csv"
       - name: Install dependencies with retry
         uses: nick-fields/retry@v3
         with:
@@ -122,7 +76,7 @@ jobs:
       - name: FedProx Comparison (real UNSW) - optimized
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: ${{ matrix.timeout }}
+          timeout_minutes: 120
           max_attempts: 2
           retry_on: error
           command: |
@@ -131,11 +85,12 @@ jobs:
             export D2_EXTENDED_METRICS="1"
             export ALPHA="${{ matrix.alpha }}"
             export MU="${{ matrix.mu }}"
+            SEED_CHUNK="${{ matrix.seed_chunk }}"
             CLIENTS=4
             ROUNDS=15
             DATASET="unsw"
             DATA_PATH="data/unsw/UNSW_NB15_training-set.csv"
-            for SEED in $SEED_LIST; do
+            for SEED in $SEED_CHUNK; do
               PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}_seed${SEED}"
               LOGDIR="runs/$PRESET"
               mkdir -p "$LOGDIR"
@@ -192,7 +147,8 @@ jobs:
         run: |
           export ALPHA="${{ matrix.alpha }}"
           export MU="${{ matrix.mu }}"
-          for SEED in $SEED_LIST; do
+          SEED_CHUNK="${{ matrix.seed_chunk }}"
+          for SEED in $SEED_CHUNK; do
             PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}_seed${SEED}"
             RUN_DIR="runs/$PRESET"
             python scripts/plot_metrics.py \
@@ -206,7 +162,8 @@ jobs:
         run: |
           export ALPHA="${{ matrix.alpha }}"
           export MU="${{ matrix.mu }}"
-          for SEED in $SEED_LIST; do
+          SEED_CHUNK="${{ matrix.seed_chunk }}"
+          for SEED in $SEED_CHUNK; do
             PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}_seed${SEED}"
             RUN_DIR="runs/$PRESET"
             mkdir -p "$RUN_DIR/thesis_plots"
