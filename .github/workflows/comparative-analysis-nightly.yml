@@ -73,7 +73,7 @@ jobs:
     timeout-minutes: 180  # 3 hours per dimension (optimized from 15 hours total)
     strategy:
       fail-fast: false
-      max-parallel: 6  # Parallel execution for all dimensions
+      max-parallel: 3  # Reduced parallel execution to conserve resources
       matrix:
         include:
           - dimension: aggregation
@@ -218,6 +218,21 @@ jobs:
           python scripts/setup_real_datasets.py --full-only
           test -f "data/unsw/UNSW_NB15_training-set.csv"
           test -f "data/cic/cic_ids2017_multiclass.csv"
+      - name: Validate datasets
+        run: |
+          python -c "
+          import pandas as pd
+          print('Validating UNSW dataset...')
+          unsw = pd.read_csv('data/unsw/UNSW_NB15_training-set.csv')
+          print(f'  UNSW shape: {unsw.shape}')
+          assert unsw.shape[0] > 80000, f'UNSW too small: {unsw.shape[0]} rows'
+          assert unsw.shape[1] > 40, f'UNSW missing columns: {unsw.shape[1]} columns'
+          print('Validating CIC dataset...')
+          cic = pd.read_csv('data/cic/cic_ids2017_multiclass.csv')
+          print(f'  CIC shape: {cic.shape}')
+          assert cic.shape[0] > 5000, f'CIC too small: {cic.shape[0]} rows'
+          print('Dataset validation passed')
+          "
       - name: Monitor system resources
         run: |
           echo "=== SYSTEM RESOURCES ==="
@@ -261,6 +276,39 @@ jobs:
             --client_timeout $((TIMEOUT * 60)) \
             --split-index ${{ matrix.split_index }} \
             --split-total ${{ matrix.split_total }}
+      - name: Capture failure logs
+        if: failure()
+        run: |
+          echo "=== COMPARATIVE ANALYSIS FAILURE DIAGNOSTICS ==="
+          echo "Matrix config: dimension=${{ matrix.dimension }} dataset=${{ matrix.dataset }}"
+          echo "Split: ${{ matrix.split_index }}/${{ matrix.split_total }}"
+          echo ""
+          echo "=== Server Logs ==="
+          for log in runs/comp_*/server.log; do
+            if [ -f "$log" ]; then
+              echo "--- $log (last 50 lines) ---"
+              tail -50 "$log"
+              echo ""
+            fi
+          done
+          echo "=== Client Logs (sample) ==="
+          for log in runs/comp_*/client_0.log; do
+            if [ -f "$log" ]; then
+              echo "--- $log (last 30 lines) ---"
+              tail -30 "$log"
+              echo ""
+            fi
+          done
+          echo "=== Experiment Manifest ==="
+          if [ -f "results/comparative_analysis/${{ matrix.dataset }}/experiment_manifest_${{ matrix.dimension }}.json" ]; then
+            cat "results/comparative_analysis/${{ matrix.dataset }}/experiment_manifest_${{ matrix.dimension }}.json"
+          else
+            echo "No manifest found"
+          fi
+          echo "=== System Resources ==="
+          echo "Memory: $(free -h | grep '^Mem:' || echo 'N/A')"
+          echo "Disk: $(df -h . | tail -1)"
+          echo "=== End Diagnostics ==="
       - name: Use cached results
         if: steps.cache_check.outputs.cached == 'true'
         run: |
