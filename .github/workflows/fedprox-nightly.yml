@@ -1,73 +1,101 @@
+---
 name: FedProx Nightly Comparison
-
 on:
   schedule:
-    - cron: "0 2 * * *" # 2 AM UTC daily
+    - cron: 0 2 * * *  # 2 AM UTC daily
   workflow_dispatch:
     inputs:
       alpha_values:
-        description: 'Alpha values for non-IID testing (comma-separated, e.g., "0.05,0.1,0.5")'
+        description: Alpha values for non-IID testing (comma-separated, e.g., "0.05,0.1,0.5")
         required: false
-        default: "0.05,0.1,0.5"
+        default: 0.05,0.1,0.5
         type: string
       mu_values:
-        description: 'FedProx mu values (comma-separated, e.g., "0.0,0.01,0.1")'
+        description: FedProx mu values (comma-separated, e.g., "0.0,0.01,0.1")
         required: false
-        default: "0.0,0.01,0.1"
+        default: 0.0,0.01,0.1
         type: string
       client_count:
-        description: "Number of clients for comparison"
+        description: Number of clients for comparison
         required: false
-        default: "10"
+        default: '10'
         type: string
       round_count:
-        description: "Number of rounds for comparison"
+        description: Number of rounds for comparison
         required: false
-        default: "20"
+        default: '20'
         type: string
-
 permissions:
   contents: write
   actions: read
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   fedprox_comparison:
     runs-on: ubuntu-latest
-    timeout-minutes: 240 # 4 hours
+    timeout-minutes: 120  # 2 hours (optimized from 4 hours)
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 9  # Parallel execution for all combinations
       matrix:
-        alpha: [0.05, 0.1, 0.5]
-        mu: [0.0, 0.01, 0.1]
+        include:
+          - alpha: 0.05
+            mu: 0.0
+            timeout: 60
+            priority: high
+          - alpha: 0.05
+            mu: 0.01
+            timeout: 80
+            priority: high
+          - alpha: 0.05
+            mu: 0.1
+            timeout: 100
+            priority: high
+          - alpha: 0.1
+            mu: 0.0
+            timeout: 60
+            priority: high
+          - alpha: 0.1
+            mu: 0.01
+            timeout: 80
+            priority: high
+          - alpha: 0.1
+            mu: 0.1
+            timeout: 100
+            priority: high
+          - alpha: 0.5
+            mu: 0.0
+            timeout: 80
+            priority: medium
+          - alpha: 0.5
+            mu: 0.01
+            timeout: 100
+            priority: medium
+          - alpha: 0.5
+            mu: 0.1
+            timeout: 120
+            priority: medium
     env:
-      OMP_NUM_THREADS: "1"
-      OPENBLAS_NUM_THREADS: "1"
-      MKL_NUM_THREADS: "1"
-      NUMEXPR_NUM_THREADS: "1"
-      SEED_LIST: "0 1 2 3 4"
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      NUMEXPR_NUM_THREADS: '1'
+      SEED_LIST: 0 1 2 3 4
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
+          python-version: '3.11'
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: pip-${{ runner.os }}-
-
       - name: Prepare real dataset samples
         run: python scripts/setup_real_datasets.py
-
       - name: Install dependencies with retry
         uses: nick-fields/retry@v3
         with:
@@ -77,11 +105,10 @@ jobs:
           command: |
             pip install -r requirements.txt
             if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-
-      - name: FedProx Comparison (real UNSW)
+      - name: FedProx Comparison (real UNSW) - optimized
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 180
+          timeout_minutes: ${{ matrix.timeout }}
           max_attempts: 2
           retry_on: error
           command: |
@@ -94,29 +121,24 @@ jobs:
             ROUNDS=15
             DATASET="unsw"
             DATA_PATH="data/unsw/unsw_nb15_sample.csv"
-
             for SEED in $SEED_LIST; do
               PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}_seed${SEED}"
               LOGDIR="runs/$PRESET"
               mkdir -p "$LOGDIR"
-
               PORT=$((8200 + SEED))
               export SEED="$SEED"
               export PYTHONHASHSEED="$SEED"
               export CUBLAS_WORKSPACE_CONFIG=":4096:8"
-
               echo "$DATASET" >"$LOGDIR/dataset.txt"
               echo "$DATA_PATH" >"$LOGDIR/dataset_path.txt"
               echo "$SEED" >"$LOGDIR/seed.txt"
               echo "Running FedProx comparison alpha=$ALPHA mu=$MU seed=$SEED dataset=$DATASET"
-
               python server.py \
                 --rounds $ROUNDS \
                 --aggregation fedavg \
                 --server_address 127.0.0.1:$PORT \
                 --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
               SERVER_PID=$!
-
               for i in {1..120}; do
                 if nc -z 127.0.0.1 $PORT 2>/dev/null; then
                   break
@@ -128,7 +150,6 @@ jobs:
                 kill $SERVER_PID 2>/dev/null || true
                 exit 1
               fi
-
               CLIENT_PIDS=()
               for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
                 python client.py \
@@ -145,18 +166,14 @@ jobs:
                   --seed $SEED >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
                 CLIENT_PIDS+=($!)
               done
-
               for PID in "${CLIENT_PIDS[@]}"; do
                 wait $PID
               done
-
               sleep 2
               kill $SERVER_PID 2>/dev/null || true
               wait $SERVER_PID 2>/dev/null || true
-
               python -c "import json; json.dump({'alpha': float('$ALPHA'), 'mu': float('$MU'), 'seed': int('$SEED'), 'algorithm': 'FedProx' if float('$MU') > 0 else 'FedAvg'}, open('$LOGDIR/metadata.json', 'w'), indent=2)"
             done
-
       - name: Generate comparison plots
         run: |
           export ALPHA="${{ matrix.alpha }}"
@@ -171,7 +188,6 @@ jobs:
               cp "$RUN_DIR/client_metrics_plot.png" "$RUN_DIR/fedprox_comparison.png"
             fi
           done
-
       - name: Generate thesis-quality plots
         run: |
           export ALPHA="${{ matrix.alpha }}"
@@ -185,18 +201,17 @@ jobs:
               --runs_dir runs \
               --output_dir "$RUN_DIR/thesis_plots" || echo "Thesis plots generation failed (non-fatal)"
           done
-
       - name: Validate results
         run: |
           # Use non-strict FPR validation for real datasets (warnings only)
           # Real-world datasets like UNSW have complex distributions that make
           # strict FPR targets (±0.02 of 0.10) difficult to achieve
           python scripts/ci_checks.py --runs_dir runs
-
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fedprox-nightly-alpha${{ matrix.alpha }}-mu${{ matrix.mu }}-${{ github.sha }}
+          name: fedprox-nightly-alpha${{ matrix.alpha }}-mu${{ matrix.mu }}-${{ github.sha
+            }}
           path: |
             runs/**/metrics.csv
             runs/**/client_*_metrics.csv
@@ -208,32 +223,26 @@ jobs:
             runs/**/thesis_plots/**/*.png
             runs/**/thesis_plots/**/*.pdf
           retention-days: 90
-
   fedprox_summary:
     needs: fedprox_comparison
     runs-on: ubuntu-latest
     if: always()
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
+          python-version: '3.11'
       - name: Install dependencies
         run: pip install pandas matplotlib seaborn numpy scipy
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: nightly-artifacts
-
       - name: Generate FedProx comparison summary
         run: |
           python scripts/analyze_fedprox_comparison.py \
             --artifacts_dir nightly-artifacts \
             --output_dir fedprox-summary
-
       - name: Upload consolidated results
         uses: actions/upload-artifact@v4
         if: always()
@@ -248,7 +257,6 @@ jobs:
             fedprox-summary/thesis_plots/**/*.png
             fedprox-summary/thesis_plots/**/*.pdf
           retention-days: 90
-
       - name: Locate baseline summary run
         id: find_baseline
         uses: actions/github-script@v7
@@ -271,14 +279,12 @@ jobs:
               core.setOutput('artifact_name', '');
               return;
             }
-
             const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
               owner,
               repo,
               run_id: baseline.id,
               per_page: 20,
             });
-
             const summary = artifacts.data.artifacts.find(artifact => artifact.name.startsWith('fedprox-nightly-summary-'));
             if (!summary) {
               core.info('Prior successful run did not publish a summary artifact.');
@@ -286,11 +292,9 @@ jobs:
               core.setOutput('artifact_name', '');
               return;
             }
-
             core.info(`Using baseline run ${baseline.id} artifact ${summary.name}`);
             core.setOutput('run_id', String(baseline.id));
             core.setOutput('artifact_name', summary.name);
-
       - name: Download baseline summary artifact
         if: steps.find_baseline.outputs.artifact_name != ''
         uses: actions/download-artifact@v4
@@ -299,7 +303,6 @@ jobs:
           run-id: ${{ steps.find_baseline.outputs.run_id }}
           name: ${{ steps.find_baseline.outputs.artifact_name }}
           path: baseline-summary
-
       - name: Compare summary against baseline
         id: regression_check
         run: |
@@ -326,7 +329,6 @@ jobs:
             --candidate fedprox-summary/fedprox_comparison_summary.json \
             --output regression-report/regressions.json | tee regression-report/report.txt
           echo "baseline_missing=false" >> "$GITHUB_OUTPUT"
-
       - name: Append regression report to summary
         if: always()
         run: |
@@ -337,14 +339,12 @@ jobs:
               cat regression-report/report.txt
             } >> "$GITHUB_STEP_SUMMARY"
           fi
-
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: fedprox-regression-report-${{ github.sha }}
           path: regression-report
           retention-days: 30
-
   commit_plots:
     needs: [fedprox_summary]
     runs-on: ubuntu-latest
@@ -355,17 +355,14 @@ jobs:
           ref: main
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
+          python-version: '3.11'
       - name: Download consolidated results
         uses: actions/download-artifact@v4
         with:
           name: fedprox-nightly-summary-${{ github.sha }}
           path: fedprox-summary
-
       - name: Download manual comparison results
         uses: actions/download-artifact@v4
         if: github.event_name == 'workflow_dispatch'
@@ -373,7 +370,6 @@ jobs:
           name: manual-fedprox-comparison-${{ github.sha }}
           path: manual-comparison
         continue-on-error: true
-
       - name: Commit plots to repository
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -399,7 +395,6 @@ jobs:
               --experiment_type fedprox-manual \
               --plots_dir plots
           fi
-
       - name: Push plots to repository
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -409,7 +404,6 @@ jobs:
           else
             echo "No commits to push"
           fi
-
   fedprox_notify:
     needs: fedprox_comparison
     runs-on: ubuntu-latest
@@ -423,7 +417,6 @@ jobs:
           echo "Commit: ${{ github.sha }}"
           echo "Failed at: $(date)"
           echo "Check the workflow run for details"
-
   failure_context:
     needs: fedprox_comparison
     if: needs.fedprox_comparison.result == 'failure'
@@ -445,52 +438,45 @@ jobs:
           fi
           echo "Python version:" && python3 --version
           echo "Pip packages (top 20):" && pip3 list --format=columns | head -n 22
-
   manual_fedprox_comparison:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     env:
-      OMP_NUM_THREADS: "1"
-      OPENBLAS_NUM_THREADS: "1"
-      MKL_NUM_THREADS: "1"
-      NUMEXPR_NUM_THREADS: "1"
-      PYTHONHASHSEED: "0"
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      NUMEXPR_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
+          python-version: '3.11'
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: pip-${{ runner.os }}-
-
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-
       - name: Parse parameters and run FedProx comparison matrix
         env:
-          D2_EXTENDED_METRICS: "1"
+          D2_EXTENDED_METRICS: '1'
         run: |
           set -euo pipefail
           trap 'pkill -P $$ || true' EXIT
           IFS=',' read -ra ALPHAS <<< "${{ github.event.inputs.alpha_values }}"
           IFS=',' read -ra MUS <<< "${{ github.event.inputs.mu_values }}"
-
           for alpha in "${ALPHAS[@]}"; do
             alpha=$(echo "$alpha" | xargs)  # trim whitespace
             for mu in "${MUS[@]}"; do
               mu=$(echo "$mu" | xargs)  # trim whitespace
               echo "Running FedProx comparison: alpha=${alpha}, mu=${mu}"
-
               CLIENTS=${{ github.event.inputs.client_count }}
               ROUNDS=${{ github.event.inputs.round_count }}
               PRESET="manual_fedprox_alpha${alpha}_mu${mu}"
@@ -533,7 +519,6 @@ jobs:
               # Clean up server
               sleep 2
               kill $SERVER_PID 2>/dev/null || true
-
               python scripts/plot_metrics.py \
                 --run_dir "runs/$PRESET" \
                 --output_dir "runs/$PRESET"
@@ -542,7 +527,6 @@ jobs:
               fi
             done
           done
-
       - name: Validate all results
         run: |
           # Check that metrics files were created
@@ -558,7 +542,6 @@ jobs:
             echo "Error: No experiments produced metrics"
             exit 1
           fi
-
       - uses: actions/upload-artifact@v4
         if: always()
         with:

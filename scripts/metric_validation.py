@@ -290,10 +290,10 @@ def main():
 
     # Exit with error code if issues found
     if warnings:
-        print(f"\n❌ Found issues in {len(warnings)} files")
+        print(f"\nERROR: Found issues in {len(warnings)} files")
         return 1
     else:
-        print("\n✅ All metrics validated successfully")
+        print("\nSUCCESS: All metrics validated successfully")
         return 0
 
 
