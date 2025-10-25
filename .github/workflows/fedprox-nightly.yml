@@ -172,6 +172,12 @@ jobs:
               --runs_dir runs \
               --output_dir "$RUN_DIR/thesis_plots" || echo "Thesis plots generation failed (non-fatal)"
           done
+      - name: Prepare artifact metadata
+        id: artifact_meta
+        run: |
+          chunk="${{ matrix.seed_chunk }}"
+          safe_chunk=$(echo "$chunk" | tr ' ' '-' | tr ',' '-')
+          echo "suffix=$safe_chunk" >> "$GITHUB_OUTPUT"
       - name: Validate results
         run: |
           # Use non-strict FPR validation for real datasets (warnings only)
@@ -182,7 +188,7 @@ jobs:
         if: always()
         with:
           name: fedprox-nightly-alpha${{ matrix.alpha }}-mu${{ matrix.mu }}-seeds-${{
-            replace(matrix.seed_chunk, ' ', '-') }}-${{ github.sha }}
+            steps.artifact_meta.outputs.suffix }}-${{ github.sha }}
           path: |
             runs/**/metrics.csv
             runs/**/client_*_metrics.csv
