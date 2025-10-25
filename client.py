@@ -33,6 +33,7 @@ from client_metrics import (
     create_label_histogram_json,
 )
 from privacy_accounting import compute_epsilon
+from secure_aggregation import generate_secret_shares, mask_updates
 from logging_utils import configure_logging, get_logger
 
 
@@ -281,6 +282,7 @@ class TorchClient(fl.client.NumPyClient):
         self.model.to(self.device)
         self.round_num = 0
         self.runtime_config = runtime_config
+        self.secret_shares: Optional[List[np.ndarray]] = None
 
     def get_parameters(self, config):
         return get_parameters(self.model)
@@ -336,7 +338,9 @@ class TorchClient(fl.client.NumPyClient):
                     )
 
                     # Get FedProx parameters (server config takes precedence)
-                    fedprox_mu = float(config.get("fedprox_mu", self.runtime_config.get("fedprox_mu", 0.0)))
+                    fedprox_mu = float(
+                        config.get("fedprox_mu", self.runtime_config.get("fedprox_mu", 0.0))
+                    )
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [
@@ -364,12 +368,14 @@ class TorchClient(fl.client.NumPyClient):
                         
                         # Apply gradient clipping ONLY to adversarial clients
                         if mode in ["grad_ascent", "label_flip"]:
-                            clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
+                            clip_factor = float(
+                                self.runtime_config.get("adversary_clip_factor", 2.0)
+                            )
                             if clip_factor > 0:
                                 torch.nn.utils.clip_grad_norm_(
                                     self.model.parameters(), 
                                     max_norm=clip_factor,
-                                    norm_type=2.0
+                                    norm_type=2.0,
                                 )
                         
                         optimizer.step()
@@ -386,26 +392,20 @@ class TorchClient(fl.client.NumPyClient):
                     fedprox_mu = float(config.get("fedprox_mu", self.runtime_config.get("fedprox_mu", 0.0)))
                     global_tensors = None
                     if fedprox_mu > 0.0:
-                        global_tensors = [
-                            torch.tensor(param, dtype=torch.float32).to(self.device)
-                            for param in parameters
-                        ]
+                        global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
 
                     for xb, yb in self.train_loader:
-                        xb = xb.to(self.device)
-                        yb = yb.to(self.device)
-                        with torch.no_grad():
-                            flipped = (yb + 1) % n_classes
+                        xb, yb = xb.to(self.device), yb.to(self.device)
                         optimizer.zero_grad()
+                        # Flip labels
+                        flipped = (yb + 1) % n_classes
                         preds = self.model(xb)
                         loss = criterion(preds, flipped)
 
                         # Add FedProx proximal term
                         if fedprox_mu > 0.0 and global_tensors is not None:
                             prox_term = 0.0
-                            for param, global_param in zip(
-                                self.model.parameters(), global_tensors
-                            ):
+                            for param, global_param in zip(self.model.parameters(), global_tensors):
                                 prox_term += torch.sum((param - global_param) ** 2)
                             loss = loss + (fedprox_mu / 2.0) * prox_term
 
@@ -415,11 +415,7 @@ class TorchClient(fl.client.NumPyClient):
                         if mode in ["grad_ascent", "label_flip"]:
                             clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
                             if clip_factor > 0:
-                                torch.nn.utils.clip_grad_norm_(
-                                    self.model.parameters(), 
-                                    max_norm=clip_factor,
-                                    norm_type=2.0
-                                )
+                                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=clip_factor, norm_type=2.0)
                         
                         optimizer.step()
                 else:
@@ -722,7 +718,6 @@ class TorchClient(fl.client.NumPyClient):
                     "test_size": len(self.test_loader.dataset),
                 },
             )
-            # Preserve human-readable debug prints for tests and CLI
             print(
                 f"[Client {cid}] Personalization R{self.round_num}: "
                 f"Starting with {personalization_epochs} epochs, "
@@ -862,6 +857,16 @@ class TorchClient(fl.client.NumPyClient):
 
         # CRITICAL: Restore global model weights before returning to server
         set_parameters(self.model, weights_after)
+
+        secure_agg_enabled = bool(self.runtime_config.get("secure_aggregation", False))
+        if secure_agg_enabled:
+            self.secret_shares = [
+                generate_secret_shares(w.shape, seed=hash(self.round_num) & 0x7FFFFFFF)
+                for w in weights_after
+            ]
+            weights_after = [
+                mask_updates(w, share) for w, share in zip(weights_after, self.secret_shares)
+            ]
 
         num_examples = len(self.train_loader.dataset)
         metrics = {}

@@ -211,7 +211,7 @@ def main() -> None:
 
         def _estimate_benign_mean(self, client_weights: List[List[np.ndarray]]) -> List[np.ndarray]:
             """Estimate benign mean by using a simple average (FedAvg).
-            
+
             This provides a stable, independent reference point to compare
             robust aggregation methods against. For FedAvg itself, we use
             the same computation but avoid circular reference.
@@ -225,28 +225,23 @@ def main() -> None:
             num_clients = len(client_weights)
             if num_clients == 0:
                 return []
-            
+
             # Compute element-wise average across all clients
             num_layers = len(client_weights[0])
             benign_mean = []
-            
+
             for layer_idx in range(num_layers):
                 # Stack all client layers for this layer index
                 layer_stack = np.stack([client[layer_idx] for client in client_weights], axis=0)
                 # Compute mean across clients (axis=0)
                 layer_mean = np.mean(layer_stack, axis=0)
                 benign_mean.append(layer_mean)
-            
+
             return benign_mean
 
     def _on_fit_config(rnd: int):
         # Pass through seed and default hyperparameters; rounds can adjust epochs if desired
-        return {
-            "epoch": 1, 
-            "lr": 0.01, 
-            "seed": seed,
-            "fedprox_mu": args.fedprox_mu
-        }
+        return {"epoch": 1, "lr": 0.01, "seed": seed, "fedprox_mu": args.fedprox_mu}
 
     def _eval_metrics_agg(results: List[Tuple[int, dict]]):
         # results: list of (num_examples, metrics)
