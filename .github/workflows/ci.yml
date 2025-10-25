@@ -325,8 +325,22 @@ jobs:
           command: |
             pip install -r requirements.txt
             if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-      - name: Prepare real dataset samples
-        run: python scripts/setup_real_datasets.py
+      - name: Prepare full datasets
+        run: |
+          mkdir -p data/unsw data/cic
+          # Copy full datasets if they exist, otherwise use samples
+          if [ -f "data/unsw/UNSW_NB15_training-set.csv" ]; then
+            echo "Using full UNSW dataset"
+          else
+            echo "Full UNSW dataset not found, using sample"
+            python scripts/setup_real_datasets.py
+          fi
+          if [ -f "data/cic/cic_ids2017_multiclass.csv" ]; then
+            echo "Using full CIC dataset"
+          else
+            echo "Full CIC dataset not found, using sample"
+            python scripts/setup_real_datasets.py
+          fi
       - name: Full sweep (real-data 5c×20r) - ${{ matrix.scenario }} (optimized)
         uses: nick-fields/retry@v3
         with:
@@ -340,14 +354,14 @@ jobs:
             ROUNDS=20
             ALPHA="${{ matrix.alpha }}"
             DATASET="unsw"
-            DATA_PATH="data/unsw/unsw_nb15_sample.csv"
+            DATA_PATH="data/unsw/UNSW_NB15_training-set.csv"
             ADV_MODE=""
             if [ "${{ matrix.scenario }}" = "benign" ]; then
               PRESET="d2_full_${ALPHA}_benign"
             else
               PRESET="d2_full_${ALPHA}_adv"
               DATASET="cic"
-              DATA_PATH="data/cic/cic_ids2017_sample.csv"
+              DATA_PATH="data/cic/cic_ids2017_multiclass.csv"
               ADV_MODE="--adversary_mode label_flip"
             fi
             mkdir -p "runs/$PRESET"

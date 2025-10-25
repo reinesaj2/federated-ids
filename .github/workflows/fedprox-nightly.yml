@@ -94,8 +94,22 @@ jobs:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: pip-${{ runner.os }}-
-      - name: Prepare real dataset samples
-        run: python scripts/setup_real_datasets.py
+      - name: Prepare full datasets
+        run: |
+          mkdir -p data/unsw data/cic
+          # Copy full datasets if they exist, otherwise use samples
+          if [ -f "data/unsw/UNSW_NB15_training-set.csv" ]; then
+            echo "Using full UNSW dataset (15MB)"
+          else
+            echo "Full UNSW dataset not found, using sample"
+            python scripts/setup_real_datasets.py
+          fi
+          if [ -f "data/cic/cic_ids2017_multiclass.csv" ]; then
+            echo "Using full CIC dataset (3.3MB)"
+          else
+            echo "Full CIC dataset not found, using sample"
+            python scripts/setup_real_datasets.py
+          fi
       - name: Install dependencies with retry
         uses: nick-fields/retry@v3
         with:
@@ -120,7 +134,7 @@ jobs:
             CLIENTS=4
             ROUNDS=15
             DATASET="unsw"
-            DATA_PATH="data/unsw/unsw_nb15_sample.csv"
+            DATA_PATH="data/unsw/UNSW_NB15_training-set.csv"
             for SEED in $SEED_LIST; do
               PRESET="nightly_fedprox_alpha${ALPHA}_mu${MU}_seed${SEED}"
               LOGDIR="runs/$PRESET"
