@@ -181,8 +181,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fedprox-nightly-alpha${{ matrix.alpha }}-mu${{ matrix.mu }}-${{ github.sha
-            }}
+          name: fedprox-nightly-alpha${{ matrix.alpha }}-mu${{ matrix.mu }}-seeds-${{
+            replace(matrix.seed_chunk, ' ', '-') }}-${{ github.sha }}
           path: |
             runs/**/metrics.csv
             runs/**/client_*_metrics.csv
