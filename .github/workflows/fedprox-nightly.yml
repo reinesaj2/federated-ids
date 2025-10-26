@@ -357,7 +357,8 @@ jobs:
           # Use non-strict FPR validation for real datasets (warnings only)
           # Real-world datasets like UNSW have complex distributions that make
           # strict FPR targets (±0.02 of 0.10) difficult to achieve
-          python scripts/ci_checks.py --runs_dir runs
+          # Allow partial seed coverage for chunked parallel execution (min-seeds=1)
+          python scripts/ci_checks.py --runs_dir runs --min-seeds 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
