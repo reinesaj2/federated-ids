@@ -53,7 +53,7 @@ def validate_csv_schema(csv_path: Path, expected_columns: Set[str]) -> None:
 
             if not expected_columns.issubset(actual_columns):
                 missing = expected_columns - actual_columns
-                raise ArtifactValidationError(f"CSV {csv_path} missing required columns: {missing}. " f"Found: {actual_columns}")
+                raise ArtifactValidationError(f"CSV {csv_path} missing required columns: {missing}. Found: {actual_columns}")
 
             # Validate at least one data row exists
             try:
