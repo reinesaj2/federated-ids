@@ -476,5 +476,9 @@ For a comprehensive threat model including adversary assumptions, attack scenari
 
 - Differential Privacy (scaffold): client‑side clipping with Gaussian noise applied to the model update
   before sending. This is not DP‑SGD and does not include privacy accounting.
-- Secure Aggregation (stub): toggle provided and status logged, but updates are not cryptographically masked.
-  Integration of secure summation/masking is planned for a later milestone.
+- Secure Aggregation (additive masking): when `--secure_aggregation` (or `D2_SECURE_AGG=1`) is enabled the
+  server samples a per-client deterministic seed each round, clients mask every tensor with additive shares
+  (`secure_aggregation.py`) before sending updates, and the server reconstructs the masks before delegating
+  to the configured aggregation rule. **Limitations:** all participating clients must finish the round (no
+  dropout tolerance yet); seeds are deterministic for reproducibility and should be routed through a secure
+  channel in production; masking currently covers model parameters only (no gradient compression).
