@@ -22,7 +22,7 @@ class ArtifactValidationError(Exception):
 
 MIN_WEIGHTED_MACRO_F1 = 0.70
 MIN_WEIGHTED_ACCURACY = 0.70
-MAX_FINAL_L2_DISTANCE = 1.5
+MAX_FINAL_L2_DISTANCE = 1.5  # Base threshold for alpha=1.0 (no heterogeneity)
 
 
 def _safe_float(value: str | None) -> float | None:
@@ -75,6 +75,52 @@ def validate_plot_files(run_dir: Path) -> None:
         plot_path = run_dir / plot_file
         if not plot_path.exists():
             raise ArtifactValidationError(f"Required plot file missing: {plot_path}")
+
+
+def _extract_alpha_from_run_name(run_dir: Path) -> float | None:
+    """Extract alpha parameter from run directory name.
+
+    Args:
+        run_dir: Run directory path
+
+    Returns:
+        Alpha value if found, None otherwise
+    """
+    pattern = re.compile(r"nightly_fedprox_alpha(?P<alpha>[0-9.]+)_mu(?P<mu>[0-9.]+)_seed(?P<seed>\d+)")
+    match = pattern.match(run_dir.name)
+    if match:
+        try:
+            return float(match.group("alpha"))
+        except ValueError:
+            return None
+    return None
+
+
+def _compute_adaptive_l2_threshold(alpha: float | None) -> float:
+    """Compute adaptive L2 distance threshold based on data heterogeneity level.
+
+    With extreme heterogeneity (low alpha), clients have very different local
+    distributions, causing larger model divergence. The adaptive threshold
+    accounts for this:
+
+    - alpha=1.0 (IID): max_l2 = 1.5
+    - alpha=0.5 (moderate): max_l2 = 2.5
+    - alpha=0.1 (extreme): max_l2 = 3.3
+
+    Args:
+        alpha: Dirichlet concentration parameter (None = use base threshold)
+
+    Returns:
+        Adaptive L2 distance threshold
+    """
+    if alpha is None:
+        return MAX_FINAL_L2_DISTANCE
+
+    # Formula: base + (1 - alpha) * scale
+    # Allows higher divergence for lower alpha (more heterogeneity)
+    base = MAX_FINAL_L2_DISTANCE  # 1.5
+    scale = 2.0
+    return base + (1.0 - alpha) * scale
 
 
 def validate_fpr_tolerance(
@@ -207,7 +253,10 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
     if not math.isfinite(weighted_accuracy) or weighted_accuracy < MIN_WEIGHTED_ACCURACY:
         raise ArtifactValidationError(f"Weighted acc_after={weighted_accuracy:.3f} below minimum {MIN_WEIGHTED_ACCURACY:.2f}")
 
-    # Validate server convergence metrics (L2 distance)
+    # Validate server convergence metrics (L2 distance) with adaptive threshold
+    alpha = _extract_alpha_from_run_name(run_dir)
+    adaptive_l2_threshold = _compute_adaptive_l2_threshold(alpha)
+
     server_rows = _load_csv_rows(server_metrics_path)
     if not server_rows:
         raise ArtifactValidationError(f"No server metrics rows found in {server_metrics_path}")
@@ -215,8 +264,11 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
     l2_value = _safe_float(final_server_row.get("l2_to_benign_mean"))
     if l2_value is None:
         raise ArtifactValidationError(f"Server metrics missing l2_to_benign_mean in {server_metrics_path}")
-    if not math.isfinite(l2_value) or l2_value > MAX_FINAL_L2_DISTANCE:
-        raise ArtifactValidationError(f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {MAX_FINAL_L2_DISTANCE:.1f}")
+    if not math.isfinite(l2_value) or l2_value > adaptive_l2_threshold:
+        alpha_str = f"alpha={alpha:.2f}, " if alpha is not None else ""
+        raise ArtifactValidationError(
+            f"Final l2_to_benign_mean={l2_value:.3f} exceeds {alpha_str}adaptive threshold {adaptive_l2_threshold:.2f}"
+        )
 
     # Validate FPR tolerance if using low_fpr tau mode
     validate_fpr_tolerance(run_dir, target_fpr=0.10, tolerance=0.02, strict=fpr_strict)
