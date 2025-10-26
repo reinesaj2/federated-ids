@@ -2,7 +2,7 @@ import argparse
 import os
 import random
 import time
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import flwr as fl
 import numpy as np
@@ -13,6 +13,7 @@ from robust_aggregation import (
     aggregate_weights,
     aggregate_weighted_mean,
 )
+from secure_aggregation import generate_mask_sequence
 from server_metrics import (
     ServerMetricsLogger,
     AggregationTimer,
@@ -112,7 +113,7 @@ def main() -> None:
     secure_agg_enabled = bool(args.secure_aggregation or os.environ.get("D2_SECURE_AGG", "0").lower() not in ("0", "false", "no", ""))
     logger.info(
         "secure_aggregation_mode",
-        extra={"enabled": bool(secure_agg_enabled), "note": "stub"},
+        extra={"enabled": bool(secure_agg_enabled), "note": "additive masking with deterministic seeds"},
     )
 
     # Initialize metrics logging
@@ -122,14 +123,25 @@ def main() -> None:
     logger.info("metrics_init", extra={"metrics_path": metrics_path})
 
     class RobustStrategy(fl.server.strategy.FedAvg):
-        def __init__(self, *args, **kwargs):
+        def __init__(self, secure_enabled: bool, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.round_start_time: Optional[float] = None
+            self.secure_aggregation_enabled = secure_enabled
+            self.secure_round_seeds: Dict[int, Dict[str, int]] = {}
 
         def configure_fit(self, server_round: int, parameters, client_manager):
             # Track round start time
             self.round_start_time = time.perf_counter()
-            return super().configure_fit(server_round, parameters, client_manager)
+            assignments = super().configure_fit(server_round, parameters, client_manager)
+            if self.secure_aggregation_enabled:
+                round_map: Dict[str, int] = {}
+                for client_proxy, fit_ins in assignments:
+                    seed = random.randrange(1, 2**31)
+                    round_map[client_proxy.cid] = seed
+                    fit_ins.config["secure_aggregation"] = True
+                    fit_ins.config["secure_aggregation_seed"] = seed
+                self.secure_round_seeds[server_round] = round_map
+            return assignments
 
         def aggregate_fit(self, rnd, results, failures):  # type: ignore[override]
             if len(results) == 0:
@@ -138,10 +150,28 @@ def main() -> None:
             # Convert client parameters to numpy lists per client
             client_weights: List[List[np.ndarray]] = []
             sample_counts: List[int] = []
-            for _, fit_res in results:
+            ordered_client_ids: List[str] = []
+            for client_proxy, fit_res in results:
+                ordered_client_ids.append(client_proxy.cid)
                 nds = parameters_to_ndarrays(fit_res.parameters)
                 client_weights.append(nds)
                 sample_counts.append(int(fit_res.num_examples))
+
+            if self.secure_aggregation_enabled:
+                round_seeds = self.secure_round_seeds.pop(rnd, {})
+                for idx, client_id in enumerate(ordered_client_ids):
+                    seed = round_seeds.get(client_id)
+                    if seed is None:
+                        logger.warning(
+                            "secure_aggregation_seed_missing",
+                            extra={"round": rnd, "client_id": client_id},
+                        )
+                        continue
+                    shapes = [layer.shape for layer in client_weights[idx]]
+                    masks = generate_mask_sequence(seed, shapes)
+                    client_weights[idx] = [
+                        masked_layer - mask for masked_layer, mask in zip(client_weights[idx], masks)
+                    ]
 
             # Time the aggregation
             with agg_timer.time_aggregation():
@@ -252,6 +282,7 @@ def main() -> None:
         return {"accuracy": float(mean_accuracy)}
 
     strategy = RobustStrategy(
+        secure_enabled=secure_agg_enabled,
         fraction_fit=args.fraction_fit,
         min_fit_clients=args.min_fit_clients,
         min_evaluate_clients=args.min_eval_clients,

@@ -33,7 +33,7 @@ from client_metrics import (
     create_label_histogram_json,
 )
 from privacy_accounting import compute_epsilon
-from secure_aggregation import generate_secret_shares, mask_updates
+from secure_aggregation import generate_mask_sequence, mask_updates
 from logging_utils import configure_logging, get_logger
 
 
@@ -282,13 +282,30 @@ class TorchClient(fl.client.NumPyClient):
         self.model.to(self.device)
         self.round_num = 0
         self.runtime_config = runtime_config
-        self.secret_shares: Optional[List[np.ndarray]] = None
+        self.secure_aggregation_enabled = bool(runtime_config.get("secure_aggregation", False))
+        self._secure_aggregation_seed_override = runtime_config.get("secure_aggregation_seed")
+        self._last_secure_seed: Optional[int] = None
 
     def get_parameters(self, config):
         return get_parameters(self.model)
 
     def fit(self, parameters, config):
         self.round_num += 1
+
+        secure_requested = bool(config.get("secure_aggregation", self.secure_aggregation_enabled))
+        secure_seed = config.get("secure_aggregation_seed")
+        if secure_seed is None:
+            secure_seed = self._secure_aggregation_seed_override
+        if secure_seed is not None:
+            try:
+                secure_seed = int(secure_seed)
+            except (TypeError, ValueError):
+                secure_seed = None
+        if secure_requested and secure_seed is None:
+            base_seed = int(os.environ.get("SEED", "42"))
+            secure_seed = base_seed * 1000 + int(self.metrics_logger.client_id) * 97 + self.round_num
+        secure_aggregation_active = secure_requested and secure_seed is not None
+        self._last_secure_seed = secure_seed if secure_aggregation_active else None
 
         # Get training hyperparameters
         epochs = int(config.get("epoch", self.runtime_config.get("local_epochs", 1)))
@@ -439,10 +456,10 @@ class TorchClient(fl.client.NumPyClient):
         dp_delta = None
         dp_sigma = None
         dp_clip_norm = None
+        dp_enabled = bool(self.runtime_config.get("dp_enabled", False))
 
         # Differential Privacy: clip update and add Gaussian noise (if enabled)
         try:
-            dp_enabled = bool(self.runtime_config.get("dp_enabled", False))
             if dp_enabled:
                 clip = float(self.runtime_config.get("dp_clip", 1.0))
                 noise_mult = float(self.runtime_config.get("dp_noise_multiplier", 0.0))
@@ -639,6 +656,23 @@ class TorchClient(fl.client.NumPyClient):
         except Exception:
             pass
 
+        num_examples = len(self.train_loader.dataset)
+        weights_to_send = weights_after
+        secure_metrics: dict[str, float | int | bool | None] = {"secure_aggregation": False}
+        if secure_aggregation_active and self._last_secure_seed is not None:
+            shapes = [w.shape for w in weights_after]
+            mask_sequence = generate_mask_sequence(self._last_secure_seed, shapes)
+            weights_to_send = [
+                mask_updates(w, mask) for w, mask in zip(weights_after, mask_sequence)
+            ]
+            secure_metrics = {
+                "secure_aggregation": True,
+                "secure_aggregation_seed": int(self._last_secure_seed),
+                "secure_aggregation_mask_checksum": float(
+                    sum(float(mask.sum()) for mask in mask_sequence)
+                ),
+            }
+
         # Get timing
         t_fit_ms = self.fit_timer.get_last_fit_time_ms()
 
@@ -681,7 +715,26 @@ class TorchClient(fl.client.NumPyClient):
             dp_delta=dp_delta,
             dp_sigma=dp_sigma,
             dp_clip_norm=dp_clip_norm,
+            dp_enabled_flag=dp_enabled,
+            secure_aggregation_flag=bool(secure_metrics.get("secure_aggregation", False)),
+            secure_aggregation_seed=int(secure_metrics.get("secure_aggregation_seed", 0)) if secure_metrics.get("secure_aggregation_seed") is not None else None,
+            secure_aggregation_mask_checksum=secure_metrics.get("secure_aggregation_mask_checksum"),
         )
+
+        metrics_payload: dict[str, float | int | bool | None] = {"epochs_completed": epochs_completed}
+        metrics_payload.update(secure_metrics)
+        if dp_enabled:
+            metrics_payload.update(
+                {
+                    "dp_enabled": True,
+                    "dp_epsilon": dp_epsilon,
+                    "dp_delta": dp_delta,
+                    "dp_sigma": dp_sigma,
+                    "dp_clip_norm": dp_clip_norm,
+                }
+            )
+        else:
+            metrics_payload["dp_enabled"] = False
 
         # Personalization: post-FL local fine-tuning (if enabled)
         personalization_epochs = int(
@@ -690,9 +743,8 @@ class TorchClient(fl.client.NumPyClient):
 
         # Early exit if personalization disabled or no test data
         if personalization_epochs == 0 or len(self.test_loader.dataset) == 0:
-            num_examples = len(self.train_loader.dataset)
-            metrics = {}
-            return weights_after, num_examples, metrics
+            set_parameters(self.model, weights_after)
+            return weights_to_send, num_examples, metrics_payload
 
         # Save global model performance (already computed above)
         macro_f1_global = macro_f1_after
@@ -849,6 +901,15 @@ class TorchClient(fl.client.NumPyClient):
                 benign_fpr_personalized=benign_fpr_personalized,
                 personalization_gain=personalization_gain,
             )
+            metrics_payload.update(
+                {
+                    "macro_f1_global": macro_f1_global,
+                    "macro_f1_personalized": macro_f1_personalized,
+                    "benign_fpr_global": benign_fpr_global,
+                    "benign_fpr_personalized": benign_fpr_personalized,
+                    "personalization_gain": personalization_gain,
+                }
+            )
         except Exception as e:
             # If personalization evaluation fails, log warning but continue
             logging.getLogger("client").warning(
@@ -857,20 +918,7 @@ class TorchClient(fl.client.NumPyClient):
 
         # CRITICAL: Restore global model weights before returning to server
         set_parameters(self.model, weights_after)
-
-        secure_agg_enabled = bool(self.runtime_config.get("secure_aggregation", False))
-        if secure_agg_enabled:
-            self.secret_shares = [
-                generate_secret_shares(w.shape, seed=hash(self.round_num) & 0x7FFFFFFF)
-                for w in weights_after
-            ]
-            weights_after = [
-                mask_updates(w, share) for w, share in zip(weights_after, self.secret_shares)
-            ]
-
-        num_examples = len(self.train_loader.dataset)
-        metrics = {}
-        return weights_after, num_examples, metrics
+        return weights_to_send, num_examples, metrics_payload
 
     def evaluate(self, parameters, config):
         set_parameters(self.model, parameters)

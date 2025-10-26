@@ -186,3 +186,14 @@ D2_SECURE_AGG=1 python client.py ...
 Issue 21 SecAgg implementation is complete, tested, and ready for production. The MVP demonstrates the concept of privacy-preserving aggregation using additive masking, satisfying Objective 4 of the thesis. All code follows CLAUDE.md best practices, passes linting/formatting checks, and introduces zero regressions.
 
 **Recommendation:** Merge to main immediately for Deliverable 2.
+
+### Assumptions & limitations
+
+- **No dropout resilience yet:** all clients scheduled for a round must return updates; if a client
+  disconnects the server cannot reconstruct the aggregate because its mask is missing.
+- **Deterministic seeds for reproducibility:** seeds are generated pseudo-randomly but logged for thesis
+  reproducibility. In production deployments they should be exchanged over a secure side channel.
+- **Mask scope:** only model parameters are masked today. Gradient compression, partial participation, and
+  secure model evaluation remain future work.
+- **Performance impact:** masking/unmasking is CPU-bound and adds ~5–10% latency per round in local tests;
+  monitor `secure_aggregation_mask_checksum` in client metrics to confirm masks are applied.

@@ -76,6 +76,10 @@ def test_client_metrics_csv_creation():
                     "dp_delta",
                     "dp_sigma",
                     "dp_clip_norm",
+                    "dp_enabled",
+                    "secure_aggregation",
+                    "secure_aggregation_seed",
+                    "secure_aggregation_mask_checksum",
                 ]
             else:
                 expected = [
@@ -151,6 +155,8 @@ def test_client_metrics_logging_complete_record():
             assert row_dict["epochs_completed"] == "5"
             assert row_dict["lr"] == "0.01"
             assert row_dict["batch_size"] == "32"
+            assert "dp_enabled" in row_dict
+            assert row_dict.get("secure_aggregation") == "False"
 
 
 def test_client_metrics_multiple_rounds():
