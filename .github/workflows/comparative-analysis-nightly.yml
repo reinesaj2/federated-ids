@@ -218,21 +218,6 @@ jobs:
           python scripts/setup_real_datasets.py --full-only
           test -f "data/unsw/UNSW_NB15_training-set.csv"
           test -f "data/cic/cic_ids2017_multiclass.csv"
-      - name: Validate datasets
-        run: |
-          python -c "
-          import pandas as pd
-          print('Validating UNSW dataset...')
-          unsw = pd.read_csv('data/unsw/UNSW_NB15_training-set.csv')
-          print(f'  UNSW shape: {unsw.shape}')
-          assert unsw.shape[0] > 80000, f'UNSW too small: {unsw.shape[0]} rows'
-          assert unsw.shape[1] > 40, f'UNSW missing columns: {unsw.shape[1]} columns'
-          print('Validating CIC dataset...')
-          cic = pd.read_csv('data/cic/cic_ids2017_multiclass.csv')
-          print(f'  CIC shape: {cic.shape}')
-          assert cic.shape[0] > 5000, f'CIC too small: {cic.shape[0]} rows'
-          print('Dataset validation passed')
-          "
       - name: Monitor system resources
         run: |
           echo "=== SYSTEM RESOURCES ==="

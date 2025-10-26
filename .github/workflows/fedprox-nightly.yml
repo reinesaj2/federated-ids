@@ -197,6 +197,15 @@ jobs:
           python scripts/setup_real_datasets.py --full-only
           test -f "data/unsw/UNSW_NB15_training-set.csv"
           test -f "data/cic/cic_ids2017_multiclass.csv"
+      - name: Install dependencies with retry
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: |
+            pip install -r requirements.txt
+            if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
       - name: Validate datasets
         run: |
           python -c "
@@ -212,15 +221,6 @@ jobs:
           assert cic.shape[0] > 5000, f'CIC too small: {cic.shape[0]} rows'
           print('Dataset validation passed')
           "
-      - name: Install dependencies with retry
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          retry_on: error
-          command: |
-            pip install -r requirements.txt
-            if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
       - name: FedProx Comparison (real UNSW) - optimized
         uses: nick-fields/retry@v3
         with:
