@@ -37,11 +37,144 @@ jobs:
     timeout-minutes: 180
     strategy:
       fail-fast: false
-      max-parallel: 9
+      max-parallel: 3
       matrix:
-        alpha: [0.05, 0.1, 0.5]
-        mu: [0.0, 0.01, 0.1]
-        seed_chunk: ["0 1", "2 3", "4"]
+        include:
+          - alpha: 0.05
+            mu: 0.0
+            seed_chunk: "0 1"
+            timeout: 90
+            priority: high
+          - alpha: 0.05
+            mu: 0.01
+            seed_chunk: "0 1"
+            timeout: 120
+            priority: high
+          - alpha: 0.05
+            mu: 0.1
+            seed_chunk: "0 1"
+            timeout: 150
+            priority: high
+          - alpha: 0.1
+            mu: 0.0
+            seed_chunk: "0 1"
+            timeout: 90
+            priority: high
+          - alpha: 0.1
+            mu: 0.01
+            seed_chunk: "0 1"
+            timeout: 120
+            priority: high
+          - alpha: 0.1
+            mu: 0.1
+            seed_chunk: "0 1"
+            timeout: 150
+            priority: high
+          - alpha: 0.5
+            mu: 0.0
+            seed_chunk: "0 1"
+            timeout: 120
+            priority: medium
+          - alpha: 0.5
+            mu: 0.01
+            seed_chunk: "0 1"
+            timeout: 150
+            priority: medium
+          - alpha: 0.5
+            mu: 0.1
+            seed_chunk: "0 1"
+            timeout: 180
+            priority: medium
+          - alpha: 0.05
+            mu: 0.0
+            seed_chunk: "2 3"
+            timeout: 90
+            priority: high
+          - alpha: 0.05
+            mu: 0.01
+            seed_chunk: "2 3"
+            timeout: 120
+            priority: high
+          - alpha: 0.05
+            mu: 0.1
+            seed_chunk: "2 3"
+            timeout: 150
+            priority: high
+          - alpha: 0.1
+            mu: 0.0
+            seed_chunk: "2 3"
+            timeout: 90
+            priority: high
+          - alpha: 0.1
+            mu: 0.01
+            seed_chunk: "2 3"
+            timeout: 120
+            priority: high
+          - alpha: 0.1
+            mu: 0.1
+            seed_chunk: "2 3"
+            timeout: 150
+            priority: high
+          - alpha: 0.5
+            mu: 0.0
+            seed_chunk: "2 3"
+            timeout: 120
+            priority: medium
+          - alpha: 0.5
+            mu: 0.01
+            seed_chunk: "2 3"
+            timeout: 150
+            priority: medium
+          - alpha: 0.5
+            mu: 0.1
+            seed_chunk: "2 3"
+            timeout: 180
+            priority: medium
+          - alpha: 0.05
+            mu: 0.0
+            seed_chunk: "4"
+            timeout: 90
+            priority: high
+          - alpha: 0.05
+            mu: 0.01
+            seed_chunk: "4"
+            timeout: 120
+            priority: high
+          - alpha: 0.05
+            mu: 0.1
+            seed_chunk: "4"
+            timeout: 150
+            priority: high
+          - alpha: 0.1
+            mu: 0.0
+            seed_chunk: "4"
+            timeout: 90
+            priority: high
+          - alpha: 0.1
+            mu: 0.01
+            seed_chunk: "4"
+            timeout: 120
+            priority: high
+          - alpha: 0.1
+            mu: 0.1
+            seed_chunk: "4"
+            timeout: 150
+            priority: high
+          - alpha: 0.5
+            mu: 0.0
+            seed_chunk: "4"
+            timeout: 120
+            priority: medium
+          - alpha: 0.5
+            mu: 0.01
+            seed_chunk: "4"
+            timeout: 150
+            priority: medium
+          - alpha: 0.5
+            mu: 0.1
+            seed_chunk: "4"
+            timeout: 180
+            priority: medium
     env:
       OMP_NUM_THREADS: '1'
       OPENBLAS_NUM_THREADS: '1'
@@ -73,10 +206,25 @@ jobs:
           command: |
             pip install -r requirements.txt
             if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+      - name: Validate datasets
+        run: |
+          python -c "
+          import pandas as pd
+          print('Validating UNSW dataset...')
+          unsw = pd.read_csv('data/unsw/UNSW_NB15_training-set.csv')
+          print(f'  UNSW shape: {unsw.shape}')
+          assert unsw.shape[0] > 80000, f'UNSW too small: {unsw.shape[0]} rows'
+          assert unsw.shape[1] > 40, f'UNSW missing columns: {unsw.shape[1]} columns'
+          print('Validating CIC dataset...')
+          cic = pd.read_csv('data/cic/cic_ids2017_multiclass.csv')
+          print(f'  CIC shape: {cic.shape}')
+          assert cic.shape[0] > 5000, f'CIC too small: {cic.shape[0]} rows'
+          print('Dataset validation passed')
+          "
       - name: FedProx Comparison (real UNSW) - optimized
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 120
+          timeout_minutes: ${{ matrix.timeout }}
           max_attempts: 2
           retry_on: error
           command: |
@@ -143,6 +291,32 @@ jobs:
               wait $SERVER_PID 2>/dev/null || true
               python -c "import json; json.dump({'alpha': float('$ALPHA'), 'mu': float('$MU'), 'seed': int('$SEED'), 'algorithm': 'FedProx' if float('$MU') > 0 else 'FedAvg'}, open('$LOGDIR/metadata.json', 'w'), indent=2)"
             done
+      - name: Capture failure logs
+        if: failure()
+        run: |
+          echo "=== EXPERIMENT FAILURE DIAGNOSTICS ==="
+          echo "Matrix config: alpha=${{ matrix.alpha }} mu=${{ matrix.mu }} seeds=${{ matrix.seed_chunk }}"
+          echo ""
+          echo "=== Server Logs ==="
+          for log in runs/nightly_fedprox_*/server.log; do
+            if [ -f "$log" ]; then
+              echo "--- $log (last 50 lines) ---"
+              tail -50 "$log"
+              echo ""
+            fi
+          done
+          echo "=== Client Logs ==="
+          for log in runs/nightly_fedprox_*/client_*.log; do
+            if [ -f "$log" ]; then
+              echo "--- $log (last 20 lines) ---"
+              tail -20 "$log"
+              echo ""
+            fi
+          done
+          echo "=== System Resources ==="
+          echo "Memory: $(free -h | grep '^Mem:' || echo 'N/A')"
+          echo "Disk: $(df -h . | tail -1)"
+          echo "=== End Diagnostics ==="
       - name: Generate comparison plots
         run: |
           export ALPHA="${{ matrix.alpha }}"
@@ -183,7 +357,8 @@ jobs:
           # Use non-strict FPR validation for real datasets (warnings only)
           # Real-world datasets like UNSW have complex distributions that make
           # strict FPR targets (±0.02 of 0.10) difficult to achieve
-          python scripts/ci_checks.py --runs_dir runs
+          # Allow partial seed coverage for chunked parallel execution (min-seeds=1)
+          python scripts/ci_checks.py --runs_dir runs --min-seeds 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:

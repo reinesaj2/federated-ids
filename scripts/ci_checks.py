@@ -198,18 +198,14 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
 
     weighted_macro_f1 = macro_sum / macro_weight
     if not math.isfinite(weighted_macro_f1) or weighted_macro_f1 < MIN_WEIGHTED_MACRO_F1:
-        raise ArtifactValidationError(
-            f"Weighted macro_f1_after={weighted_macro_f1:.3f} below minimum {MIN_WEIGHTED_MACRO_F1:.2f}"
-        )
+        raise ArtifactValidationError(f"Weighted macro_f1_after={weighted_macro_f1:.3f} below minimum {MIN_WEIGHTED_MACRO_F1:.2f}")
 
     if acc_samples == 0 or acc_weight == 0:
         raise ArtifactValidationError(f"No acc_after values found in {run_dir}")
 
     weighted_accuracy = acc_sum / acc_weight
     if not math.isfinite(weighted_accuracy) or weighted_accuracy < MIN_WEIGHTED_ACCURACY:
-        raise ArtifactValidationError(
-            f"Weighted acc_after={weighted_accuracy:.3f} below minimum {MIN_WEIGHTED_ACCURACY:.2f}"
-        )
+        raise ArtifactValidationError(f"Weighted acc_after={weighted_accuracy:.3f} below minimum {MIN_WEIGHTED_ACCURACY:.2f}")
 
     # Validate server convergence metrics (L2 distance)
     server_rows = _load_csv_rows(server_metrics_path)
@@ -218,13 +214,9 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
     final_server_row = server_rows[-1]
     l2_value = _safe_float(final_server_row.get("l2_to_benign_mean"))
     if l2_value is None:
-        raise ArtifactValidationError(
-            f"Server metrics missing l2_to_benign_mean in {server_metrics_path}"
-        )
+        raise ArtifactValidationError(f"Server metrics missing l2_to_benign_mean in {server_metrics_path}")
     if not math.isfinite(l2_value) or l2_value > MAX_FINAL_L2_DISTANCE:
-        raise ArtifactValidationError(
-            f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {MAX_FINAL_L2_DISTANCE:.1f}"
-        )
+        raise ArtifactValidationError(f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {MAX_FINAL_L2_DISTANCE:.1f}")
 
     # Validate FPR tolerance if using low_fpr tau mode
     validate_fpr_tolerance(run_dir, target_fpr=0.10, tolerance=0.02, strict=fpr_strict)
@@ -290,6 +282,13 @@ def main() -> None:
         help="Enforce strict FPR tolerance (raises error on violations). Default: warnings only.",
     )
 
+    parser.add_argument(
+        "--min-seeds",
+        type=int,
+        default=5,
+        help="Minimum number of seeds required per alpha/mu configuration (default: 5)",
+    )
+
     args = parser.parse_args()
 
     # Allow environment variable to override FPR strictness
@@ -303,7 +302,7 @@ def main() -> None:
     try:
         runs_dir = Path(args.runs_dir)
         run_directories = find_run_directories(runs_dir)
-        validate_seed_coverage(run_directories, minimum_seeds=5)
+        validate_seed_coverage(run_directories, minimum_seeds=args.min_seeds)
 
         print(f"Found {len(run_directories)} run directories to validate")
 
