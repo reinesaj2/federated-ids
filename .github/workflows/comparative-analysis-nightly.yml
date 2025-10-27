@@ -76,7 +76,7 @@ jobs:
           echo "  Disk space: $(df -h . | tail -1 | awk '{print $4}')"
           
           # Monitor memory usage during execution
-          python scripts/comparative_analysis.py \
+          python -m scripts.comparative_analysis \
             --dimension ${{ matrix.dimension }} \
             --output_dir results/comparative_analysis
 
@@ -93,7 +93,7 @@ jobs:
           fi
           
           # Generate plots with error handling
-          python scripts/generate_thesis_plots.py \
+          python -m scripts.generate_thesis_plots \
             --dimension ${{ matrix.dimension }} \
             --runs_dir runs \
             --output_dir results/thesis_plots/${{ matrix.dimension }}
@@ -142,14 +142,14 @@ jobs:
             exit 1
           fi
           python - <<PY || echo "WARNING: Success rate below threshold ($THRESHOLD), continuing..."
-found=$FOUND
-total=$TOTAL
-thr=float("$THRESHOLD")
-rate=(found/total) if total else 0.0
-print(f"Computed success rate: {rate:.2f}, threshold: {thr:.2f}")
-import sys
-sys.exit(0 if rate >= thr else 1)
-PY
+          found=$FOUND
+          total=$TOTAL
+          thr=float("$THRESHOLD")
+          rate=(found/total) if total else 0.0
+          print(f"Computed success rate: {rate:.2f}, threshold: {thr:.2f}")
+          import sys
+          sys.exit(0 if rate >= thr else 1)
+          PY
 
       - uses: actions/upload-artifact@v4
         if: always()
