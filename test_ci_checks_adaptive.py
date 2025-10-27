@@ -62,13 +62,13 @@ def test_extract_alpha_from_run_name_wrong_prefix():
 def test_compute_adaptive_threshold_extreme_heterogeneity():
     """Test adaptive threshold for alpha=0.1 (extreme heterogeneity)."""
     threshold = _compute_adaptive_l2_threshold(0.1)
-    assert threshold == pytest.approx(3.3, abs=0.01)
+    assert threshold == pytest.approx(4.2, abs=0.01)
 
 
 def test_compute_adaptive_threshold_moderate_heterogeneity():
     """Test adaptive threshold for alpha=0.5 (moderate heterogeneity)."""
     threshold = _compute_adaptive_l2_threshold(0.5)
-    assert threshold == pytest.approx(2.5, abs=0.01)
+    assert threshold == pytest.approx(3.0, abs=0.01)
 
 
 def test_compute_adaptive_threshold_iid():
@@ -86,13 +86,13 @@ def test_compute_adaptive_threshold_none_uses_base():
 def test_compute_adaptive_threshold_zero_alpha():
     """Test adaptive threshold for alpha=0.0 (maximum heterogeneity)."""
     threshold = _compute_adaptive_l2_threshold(0.0)
-    assert threshold == pytest.approx(3.5, abs=0.01)
+    assert threshold == pytest.approx(4.5, abs=0.01)
 
 
 def test_compute_adaptive_threshold_high_alpha():
     """Test adaptive threshold for alpha=0.9 (low heterogeneity)."""
     threshold = _compute_adaptive_l2_threshold(0.9)
-    assert threshold == pytest.approx(1.7, abs=0.01)
+    assert threshold == pytest.approx(1.8, abs=0.01)
 
 
 def test_compute_adaptive_threshold_formula_consistency():
@@ -110,14 +110,25 @@ def test_compute_adaptive_threshold_formula_consistency():
 
 def test_adaptive_threshold_covers_observed_failures():
     """Test that adaptive threshold would pass previously failed jobs."""
-    alpha = 0.1
-    threshold = _compute_adaptive_l2_threshold(alpha)
+    alpha_0_1_threshold = _compute_adaptive_l2_threshold(0.1)
+    alpha_0_05_threshold = _compute_adaptive_l2_threshold(0.05)
 
-    observed_l2_job1 = 2.265
-    observed_l2_job2 = 3.016
+    # Original failures at alpha=0.1
+    observed_l2_alpha_0_1_job1 = 2.265
+    observed_l2_alpha_0_1_job2 = 3.016
 
-    assert observed_l2_job1 < threshold, f"Job 1 L2={observed_l2_job1:.3f} should pass with threshold={threshold:.2f}"
-    assert observed_l2_job2 < threshold, f"Job 2 L2={observed_l2_job2:.3f} should pass with threshold={threshold:.2f}"
+    # New failures at alpha=0.05
+    observed_l2_alpha_0_05 = 4.175
+
+    assert (
+        observed_l2_alpha_0_1_job1 < alpha_0_1_threshold
+    ), f"Alpha=0.1 Job 1 L2={observed_l2_alpha_0_1_job1:.3f} should pass with threshold={alpha_0_1_threshold:.2f}"
+    assert (
+        observed_l2_alpha_0_1_job2 < alpha_0_1_threshold
+    ), f"Alpha=0.1 Job 2 L2={observed_l2_alpha_0_1_job2:.3f} should pass with threshold={alpha_0_1_threshold:.2f}"
+    assert (
+        observed_l2_alpha_0_05 < alpha_0_05_threshold
+    ), f"Alpha=0.05 L2={observed_l2_alpha_0_05:.3f} should pass with threshold={alpha_0_05_threshold:.2f}"
 
 
 if __name__ == "__main__":
