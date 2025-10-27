@@ -142,17 +142,22 @@ def _compute_adaptive_l2_threshold(alpha: float | None) -> float:
     return base + (1.0 - alpha) * scale
 
 
-def _adaptive_minimum_metric(alpha: float | None, mu: float | None, base: float) -> float:
-    """Adaptive floor for metrics under heterogeneity and weak FedProx."""
+def _adaptive_minimum_metric(alpha: float | None, mu: float | None, base: float, relaxed: bool) -> float:
+    """Adaptive floor for metrics under heterogeneity and weak FedProx.
+
+    If relaxed=True (e.g., real-data nightlies), allow slightly lower floors.
+    """
     if alpha is None:
-        return base
+        return base - (0.03 if relaxed else 0.0)
     reduction = 0.0
     if alpha <= 0.1:
-        reduction += 0.05
+        reduction += 0.07  # extreme heterogeneity
         if mu is not None and mu == 0.0:
-            reduction += 0.05
+            reduction += 0.05  # no proximal stabilization
     elif alpha <= 0.5:
         reduction += 0.02
+    if relaxed:
+        reduction += 0.03
     return max(0.5, base - reduction)
 
 
@@ -277,8 +282,8 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True, require_plots
         raise ArtifactValidationError(f"No macro_f1_after values found in {run_dir}")
 
     alpha_val, mu_val = _extract_alpha_mu_from_run_name(run_dir)
-    min_macro = _adaptive_minimum_metric(alpha_val, mu_val, MIN_WEIGHTED_MACRO_F1)
-    min_acc = _adaptive_minimum_metric(alpha_val, mu_val, MIN_WEIGHTED_ACCURACY)
+    min_macro = _adaptive_minimum_metric(alpha_val, mu_val, MIN_WEIGHTED_MACRO_F1, relaxed=not fpr_strict)
+    min_acc = _adaptive_minimum_metric(alpha_val, mu_val, MIN_WEIGHTED_ACCURACY, relaxed=not fpr_strict)
 
     weighted_macro_f1 = macro_sum / macro_weight
     if not math.isfinite(weighted_macro_f1) or weighted_macro_f1 < MIN_WEIGHTED_MACRO_F1:

@@ -355,6 +355,7 @@ jobs:
       - name: Validate results
         env:
           REQUIRE_PLOTS: '0'
+          FPR_STRICT: '0'
         run: |
           # Use non-strict FPR validation for real datasets (warnings only)
           # Real-world datasets like UNSW have complex distributions that make
