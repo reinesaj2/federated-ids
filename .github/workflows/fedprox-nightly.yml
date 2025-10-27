@@ -248,7 +248,7 @@ jobs:
 
       - name: Generate FedProx comparison summary
         run: |
-          python -m scripts.analyze_fedprox_comparison \
+          PYTHONPATH=. python -m scripts.analyze_fedprox_comparison \
             --artifacts_dir nightly-artifacts \
             --baseline_dir baseline-artifacts \
             --output_dir fedprox-summary
