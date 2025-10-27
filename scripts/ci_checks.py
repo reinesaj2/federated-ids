@@ -12,6 +12,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
+import os
 
 
 class ArtifactValidationError(Exception):
@@ -20,9 +21,9 @@ class ArtifactValidationError(Exception):
     pass
 
 
-MIN_WEIGHTED_MACRO_F1 = 0.70
-MIN_WEIGHTED_ACCURACY = 0.70
-MAX_FINAL_L2_DISTANCE = 1.5
+MIN_WEIGHTED_MACRO_F1 = float(os.environ.get("MIN_WEIGHTED_MACRO_F1", "0.70"))
+MIN_WEIGHTED_ACCURACY = float(os.environ.get("MIN_WEIGHTED_ACCURACY", "0.70"))
+MAX_FINAL_L2_DISTANCE = float(os.environ.get("MAX_FINAL_L2_DISTANCE", "1.5"))
 
 
 def _safe_float(value: str | None) -> float | None:

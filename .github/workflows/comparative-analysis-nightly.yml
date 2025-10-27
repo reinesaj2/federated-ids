@@ -107,12 +107,13 @@ jobs:
             exit 1
           fi
 
-      - name: Validate results
+      - name: Validate results (optimized)
         run: |
           echo "Validating experiment results..."
           FOUND=0
           FAILED=0
           TOTAL=0
+          THRESHOLD=${VALIDATION_MIN_SUCCESS_RATE:-0.5}
           
           for dir in runs/comp_*/; do
             TOTAL=$((TOTAL + 1))
@@ -129,17 +130,26 @@ jobs:
           echo "  Total experiments: $TOTAL"
           echo "  Successful: $FOUND"
           echo "  Failed: $FAILED"
-          echo "  Success rate: $((FOUND * 100 / TOTAL))%"
+          if [ $TOTAL -gt 0 ]; then
+            echo "  Success rate: $((FOUND * 100 / TOTAL))%"
+          else
+            echo "  Success rate: 0%"
+          fi
           
-          # Require at least 50% success rate for workflow to pass
+          # Require at least THRESHOLD success rate for workflow to pass
           if [ $FOUND -eq 0 ]; then
             echo "ERROR: No experiments produced metrics"
             exit 1
-          elif [ $FOUND -lt $((TOTAL / 2)) ]; then
-            echo "WARNING: Low success rate ($((FOUND * 100 / TOTAL))%), but continuing..."
-          else
-            echo "SUCCESS: Adequate experiment completion rate"
           fi
+          python - <<PY || echo "WARNING: Success rate below threshold ($THRESHOLD), continuing..."
+found=$FOUND
+total=$TOTAL
+thr=float("$THRESHOLD")
+rate=(found/total) if total else 0.0
+print(f"Computed success rate: {rate:.2f}, threshold: {thr:.2f}")
+import sys
+sys.exit(0 if rate >= thr else 1)
+PY
 
       - uses: actions/upload-artifact@v4
         if: always()
