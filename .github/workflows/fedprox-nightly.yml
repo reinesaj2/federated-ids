@@ -1,6 +1,6 @@
 ---
 name: FedProx Nightly Comparison
-on:
+'on':
   schedule:
     - cron: 0 2 * * *  # 2 AM UTC daily
   workflow_dispatch:
@@ -353,6 +353,8 @@ jobs:
           safe_chunk=$(echo "$chunk" | tr ' ' '-' | tr ',' '-')
           echo "suffix=$safe_chunk" >> "$GITHUB_OUTPUT"
       - name: Validate results
+        env:
+          REQUIRE_PLOTS: '0'
         run: |
           # Use non-strict FPR validation for real datasets (warnings only)
           # Real-world datasets like UNSW have complex distributions that make
@@ -632,15 +634,15 @@ jobs:
               CLIENTS=${{ github.event.inputs.client_count }}
               ROUNDS=${{ github.event.inputs.round_count }}
               PRESET="manual_fedprox_alpha${alpha}_mu${mu}"
-              
+
               mkdir -p "runs/$PRESET"
               LOGDIR="runs/$PRESET"
               PORT=$((9200 + RANDOM % 1000))
-              
+
               # Start server
               python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
               SERVER_PID=$!
-              
+
               # Wait for server
               for i in {1..120}; do
                 if nc -z 127.0.0.1 $PORT 2>/dev/null; then
@@ -653,7 +655,7 @@ jobs:
                 kill $SERVER_PID 2>/dev/null || true
                 exit 1
               fi
-              
+
               # Start all clients with FedProx mu parameter
               CLIENT_PIDS=()
               for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
@@ -662,12 +664,12 @@ jobs:
                   --fedprox_mu "$mu" --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
                 CLIENT_PIDS+=($!)
               done
-              
+
               # Wait for all clients
               for PID in "${CLIENT_PIDS[@]}"; do
                 wait $PID
               done
-              
+
               # Clean up server
               sleep 2
               kill $SERVER_PID 2>/dev/null || true

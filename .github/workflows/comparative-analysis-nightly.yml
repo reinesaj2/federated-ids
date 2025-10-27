@@ -1,6 +1,6 @@
 ---
 name: Comparative Analysis Nightly
-on:
+'on':
   push:
     branches:
       - exp/issue-44-comprehensive-experiments
@@ -27,7 +27,7 @@ on:
       run_cic:
         description: Run CIC-IDS2017 experiments (doubles execution time)
         required: false
-        default: 'true'
+        default: true
         type: boolean
 permissions:
   contents: write
@@ -338,8 +338,8 @@ jobs:
           FAILED=0
           TOTAL=0
 
-          # Check for experiment results in the specific output directory
-          RESULTS_DIR="results/comparative_analysis/${{ matrix.dataset }}"
+          # Validate directly against generated run outputs
+          RESULTS_DIR="runs"
           if [ -d "$RESULTS_DIR" ]; then
             for dir in "$RESULTS_DIR"/comp_*/; do
               if [ -d "$dir" ]; then
