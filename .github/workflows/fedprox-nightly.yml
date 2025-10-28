@@ -248,6 +248,11 @@ jobs:
 
       - name: Generate FedProx comparison summary
         run: |
+          # Looser seed requirement on dispatch; strict on schedule
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            export SUMMARY_MIN_SEEDS=3
+            export SUMMARY_STRICT_SEEDS=0
+          fi
           PYTHONPATH=. python -m scripts.analyze_fedprox_comparison \
             --artifacts_dir nightly-artifacts \
             --baseline_dir baseline-artifacts \
