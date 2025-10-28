@@ -1,6 +1,9 @@
+---
 name: Comparative Analysis Nightly
 
 on:
+  push:
+    branches: ['**']
   schedule:
     - cron: "0 3 * * 0" # 3 AM UTC every Sunday
   workflow_dispatch:
@@ -30,7 +33,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  noop_on_push:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "No-op for push event (workflow file change)"
+
   comparative_analysis:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 480 # 8 hours for full dataset experiments
     strategy:
@@ -74,7 +84,7 @@ jobs:
           echo "  Memory: $(free -h | grep '^Mem:' | awk '{print $2}')"
           echo "  CPU cores: $(nproc)"
           echo "  Disk space: $(df -h . | tail -1 | awk '{print $4}')"
-          
+
           # Monitor memory usage during execution
           python -m scripts.comparative_analysis \
             --dimension ${{ matrix.dimension }} \
@@ -83,7 +93,7 @@ jobs:
       - name: Generate thesis plots
         run: |
           echo "Generating thesis plots for dimension: ${{ matrix.dimension }}"
-          
+
           # Check if we have experiment data
           if [ ! -d "runs" ] || [ -z "$(ls -A runs/comp_* 2>/dev/null)" ]; then
             echo "ERROR: No experiment data found in runs/ directory"
@@ -91,13 +101,13 @@ jobs:
             ls -la runs/ || echo "runs/ directory does not exist"
             exit 1
           fi
-          
+
           # Generate plots with error handling
           python -m scripts.generate_thesis_plots \
             --dimension ${{ matrix.dimension }} \
             --runs_dir runs \
             --output_dir results/thesis_plots/${{ matrix.dimension }}
-          
+
           # Verify plots were generated
           if [ -d "results/thesis_plots/${{ matrix.dimension }}" ]; then
             PLOT_COUNT=$(find results/thesis_plots/${{ matrix.dimension }} -name "*.png" -o -name "*.pdf" | wc -l)
@@ -114,7 +124,7 @@ jobs:
           FAILED=0
           TOTAL=0
           THRESHOLD=${VALIDATION_MIN_SUCCESS_RATE:-0.5}
-          
+
           for dir in runs/comp_*/; do
             TOTAL=$((TOTAL + 1))
             if [ -f "$dir/metrics.csv" ]; then
@@ -125,7 +135,7 @@ jobs:
               FAILED=$((FAILED + 1))
             fi
           done
-          
+
           echo "VALIDATION SUMMARY:"
           echo "  Total experiments: $TOTAL"
           echo "  Successful: $FOUND"
@@ -135,7 +145,7 @@ jobs:
           else
             echo "  Success rate: 0%"
           fi
-          
+
           # Require at least THRESHOLD success rate for workflow to pass
           if [ $FOUND -eq 0 ]; then
             echo "ERROR: No experiments produced metrics"
@@ -165,9 +175,9 @@ jobs:
           retention-days: 90
 
   consolidated_summary:
+    if: github.event_name != 'push' && always()
     needs: comparative_analysis
     runs-on: ubuntu-latest
-    if: always()
     steps:
       - uses: actions/checkout@v4
 
@@ -221,7 +231,7 @@ jobs:
   commit_thesis_plots:
     needs: [consolidated_summary]
     runs-on: ubuntu-latest
-    if: always() && needs.consolidated_summary.result == 'success'
+    if: github.event_name != 'push' && always() && needs.consolidated_summary.result == 'success'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -266,7 +276,7 @@ jobs:
   notify_failure:
     needs: comparative_analysis
     runs-on: ubuntu-latest
-    if: always() && needs.comparative_analysis.result == 'failure'
+    if: github.event_name != 'push' && always() && needs.comparative_analysis.result == 'failure'
     steps:
       - name: Log comparative analysis failure
         run: |
