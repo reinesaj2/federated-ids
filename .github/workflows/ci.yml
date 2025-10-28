@@ -1,6 +1,6 @@
 ---
 name: ci
-on:
+'on':
   push:
     branches: [feat/**, chore/**, fix/**, d2-training-setup]
   pull_request:
@@ -12,7 +12,7 @@ on:
       run_comprehensive:
         description: Run comprehensive testing (includes d2_quick and extended nightly)
         required: false
-        default: 'false'
+        default: false
         type: boolean
       alpha_values:
         description: Alpha values for testing (comma-separated, e.g., "0.05,0.1,0.5")
@@ -390,12 +390,12 @@ jobs:
                   break
                 fi
               done
-              
+
               if $ALL_DONE; then
                 echo "All clients completed"
                 break
               fi
-              
+
               if [ $((SECONDS - START_TIME)) -gt $TIMEOUT ]; then
                 echo "Timeout reached (${TIMEOUT}s), killing processes"
                 for PID in "${CLIENT_PIDS[@]}"; do
@@ -404,7 +404,7 @@ jobs:
                 kill $SERVER_PID 2>/dev/null || true
                 exit 1
               fi
-              
+
               sleep 2  # Reduced sleep interval for faster detection
             done
 
@@ -489,7 +489,7 @@ jobs:
           ROUNDS=${{ github.event.inputs.round_count }}
           for alpha in "${ALPHAS[@]}"; do
             alpha=$(echo "$alpha" | xargs)  # trim whitespace
-            
+
             if [ "${{ matrix.scenario }}" = "benign" ]; then
               PRESET="manual_${alpha}_benign"
               ADV_MODE=""
@@ -497,23 +497,23 @@ jobs:
               PRESET="manual_${alpha}_adv"
               ADV_MODE="--adversary_mode label_flip"
             fi
-            
+
             mkdir -p "runs/$PRESET"
             LOGDIR="runs/$PRESET"
             PORT=$((9000 + RANDOM % 1000))
-            
+
             echo "Running experiment: $PRESET (port=$PORT)"
-            
+
             # Start server
             python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
             SERVER_PID=$!
-            
+
             # Wait for server
             for i in {1..20}; do
               nc -z 127.0.0.1 $PORT 2>/dev/null && break
               sleep 0.5
             done
-            
+
             # Start all clients
             CLIENT_PIDS=()
             for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
@@ -522,16 +522,16 @@ jobs:
                 $ADV_MODE --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
               CLIENT_PIDS+=($!)
             done
-            
+
             # Wait for all clients
             for PID in "${CLIENT_PIDS[@]}"; do
               wait $PID
             done
-            
+
             # Clean up server
             sleep 2
             kill $SERVER_PID 2>/dev/null || true
-            
+
             # Verify metrics
             if [ ! -f "$LOGDIR/metrics.csv" ]; then
               echo "Warning: Missing metrics.csv in $LOGDIR"

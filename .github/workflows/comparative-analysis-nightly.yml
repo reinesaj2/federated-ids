@@ -401,6 +401,7 @@ jobs:
           name: comparative-analysis-${{ matrix.dimension }}-${{ matrix.dataset }}-${{
             github.sha }}
           path: compressed-artifacts/**
+          if-no-files-found: warn
           retention-days: 90
   consolidated_summary:
     needs: comparative_analysis
