@@ -13,6 +13,7 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 5. Reproducibility & logging (seeds, logs, plots)
 6. Algorithm comparison (FedAvg vs FedProx)
 7. Real datasets (UNSW‑NB15, CIC‑IDS2017)
+<<<<<<< HEAD
 8. **Experimental Results & Performance Analysis**
 9. **Visualization Gallery & Plot References**
 10. **Quick Links to Analysis & Results**
@@ -20,6 +21,15 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 12. Troubleshooting (common errors and fixes)
 13. Project structure
 14. Notes on privacy/robustness scaffolding
+=======
+8. Experimental Results & Performance Analysis
+9. Visualization Gallery & Plot References
+10. Quick Links to Analysis & Results
+11. Troubleshooting (common errors and fixes)
+12. Project structure
+13. Privacy & robustness disclosure (D2 scope)
+14. D2 Runbook (experiment workflow & artifact map)
+>>>>>>> viz/issue-65-readme-results
 
 ---
 
@@ -423,35 +433,31 @@ python scripts/prepare_unsw_sample.py \
 
 ### Key Findings Summary
 
-Our comprehensive evaluation across 5 experimental dimensions reveals:
+Synthesis of the committed artifacts (see [`PERFORMANCE_COMPARISON_TABLES.md`](PERFORMANCE_COMPARISON_TABLES.md)):
 
-- **Aggregation Methods**: All methods achieve high accuracy (99.8-100%), with Bulyan and Median showing lowest loss
-- **Attack Resilience**: Robust methods maintain 77-94% accuracy under 30% Byzantine attacks vs 71% for FedAvg
-- **Data Heterogeneity**: FedAvg performs consistently across all heterogeneity levels (α=0.1-1.0)
-- **Personalization**: Local adaptation yields 3.5% average gain, with 6% improvement on CIC-IDS2017
-- **Privacy-Utility**: Differential privacy (ε=0.5) reduces accuracy to 97% vs 100% baseline
-
-*All metrics computed from 81 experimental runs with full traceability to source data.*
+- **Robust aggregation under attack:** With 30 % Byzantine clients, macro‑F1 remains at 0.854 for Bulyan (−14 %) and 0.894 for Median (−10 %), while FedAvg drops to 0.675 (−75 %). Source: `results/comparative_analysis/attack_resilience_stats.csv`.
+- **Heterogeneity control:** FedProx with μ = 0.1 at Dirichlet α = 0.05 yields a 2.67× lower L2 drift than FedAvg, at ~3 % additional runtime. Smaller μ = 0.01 still improves stability 1.35× with ~1 % overhead. Source: `analysis/fedprox_nightly/fedprox_comparison_summary.json`.
+- **Personalization gains:** Client fine‑tuning delivers an average +0.035 macro‑F1 across 30 clients, with +0.060 on CIC‑IDS2017 slices and +0.018 on UNSW‑NB15. Source: `analysis/personalization/personalization_summary.json`.
+- **Privacy–utility trade-off:** Client‑side DP noise σ = 0.7 (ε≈1.5) preserves macro‑F1≈0.79 compared to the 0.89 baseline, an ~11 % drop while adding differential privacy guarantees. Source: `results/privacy_check/privacy_utility_curve.csv`.
 
 ### Performance Comparison Tables
 
-| Method | Accuracy | Loss | Attack Resilience | Data Source |
-|--------|----------|------|-------------------|-------------|
-| **FedAvg** | 0.998 ± 0.009 | 0.007 | Low | [runs/comp_fedavg_*](runs/) |
-| **Krum** | 0.999 ± 0.000 | 0.007 | High | [runs/comp_krum_*](runs/) |
-| **Bulyan** | 1.000 ± 0.000 | 0.002 | Very High | [runs/comp_bulyan_*](runs/) |
-| **Median** | 1.000 ± 0.000 | 0.003 | High | [runs/comp_median_*](runs/) |
+| Aggregation | Macro‑F1 (benign) | Macro‑F1 (30 % adv.) | Δ at 30 % | Source |
+|-------------|------------------|----------------------|-----------|--------|
+| FedAvg | 1.000 | 0.675 | −74.5 % | `results/comparative_analysis/attack_resilience_stats.csv` |
+| Krum | 0.969 | 0.787 | −18.8 % | `results/comparative_analysis/attack_resilience_stats.csv` |
+| Bulyan | 0.994 | 0.854 | −14.1 % | `results/comparative_analysis/attack_resilience_stats.csv` |
+| Median | 0.999 | 0.894 | −10.5 % | `results/comparative_analysis/attack_resilience_stats.csv` |
 
-*Complete performance analysis with full traceability available in [PERFORMANCE_COMPARISON_TABLES.md](PERFORMANCE_COMPARISON_TABLES.md).*
-*Note: All metrics computed from actual experimental data - F1 scores not available in current runs.*
+Additional tables (FedProx stability, personalization breakdown, privacy curve) live in [`PERFORMANCE_COMPARISON_TABLES.md`](PERFORMANCE_COMPARISON_TABLES.md).
 
 ### Experimental Dimensions
 
-1. **Aggregation Comparison**: FedAvg vs Krum vs Bulyan vs Median
-2. **Heterogeneity Impact**: IID vs Non-IID data (α=0.05-1.0)
-3. **Attack Resilience**: Performance under 0-30% Byzantine clients
-4. **Privacy-Utility Tradeoff**: Differential privacy with ε=0.1-10.0
-5. **Personalization Benefits**: Local adaptation gains across scenarios
+1. **Aggregation Comparison:** Robust vs non-robust strategies on CIC-IDS2017 with Byzantine clients (fractions 0 %, 10 %, 30 %).
+2. **Heterogeneity Impact:** Dirichlet splits α ∈ {0.05, 0.1, 0.5} comparing FedAvg and FedProx (μ ∈ {0, 0.01, 0.1}).
+3. **Attack Resilience:** Bounded-gradient adversaries vs honest updates across 5 seeds (reference: `attack_experiments_*.log` and stats CSV).
+4. **Privacy–Utility:** Gaussian DP noise sweep (σ ∈ {0, 0.7}) with derived ε values.
+5. **Personalization Benefits:** Post-round fine‑tuning epochs {0, 3, 5, 10} on CIC-IDS2017 and UNSW-NB15 partitions.
 
 ---
 
@@ -492,19 +498,21 @@ Browse all plots chronologically: [`plots/index.html`](plots/index.html)
 ## 10) Quick Links to Analysis & Results
 
 ### Experimental Data
-- **Raw Results**: [`runs/`](runs/) - All experimental outputs with metrics
-- **Analysis Scripts**: [`scripts/`](scripts/) - Plot generation and analysis tools
-- **Documentation**: [`docs/`](docs/) - Detailed experimental methodology
+- **Aggregated Outputs**: [`results/`](results/) – Plot-ready CSV/PNG bundles
+- **Comparative Run Logs**: `comparative-analysis-*/runs/` – per-seed metrics (FedAvg, FedProx, personalization)
+- **Analysis Scripts**: [`scripts/`](scripts/) – Plot generation and analysis tools
+- **Documentation**: [`docs/`](docs/) – Detailed experimental methodology
 
 ### Key Analysis Files
 - **Performance Tables**: [`PERFORMANCE_COMPARISON_TABLES.md`](PERFORMANCE_COMPARISON_TABLES.md)
 - **FedProx Analysis**: [`analysis/fedprox_nightly/`](analysis/fedprox_nightly/)
 - **Personalization Study**: [`analysis/personalization/`](analysis/personalization/)
+- **Notebook Walkthrough**: [`analysis/notebooks/performance_overview.ipynb`](analysis/notebooks/performance_overview.ipynb)
 - **Threat Model**: [`docs/threat_model.md`](docs/threat_model.md)
 
 ### Reproducibility
-- **Experiment Configs**: All experiments use standardized configurations in `runs/*/config.json`
-- **Seed Control**: All experiments use seeds 42, 43, 44 for reproducibility
+- **Experiment Bundles**: Aggregated CSV/JSON outputs under `results/` and `analysis/` (see comparative-analysis folders)
+- **Seed Control**: Reported runs use documented seeds (42, 43, 44, 101–505 depending on study)
 - **Data Sources**: UNSW-NB15 (82k samples) and CIC-IDS2017 datasets
 
 ---
@@ -575,7 +583,7 @@ For a comprehensive threat model including adversary assumptions, attack scenari
 
 ---
 
-## 11) D2 Runbook (experiment workflow & artifact map)
+## 14) D2 Runbook (experiment workflow & artifact map)
 
 For reproducibility and advisor-facing documentation, this section provides an overview of the end-to-end workflow for running federated learning experiments.
 
