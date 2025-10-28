@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import stats
+from sklearn.metrics import confusion_matrix as sk_confusion_matrix
 
 # Add scripts directory to path for imports
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,9 +35,446 @@ for candidate in (ROOT, ROOT / "scripts"):
 
 from plot_metrics_utils import compute_confidence_interval  # noqa: E402
 from privacy_accounting import compute_epsilon  # noqa: E402
-from metric_validation import MetricValidator, validate_experiment_data  # noqa: E402
+from metric_validation import MetricValidator  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+
+def _prepare_client_scatter_data(df: pd.DataFrame, metric: str) -> pd.DataFrame:
+    """
+    Prepare per-client scatter data for FedProx mu sweep visualization.
+
+    Extracts last available metrics for each (client, seed, mu) combination,
+    adds jitter for x-axis visibility, and filters missing values.
+
+    Args:
+        df: Combined metrics DataFrame with columns:
+            round, client_id, fedprox_mu, seed, <metric>
+        metric: Metric column name (e.g., 'l2_to_benign_mean', 'cos_to_benign_mean')
+
+    Returns:
+        DataFrame with columns: fedprox_mu, client_id, seed, <metric>, jitter
+        Filtered to final round only, with jitter added for scatter plotting.
+    """
+    if df.empty:
+        return pd.DataFrame(columns=["fedprox_mu", "client_id", "seed", metric, "jitter"])
+
+    required_cols = ["round", "client_id", "fedprox_mu", "seed", metric]
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        logger.warning(f"Missing columns for scatter data: {missing_cols}")
+        return pd.DataFrame(columns=["fedprox_mu", "client_id", "seed", metric, "jitter"])
+
+    group_cols = ["client_id", "seed", "fedprox_mu"]
+    if "alpha" in df.columns:
+        group_cols.append("alpha")
+
+    final_rounds = df.groupby(group_cols).tail(1).copy()
+    final_rounds = final_rounds.dropna(subset=[metric])
+
+    if final_rounds.empty:
+        return pd.DataFrame(columns=["fedprox_mu", "client_id", "seed", metric, "jitter"])
+
+    np.random.seed(42)
+    jitter_amplitude = 0.02
+    final_rounds["jitter"] = final_rounds["fedprox_mu"].apply(lambda mu: np.random.uniform(-jitter_amplitude * mu, jitter_amplitude * mu))
+
+    return final_rounds
+
+
+def _compute_global_mean_by_mu(df: pd.DataFrame, metric: str) -> pd.DataFrame:
+    """
+    Compute global mean and 95% CI aggregated across clients and seeds for each mu.
+
+    Args:
+        df: DataFrame with columns: fedprox_mu, <metric>, client_id, seed
+        metric: Metric column name to aggregate
+
+    Returns:
+        DataFrame with columns: mu, mean, ci_lower, ci_upper, n
+        Sorted by mu ascending.
+    """
+    if df.empty:
+        return pd.DataFrame(columns=["mu", "mean", "ci_lower", "ci_upper", "n"])
+
+    if metric not in df.columns:
+        logger.warning(f"Metric {metric} not in DataFrame")
+        return pd.DataFrame(columns=["mu", "mean", "ci_lower", "ci_upper", "n"])
+
+    stats = []
+    for mu in sorted(df["fedprox_mu"].unique()):
+        mu_data = df[df["fedprox_mu"] == mu][metric].dropna().values
+        if len(mu_data) == 0:
+            continue
+
+        if len(mu_data) >= 2:
+            mean, ci_lower, ci_upper = compute_confidence_interval(mu_data)
+        else:
+            mean = ci_lower = ci_upper = float(mu_data[0])
+
+        stats.append({"mu": mu, "mean": mean, "ci_lower": ci_lower, "ci_upper": ci_upper, "n": len(mu_data)})
+
+    return pd.DataFrame(stats)
+
+
+def _render_client_scatter_mu_plot(scatter_df: pd.DataFrame, metric: str, output_path: Path, use_log_y: bool = False) -> None:
+    """
+    Render per-client scatter plot with global mean overlay for FedProx mu sweep.
+
+    Creates scatter points for individual (client, seed) combinations at each mu,
+    overlays global mean line with 95% CI ribbon.
+
+    Args:
+        scatter_df: DataFrame with columns: fedprox_mu, <metric>, jitter, client_id, seed
+        metric: Metric column name (e.g., 'l2_to_benign_mean')
+        output_path: Path to save PNG
+        use_log_y: If True, use log scale for y-axis
+
+    Raises:
+        ValueError: If scatter_df is empty
+    """
+    if scatter_df.empty:
+        raise ValueError("Cannot render scatter plot: empty scatter data")
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    for (client_id, seed), group in scatter_df.groupby(["client_id", "seed"]):
+        x_positions = group["fedprox_mu"] + group["jitter"]
+        ax.scatter(x_positions, group[metric], alpha=0.3, s=20, color="gray", zorder=1)
+
+    global_stats = _compute_global_mean_by_mu(scatter_df, metric)
+
+    if not global_stats.empty:
+        ax.plot(
+            global_stats["mu"],
+            global_stats["mean"],
+            marker="o",
+            linewidth=2,
+            color="red",
+            label="Global Mean",
+            zorder=3,
+        )
+        ax.fill_between(
+            global_stats["mu"],
+            global_stats["ci_lower"],
+            global_stats["ci_upper"],
+            alpha=0.2,
+            color="red",
+            zorder=2,
+        )
+
+    if use_log_y:
+        ax.set_yscale("log")
+
+    metric_label = metric.replace("_", " ").title()
+    ax.set_xlabel("FedProx Proximal Term (mu)")
+    ax.set_ylabel(f'{metric_label} {"(log scale)" if use_log_y else ""}')
+    ax.set_title(f"Per-Client {metric_label} vs mu (95% CI)")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Saved FedProx scatter plot: {output_path}")
+
+
+def _prepare_personalization_delta_f1_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Prepare personalization delta F1 data for analysis.
+
+    Computes per-client delta F1 = F1_personalized - F1_global from final round metrics,
+    preserving alpha stratification for heterogeneity analysis.
+
+    Args:
+        df: Combined metrics DataFrame with columns:
+            client_id, seed, alpha, round, macro_f1_global, macro_f1_personalized
+
+    Returns:
+        DataFrame with columns: client_id, seed, alpha, round,
+                               f1_global, f1_personalized, delta_f1
+        Filtered to last available round per (client, seed, alpha).
+    """
+    required_cols = ["client_id", "seed", "alpha", "round", "macro_f1_global", "macro_f1_personalized"]
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        logger.warning(f"Missing columns for personalization delta F1: {missing_cols}")
+        return pd.DataFrame(
+            columns=[
+                "client_id",
+                "seed",
+                "alpha",
+                "round",
+                "f1_global",
+                "f1_personalized",
+                "delta_f1",
+            ]
+        )
+
+    if df.empty:
+        return pd.DataFrame(
+            columns=[
+                "client_id",
+                "seed",
+                "alpha",
+                "round",
+                "f1_global",
+                "f1_personalized",
+                "delta_f1",
+            ]
+        )
+
+    final_rounds = df.groupby(["client_id", "seed", "alpha"]).tail(1).copy()
+    final_rounds = final_rounds.dropna(subset=["macro_f1_global", "macro_f1_personalized"])
+
+    if final_rounds.empty:
+        return pd.DataFrame(
+            columns=[
+                "client_id",
+                "seed",
+                "alpha",
+                "round",
+                "f1_global",
+                "f1_personalized",
+                "delta_f1",
+            ]
+        )
+
+    final_rounds["f1_global"] = final_rounds["macro_f1_global"]
+    final_rounds["f1_personalized"] = final_rounds["macro_f1_personalized"]
+    final_rounds["delta_f1"] = final_rounds["f1_personalized"] - final_rounds["f1_global"]
+
+    return final_rounds[["client_id", "seed", "alpha", "round", "f1_global", "f1_personalized", "delta_f1"]]
+
+
+def _analyze_delta_f1_by_alpha(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Analyze personalization delta F1 statistics stratified by alpha.
+
+    Computes mean, median, 95% CI, and percentage of clients with positive gains
+    for each alpha (heterogeneity) level.
+
+    Args:
+        df: DataFrame with columns: alpha, delta_f1, client_id, seed
+
+    Returns:
+        DataFrame with columns: alpha, mean_delta, median_delta,
+                               ci_lower, ci_upper, pct_positive, n
+        Sorted by alpha ascending.
+    """
+    if df.empty or "alpha" not in df.columns or "delta_f1" not in df.columns:
+        return pd.DataFrame(columns=["alpha", "mean_delta", "median_delta", "ci_lower", "ci_upper", "pct_positive", "n"])
+
+    stats = []
+    for alpha in sorted(df["alpha"].unique()):
+        alpha_data = df[df["alpha"] == alpha]["delta_f1"].dropna().values
+        if len(alpha_data) == 0:
+            continue
+
+        mean_delta = float(np.mean(alpha_data))
+        median_delta = float(np.median(alpha_data))
+        pct_positive = float((alpha_data > 0).sum() / len(alpha_data) * 100)
+
+        if len(alpha_data) >= 2:
+            mean_ci, ci_lower, ci_upper = compute_confidence_interval(alpha_data)
+        else:
+            ci_lower = ci_upper = mean_delta
+
+        stats.append(
+            {
+                "alpha": alpha,
+                "mean_delta": mean_delta,
+                "median_delta": median_delta,
+                "ci_lower": ci_lower,
+                "ci_upper": ci_upper,
+                "pct_positive": pct_positive,
+                "n": len(alpha_data),
+            }
+        )
+
+    return pd.DataFrame(stats)
+
+
+def _render_personalization_delta_f1_plots(scatter_df: pd.DataFrame, stats_df: pd.DataFrame, output_path: Path) -> None:
+    """
+    Render 3-panel personalization delta F1 analysis figure.
+
+    Creates visualization showing:
+    1. Violin plot: Delta F1 distribution by alpha
+    2. Scatter plot: F1_global vs F1_personalized with y=x baseline
+    3. Bar chart: Percentage of clients with positive delta by alpha
+
+    Args:
+        scatter_df: DataFrame with columns: alpha, delta_f1, f1_global, f1_personalized
+        stats_df: DataFrame with columns: alpha, mean_delta, pct_positive
+        output_path: Path to save PNG
+
+    Raises:
+        ValueError: If scatter_df is empty
+    """
+    if scatter_df.empty:
+        raise ValueError("Cannot render personalization delta F1 plots: empty data")
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig.suptitle("Personalization Benefit Analysis: Delta F1 by Heterogeneity", fontsize=14, fontweight="bold")
+
+    ax1, ax2, ax3 = axes
+
+    sns.violinplot(data=scatter_df, x="alpha", y="delta_f1", ax=ax1)
+    ax1.axhline(0, color="red", linestyle="--", alpha=0.5, linewidth=2, label="No benefit (y=0)")
+    ax1.set_xlabel("Alpha (Dirichlet Parameter)")
+    ax1.set_ylabel("Delta F1 (Personalized - Global)")
+    ax1.set_title("Delta F1 Distribution by Heterogeneity")
+    ax1.legend()
+    ax1.grid(True, alpha=0.3, axis="y")
+
+    ax2.scatter(
+        scatter_df["f1_global"],
+        scatter_df["f1_personalized"],
+        alpha=0.5,
+        s=30,
+        c=scatter_df["alpha"].astype("category").cat.codes,
+        cmap="viridis",
+    )
+    lims = [
+        min(scatter_df["f1_global"].min(), scatter_df["f1_personalized"].min()) - 0.02,
+        max(scatter_df["f1_global"].max(), scatter_df["f1_personalized"].max()) + 0.02,
+    ]
+    ax2.plot(lims, lims, "r--", alpha=0.5, linewidth=2, label="y=x (no benefit)")
+    ax2.set_xlabel("F1 Global")
+    ax2.set_ylabel("F1 Personalized")
+    ax2.set_title("Global vs Personalized Performance")
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    ax2.set_xlim(lims)
+    ax2.set_ylim(lims)
+
+    if not stats_df.empty:
+        ax3.bar(
+            range(len(stats_df)),
+            stats_df["pct_positive"],
+            color=sns.color_palette("viridis", len(stats_df)),
+            alpha=0.7,
+        )
+        ax3.set_xticks(range(len(stats_df)))
+        ax3.set_xticklabels([f"{a:.2f}" for a in stats_df["alpha"]])
+        ax3.set_xlabel("Alpha (Dirichlet Parameter)")
+        ax3.set_ylabel("% Clients with Positive Delta F1")
+        ax3.set_title("Proportion of Clients Benefiting from Personalization")
+        ax3.axhline(50, color="red", linestyle="--", alpha=0.3, linewidth=1)
+        ax3.set_ylim([0, 100])
+        ax3.grid(True, alpha=0.3, axis="y")
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Saved personalization delta F1 plots: {output_path}")
+
+
+def compute_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int, normalize: bool = False) -> np.ndarray:
+    """
+    Compute confusion matrix for multi-class classification.
+
+    Args:
+        y_true: Ground truth labels (1D array)
+        y_pred: Predicted labels (1D array)
+        num_classes: Number of classes
+        normalize: If True, normalize by row (true class counts)
+
+    Returns:
+        Confusion matrix of shape (num_classes, num_classes)
+        cm[i, j] = count of samples with true label i predicted as j
+    """
+    if len(y_true) == 0:
+        return np.zeros((num_classes, num_classes), dtype=np.int64)
+
+    cm = sk_confusion_matrix(y_true, y_pred, labels=np.arange(num_classes)).astype(np.float64)
+
+    if normalize:
+        row_sums = cm.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0] = 1.0
+        cm = cm / row_sums
+
+    return cm
+
+
+def render_confusion_matrix_heatmap(
+    cm: np.ndarray,
+    class_names: List[str],
+    output_path: Path,
+    normalize: bool = False,
+    title: str = "Confusion Matrix",
+) -> None:
+    """
+    Render confusion matrix as heatmap and save to file.
+
+    Args:
+        cm: Confusion matrix (num_classes x num_classes)
+        class_names: List of class names for axis labels
+        output_path: Path to save PNG file
+        normalize: If True, display percentages instead of counts
+        title: Plot title
+    """
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    if normalize and not np.allclose(cm.sum(axis=1), 1.0):
+        row_sums = cm.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0] = 1.0
+        cm_normalized = cm / row_sums
+    else:
+        cm_normalized = cm
+
+    vmin = 0.0
+    vmax = 1.0 if normalize else cm.max()
+
+    sns.heatmap(
+        cm_normalized,
+        annot=True,
+        fmt=".2f" if normalize else ".0f",
+        cmap="YlOrRd",
+        xticklabels=class_names,
+        yticklabels=class_names,
+        cbar_kws={"label": "Percentage" if normalize else "Count"},
+        vmin=vmin,
+        vmax=vmax,
+        ax=ax,
+    )
+
+    ax.set_xlabel("Predicted Label", fontsize=12)
+    ax.set_ylabel("True Label", fontsize=12)
+    ax.set_title(title, fontsize=14, fontweight="bold")
+
+    plt.xticks(rotation=45, ha="right")
+    plt.yticks(rotation=0)
+
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+def aggregate_confusion_matrices(cms: List[np.ndarray]) -> np.ndarray:
+    """
+    Aggregate multiple confusion matrices by summing.
+
+    Args:
+        cms: List of confusion matrices (same shape)
+
+    Returns:
+        Aggregated confusion matrix (sum of all inputs)
+
+    Raises:
+        ValueError: If cms is empty or matrices have mismatched shapes
+    """
+    if len(cms) == 0:
+        raise ValueError("Cannot aggregate empty list of confusion matrices")
+
+    first_shape = cms[0].shape
+    for i, cm in enumerate(cms[1:], start=1):
+        if cm.shape != first_shape:
+            raise ValueError(f"Confusion matrix shape mismatch: cms[0].shape={first_shape}, " f"cms[{i}].shape={cm.shape}")
+
+    return np.sum(cms, axis=0)
 
 
 def _resolve_run_dir(reference: str, runs_root: Path) -> Optional[Path]:
@@ -395,18 +833,18 @@ def load_experiment_results(runs_dir: Path) -> pd.DataFrame:
         return pd.DataFrame()
 
     combined_df = pd.concat(all_data, ignore_index=True)
-    
+
     # Validate metrics before returning
     validator = MetricValidator()
     warnings = validator.validate_plot_metrics(combined_df, "experiment_data")
-    
+
     if warnings:
         logger.warning(f"Metric validation warnings: {len(warnings)} issues found")
         for warning in warnings[:5]:  # Show first 5 warnings
             logger.warning(f"  {warning}")
         if len(warnings) > 5:
             logger.warning(f"  ... and {len(warnings) - 5} more warnings")
-    
+
     return combined_df
 
 
@@ -704,15 +1142,15 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 1: Final L2 Distance by Alpha and Mu
     ax1 = axes[0, 0]
     alpha_mu_data = df.groupby(['alpha', 'fedprox_mu'])['l2_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
-    
+
     for alpha in sorted(df['alpha'].unique()):
         alpha_data = alpha_mu_data[alpha_mu_data['alpha'] == alpha]
         mu_values = alpha_data['fedprox_mu'].values
         means = alpha_data['mean'].values
         stds = alpha_data['std'].values
-        
+
         ax1.errorbar(mu_values, means, yerr=stds, marker='o', label=f'Alpha={alpha}', linewidth=2, markersize=8)
-    
+
     ax1.set_xlabel('FedProx Mu Value')
     ax1.set_ylabel('Final L2 Distance to Benign Model')
     ax1.set_title('L2 Distance vs FedProx Strength by Heterogeneity Level')
@@ -723,15 +1161,15 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 2: Final Cosine Similarity by Alpha and Mu
     ax2 = axes[0, 1]
     alpha_mu_cos_data = df.groupby(['alpha', 'fedprox_mu'])['cos_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
-    
+
     for alpha in sorted(df['alpha'].unique()):
         alpha_data = alpha_mu_cos_data[alpha_mu_cos_data['alpha'] == alpha]
         mu_values = alpha_data['fedprox_mu'].values
         means = alpha_data['mean'].values
         stds = alpha_data['std'].values
-        
+
         ax2.errorbar(mu_values, means, yerr=stds, marker='s', label=f'Alpha={alpha}', linewidth=2, markersize=8)
-    
+
     ax2.set_xlabel('FedProx Mu Value')
     ax2.set_ylabel('Final Cosine Similarity to Benign Model')
     ax2.set_title('Cosine Similarity vs FedProx Strength by Heterogeneity Level')
@@ -742,13 +1180,13 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 3: Convergence Curves for Different Mu Values (Alpha=0.1)
     ax3 = axes[1, 0]
     extreme_non_iid = df[df['alpha'] == 0.1]
-    
+
     for mu in sorted(extreme_non_iid['fedprox_mu'].unique()):
         mu_data = extreme_non_iid[extreme_non_iid['fedprox_mu'] == mu]
         if 'round' in mu_data.columns and 'l2_to_benign_mean' in mu_data.columns:
             round_means = mu_data.groupby('round')['l2_to_benign_mean'].mean()
             ax3.plot(round_means.index, round_means.values, marker='o', label=f'Mu={mu}', linewidth=2)
-    
+
     ax3.set_xlabel('Round')
     ax3.set_ylabel('L2 Distance to Benign Model')
     ax3.set_title('Convergence Curves: Extreme Non-IID (Alpha=0.1)')
@@ -758,7 +1196,7 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 4: Heatmap of Final Performance
     ax4 = axes[1, 1]
     pivot_data = df.groupby(['alpha', 'fedprox_mu'])['l2_to_benign_mean'].mean().unstack()
-    
+
     im = ax4.imshow(pivot_data.values, cmap='viridis', aspect='auto')
     ax4.set_xticks(range(len(pivot_data.columns)))
     ax4.set_xticklabels([f'{mu:.2f}' for mu in pivot_data.columns])
@@ -767,18 +1205,42 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     ax4.set_xlabel('FedProx Mu Value')
     ax4.set_ylabel('Alpha (Heterogeneity Level)')
     ax4.set_title('L2 Distance Heatmap: Alpha vs Mu')
-    
+
     # Add colorbar
     cbar = plt.colorbar(im, ax=ax4)
     cbar.set_label('Final L2 Distance')
 
     plt.tight_layout()
-    
+
     # Save plot
     output_file = output_dir / "fedprox_heterogeneity_analysis.png"
     plt.savefig(output_file, dpi=300, bbox_inches='tight')
     print(f"Saved FedProx heterogeneity plot: {output_file}")
     plt.close()
+
+    # Generate per-client scatter plots for Issue #48
+    print("Generating per-client scatter plots vs mu...")
+    scatter_df_l2 = _prepare_client_scatter_data(df, metric="l2_to_benign_mean")
+    if not scatter_df_l2.empty:
+        scatter_output_l2 = output_dir / "fedprox_client_scatter_l2.png"
+        _render_client_scatter_mu_plot(scatter_df_l2, metric="l2_to_benign_mean", output_path=scatter_output_l2, use_log_y=False)
+
+        summary_stats_l2 = _compute_global_mean_by_mu(scatter_df_l2, metric="l2_to_benign_mean")
+        summary_stats_l2["metric"] = "l2_to_benign_mean"
+        summary_csv_l2 = output_dir / "fedprox_client_scatter_summary_l2.csv"
+        summary_stats_l2.to_csv(summary_csv_l2, index=False)
+        print(f"Saved L2 scatter summary: {summary_csv_l2}")
+
+    scatter_df_cos = _prepare_client_scatter_data(df, metric="cos_to_benign_mean")
+    if not scatter_df_cos.empty:
+        scatter_output_cos = output_dir / "fedprox_client_scatter_cosine.png"
+        _render_client_scatter_mu_plot(scatter_df_cos, metric="cos_to_benign_mean", output_path=scatter_output_cos, use_log_y=False)
+
+        summary_stats_cos = _compute_global_mean_by_mu(scatter_df_cos, metric="cos_to_benign_mean")
+        summary_stats_cos["metric"] = "cos_to_benign_mean"
+        summary_csv_cos = output_dir / "fedprox_client_scatter_summary_cosine.csv"
+        summary_stats_cos.to_csv(summary_csv_cos, index=False)
+        print(f"Saved cosine scatter summary: {summary_csv_cos}")
 
 
 def plot_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
@@ -915,10 +1377,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     num_seeds = len(df["seed"].unique()) if "seed" in df.columns else 1
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    subtitle = (
-        f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | "
-        f"Attack: grad_ascent | Seeds: n={num_seeds}"
-    )
+    subtitle = f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | " f"Attack: grad_ascent | Seeds: n={num_seeds}"
     fig.suptitle(f"Attack Resilience Comparison\n{subtitle}", fontsize=14, fontweight="bold")
 
     final_rounds = df.groupby(["aggregation", "adversary_fraction", "seed"]).tail(1)
@@ -1187,11 +1646,7 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
                 )
 
         if comparison_data:
-            rows = [
-                {"DP": item["DP"], "Cosine Similarity": val}
-                for item in comparison_data
-                for val in item["Cosine Similarity"]
-            ]
+            rows = [{"DP": item["DP"], "Cosine Similarity": val} for item in comparison_data for val in item["Cosine Similarity"]]
             plot_df = pd.DataFrame(rows)
             sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
             ax.set_title("Model Alignment with DP")
@@ -1206,9 +1661,22 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
 
 
 def plot_personalization_benefit(df: pd.DataFrame, output_dir: Path):
-    """Plot personalization benefit."""
+    """Plot personalization benefit with delta F1 analysis."""
     if "personalization_epochs" not in df.columns:
         return
+
+    # Generate delta F1 analysis plots (Issue #58)
+    delta_df = _prepare_personalization_delta_f1_data(df)
+    if not delta_df.empty:
+        stats_df = _analyze_delta_f1_by_alpha(delta_df)
+        if not stats_df.empty:
+            output_path = output_dir / "personalization_delta_f1_analysis.png"
+            _render_personalization_delta_f1_plots(delta_df, stats_df, output_path)
+
+            # Export CSV summary
+            summary_csv = output_dir / "personalization_delta_f1_summary.csv"
+            stats_df.to_csv(summary_csv, index=False)
+            print(f"Saved personalization delta F1 summary: {summary_csv}")
 
     # Load client metrics for personalization data
     # This requires reading client metrics CSVs

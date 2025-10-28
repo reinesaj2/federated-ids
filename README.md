@@ -13,12 +13,13 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 5. Reproducibility & logging (seeds, logs, plots)
 6. Algorithm comparison (FedAvg vs FedProx)
 7. Real datasets (UNSW‑NB15, CIC‑IDS2017)
-8. **Experimental Results & Performance Analysis**
-9. **Visualization Gallery & Plot References**
-10. **Quick Links to Analysis & Results**
+8. Experimental Results & Performance Analysis
+9. Visualization Gallery & Plot References
+10. Quick Links to Analysis & Results
 11. Troubleshooting (common errors and fixes)
 12. Project structure
-13. Notes on privacy/robustness scaffolding
+13. Privacy & robustness disclosure (D2 scope)
+14. D2 Runbook (experiment workflow & artifact map)
 
 ---
 
@@ -569,3 +570,59 @@ For a comprehensive threat model including adversary assumptions, attack scenari
   before sending. This is not DP‑SGD and does not include privacy accounting.
 - Secure Aggregation (stub): toggle provided and status logged, but updates are not cryptographically masked.
   Integration of secure summation/masking is planned for a later milestone.
+
+---
+
+## 14) D2 Runbook (experiment workflow & artifact map)
+
+For reproducibility and advisor-facing documentation, this section provides an overview of the end-to-end workflow for running federated learning experiments.
+
+### Quick Workflow
+
+```
+Preprocess → Run Experiments → Generate Plots → Summarize → Commit Artifacts
+```
+
+### Step 1: Preprocess Data
+```bash
+python scripts/setup_real_datasets.py
+```
+
+### Step 2: Run Experiments
+```bash
+# Automated comparative analysis (recommended)
+python scripts/comparative_analysis.py \
+  --dimension heterogeneity \
+  --dataset unsw \
+  --output_dir results/comparative_analysis/unsw
+```
+
+Available dimensions: `aggregation`, `attack`, `heterogeneity`, `heterogeneity_fedprox`, `privacy`, `personalization`
+
+### Step 3: Generate Plots
+```bash
+python scripts/generate_thesis_plots.py \
+  --dimension heterogeneity \
+  --runs_dir runs \
+  --output_dir results/thesis_plots/heterogeneity
+```
+
+### Step 4: Summarize Results
+```bash
+python scripts/summarize_metrics.py \
+  --run_dir runs/comp_fedavg_alpha0.1_adv0_dp0_pers0_seed42 \
+  --output runs/comp_fedavg_alpha0.1_adv0_dp0_pers0_seed42/summary.json
+```
+
+### Artifact Structure
+
+Each experiment run creates a directory `runs/comp_{config}/` containing:
+- `config.json` - Experiment configuration
+- `metrics.csv` - Server-level metrics per round
+- `client_N_metrics.csv` - Per-client metrics per round
+- `summary.json` - Aggregated statistics (generated post-run)
+- `*.log` - Execution logs
+
+### Detailed Documentation
+
+For complete workflow details, artifact specifications, CI/CD instructions, and troubleshooting, see [docs/d2_runbook.md](docs/d2_runbook.md).

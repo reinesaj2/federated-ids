@@ -2,7 +2,7 @@
 line-length = 140
 target-version = ["py311"]
 skip-string-normalization = true
-extend-exclude = "(\\.venv|__pycache__|runs|logs|datasets|data|plots|analysis|docs|scripts)"
+extend-exclude = "(\\.venv|__pycache__|runs|logs|datasets|data|plots|analysis|docs)"
 
 [tool.ruff]
 line-length = 140
@@ -17,7 +17,6 @@ exclude = [
   "plots",
   "analysis",
   "docs",
-  "scripts",
   ".mypy_cache",
   ".pytest_cache",
 ]
@@ -35,4 +34,4 @@ warn_redundant_casts = true
 no_implicit_optional = false
 check_untyped_defs = false
 disallow_untyped_defs = false
-exclude = "(runs/|logs/|datasets/|data/|plots/|analysis/|docs/|scripts/)"
+exclude = "(runs/|logs/|datasets/|data/|plots/|analysis/|docs/)"
