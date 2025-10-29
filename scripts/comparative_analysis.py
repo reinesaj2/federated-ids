@@ -73,13 +73,18 @@ class ComparisonMatrix:
     dp_configs: List[Dict] = field(
         default_factory=lambda: [
             {"enabled": False, "noise": 0.0},
+            {"enabled": True, "noise": 0.1},
+            {"enabled": True, "noise": 0.3},
             {"enabled": True, "noise": 0.5},
+            {"enabled": True, "noise": 0.7},
             {"enabled": True, "noise": 1.0},
+            {"enabled": True, "noise": 1.5},
+            {"enabled": True, "noise": 2.0},
         ]
     )
     personalization_epochs: List[int] = field(default_factory=lambda: [0, 5])
     fedprox_mu_values: List[float] = field(default_factory=lambda: [0.01, 0.1, 1.0])
-    seeds: List[int] = field(default_factory=lambda: [42, 43, 44])
+    seeds: List[int] = field(default_factory=lambda: [42, 43, 44, 45, 46])
     num_clients: int = 6
     num_rounds: int = 20
 
@@ -120,7 +125,7 @@ class ComparisonMatrix:
 
     def _generate_heterogeneity_fedprox_configs(self) -> List[ExperimentConfig]:
         """Generate FedProx configs for heterogeneity comparison.
-        
+
         Tests FedProx algorithm across different alpha values (data heterogeneity)
         and mu values (proximal term strength) to evaluate heterogeneity mitigation.
         """
@@ -128,11 +133,7 @@ class ComparisonMatrix:
         for alpha in self.alpha_values:
             for mu in self.fedprox_mu_values:
                 for seed in self.seeds:
-                    configs.append(self._create_config(
-                        self._base_config(seed), 
-                        alpha=alpha,
-                        fedprox_mu=mu
-                    ))
+                    configs.append(self._create_config(self._base_config(seed), alpha=alpha, fedprox_mu=mu))
         return configs
 
     def _generate_attack_configs(self) -> List[ExperimentConfig]:
@@ -308,8 +309,9 @@ def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int =
                 proc.wait()
 
 
-def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_start: int = 8080, 
-                           server_timeout: int = 300, client_timeout: int = 900) -> Dict:
+def run_federated_experiment(
+    config: ExperimentConfig, base_dir: Path, port_start: int = 8080, server_timeout: int = 300, client_timeout: int = 900
+) -> Dict:
     """Run a single federated learning experiment with proper error handling.
 
     Args:
@@ -491,7 +493,7 @@ def main():
         help="Server process timeout in seconds (default: 300)",
     )
     parser.add_argument(
-        "--client_timeout", 
+        "--client_timeout",
         type=int,
         default=900,
         help="Client process timeout in seconds (default: 900)",
@@ -518,24 +520,22 @@ def main():
     results = []
     successful_experiments = 0
     failed_experiments = 0
-    
+
     for i, config in enumerate(configs):
         print(f"\n[{i + 1}/{len(configs)}] Running: {config.to_preset_name()}")
         print(f"  Progress: {successful_experiments} successful, {failed_experiments} failed")
-        
+
         try:
-            result = run_federated_experiment(config, base_dir, 
-                                            server_timeout=args.server_timeout,
-                                            client_timeout=args.client_timeout)
+            result = run_federated_experiment(config, base_dir, server_timeout=args.server_timeout, client_timeout=args.client_timeout)
             results.append(result)
-            
+
             if result.get('metrics_exist', False):
                 successful_experiments += 1
                 print(f"  SUCCESS: Exit code {result['server_exit_code']}, metrics generated")
             else:
                 failed_experiments += 1
                 print(f"  WARNING: Exit code {result['server_exit_code']}, no metrics generated")
-                
+
         except subprocess.TimeoutExpired as e:
             failed_experiments += 1
             print(f"  TIMEOUT: {e}")
@@ -544,7 +544,7 @@ def main():
             failed_experiments += 1
             print(f"  FAILED: {e}")
             results.append({"preset": config.to_preset_name(), "error": str(e)})
-    
+
     print(f"\nEXPERIMENT SUMMARY:")
     print(f"  Total experiments: {len(configs)}")
     print(f"  Successful: {successful_experiments}")

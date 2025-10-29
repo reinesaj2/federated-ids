@@ -1303,68 +1303,58 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     plt.close()
 
 
-def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[Path] = None):
-    """Plot privacy-utility tradeoff."""
-    if "dp_enabled" not in df.columns:
+def generate_privacy_utility_curve(df: pd.DataFrame, output_dir: Path, runs_dir: Path) -> None:
+    """
+    Generate privacy-utility curve visualization with formal epsilon accounting.
+
+    Creates curve showing macro-F1 vs epsilon (privacy budget) for DP-enabled experiments.
+    Aggregates multiple seeds with 95% confidence intervals.
+
+    Args:
+        df: Experiment results dataframe with final metrics per run
+        output_dir: Directory to save plots and CSV summaries
+        runs_dir: Root directory containing individual run outputs
+
+    This function:
+    1. Filters DP-enabled experiments from results
+    2. Prepares privacy curve data (epsilon, macro-F1, seed)
+    3. Aggregates across seeds with confidence intervals
+    4. Renders epsilon-utility tradeoff visualization
+    5. Saves summary CSV for thesis tables
+    """
+    if df.empty:
         return
 
-    final_rounds = df.groupby(["dp_enabled", "dp_noise_multiplier", "seed"]).tail(1)
+    # Get final round metrics (groupby run, seed, take last row)
+    final_rounds = df.groupby(["run_dir", "seed"]).tail(1).reset_index(drop=True)
 
-    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
-    fig.suptitle("Privacy-Utility Tradeoff", fontsize=16, fontweight="bold")
+    if final_rounds.empty:
+        return
 
-    # Plot 1: L2 distance vs DP noise
-    if "l2_to_benign_mean" in final_rounds.columns:
-        ax = axes[0]
-        dp_data = final_rounds[final_rounds["dp_enabled"]]
-        if not dp_data.empty:
-            summary = dp_data.groupby("dp_noise_multiplier")["l2_to_benign_mean"].agg(["mean", "std"])
-            ax.errorbar(
-                summary.index,
-                summary["mean"],
-                yerr=summary["std"],
-                marker="o",
-                capsize=5,
-                label="DP Enabled",
-            )
+    # Prepare data for privacy curve (aggregates clients, computes epsilon)
+    # Includes both DP-enabled and baseline experiments
+    dp_df, baseline_df = _prepare_privacy_curve_data(final_rounds, runs_dir)
 
-        # Add baseline without DP
-        no_dp = final_rounds[~final_rounds["dp_enabled"]]["l2_to_benign_mean"].mean()
-        ax.axhline(y=no_dp, color="green", linestyle="--", label="No DP (Baseline)")
+    if dp_df.empty and baseline_df.empty:
+        return
 
-        ax.set_title("Model Accuracy vs DP Noise")
-        ax.set_xlabel("DP Noise Multiplier (σ)")
-        ax.set_ylabel("L2 Distance to Benign Mean")
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-    # Plot 2: Cosine similarity vs DP
-    if "cos_to_benign_mean" in final_rounds.columns:
-        ax = axes[1]
-        comparison_data = []
-        for enabled in [False, True]:
-            subset = final_rounds[final_rounds["dp_enabled"] == enabled]
-            if not subset.empty:
-                comparison_data.append(
-                    {
-                        "DP": "Enabled" if enabled else "Disabled",
-                        "Cosine Similarity": subset["cos_to_benign_mean"].values,
-                    }
-                )
-
-        if comparison_data:
-            rows = [{"DP": item["DP"], "Cosine Similarity": val} for item in comparison_data for val in item["Cosine Similarity"]]
-            plot_df = pd.DataFrame(rows)
-            sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
-            ax.set_title("Model Alignment with DP")
-
-    plt.tight_layout()
-    plt.savefig(output_dir / "privacy_utility.png", dpi=300, bbox_inches="tight")
-    plt.close()
-
-    runs_root = Path(runs_dir) if runs_dir is not None else Path("runs")
-    dp_df, baseline_df = _prepare_privacy_curve_data(final_rounds, runs_root)
+    # Render curve with summary stats
     _render_privacy_curve(dp_df, baseline_df, output_dir)
+
+
+def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Path) -> None:
+    """
+    Plot privacy-utility tradeoff for DP experiments.
+
+    Wrapper for thesis dimension: "privacy".
+    Generates formal privacy-utility curve showing macro-F1 vs epsilon.
+
+    Args:
+        df: Experiment results
+        output_dir: Output directory
+        runs_dir: Run directory root
+    """
+    generate_privacy_utility_curve(df, output_dir, runs_dir)
 
 
 def plot_personalization_benefit(df: pd.DataFrame, output_dir: Path):

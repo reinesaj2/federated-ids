@@ -13,9 +13,23 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 5. Reproducibility & logging (seeds, logs, plots)
 6. Algorithm comparison (FedAvg vs FedProx)
 7. Real datasets (UNSW‑NB15, CIC‑IDS2017)
-8. Troubleshooting (common errors and fixes)
-9. Project structure
-10. Notes on privacy/robustness scaffolding
+<<<<<<< HEAD
+8. **Experimental Results & Performance Analysis**
+9. **Visualization Gallery & Plot References**
+10. **Quick Links to Analysis & Results**
+11. D2 Runbook (experiment workflow & artifact map)
+12. Troubleshooting (common errors and fixes)
+13. Project structure
+14. Notes on privacy/robustness scaffolding
+=======
+8. Experimental Results & Performance Analysis
+9. Visualization Gallery & Plot References
+10. Quick Links to Analysis & Results
+11. Troubleshooting (common errors and fixes)
+12. Project structure
+13. Privacy & robustness disclosure (D2 scope)
+14. D2 Runbook (experiment workflow & artifact map)
+>>>>>>> viz/issue-65-readme-results
 
 ---
 
@@ -415,7 +429,95 @@ python scripts/prepare_unsw_sample.py \
 
 ---
 
-## 8) Troubleshooting
+## 8) Experimental Results & Performance Analysis
+
+### Key Findings Summary
+
+Synthesis of the committed artifacts (see [`PERFORMANCE_COMPARISON_TABLES.md`](PERFORMANCE_COMPARISON_TABLES.md)):
+
+- **Robust aggregation under attack:** With 30 % Byzantine clients, macro‑F1 remains at 0.854 for Bulyan (−14 %) and 0.894 for Median (−10 %), while FedAvg drops to 0.675 (−75 %). Source: `results/comparative_analysis/attack_resilience_stats.csv`.
+- **Heterogeneity control:** FedProx with μ = 0.1 at Dirichlet α = 0.05 yields a 2.67× lower L2 drift than FedAvg, at ~3 % additional runtime. Smaller μ = 0.01 still improves stability 1.35× with ~1 % overhead. Source: `analysis/fedprox_nightly/fedprox_comparison_summary.json`.
+- **Personalization gains:** Client fine‑tuning delivers an average +0.035 macro‑F1 across 30 clients, with +0.060 on CIC‑IDS2017 slices and +0.018 on UNSW‑NB15. Source: `analysis/personalization/personalization_summary.json`.
+- **Privacy–utility trade-off:** Client‑side DP noise σ = 0.7 (ε≈1.5) preserves macro‑F1≈0.79 compared to the 0.89 baseline, an ~11 % drop while adding differential privacy guarantees. Source: `results/privacy_check/privacy_utility_curve.csv`.
+
+### Performance Comparison Tables
+
+| Aggregation | Macro‑F1 (benign) | Macro‑F1 (30 % adv.) | Δ at 30 % | Source |
+|-------------|------------------|----------------------|-----------|--------|
+| FedAvg | 1.000 | 0.675 | −74.5 % | `results/comparative_analysis/attack_resilience_stats.csv` |
+| Krum | 0.969 | 0.787 | −18.8 % | `results/comparative_analysis/attack_resilience_stats.csv` |
+| Bulyan | 0.994 | 0.854 | −14.1 % | `results/comparative_analysis/attack_resilience_stats.csv` |
+| Median | 0.999 | 0.894 | −10.5 % | `results/comparative_analysis/attack_resilience_stats.csv` |
+
+Additional tables (FedProx stability, personalization breakdown, privacy curve) live in [`PERFORMANCE_COMPARISON_TABLES.md`](PERFORMANCE_COMPARISON_TABLES.md).
+
+### Experimental Dimensions
+
+1. **Aggregation Comparison:** Robust vs non-robust strategies on CIC-IDS2017 with Byzantine clients (fractions 0 %, 10 %, 30 %).
+2. **Heterogeneity Impact:** Dirichlet splits α ∈ {0.05, 0.1, 0.5} comparing FedAvg and FedProx (μ ∈ {0, 0.01, 0.1}).
+3. **Attack Resilience:** Bounded-gradient adversaries vs honest updates across 5 seeds (reference: `attack_experiments_*.log` and stats CSV).
+4. **Privacy–Utility:** Gaussian DP noise sweep (σ ∈ {0, 0.7}) with derived ε values.
+5. **Personalization Benefits:** Post-round fine‑tuning epochs {0, 3, 5, 10} on CIC-IDS2017 and UNSW-NB15 partitions.
+
+---
+
+## 9) Visualization Gallery & Plot References
+
+### Thesis Plots Directory
+
+All publication-ready plots are organized in [`plots/thesis/`](plots/thesis/):
+
+- **Latest Plots**: [`plots/thesis/2025-10-21/`](plots/thesis/2025-10-21/)
+- **Heterogeneity Impact**: [`heterogeneity_comparison.png`](plots/thesis/2025-10-21/thesis-comparative/heterogeneity_comparison.png)
+- **FedProx Analysis**: [`fedprox_heterogeneity_analysis.png`](plots/thesis/2025-10-21/thesis-comparative/fedprox_heterogeneity_analysis.png)
+
+**Complete Plot Collection**:
+- **Aggregation Comparison**: [`plots/thesis/2025-10-05/thesis-comparative/aggregation_comparison.png`](plots/thesis/2025-10-05/thesis-comparative/aggregation_comparison.png)
+- **Attack Resilience**: [`plots/thesis/2025-10-05/thesis-comparative/attack_resilience.png`](plots/thesis/2025-10-05/thesis-comparative/attack_resilience.png)
+- **Personalization Benefits**: [`plots/thesis/2025-10-20/thesis-comparative/personalization_benefit.png`](plots/thesis/2025-10-20/thesis-comparative/personalization_benefit.png)
+- **Privacy-Utility Tradeoff**: [`plots/thesis/2025-10-20/thesis-comparative/privacy_utility.png`](plots/thesis/2025-10-20/thesis-comparative/privacy_utility.png)
+
+### FedProx Analysis Plots
+
+- **Performance Comparison**: [`analysis/fedprox_nightly/fedprox_performance_plots.png`](analysis/fedprox_nightly/fedprox_performance_plots.png)
+- **Summary Data**: [`analysis/fedprox_nightly/fedprox_comparison_summary.json`](analysis/fedprox_nightly/fedprox_comparison_summary.json)
+- **LaTeX Tables**: [`analysis/fedprox_nightly/fedprox_thesis_tables.tex`](analysis/fedprox_nightly/fedprox_thesis_tables.tex)
+
+### Personalization Analysis
+
+- **Gains Visualization**: [`analysis/personalization/personalization_gains_analysis.png`](analysis/personalization/personalization_gains_analysis.png)
+- **Summary Statistics**: [`analysis/personalization/personalization_summary.json`](analysis/personalization/personalization_summary.json)
+- **LaTeX Tables**: [`analysis/personalization/personalization_gains_table.tex`](analysis/personalization/personalization_gains_table.tex)
+
+### Interactive Plot Browser
+
+Browse all plots chronologically: [`plots/index.html`](plots/index.html)
+
+---
+
+## 10) Quick Links to Analysis & Results
+
+### Experimental Data
+- **Aggregated Outputs**: [`results/`](results/) – Plot-ready CSV/PNG bundles
+- **Comparative Run Logs**: `comparative-analysis-*/runs/` – per-seed metrics (FedAvg, FedProx, personalization)
+- **Analysis Scripts**: [`scripts/`](scripts/) – Plot generation and analysis tools
+- **Documentation**: [`docs/`](docs/) – Detailed experimental methodology
+
+### Key Analysis Files
+- **Performance Tables**: [`PERFORMANCE_COMPARISON_TABLES.md`](PERFORMANCE_COMPARISON_TABLES.md)
+- **FedProx Analysis**: [`analysis/fedprox_nightly/`](analysis/fedprox_nightly/)
+- **Personalization Study**: [`analysis/personalization/`](analysis/personalization/)
+- **Notebook Walkthrough**: [`analysis/notebooks/performance_overview.ipynb`](analysis/notebooks/performance_overview.ipynb)
+- **Threat Model**: [`docs/threat_model.md`](docs/threat_model.md)
+
+### Reproducibility
+- **Experiment Bundles**: Aggregated CSV/JSON outputs under `results/` and `analysis/` (see comparative-analysis folders)
+- **Seed Control**: Reported runs use documented seeds (42, 43, 44, 101–505 depending on study)
+- **Data Sources**: UNSW-NB15 (82k samples) and CIC-IDS2017 datasets
+
+---
+
+## 11) Troubleshooting
 
 - **Deprecation warnings (Flower)**: you might see messages about `start_server`/`start_client` being deprecated.
   This demo targets flwr==1.21.0 and is known to work despite the warnings.
@@ -450,7 +552,7 @@ python scripts/prepare_unsw_sample.py \
 
 ---
 
-## 9) Project structure
+## 12) Project structure
 
 - `server.py` – Flower server with FedAvg and robust aggregation options (`median`, `krum`, simplified `bulyan`).
   - For `fedavg`, aggregation is sample‑size weighted; robust methods are intentionally unweighted.
@@ -468,7 +570,7 @@ python scripts/prepare_unsw_sample.py \
 
 ---
 
-## 10) Privacy & robustness disclosure (D2 scope)
+## 13) Privacy & robustness disclosure (D2 scope)
 
 For a comprehensive threat model including adversary assumptions, attack scenarios, and defense mechanisms, see [docs/threat_model.md](docs/threat_model.md).
 
@@ -476,9 +578,61 @@ For a comprehensive threat model including adversary assumptions, attack scenari
 
 - Differential Privacy (scaffold): client‑side clipping with Gaussian noise applied to the model update
   before sending. This is not DP‑SGD and does not include privacy accounting.
-- Secure Aggregation (additive masking): when `--secure_aggregation` (or `D2_SECURE_AGG=1`) is enabled the
-  server samples a per-client deterministic seed each round, clients mask every tensor with additive shares
-  (`secure_aggregation.py`) before sending updates, and the server reconstructs the masks before delegating
-  to the configured aggregation rule. **Limitations:** all participating clients must finish the round (no
-  dropout tolerance yet); seeds are deterministic for reproducibility and should be routed through a secure
-  channel in production; masking currently covers model parameters only (no gradient compression).
+- Secure Aggregation (stub): toggle provided and status logged, but updates are not cryptographically masked.
+  Integration of secure summation/masking is planned for a later milestone.
+
+---
+
+## 14) D2 Runbook (experiment workflow & artifact map)
+
+For reproducibility and advisor-facing documentation, this section provides an overview of the end-to-end workflow for running federated learning experiments.
+
+### Quick Workflow
+
+```
+Preprocess → Run Experiments → Generate Plots → Summarize → Commit Artifacts
+```
+
+### Step 1: Preprocess Data
+```bash
+python scripts/setup_real_datasets.py
+```
+
+### Step 2: Run Experiments
+```bash
+# Automated comparative analysis (recommended)
+python scripts/comparative_analysis.py \
+  --dimension heterogeneity \
+  --dataset unsw \
+  --output_dir results/comparative_analysis/unsw
+```
+
+Available dimensions: `aggregation`, `attack`, `heterogeneity`, `heterogeneity_fedprox`, `privacy`, `personalization`
+
+### Step 3: Generate Plots
+```bash
+python scripts/generate_thesis_plots.py \
+  --dimension heterogeneity \
+  --runs_dir runs \
+  --output_dir results/thesis_plots/heterogeneity
+```
+
+### Step 4: Summarize Results
+```bash
+python scripts/summarize_metrics.py \
+  --run_dir runs/comp_fedavg_alpha0.1_adv0_dp0_pers0_seed42 \
+  --output runs/comp_fedavg_alpha0.1_adv0_dp0_pers0_seed42/summary.json
+```
+
+### Artifact Structure
+
+Each experiment run creates a directory `runs/comp_{config}/` containing:
+- `config.json` - Experiment configuration
+- `metrics.csv` - Server-level metrics per round
+- `client_N_metrics.csv` - Per-client metrics per round
+- `summary.json` - Aggregated statistics (generated post-run)
+- `*.log` - Execution logs
+
+### Detailed Documentation
+
+For complete workflow details, artifact specifications, CI/CD instructions, and troubleshooting, see [docs/d2_runbook.md](docs/d2_runbook.md).
