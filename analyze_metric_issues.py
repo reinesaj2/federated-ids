@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Analyze metric issues from Issue #78."""
 
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
 
 
 def analyze_metrics_file(csv_path: Path) -> dict:

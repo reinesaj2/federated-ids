@@ -8,26 +8,24 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
-
 from plot_config import PlotStyle, create_default_config
 from plot_metrics_client import (
-    plot_client_metrics,
     _render_client_accuracy,
     _render_client_f1_overlay,
     _render_client_fpr,
     _render_client_loss,
     _render_client_norms,
     _render_client_tau,
+    plot_client_metrics,
 )
 from plot_metrics_server import (
-    plot_server_metrics,
     _render_server_dispersion,
     _render_server_norms,
     _render_server_robustness,
     _render_server_timing,
+    plot_server_metrics,
 )
 from plot_metrics_utils import first_present, render_mu_scatter
-
 
 __all__ = [
     "plot_server_metrics",
@@ -231,6 +229,6 @@ def main() -> None:
         plot_client_metrics(client_metrics_paths, str(client_plot_path), config)
         print(f"Client metrics plot saved to: {client_plot_path}")
 
- 
+
 if __name__ == "__main__":
     main()

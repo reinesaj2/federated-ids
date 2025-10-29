@@ -2,6 +2,7 @@
 import argparse
 import json
 from pathlib import Path
+
 import pandas as pd
 
 
@@ -58,11 +59,7 @@ def summarize_clients(run_dir: Path) -> dict:
     # Worst/best client macro-F1 (argmax) across clients at last round if available
     try:
         if {"client_id", "round", "macro_f1_argmax"}.issubset(df.columns):
-            last = (
-                df.groupby("client_id")
-                .apply(lambda d: d.sort_values("round").tail(1))
-                .reset_index(drop=True)
-            )
+            last = df.groupby("client_id").apply(lambda d: d.sort_values("round").tail(1)).reset_index(drop=True)
             s = pd.to_numeric(last["macro_f1_argmax"], errors="coerce").dropna()
             if not s.empty:
                 out["macro_f1_argmax_last_round"] = {
@@ -84,24 +81,14 @@ def summarize_clients(run_dir: Path) -> dict:
             }
 
     # Low-FPR point: extract (τ, FPR, F1) from last round across all clients
-    if {"tau_bin", "benign_fpr_bin_tau", "f1_bin_tau", "client_id", "round"}.issubset(
-        df.columns
-    ):
+    if {"tau_bin", "benign_fpr_bin_tau", "f1_bin_tau", "client_id", "round"}.issubset(df.columns):
         try:
             # Get last round for each client
-            last_round_df = (
-                df.groupby("client_id")
-                .apply(lambda d: d.sort_values("round").tail(1))
-                .reset_index(drop=True)
-            )
+            last_round_df = df.groupby("client_id").apply(lambda d: d.sort_values("round").tail(1)).reset_index(drop=True)
 
             tau_vals = pd.to_numeric(last_round_df["tau_bin"], errors="coerce").dropna()
-            fpr_vals = pd.to_numeric(
-                last_round_df["benign_fpr_bin_tau"], errors="coerce"
-            ).dropna()
-            f1_vals = pd.to_numeric(
-                last_round_df["f1_bin_tau"], errors="coerce"
-            ).dropna()
+            fpr_vals = pd.to_numeric(last_round_df["benign_fpr_bin_tau"], errors="coerce").dropna()
+            f1_vals = pd.to_numeric(last_round_df["f1_bin_tau"], errors="coerce").dropna()
 
             if not tau_vals.empty and not fpr_vals.empty and not f1_vals.empty:
                 out["low_fpr_point"] = {
@@ -122,9 +109,7 @@ def summarize_clients(run_dir: Path) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Summarize FL metrics for fairness and rare-class reporting"
-    )
+    parser = argparse.ArgumentParser(description="Summarize FL metrics for fairness and rare-class reporting")
     parser.add_argument("--run_dir", type=str, required=True)
     parser.add_argument("--output", type=str, default=None)
     args = parser.parse_args()

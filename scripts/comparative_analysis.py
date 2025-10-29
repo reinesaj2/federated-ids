@@ -21,8 +21,6 @@ import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
-
 
 # Default baseline values for controlled experiments
 DEFAULT_ALPHA_IID = 1.0  # Alpha=1.0 means IID (uniform Dirichlet)
@@ -67,23 +65,23 @@ class ExperimentConfig:
 class ComparisonMatrix:
     """Defines the full comparison experiment matrix."""
 
-    aggregation_methods: List[str] = field(default_factory=lambda: ["fedavg", "krum", "bulyan", "median"])
-    alpha_values: List[float] = field(default_factory=lambda: [1.0, 0.5, 0.1])
-    adversary_fractions: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.3])
-    dp_configs: List[Dict] = field(
+    aggregation_methods: list[str] = field(default_factory=lambda: ["fedavg", "krum", "bulyan", "median"])
+    alpha_values: list[float] = field(default_factory=lambda: [1.0, 0.5, 0.1])
+    adversary_fractions: list[float] = field(default_factory=lambda: [0.0, 0.1, 0.3])
+    dp_configs: list[dict] = field(
         default_factory=lambda: [
             {"enabled": False, "noise": 0.0},
             {"enabled": True, "noise": 0.5},
             {"enabled": True, "noise": 1.0},
         ]
     )
-    personalization_epochs: List[int] = field(default_factory=lambda: [0, 5])
-    fedprox_mu_values: List[float] = field(default_factory=lambda: [0.01, 0.1, 1.0])
-    seeds: List[int] = field(default_factory=lambda: [42, 43, 44])
+    personalization_epochs: list[int] = field(default_factory=lambda: [0, 5])
+    fedprox_mu_values: list[float] = field(default_factory=lambda: [0.01, 0.1, 1.0])
+    seeds: list[int] = field(default_factory=lambda: [42, 43, 44])
     num_clients: int = 6
     num_rounds: int = 20
 
-    def _base_config(self, seed: int) -> Dict:
+    def _base_config(self, seed: int) -> dict:
         """Get baseline config with fixed parameters for controlled experiments."""
         return {
             "aggregation": DEFAULT_AGGREGATION,
@@ -98,11 +96,11 @@ class ComparisonMatrix:
             "seed": seed,
         }
 
-    def _create_config(self, base: Dict, **overrides) -> ExperimentConfig:
+    def _create_config(self, base: dict, **overrides) -> ExperimentConfig:
         """Create config with overrides applied to base."""
         return ExperimentConfig(**{**base, **overrides})
 
-    def _generate_aggregation_configs(self) -> List[ExperimentConfig]:
+    def _generate_aggregation_configs(self) -> list[ExperimentConfig]:
         """Generate configs varying only aggregation method."""
         configs = []
         for agg in self.aggregation_methods:
@@ -110,7 +108,7 @@ class ComparisonMatrix:
                 configs.append(self._create_config(self._base_config(seed), aggregation=agg))
         return configs
 
-    def _generate_heterogeneity_configs(self) -> List[ExperimentConfig]:
+    def _generate_heterogeneity_configs(self) -> list[ExperimentConfig]:
         """Generate configs varying only alpha (data heterogeneity)."""
         configs = []
         for alpha in self.alpha_values:
@@ -118,9 +116,9 @@ class ComparisonMatrix:
                 configs.append(self._create_config(self._base_config(seed), alpha=alpha))
         return configs
 
-    def _generate_heterogeneity_fedprox_configs(self) -> List[ExperimentConfig]:
+    def _generate_heterogeneity_fedprox_configs(self) -> list[ExperimentConfig]:
         """Generate FedProx configs for heterogeneity comparison.
-        
+
         Tests FedProx algorithm across different alpha values (data heterogeneity)
         and mu values (proximal term strength) to evaluate heterogeneity mitigation.
         """
@@ -128,14 +126,12 @@ class ComparisonMatrix:
         for alpha in self.alpha_values:
             for mu in self.fedprox_mu_values:
                 for seed in self.seeds:
-                    configs.append(self._create_config(
-                        self._base_config(seed), 
-                        alpha=alpha,
-                        fedprox_mu=mu
-                    ))
+                    configs.append(
+                        self._create_config(self._base_config(seed), alpha=alpha, fedprox_mu=mu)
+                    )
         return configs
 
-    def _generate_attack_configs(self) -> List[ExperimentConfig]:
+    def _generate_attack_configs(self) -> list[ExperimentConfig]:
         """Generate configs for attack resilience comparison.
 
         Uses all robust aggregation methods including Bulyan.
@@ -158,7 +154,7 @@ class ComparisonMatrix:
                     )
         return configs
 
-    def _generate_privacy_configs(self) -> List[ExperimentConfig]:
+    def _generate_privacy_configs(self) -> list[ExperimentConfig]:
         """Generate configs varying DP settings.
 
         Uses alpha=0.5 for moderate non-IID to test privacy impact under
@@ -177,7 +173,7 @@ class ComparisonMatrix:
                 )
         return configs
 
-    def _generate_personalization_configs(self) -> List[ExperimentConfig]:
+    def _generate_personalization_configs(self) -> list[ExperimentConfig]:
         """Generate configs varying personalization epochs.
 
         Uses alpha=0.5 to test personalization benefit under non-IID conditions
@@ -195,7 +191,7 @@ class ComparisonMatrix:
                 )
         return configs
 
-    def _generate_full_factorial_configs(self) -> List[ExperimentConfig]:
+    def _generate_full_factorial_configs(self) -> list[ExperimentConfig]:
         """Generate full factorial experiment matrix (WARNING: very large)."""
         configs = []
         for agg in self.aggregation_methods:
@@ -219,7 +215,7 @@ class ComparisonMatrix:
                                 )
         return configs
 
-    def generate_configs(self, filter_dimension: Optional[str] = None) -> List[ExperimentConfig]:
+    def generate_configs(self, filter_dimension: str | None = None) -> list[ExperimentConfig]:
         """Generate experiment configurations for specified dimension.
 
         Args:
@@ -282,7 +278,7 @@ def find_available_port(start_port: int = 8080, max_attempts: int = 100) -> int:
 
 
 @contextmanager
-def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int = 600):
+def managed_subprocess(cmd: list[str], log_file: Path, cwd: Path, timeout: int = 600):
     """Context manager for subprocess with proper cleanup.
 
     Args:
@@ -308,8 +304,8 @@ def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int =
                 proc.wait()
 
 
-def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_start: int = 8080, 
-                           server_timeout: int = 300, client_timeout: int = 900) -> Dict:
+def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_start: int = 8080,
+                           server_timeout: int = 300, client_timeout: int = 900) -> dict:
     """Run a single federated learning experiment with proper error handling.
 
     Args:
@@ -428,9 +424,9 @@ def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_star
             for proc in client_procs:
                 try:
                     proc.wait(timeout=client_timeout)
-                except subprocess.TimeoutExpired:
+                except subprocess.TimeoutExpired as err:
                     proc.kill()
-                    raise RuntimeError("Client process timed out")
+                    raise RuntimeError("Client process timed out") from err
 
             # Server will complete after all clients finish
             server_exit_code = server_proc.returncode
@@ -491,7 +487,7 @@ def main():
         help="Server process timeout in seconds (default: 300)",
     )
     parser.add_argument(
-        "--client_timeout", 
+        "--client_timeout",
         type=int,
         default=900,
         help="Client process timeout in seconds (default: 900)",
@@ -518,24 +514,24 @@ def main():
     results = []
     successful_experiments = 0
     failed_experiments = 0
-    
+
     for i, config in enumerate(configs):
         print(f"\n[{i + 1}/{len(configs)}] Running: {config.to_preset_name()}")
         print(f"  Progress: {successful_experiments} successful, {failed_experiments} failed")
-        
+
         try:
-            result = run_federated_experiment(config, base_dir, 
+            result = run_federated_experiment(config, base_dir,
                                             server_timeout=args.server_timeout,
                                             client_timeout=args.client_timeout)
             results.append(result)
-            
+
             if result.get('metrics_exist', False):
                 successful_experiments += 1
                 print(f"  SUCCESS: Exit code {result['server_exit_code']}, metrics generated")
             else:
                 failed_experiments += 1
                 print(f"  WARNING: Exit code {result['server_exit_code']}, no metrics generated")
-                
+
         except subprocess.TimeoutExpired as e:
             failed_experiments += 1
             print(f"  TIMEOUT: {e}")
@@ -544,8 +540,8 @@ def main():
             failed_experiments += 1
             print(f"  FAILED: {e}")
             results.append({"preset": config.to_preset_name(), "error": str(e)})
-    
-    print(f"\nEXPERIMENT SUMMARY:")
+
+    print("\nEXPERIMENT SUMMARY:")
     print(f"  Total experiments: {len(configs)}")
     print(f"  Successful: {successful_experiments}")
     print(f"  Failed: {failed_experiments}")

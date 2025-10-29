@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-import pytest
-
-from client import SimpleNet, train_epoch, get_parameters, set_parameters
+from client import SimpleNet, get_parameters, set_parameters, train_epoch
 
 
 def test_train_epoch_uses_adamw_defaults(monkeypatch):

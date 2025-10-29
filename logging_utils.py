@@ -2,9 +2,8 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime, timezone
-from typing import Any, Dict
-
+from datetime import UTC, datetime
+from typing import Any
 
 # Standard LogRecord attributes that should not be included as extras
 STANDARD_FIELDS: frozenset[str] = frozenset(
@@ -40,8 +39,8 @@ class JsonFormatter(logging.Formatter):
     """
 
     def format(self, record: logging.LogRecord) -> str:
-        payload: Dict[str, Any] = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+        payload: dict[str, Any] = {
+            "ts": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
