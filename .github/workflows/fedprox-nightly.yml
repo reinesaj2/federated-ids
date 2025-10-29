@@ -256,6 +256,11 @@ jobs:
         with:
           path: nightly-artifacts
 
+      - name: List downloaded artifacts (debug)
+        run: |
+          echo "Artifacts tree:" && ls -la nightly-artifacts || true
+          echo "Sample files:" && find nightly-artifacts -type f | head -n 50 || true
+
       - name: Download historical baseline
         uses: actions/download-artifact@v4
         continue-on-error: true
@@ -264,6 +269,7 @@ jobs:
           path: baseline-artifacts
 
       - name: Generate FedProx comparison summary
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           set -euo pipefail
           mkdir -p fedprox-summary
