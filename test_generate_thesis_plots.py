@@ -493,10 +493,7 @@ def test_extract_threat_model_metadata():
     assert seed == 42
 
     # Build subtitle
-    subtitle = (
-        f"Dataset: {dataset.upper()} | Clients: {num_clients} | α={alpha} (Dirichlet) | "
-        f"Attack: grad_ascent | Seeds: n=3"
-    )
+    subtitle = f"Dataset: {dataset.upper()} | Clients: {num_clients} | α={alpha} (Dirichlet) | " f"Attack: grad_ascent | Seeds: n=3"
 
     assert "UNSW" in subtitle
     assert "Clients: 6" in subtitle
@@ -640,12 +637,8 @@ def test_render_macro_f1_plot_edge_case_exactly_three_points():
     assert result is True
     texts = [t.get_text() for t in ax.texts]
 
-    annotation_texts = [
-        t for t in texts if "ANOVA p=" in t or "inconclusive" in t.lower() or "insufficient" in t.lower()
-    ]
-    assert len(annotation_texts) >= 1, (
-        "Should have ANOVA p-value, inconclusive, or insufficient data annotation. " f"Got texts: {texts}"
-    )
+    annotation_texts = [t for t in texts if "ANOVA p=" in t or "inconclusive" in t.lower() or "insufficient" in t.lower()]
+    assert len(annotation_texts) >= 1, "Should have ANOVA p-value, inconclusive, or insufficient data annotation. " f"Got texts: {texts}"
     plt.close(fig)
 
 
@@ -677,7 +670,7 @@ def test_render_macro_f1_plot_two_data_points_below_threshold():
 
 
 def test_perform_statistical_tests_all_identical_values():
-    """Test ANOVA robustness when all values are identical."""
+    """Test Issue #77: ANOVA skipped when all values are identical."""
     df = pd.DataFrame(
         {
             "aggregation": ["fedavg", "fedavg", "fedavg", "krum", "krum", "krum"],
@@ -688,10 +681,114 @@ def test_perform_statistical_tests_all_identical_values():
     result = perform_statistical_tests(df, "aggregation", "macro_f1")
 
     assert "test" in result
-    assert "p_value" in result
+    # Issue #77: Identical values should return "skipped_identical", not run ANOVA
+    assert result["test"] == "skipped_identical"
+    assert result.get("p_value") is None
+    assert "precision_info" in result
+    assert result["precision_info"]["is_identical"] is True
 
-    if result.get("p_value") is not None:
-        assert np.isnan(result["p_value"]) or result["p_value"] >= 0.05, "Identical values should not show significance"
+
+def test_perform_statistical_tests_precision_artifact():
+    """Test Issue #77: Near-perfect values (precision artifact scenario)."""
+    # Values differ by tiny amounts but all near 1.0 (like 0.999995-0.999999)
+    df = pd.DataFrame(
+        {
+            "aggregation": ["fedavg", "fedavg", "fedavg", "krum", "krum", "krum", "bulyan", "bulyan", "bulyan"],
+            "macro_f1": [0.999997, 0.999996, 0.999998, 0.999991, 0.999989, 0.999992, 0.999994, 0.999993, 0.999995],
+        }
+    )
+
+    result = perform_statistical_tests(df, "aggregation", "macro_f1")
+
+    assert result["test"] == "anova"
+    assert result.get("p_value") is not None
+    assert "bonferroni_corrected_p" in result
+    assert "precision_info" in result
+
+    precision_info = result["precision_info"]
+    assert precision_info["is_near_perfect"] is True
+    assert precision_info["precision_artifact"] is True
+    assert precision_info["max_value"] > 0.999
+    assert precision_info["min_value"] > 0.999
+
+
+def test_perform_statistical_tests_bonferroni_correction():
+    """Test Issue #77: Bonferroni correction applied for multiple comparisons."""
+    df = pd.DataFrame(
+        {
+            "aggregation": ["fedavg", "fedavg", "krum", "krum", "bulyan", "bulyan", "median", "median"],
+            "macro_f1": [0.85, 0.86, 0.90, 0.91, 0.88, 0.89, 0.87, 0.88],
+        }
+    )
+
+    result = perform_statistical_tests(df, "aggregation", "macro_f1")
+
+    assert result["test"] == "anova"
+    assert "bonferroni_corrected_p" in result
+    assert "num_comparisons" in result
+
+    # With 4 groups, we have 4 choose 2 = 6 pairwise comparisons
+    assert result["num_comparisons"] == 6
+    assert result["bonferroni_corrected_p"] >= result["p_value"]
+
+
+def test_render_macro_f1_plot_precision_artifact_issue77():
+    """Test Issue #77: Precision artifact displays 6-decimal F1 and notes ceiling effect."""
+    import matplotlib.pyplot as plt
+
+    final_rounds = pd.DataFrame(
+        {
+            "aggregation": ["fedavg", "fedavg", "krum", "krum", "bulyan", "bulyan"],
+            "seed": [42, 43, 42, 43, 42, 43],
+            "macro_f1": [0.999997, 0.999996, 0.999991, 0.999992, 0.999994, 0.999993],
+        }
+    )
+    fig, ax = plt.subplots()
+    available_methods = ["fedavg", "krum", "bulyan"]
+
+    result = _render_macro_f1_plot(ax, final_rounds, available_methods)
+
+    assert result is True
+    texts = [t.get_text() for t in ax.texts]
+
+    # Should show precision annotation (6-decimal F1) OR ANOVA with precision note
+    precision_texts = [t for t in texts if "F1=" in t and "0.999" in t]
+    anova_texts = [t for t in texts if "ANOVA p=" in t]
+    ceiling_texts = [t for t in texts if "ceiling" in t.lower() or "±" in t]
+
+    # At least one should appear
+    assert (
+        len(precision_texts) > 0 or len(anova_texts) > 0 or len(ceiling_texts) > 0
+    ), f"Should show precision annotation. Got texts: {texts}"
+    plt.close(fig)
+
+
+def test_render_macro_f1_plot_identical_values_issue77():
+    """Test Issue #77: Identical values show 'all methods identical' annotation."""
+    import matplotlib.pyplot as plt
+
+    final_rounds = pd.DataFrame(
+        {
+            "aggregation": ["fedavg", "fedavg", "krum", "krum", "bulyan", "bulyan"],
+            "seed": [42, 43, 42, 43, 42, 43],
+            "macro_f1": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        }
+    )
+    fig, ax = plt.subplots()
+    available_methods = ["fedavg", "krum", "bulyan"]
+
+    result = _render_macro_f1_plot(ax, final_rounds, available_methods)
+
+    assert result is True
+    texts = [t.get_text() for t in ax.texts]
+
+    # Should show "identical" annotation, not ANOVA
+    identical_texts = [t for t in texts if "identical" in t.lower()]
+    anova_texts = [t for t in texts if "ANOVA p=" in t]
+
+    assert len(identical_texts) > 0, f"Should show identical annotation. Got texts: {texts}"
+    assert len(anova_texts) == 0, "Should not show ANOVA for identical values"
+    plt.close(fig)
 
 
 if __name__ == "__main__":

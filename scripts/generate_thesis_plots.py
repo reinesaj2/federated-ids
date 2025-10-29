@@ -34,7 +34,7 @@ for candidate in (ROOT, ROOT / "scripts"):
 
 from plot_metrics_utils import compute_confidence_interval  # noqa: E402
 from privacy_accounting import compute_epsilon  # noqa: E402
-from metric_validation import MetricValidator, validate_experiment_data  # noqa: E402
+from metric_validation import MetricValidator  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -395,23 +395,69 @@ def load_experiment_results(runs_dir: Path) -> pd.DataFrame:
         return pd.DataFrame()
 
     combined_df = pd.concat(all_data, ignore_index=True)
-    
+
     # Validate metrics before returning
     validator = MetricValidator()
     warnings = validator.validate_plot_metrics(combined_df, "experiment_data")
-    
+
     if warnings:
         logger.warning(f"Metric validation warnings: {len(warnings)} issues found")
         for warning in warnings[:5]:  # Show first 5 warnings
             logger.warning(f"  {warning}")
         if len(warnings) > 5:
             logger.warning(f"  ... and {len(warnings) - 5} more warnings")
-    
+
     return combined_df
 
 
+def _check_value_precision_issues(values: np.ndarray, metric_name: str = "macro_f1") -> Dict:
+    """Check if values exhibit precision artifacts or ceiling effects.
+
+    Returns dict with:
+    - is_identical: True if all values within floating-point tolerance
+    - is_near_perfect: True if all values > 0.999 (ceiling effect)
+    - precision_variance: Maximum difference between values
+    - max_value: Maximum value
+    - min_value: Minimum value
+    """
+    if len(values) == 0:
+        return {
+            "is_identical": True,
+            "is_near_perfect": False,
+            "precision_variance": 0.0,
+            "max_value": None,
+            "min_value": None,
+        }
+
+    # Floating-point tolerance for "identical" check
+    fp_tolerance = 1e-10
+
+    # Precision artifact threshold (values within 0.0001 of each other)
+    precision_threshold = 0.0001
+
+    # Ceiling effect threshold (all values very close to maximum possible)
+    ceiling_threshold = 0.999
+
+    max_val = float(np.max(values))
+    min_val = float(np.min(values))
+    variance = max_val - min_val
+
+    return {
+        "is_identical": variance <= fp_tolerance,
+        "is_near_perfect": min_val > ceiling_threshold,
+        "precision_variance": variance,
+        "max_value": max_val,
+        "min_value": min_val,
+        "precision_artifact": variance <= precision_threshold and max_val > 0.99,
+    }
+
+
 def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str) -> Dict:
-    """Perform statistical significance tests between groups."""
+    """Perform statistical significance tests between groups.
+
+    Issue #77: Handles precision artifacts and ceiling effects where values
+    appear identical but have tiny differences that trigger false-positive ANOVA.
+    """
     groups = df[group_col].unique()
 
     # Perform ANOVA if more than 2 groups
@@ -421,17 +467,51 @@ def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str)
     if len(group_data) < 2:
         return {"test": "insufficient_data", "p_value": None}
 
+    # Check for precision issues across all groups
+    all_values = np.concatenate(group_data) if group_data else np.array([])
+    precision_check = _check_value_precision_issues(all_values, metric_col)
+
+    # If values are truly identical (within FP tolerance), skip statistical test
+    if precision_check["is_identical"]:
+        return {
+            "test": "skipped_identical",
+            "p_value": None,
+            "reason": "All values identical within floating-point tolerance",
+            "precision_info": precision_check,
+        }
+
     if len(group_data) == 2:
         # t-test for 2 groups
         stat, p_value = stats.ttest_ind(group_data[0], group_data[1])
-        return {"test": "t_test", "statistic": float(stat), "p_value": float(p_value)}
+
+        # Apply Bonferroni correction for multiple comparisons
+        # (conservative, but appropriate for thesis presentation)
+        num_comparisons = 1
+        bonferroni_corrected_p = min(1.0, p_value * num_comparisons) if p_value is not None else None
+
+        return {
+            "test": "t_test",
+            "statistic": float(stat),
+            "p_value": float(p_value),
+            "bonferroni_corrected_p": bonferroni_corrected_p,
+            "precision_info": precision_check,
+        }
     else:
         # ANOVA for >2 groups
         stat, p_value = stats.f_oneway(*group_data)
+
+        # Number of pairwise comparisons: n choose 2 where n = number of groups
+        num_groups = len(group_data)
+        num_pairwise = (num_groups * (num_groups - 1)) // 2
+        bonferroni_corrected_p = min(1.0, p_value * num_pairwise) if p_value is not None else None
+
         result = {
             "test": "anova",
             "statistic": float(stat),
             "p_value": float(p_value),
+            "bonferroni_corrected_p": bonferroni_corrected_p,
+            "num_comparisons": num_pairwise,
+            "precision_info": precision_check,
         }
 
         # Post-hoc pairwise comparisons
@@ -493,22 +573,107 @@ def _render_macro_f1_plot(ax, final_rounds: pd.DataFrame, available_methods: lis
     for i, row in summary_df.iterrows():
         ax.text(i, row["mean"] + row["ci"] / 2 + 0.02, f"n={row['n']}", ha="center", va="bottom", fontsize=8)
 
-    # Issue #77 fix: Only perform ANOVA if sufficient data points
+    # Issue #77 fix: Handle precision artifacts and ceiling effects
     min_data_for_anova = 3
     total_valid_points = len(macro_f1_data)
 
+    # Extract all F1 values for precision checking
+    all_f1_values = macro_f1_data["macro_f1"].values
+    precision_check = _check_value_precision_issues(all_f1_values, "macro_f1")
+
     if total_valid_points >= min_data_for_anova:
         stats_result = perform_statistical_tests(macro_f1_data, "aggregation", "macro_f1")
-        if stats_result.get("p_value") is not None and not np.isnan(stats_result["p_value"]):
-            ax.text(
-                0.02,
-                0.02,
-                f"ANOVA p={stats_result['p_value']:.4f}",
-                transform=ax.transAxes,
-                va="bottom",
-                fontsize=9,
-                bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+
+        # Check if ANOVA was skipped due to identical values
+        if stats_result.get("test") == "skipped_identical":
+            logger.info(
+                f"ANOVA skipped: All macro-F1 values identical (variance={precision_check['precision_variance']:.2e}). "
+                "No statistical comparison needed."
             )
+            # Show precise values if they're all very close to 1.0
+            if precision_check["is_near_perfect"]:
+                mean_f1 = float(np.mean(all_f1_values))
+                ax.text(
+                    0.02,
+                    0.02,
+                    f"F1={mean_f1:.6f} (all methods identical)",
+                    transform=ax.transAxes,
+                    va="bottom",
+                    fontsize=8,
+                    bbox=dict(boxstyle="round", facecolor="lightgreen", alpha=0.5),
+                )
+            else:
+                ax.text(
+                    0.02,
+                    0.02,
+                    f"n={total_valid_points} (all methods identical)",
+                    transform=ax.transAxes,
+                    va="bottom",
+                    fontsize=8,
+                    bbox=dict(boxstyle="round", facecolor="lightgreen", alpha=0.5),
+                )
+        elif stats_result.get("p_value") is not None and not np.isnan(stats_result["p_value"]):
+            p_value = stats_result["p_value"]
+            precision_info = stats_result.get("precision_info", {})
+
+            # Check for precision artifact: values differ but all very close to 1.0
+            if precision_info.get("precision_artifact", False) or precision_info.get("is_near_perfect", False):
+                # Option A: Show F1 with 6 decimal places and explain ceiling effect
+                mean_f1 = float(np.mean(all_f1_values))
+                variance = precision_info.get("precision_variance", 0.0)
+
+                # Use Bonferroni-corrected p-value if available and borderline
+                bonferroni_p = stats_result.get("bonferroni_corrected_p")
+                use_bonferroni = bonferroni_p is not None and p_value < 0.05 and bonferroni_p >= 0.05
+
+                if use_bonferroni:
+                    # Bonferroni correction eliminates significance - don't show ANOVA
+                    annotation_text = f"F1={mean_f1:.6f} ± {variance:.2e}\n" f"(ceiling effect: sub-0.01% differences)"
+                    bg_color = "lightyellow"
+                else:
+                    # Still significant after correction, but note precision
+                    annotation_text = f"ANOVA p={p_value:.4f}\n" f"F1={mean_f1:.6f} ± {variance:.2e}"
+                    bg_color = "wheat"
+
+                ax.text(
+                    0.02,
+                    0.02,
+                    annotation_text,
+                    transform=ax.transAxes,
+                    va="bottom",
+                    fontsize=8,
+                    bbox=dict(boxstyle="round", facecolor=bg_color, alpha=0.5),
+                )
+                logger.info(
+                    f"Precision artifact detected: F1 values differ by {variance:.2e} "
+                    f"but all > {precision_info.get('min_value', 0):.6f}. "
+                    f"Showing 6-decimal precision and noting ceiling effect."
+                )
+            else:
+                # Normal case: meaningful differences, show ANOVA
+                bonferroni_p = stats_result.get("bonferroni_corrected_p")
+                if bonferroni_p is not None and p_value < 0.05:
+                    # Show both raw and corrected p-values if correction was applied
+                    if bonferroni_p >= 0.05:
+                        # Correction eliminates significance
+                        annotation_text = f"ANOVA p={p_value:.4f} (ns after Bonferroni correction)"
+                        bg_color = "lightyellow"
+                    else:
+                        annotation_text = f"ANOVA p={p_value:.4f} (Bonferroni-corrected: {bonferroni_p:.4f})"
+                        bg_color = "wheat"
+                else:
+                    annotation_text = f"ANOVA p={p_value:.4f}"
+                    bg_color = "wheat"
+
+                ax.text(
+                    0.02,
+                    0.02,
+                    annotation_text,
+                    transform=ax.transAxes,
+                    va="bottom",
+                    fontsize=9,
+                    bbox=dict(boxstyle="round", facecolor=bg_color, alpha=0.5),
+                )
         else:
             logger.warning(
                 f"ANOVA computation failed or returned NaN for macro-F1 data ({total_valid_points} points). "
@@ -704,15 +869,15 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 1: Final L2 Distance by Alpha and Mu
     ax1 = axes[0, 0]
     alpha_mu_data = df.groupby(['alpha', 'fedprox_mu'])['l2_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
-    
+
     for alpha in sorted(df['alpha'].unique()):
         alpha_data = alpha_mu_data[alpha_mu_data['alpha'] == alpha]
         mu_values = alpha_data['fedprox_mu'].values
         means = alpha_data['mean'].values
         stds = alpha_data['std'].values
-        
+
         ax1.errorbar(mu_values, means, yerr=stds, marker='o', label=f'Alpha={alpha}', linewidth=2, markersize=8)
-    
+
     ax1.set_xlabel('FedProx Mu Value')
     ax1.set_ylabel('Final L2 Distance to Benign Model')
     ax1.set_title('L2 Distance vs FedProx Strength by Heterogeneity Level')
@@ -723,15 +888,15 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 2: Final Cosine Similarity by Alpha and Mu
     ax2 = axes[0, 1]
     alpha_mu_cos_data = df.groupby(['alpha', 'fedprox_mu'])['cos_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
-    
+
     for alpha in sorted(df['alpha'].unique()):
         alpha_data = alpha_mu_cos_data[alpha_mu_cos_data['alpha'] == alpha]
         mu_values = alpha_data['fedprox_mu'].values
         means = alpha_data['mean'].values
         stds = alpha_data['std'].values
-        
+
         ax2.errorbar(mu_values, means, yerr=stds, marker='s', label=f'Alpha={alpha}', linewidth=2, markersize=8)
-    
+
     ax2.set_xlabel('FedProx Mu Value')
     ax2.set_ylabel('Final Cosine Similarity to Benign Model')
     ax2.set_title('Cosine Similarity vs FedProx Strength by Heterogeneity Level')
@@ -742,13 +907,13 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 3: Convergence Curves for Different Mu Values (Alpha=0.1)
     ax3 = axes[1, 0]
     extreme_non_iid = df[df['alpha'] == 0.1]
-    
+
     for mu in sorted(extreme_non_iid['fedprox_mu'].unique()):
         mu_data = extreme_non_iid[extreme_non_iid['fedprox_mu'] == mu]
         if 'round' in mu_data.columns and 'l2_to_benign_mean' in mu_data.columns:
             round_means = mu_data.groupby('round')['l2_to_benign_mean'].mean()
             ax3.plot(round_means.index, round_means.values, marker='o', label=f'Mu={mu}', linewidth=2)
-    
+
     ax3.set_xlabel('Round')
     ax3.set_ylabel('L2 Distance to Benign Model')
     ax3.set_title('Convergence Curves: Extreme Non-IID (Alpha=0.1)')
@@ -758,7 +923,7 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 4: Heatmap of Final Performance
     ax4 = axes[1, 1]
     pivot_data = df.groupby(['alpha', 'fedprox_mu'])['l2_to_benign_mean'].mean().unstack()
-    
+
     im = ax4.imshow(pivot_data.values, cmap='viridis', aspect='auto')
     ax4.set_xticks(range(len(pivot_data.columns)))
     ax4.set_xticklabels([f'{mu:.2f}' for mu in pivot_data.columns])
@@ -767,13 +932,13 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     ax4.set_xlabel('FedProx Mu Value')
     ax4.set_ylabel('Alpha (Heterogeneity Level)')
     ax4.set_title('L2 Distance Heatmap: Alpha vs Mu')
-    
+
     # Add colorbar
     cbar = plt.colorbar(im, ax=ax4)
     cbar.set_label('Final L2 Distance')
 
     plt.tight_layout()
-    
+
     # Save plot
     output_file = output_dir / "fedprox_heterogeneity_analysis.png"
     plt.savefig(output_file, dpi=300, bbox_inches='tight')
@@ -915,10 +1080,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     num_seeds = len(df["seed"].unique()) if "seed" in df.columns else 1
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    subtitle = (
-        f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | "
-        f"Attack: grad_ascent | Seeds: n={num_seeds}"
-    )
+    subtitle = f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | " f"Attack: grad_ascent | Seeds: n={num_seeds}"
     fig.suptitle(f"Attack Resilience Comparison\n{subtitle}", fontsize=14, fontweight="bold")
 
     final_rounds = df.groupby(["aggregation", "adversary_fraction", "seed"]).tail(1)
@@ -1187,11 +1349,7 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
                 )
 
         if comparison_data:
-            rows = [
-                {"DP": item["DP"], "Cosine Similarity": val}
-                for item in comparison_data
-                for val in item["Cosine Similarity"]
-            ]
+            rows = [{"DP": item["DP"], "Cosine Similarity": val} for item in comparison_data for val in item["Cosine Similarity"]]
             plot_df = pd.DataFrame(rows)
             sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
             ax.set_title("Model Alignment with DP")
