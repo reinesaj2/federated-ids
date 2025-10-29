@@ -59,6 +59,14 @@ jobs:
         run: |
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Validate experiment matrix
+        run: |
+          echo "Pre-flight check: Validating experiment matrix feasibility"
+          python scripts/validate_experiment_matrix.py > matrix_validation.log
+          cat matrix_validation.log
+          echo "Matrix validation complete. Proceeding with experiments."
+
       - name: Prepare real dataset samples
         run: python scripts/setup_real_datasets.py
       - name: Upload dependency cache
@@ -362,20 +370,20 @@ jobs:
             echo "  Success rate: $((FOUND * 100 / TOTAL))%"
           fi
 
-          # Adaptive success rate based on priority
-          MIN_SUCCESS_RATE=50
-          if [ "${{ matrix.priority }}" = "high" ]; then
-            MIN_SUCCESS_RATE=80
-          elif [ "${{ matrix.priority }}" = "medium" ]; then
-            MIN_SUCCESS_RATE=60
-          fi
+          # Require at least 95% success rate (allow max 3 transient failures out of 54 viable experiments)
+          THRESHOLD=$((TOTAL * 95 / 100))
           if [ $FOUND -eq 0 ]; then
             echo "ERROR: No experiments produced metrics"
             exit 1
-          elif [ $TOTAL -gt 0 ] && [ $FOUND -lt $((TOTAL * MIN_SUCCESS_RATE / 100)) ]; then
-            echo "WARNING: Low success rate ($((FOUND * 100 / TOTAL))%), but continuing..."
+          elif [ $TOTAL -gt 0 ] && [ $FOUND -lt $THRESHOLD ]; then
+            echo "ERROR: Success rate $((FOUND * 100 / TOTAL))% below required 95% ($FOUND/$TOTAL experiments)"
+            echo "This indicates systematic issues. Please review:"
+            echo "  - Byzantine constraint violations"
+            echo "  - Resource exhaustion"
+            echo "  - Port conflicts"
+            exit 1
           else
-            echo "SUCCESS: Adequate experiment completion rate"
+            echo "SUCCESS: Adequate experiment completion rate ($((FOUND * 100 / TOTAL))%)"
           fi
       - name: Compress artifacts
         if: always()
