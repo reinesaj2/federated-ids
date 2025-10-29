@@ -410,7 +410,7 @@ def load_experiment_results(runs_dir: Path) -> pd.DataFrame:
     return combined_df
 
 
-def _check_value_precision_issues(values: np.ndarray, metric_name: str = "macro_f1") -> Dict:
+def _check_value_precision_issues(values: np.ndarray) -> Dict:
     """Check if values exhibit precision artifacts or ceiling effects.
 
     Returns dict with:
@@ -469,7 +469,7 @@ def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str)
 
     # Check for precision issues across all groups
     all_values = np.concatenate(group_data) if group_data else np.array([])
-    precision_check = _check_value_precision_issues(all_values, metric_col)
+    precision_check = _check_value_precision_issues(all_values)
 
     # If values are truly identical (within FP tolerance), skip statistical test
     if precision_check["is_identical"]:
@@ -484,10 +484,7 @@ def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str)
         # t-test for 2 groups
         stat, p_value = stats.ttest_ind(group_data[0], group_data[1])
 
-        # Apply Bonferroni correction for multiple comparisons
-        # (conservative, but appropriate for thesis presentation)
-        num_comparisons = 1
-        bonferroni_corrected_p = min(1.0, p_value * num_comparisons) if p_value is not None else None
+        bonferroni_corrected_p = min(1.0, p_value) if p_value is not None else None
 
         return {
             "test": "t_test",
@@ -526,6 +523,117 @@ def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str)
 
         result["pairwise"] = pairwise
         return result
+
+
+def _render_statistical_annotation(
+    ax,
+    stats_result: Dict,
+    precision_check: Dict,
+    all_f1_values: np.ndarray,
+    total_valid_points: int,
+) -> None:
+    """Render statistical annotation on plot based on ANOVA results and precision checks.
+
+    Handles three scenarios:
+    1. Identical values: Show "all methods identical" (no ANOVA)
+    2. Precision artifacts: Show F1 with 6 decimal places + ceiling effect note
+    3. Normal differences: Show ANOVA with Bonferroni-corrected p-values
+    """
+    if stats_result.get("test") == "skipped_identical":
+        logger.info(
+            f"ANOVA skipped: All macro-F1 values identical (variance={precision_check['precision_variance']:.2e}). "
+            "No statistical comparison needed."
+        )
+        if precision_check["is_near_perfect"]:
+            mean_f1 = float(np.mean(all_f1_values))
+            ax.text(
+                0.02,
+                0.02,
+                f"F1={mean_f1:.6f} (all methods identical)",
+                transform=ax.transAxes,
+                va="bottom",
+                fontsize=8,
+                bbox=dict(boxstyle="round", facecolor="lightgreen", alpha=0.5),
+            )
+        else:
+            ax.text(
+                0.02,
+                0.02,
+                f"n={total_valid_points} (all methods identical)",
+                transform=ax.transAxes,
+                va="bottom",
+                fontsize=8,
+                bbox=dict(boxstyle="round", facecolor="lightgreen", alpha=0.5),
+            )
+        return
+
+    p_value = stats_result.get("p_value")
+    if p_value is None or np.isnan(p_value):
+        logger.warning(
+            f"ANOVA computation failed or returned NaN for macro-F1 data ({total_valid_points} points). "
+            "This may occur with small sample sizes or identical values across groups."
+        )
+        ax.text(
+            0.02,
+            0.02,
+            f"n={total_valid_points} (ANOVA inconclusive)",
+            transform=ax.transAxes,
+            va="bottom",
+            fontsize=8,
+            bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.5),
+        )
+        return
+
+    precision_info = stats_result.get("precision_info", {})
+    bonferroni_p = stats_result.get("bonferroni_corrected_p")
+
+    if precision_info.get("precision_artifact", False) or precision_info.get("is_near_perfect", False):
+        mean_f1 = float(np.mean(all_f1_values))
+        variance = precision_info.get("precision_variance", 0.0)
+        use_bonferroni = bonferroni_p is not None and p_value < 0.05 and bonferroni_p >= 0.05
+
+        if use_bonferroni:
+            annotation_text = f"F1={mean_f1:.6f} ± {variance:.2e}\n" f"(ceiling effect: sub-0.01% differences)"
+            bg_color = "lightyellow"
+        else:
+            annotation_text = f"ANOVA p={p_value:.4f}\n" f"F1={mean_f1:.6f} ± {variance:.2e}"
+            bg_color = "wheat"
+
+        ax.text(
+            0.02,
+            0.02,
+            annotation_text,
+            transform=ax.transAxes,
+            va="bottom",
+            fontsize=8,
+            bbox=dict(boxstyle="round", facecolor=bg_color, alpha=0.5),
+        )
+        logger.info(
+            f"Precision artifact detected: F1 values differ by {variance:.2e} "
+            f"but all > {precision_info.get('min_value', 0):.6f}. "
+            f"Showing 6-decimal precision and noting ceiling effect."
+        )
+    else:
+        if bonferroni_p is not None and p_value < 0.05:
+            if bonferroni_p >= 0.05:
+                annotation_text = f"ANOVA p={p_value:.4f} (ns after Bonferroni correction)"
+                bg_color = "lightyellow"
+            else:
+                annotation_text = f"ANOVA p={p_value:.4f} (Bonferroni-corrected: {bonferroni_p:.4f})"
+                bg_color = "wheat"
+        else:
+            annotation_text = f"ANOVA p={p_value:.4f}"
+            bg_color = "wheat"
+
+        ax.text(
+            0.02,
+            0.02,
+            annotation_text,
+            transform=ax.transAxes,
+            va="bottom",
+            fontsize=9,
+            bbox=dict(boxstyle="round", facecolor=bg_color, alpha=0.5),
+        )
 
 
 def _render_macro_f1_plot(ax, final_rounds: pd.DataFrame, available_methods: list) -> bool:
@@ -579,115 +687,11 @@ def _render_macro_f1_plot(ax, final_rounds: pd.DataFrame, available_methods: lis
 
     # Extract all F1 values for precision checking
     all_f1_values = macro_f1_data["macro_f1"].values
-    precision_check = _check_value_precision_issues(all_f1_values, "macro_f1")
+    precision_check = _check_value_precision_issues(all_f1_values)
 
     if total_valid_points >= min_data_for_anova:
         stats_result = perform_statistical_tests(macro_f1_data, "aggregation", "macro_f1")
-
-        # Check if ANOVA was skipped due to identical values
-        if stats_result.get("test") == "skipped_identical":
-            logger.info(
-                f"ANOVA skipped: All macro-F1 values identical (variance={precision_check['precision_variance']:.2e}). "
-                "No statistical comparison needed."
-            )
-            # Show precise values if they're all very close to 1.0
-            if precision_check["is_near_perfect"]:
-                mean_f1 = float(np.mean(all_f1_values))
-                ax.text(
-                    0.02,
-                    0.02,
-                    f"F1={mean_f1:.6f} (all methods identical)",
-                    transform=ax.transAxes,
-                    va="bottom",
-                    fontsize=8,
-                    bbox=dict(boxstyle="round", facecolor="lightgreen", alpha=0.5),
-                )
-            else:
-                ax.text(
-                    0.02,
-                    0.02,
-                    f"n={total_valid_points} (all methods identical)",
-                    transform=ax.transAxes,
-                    va="bottom",
-                    fontsize=8,
-                    bbox=dict(boxstyle="round", facecolor="lightgreen", alpha=0.5),
-                )
-        elif stats_result.get("p_value") is not None and not np.isnan(stats_result["p_value"]):
-            p_value = stats_result["p_value"]
-            precision_info = stats_result.get("precision_info", {})
-
-            # Check for precision artifact: values differ but all very close to 1.0
-            if precision_info.get("precision_artifact", False) or precision_info.get("is_near_perfect", False):
-                # Option A: Show F1 with 6 decimal places and explain ceiling effect
-                mean_f1 = float(np.mean(all_f1_values))
-                variance = precision_info.get("precision_variance", 0.0)
-
-                # Use Bonferroni-corrected p-value if available and borderline
-                bonferroni_p = stats_result.get("bonferroni_corrected_p")
-                use_bonferroni = bonferroni_p is not None and p_value < 0.05 and bonferroni_p >= 0.05
-
-                if use_bonferroni:
-                    # Bonferroni correction eliminates significance - don't show ANOVA
-                    annotation_text = f"F1={mean_f1:.6f} ± {variance:.2e}\n" f"(ceiling effect: sub-0.01% differences)"
-                    bg_color = "lightyellow"
-                else:
-                    # Still significant after correction, but note precision
-                    annotation_text = f"ANOVA p={p_value:.4f}\n" f"F1={mean_f1:.6f} ± {variance:.2e}"
-                    bg_color = "wheat"
-
-                ax.text(
-                    0.02,
-                    0.02,
-                    annotation_text,
-                    transform=ax.transAxes,
-                    va="bottom",
-                    fontsize=8,
-                    bbox=dict(boxstyle="round", facecolor=bg_color, alpha=0.5),
-                )
-                logger.info(
-                    f"Precision artifact detected: F1 values differ by {variance:.2e} "
-                    f"but all > {precision_info.get('min_value', 0):.6f}. "
-                    f"Showing 6-decimal precision and noting ceiling effect."
-                )
-            else:
-                # Normal case: meaningful differences, show ANOVA
-                bonferroni_p = stats_result.get("bonferroni_corrected_p")
-                if bonferroni_p is not None and p_value < 0.05:
-                    # Show both raw and corrected p-values if correction was applied
-                    if bonferroni_p >= 0.05:
-                        # Correction eliminates significance
-                        annotation_text = f"ANOVA p={p_value:.4f} (ns after Bonferroni correction)"
-                        bg_color = "lightyellow"
-                    else:
-                        annotation_text = f"ANOVA p={p_value:.4f} (Bonferroni-corrected: {bonferroni_p:.4f})"
-                        bg_color = "wheat"
-                else:
-                    annotation_text = f"ANOVA p={p_value:.4f}"
-                    bg_color = "wheat"
-
-                ax.text(
-                    0.02,
-                    0.02,
-                    annotation_text,
-                    transform=ax.transAxes,
-                    va="bottom",
-                    fontsize=9,
-                    bbox=dict(boxstyle="round", facecolor=bg_color, alpha=0.5),
-                )
-        else:
-            logger.warning(
-                f"ANOVA computation failed or returned NaN for macro-F1 data ({total_valid_points} points). "
-                "This may occur with small sample sizes or identical values across groups."
-            )
-            ax.text(
-                0.02,
-                0.02,
-                f"n={total_valid_points} (ANOVA inconclusive)",
-                transform=ax.transAxes,
-                va="bottom",
-                fontsize=8,
-                bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.5),
-            )
+        _render_statistical_annotation(ax, stats_result, precision_check, all_f1_values, total_valid_points)
     else:
         logger.warning(
             f"Insufficient macro-F1 data ({total_valid_points}/{len(final_rounds)}) "
