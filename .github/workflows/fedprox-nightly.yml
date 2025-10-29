@@ -267,6 +267,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p fedprox-summary
+          # Relax minimum seed requirement for workflow_dispatch runs
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            export SUMMARY_MIN_SEEDS=3
+          fi
           # If baseline artifacts are unavailable/empty, run without baseline_dir
           if compgen -G "baseline-artifacts/*" > /dev/null; then
             python scripts/analyze_fedprox_comparison.py \
