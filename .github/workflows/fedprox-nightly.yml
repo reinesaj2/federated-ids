@@ -265,10 +265,20 @@ jobs:
 
       - name: Generate FedProx comparison summary
         run: |
-          python scripts/analyze_fedprox_comparison.py \
-            --artifacts_dir nightly-artifacts \
-            --baseline_dir baseline-artifacts \
-            --output_dir fedprox-summary
+          set -euo pipefail
+          mkdir -p fedprox-summary
+          # If baseline artifacts are unavailable/empty, run without baseline_dir
+          if compgen -G "baseline-artifacts/*" > /dev/null; then
+            python scripts/analyze_fedprox_comparison.py \
+              --artifacts_dir nightly-artifacts \
+              --baseline_dir baseline-artifacts \
+              --output_dir fedprox-summary
+          else
+            echo "No baseline artifacts found; generating summary without baseline comparison"
+            python scripts/analyze_fedprox_comparison.py \
+              --artifacts_dir nightly-artifacts \
+              --output_dir fedprox-summary
+          fi
 
       - name: Validate regression report
         if: always()
@@ -294,6 +304,7 @@ jobs:
             fedprox-summary/thesis_plots/**/*.pdf
             fedprox-summary/historical/**/*
           retention-days: 90
+          if-no-files-found: warn
 
       - name: Upload historical baseline for next run
         uses: actions/upload-artifact@v4
@@ -302,6 +313,7 @@ jobs:
           name: fedprox-baseline-90d
           path: fedprox-summary/historical/baselines.csv
           retention-days: 90
+          if-no-files-found: warn
 
       - name: Locate baseline summary run
         id: find_baseline
@@ -393,6 +405,7 @@ jobs:
           name: fedprox-regression-report-${{ github.sha }}
           path: regression-report
           retention-days: 90
+          if-no-files-found: warn
 
   commit_plots:
     needs: [fedprox_summary]
