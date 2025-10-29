@@ -261,3 +261,92 @@ def test_ensure_minimum_samples_raises_when_insufficient_runs(tmp_path: Path) ->
 
     with pytest.raises(ValueError, match="alpha=0.1 mu=0.0 algorithm=FedAvg"):
         ensure_minimum_samples(runs, minimum=5)
+
+
+def test_compute_paired_statistics_uses_statistical_utils(tmp_path: Path) -> None:
+    """Verify paired statistics use statistical_utils for p-values and effect sizes."""
+    runs: list[RunMetrics] = []
+    for seed, fedavg_score, fedprox_score in [
+        (0, 0.80, 0.86),
+        (1, 0.82, 0.90),
+        (2, 0.79, 0.84),
+        (3, 0.81, 0.83),
+        (4, 0.80, 0.88),
+    ]:
+        runs.append(
+            RunMetrics(
+                alpha=0.1,
+                mu=0.0,
+                seed=seed,
+                algorithm="FedAvg",
+                weighted_macro_f1=fedavg_score,
+                mean_aggregation_time_ms=100 + seed,
+                rounds=20,
+                run_dir=tmp_path,
+            )
+        )
+        runs.append(
+            RunMetrics(
+                alpha=0.1,
+                mu=0.1,
+                seed=seed,
+                algorithm="FedProx",
+                weighted_macro_f1=fedprox_score,
+                mean_aggregation_time_ms=120 + seed,
+                rounds=20,
+                run_dir=tmp_path,
+            )
+        )
+
+    stats_rows = compute_paired_statistics(runs, metric_name="weighted_macro_f1")
+    assert len(stats_rows) == 1
+    row = stats_rows[0]
+
+    assert "p_value" in row
+    assert "effect_size" in row
+    assert not pd.isna(row["p_value"])
+    assert not pd.isna(row["effect_size"])
+
+
+def test_compute_paired_statistics_aggregation_time_metric(tmp_path: Path) -> None:
+    """Verify effect sizes computed for aggregation time metric."""
+    runs: list[RunMetrics] = []
+    for seed, fedavg_time, fedprox_time in [
+        (0, 100.0, 120.0),
+        (1, 102.0, 122.0),
+        (2, 98.0, 118.0),
+        (3, 101.0, 121.0),
+        (4, 99.0, 119.0),
+    ]:
+        runs.append(
+            RunMetrics(
+                alpha=0.1,
+                mu=0.0,
+                seed=seed,
+                algorithm="FedAvg",
+                weighted_macro_f1=0.8,
+                mean_aggregation_time_ms=fedavg_time,
+                rounds=20,
+                run_dir=tmp_path,
+            )
+        )
+        runs.append(
+            RunMetrics(
+                alpha=0.1,
+                mu=0.1,
+                seed=seed,
+                algorithm="FedProx",
+                weighted_macro_f1=0.85,
+                mean_aggregation_time_ms=fedprox_time,
+                rounds=20,
+                run_dir=tmp_path,
+            )
+        )
+
+    stats_rows = compute_paired_statistics(runs, metric_name="mean_aggregation_time_ms")
+    assert len(stats_rows) == 1
+    row = stats_rows[0]
+
+    assert row["metric"] == "mean_aggregation_time_ms"
+    assert row["p_value"] < 0.05
+    assert not pd.isna(row["effect_size"])
