@@ -25,6 +25,11 @@ on:
         required: false
         default: "20"
         type: string
+      run_manual:
+        description: "Also run the manual FedProx matrix job"
+        required: false
+        default: "false"
+        type: boolean
 
 permissions:
   contents: write
@@ -447,7 +452,7 @@ jobs:
           echo "Pip packages (top 20):" && pip3 list --format=columns | head -n 22
 
   manual_fedprox_comparison:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_manual == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     env:

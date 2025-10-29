@@ -32,7 +32,8 @@ from client_metrics import (
     analyze_data_distribution,
     create_label_histogram_json,
 )
-from privacy_accounting import compute_epsilon
+from privacy_accounting import DPAccountant
+from secure_aggregation import generate_mask_sequence, mask_updates
 from logging_utils import configure_logging, get_logger
 
 
@@ -281,12 +282,33 @@ class TorchClient(fl.client.NumPyClient):
         self.model.to(self.device)
         self.round_num = 0
         self.runtime_config = runtime_config
+        self.secure_aggregation_enabled = bool(runtime_config.get("secure_aggregation", False))
+        self._secure_aggregation_seed_override = runtime_config.get("secure_aggregation_seed")
+        self._last_secure_seed: Optional[int] = None
+        dp_delta = float(runtime_config.get("dp_delta", 1e-5))
+        self.dp_accountant = DPAccountant(delta=dp_delta)
+        self._dp_enabled_previous = bool(runtime_config.get("dp_enabled", False))
 
     def get_parameters(self, config):
         return get_parameters(self.model)
 
     def fit(self, parameters, config):
         self.round_num += 1
+
+        secure_requested = bool(config.get("secure_aggregation", self.secure_aggregation_enabled))
+        secure_seed = config.get("secure_aggregation_seed")
+        if secure_seed is None:
+            secure_seed = self._secure_aggregation_seed_override
+        if secure_seed is not None:
+            try:
+                secure_seed = int(secure_seed)
+            except (TypeError, ValueError):
+                secure_seed = None
+        if secure_requested and secure_seed is None:
+            base_seed = int(os.environ.get("SEED", "42"))
+            secure_seed = base_seed * 1000 + int(self.metrics_logger.client_id) * 97 + self.round_num
+        secure_aggregation_active = secure_requested and secure_seed is not None
+        self._last_secure_seed = secure_seed if secure_aggregation_active else None
 
         # Get training hyperparameters
         epochs = int(config.get("epoch", self.runtime_config.get("local_epochs", 1)))
@@ -443,13 +465,17 @@ class TorchClient(fl.client.NumPyClient):
         dp_delta = None
         dp_sigma = None
         dp_clip_norm = None
+        dp_enabled = bool(self.runtime_config.get("dp_enabled", False))
 
         # Differential Privacy: clip update and add Gaussian noise (if enabled)
+        if dp_enabled != self._dp_enabled_previous:
+            self.dp_accountant.reset()
+        self._dp_enabled_previous = dp_enabled
         try:
-            dp_enabled = bool(self.runtime_config.get("dp_enabled", False))
             if dp_enabled:
                 clip = float(self.runtime_config.get("dp_clip", 1.0))
                 noise_mult = float(self.runtime_config.get("dp_noise_multiplier", 0.0))
+                sample_rate = float(self.runtime_config.get("dp_sample_rate", 1.0))
                 # Build update (delta)
                 deltas: List[np.ndarray] = [
                     wa - wb for wb, wa in zip(weights_before, weights_after)
@@ -479,19 +505,17 @@ class TorchClient(fl.client.NumPyClient):
                 # Reconstruct noisy weights as weights_before + noisy_delta
                 weights_after = [wb + nd for wb, nd in zip(weights_before, noisy)]
 
-                # Compute epsilon privacy budget for this round
-                dp_delta = 1e-5  # Standard delta for (epsilon, delta)-DP
-                dp_epsilon = compute_epsilon(
-                    noise_multiplier=noise_mult,
-                    delta=dp_delta,
-                    num_steps=self.round_num,  # Cumulative across rounds
-                    sample_rate=1.0,  # Full batch per round
-                )
+                if noise_mult > 0.0:
+                    self.dp_accountant.step(noise_multiplier=noise_mult, sample_rate=sample_rate)
+                    dp_epsilon = self.dp_accountant.get_epsilon()
+                dp_delta = self.dp_accountant.delta
                 dp_sigma = noise_mult
                 dp_clip_norm = clip
         except Exception:
             # Fail-open: if DP step errors, proceed with original weights_after
             pass
+        if dp_enabled and dp_delta is None:
+            dp_delta = self.dp_accountant.delta
         weight_norm_after = calculate_weight_norms(weights_after)
         weight_update_norm = calculate_weight_update_norm(weights_before, weights_after)
         # Compute a simple gradient norm proxy: norm of (weights_after - weights_before) / lr
@@ -643,6 +667,27 @@ class TorchClient(fl.client.NumPyClient):
         except Exception:
             pass
 
+        num_examples = len(self.train_loader.dataset)
+        weights_to_send = weights_after
+        secure_metrics: dict[str, float | int | bool | None] = {"secure_aggregation": False}
+        if secure_aggregation_active and self._last_secure_seed is not None:
+            shapes = [w.shape for w in weights_after]
+            mask_sequence = generate_mask_sequence(self._last_secure_seed, shapes)
+            weights_to_send = [
+                mask_updates(w, mask) for w, mask in zip(weights_after, mask_sequence)
+            ]
+            secure_metrics = {
+                "secure_aggregation": True,
+                "secure_aggregation_seed": int(self._last_secure_seed),
+                "secure_aggregation_mask_checksum": float(
+                    sum(float(mask.sum()) for mask in mask_sequence)
+                ),
+            }
+
+        secure_flag = bool(secure_metrics.get("secure_aggregation", False))
+        secure_seed = secure_metrics.get("secure_aggregation_seed")
+        secure_mask_checksum = secure_metrics.get("secure_aggregation_mask_checksum")
+
         # Get timing
         t_fit_ms = self.fit_timer.get_last_fit_time_ms()
 
@@ -685,7 +730,30 @@ class TorchClient(fl.client.NumPyClient):
             dp_delta=dp_delta,
             dp_sigma=dp_sigma,
             dp_clip_norm=dp_clip_norm,
+            dp_enabled_flag=dp_enabled,
+            secure_aggregation_flag=secure_flag,
+            secure_aggregation_seed=secure_seed if isinstance(secure_seed, (int, float)) else None,
+            secure_aggregation_mask_checksum=(
+                float(secure_mask_checksum)
+                if isinstance(secure_mask_checksum, (int, float))
+                else None
+            ),
         )
+
+        metrics_payload: dict[str, float | int | bool | None] = {"epochs_completed": epochs_completed}
+        metrics_payload.update(secure_metrics)
+        if dp_enabled:
+            metrics_payload.update(
+                {
+                    "dp_enabled": True,
+                    "dp_epsilon": dp_epsilon,
+                    "dp_delta": dp_delta,
+                    "dp_sigma": dp_sigma,
+                    "dp_clip_norm": dp_clip_norm,
+                }
+            )
+        else:
+            metrics_payload["dp_enabled"] = False
 
         # Personalization: post-FL local fine-tuning (if enabled)
         personalization_epochs = int(
@@ -694,9 +762,9 @@ class TorchClient(fl.client.NumPyClient):
 
         # Early exit if personalization disabled or no test data
         if personalization_epochs == 0 or len(self.test_loader.dataset) == 0:
-            num_examples = len(self.train_loader.dataset)
-            metrics = {}
-            return weights_after, num_examples, metrics
+            # Restore weights after DP modifications before returning
+            set_parameters(self.model, weights_after)
+            return weights_to_send, num_examples, metrics_payload
 
         # Save global model performance (already computed above)
         macro_f1_global = macro_f1_after
@@ -854,6 +922,15 @@ class TorchClient(fl.client.NumPyClient):
                 benign_fpr_personalized=benign_fpr_personalized,
                 personalization_gain=personalization_gain,
             )
+            metrics_payload.update(
+                {
+                    "macro_f1_global": macro_f1_global,
+                    "macro_f1_personalized": macro_f1_personalized,
+                    "benign_fpr_global": benign_fpr_global,
+                    "benign_fpr_personalized": benign_fpr_personalized,
+                    "personalization_gain": personalization_gain,
+                }
+            )
         except Exception as e:
             # If personalization evaluation fails, log warning but continue
             logging.getLogger("client").warning(
@@ -862,10 +939,7 @@ class TorchClient(fl.client.NumPyClient):
 
         # CRITICAL: Restore global model weights before returning to server
         set_parameters(self.model, weights_after)
-
-        num_examples = len(self.train_loader.dataset)
-        metrics = {}
-        return weights_after, num_examples, metrics
+        return weights_to_send, num_examples, metrics_payload
 
     def evaluate(self, parameters, config):
         set_parameters(self.model, parameters)
@@ -943,7 +1017,7 @@ def main() -> None:
     parser.add_argument(
         "--secure_aggregation",
         action="store_true",
-        help="Enable secure aggregation mode (stub toggle; no functional change)",
+        help="Enable secure aggregation masking (deterministic additive shares; requires server support)",
     )
     parser.add_argument(
         "--dp_enabled",
@@ -967,6 +1041,18 @@ def main() -> None:
         type=int,
         default=-1,
         help="Optional DP RNG seed (defaults to SEED if < 0)",
+    )
+    parser.add_argument(
+        "--dp_delta",
+        type=float,
+        default=1e-5,
+        help="Target delta for (epsilon, delta)-DP accountant",
+    )
+    parser.add_argument(
+        "--dp_sample_rate",
+        type=float,
+        default=1.0,
+        help="Sample rate used by DP accountant (default assumes full participation)",
     )
     parser.add_argument(
         "--tau_mode",
@@ -1135,6 +1221,7 @@ def main() -> None:
                 or os.environ.get("D2_SECURE_AGG", "0").lower()
                 not in ("0", "false", "no", "")
             ),
+            "secure_aggregation_seed": None,
             "dp_enabled": bool(
                 args.dp_enabled
                 or os.environ.get("D2_DP_ENABLED", "0").lower()
@@ -1145,6 +1232,8 @@ def main() -> None:
                 os.environ.get("D2_DP_NOISE_MULTIPLIER", str(args.dp_noise_multiplier))
             ),
             "dp_seed": int(os.environ.get("D2_DP_SEED", str(args.dp_seed))),
+            "dp_delta": float(os.environ.get("D2_DP_DELTA", str(args.dp_delta))),
+            "dp_sample_rate": float(os.environ.get("D2_DP_SAMPLE_RATE", str(args.dp_sample_rate))),
             # Adversarial gradient clipping
             "adversary_clip_factor": float(os.environ.get("D2_ADVERSARY_CLIP_FACTOR", "2.0")),
             # Threshold selection
