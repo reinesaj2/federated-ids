@@ -288,6 +288,7 @@ class TorchClient(fl.client.NumPyClient):
         dp_delta = float(runtime_config.get("dp_delta", 1e-5))
         self.dp_accountant = DPAccountant(delta=dp_delta)
         self._dp_enabled_previous = bool(runtime_config.get("dp_enabled", False))
+        self.logger = get_logger("client")
 
     def get_parameters(self, config):
         return get_parameters(self.model)
@@ -309,6 +310,17 @@ class TorchClient(fl.client.NumPyClient):
             secure_seed = base_seed * 1000 + int(self.metrics_logger.client_id) * 97 + self.round_num
         secure_aggregation_active = secure_requested and secure_seed is not None
         self._last_secure_seed = secure_seed if secure_aggregation_active else None
+        if secure_aggregation_active:
+            try:
+                self.logger.info(
+                    "secure_aggregation_enabled",
+                    extra={
+                        "client_id": self.metrics_logger.client_id,
+                        "round": self.round_num,
+                    },
+                )
+            except Exception:
+                pass
 
         # Get training hyperparameters
         epochs = int(config.get("epoch", self.runtime_config.get("local_epochs", 1)))
@@ -465,6 +477,8 @@ class TorchClient(fl.client.NumPyClient):
         dp_delta = None
         dp_sigma = None
         dp_clip_norm = None
+        dp_sample_rate = None
+        dp_total_steps: Optional[int] = None
         dp_enabled = bool(self.runtime_config.get("dp_enabled", False))
 
         # Differential Privacy: clip update and add Gaussian noise (if enabled)
@@ -476,6 +490,7 @@ class TorchClient(fl.client.NumPyClient):
                 clip = float(self.runtime_config.get("dp_clip", 1.0))
                 noise_mult = float(self.runtime_config.get("dp_noise_multiplier", 0.0))
                 sample_rate = float(self.runtime_config.get("dp_sample_rate", 1.0))
+                dp_sample_rate = sample_rate
                 # Build update (delta)
                 deltas: List[np.ndarray] = [
                     wa - wb for wb, wa in zip(weights_before, weights_after)
@@ -516,6 +531,8 @@ class TorchClient(fl.client.NumPyClient):
             pass
         if dp_enabled and dp_delta is None:
             dp_delta = self.dp_accountant.delta
+        if dp_enabled:
+            dp_total_steps = self.dp_accountant.get_total_steps()
         weight_norm_after = calculate_weight_norms(weights_after)
         weight_update_norm = calculate_weight_update_norm(weights_before, weights_after)
         # Compute a simple gradient norm proxy: norm of (weights_after - weights_before) / lr
@@ -730,6 +747,8 @@ class TorchClient(fl.client.NumPyClient):
             dp_delta=dp_delta,
             dp_sigma=dp_sigma,
             dp_clip_norm=dp_clip_norm,
+            dp_sample_rate=dp_sample_rate,
+            dp_total_steps=dp_total_steps,
             dp_enabled_flag=dp_enabled,
             secure_aggregation_flag=secure_flag,
             secure_aggregation_seed=secure_seed if isinstance(secure_seed, (int, float)) else None,
