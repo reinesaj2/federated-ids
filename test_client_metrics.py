@@ -375,9 +375,7 @@ def test_client_metrics_extended_enabled_by_default_issue77():
             ]
 
             for col in expected_f1_columns:
-                assert col in headers, (
-                    f"Column {col} not found in headers. " "Extended metrics should be enabled by default."
-                )
+                assert col in headers, f"Column {col} not found in headers. " "Extended metrics should be enabled by default."
 
         finally:
             if old_env is not None:
@@ -411,9 +409,7 @@ def test_client_metrics_extended_explicit_false():
 
         unexpected_f1_columns = ["macro_f1_after", "macro_f1_before"]
         for col in unexpected_f1_columns:
-            assert col not in headers, (
-                f"Column {col} should not be in basic mode, " "but extended=False was set explicitly"
-            )
+            assert col not in headers, f"Column {col} should not be in basic mode, " "but extended=False was set explicitly"
 
 
 def test_client_metrics_logs_macro_f1_values_issue77():
