@@ -78,6 +78,8 @@ class ClientMetricsLogger:
                     "dp_delta",
                     "dp_sigma",
                     "dp_clip_norm",
+                    "dp_sample_rate",
+                    "dp_total_steps",
                 ]
             else:
                 headers = [
@@ -137,6 +139,8 @@ class ClientMetricsLogger:
         dp_delta: Optional[float] = None,
         dp_sigma: Optional[float] = None,
         dp_clip_norm: Optional[float] = None,
+        dp_sample_rate: Optional[float] = None,
+        dp_total_steps: Optional[int] = None,
     ) -> None:
         """Log metrics for a single client training round."""
         if self.extended:
@@ -180,6 +184,8 @@ class ClientMetricsLogger:
                 str(dp_delta) if dp_delta is not None else "",
                 str(dp_sigma) if dp_sigma is not None else "",
                 str(dp_clip_norm) if dp_clip_norm is not None else "",
+                str(dp_sample_rate) if dp_sample_rate is not None else "",
+                str(dp_total_steps) if dp_total_steps is not None else "",
             ]
         else:
             row = [
