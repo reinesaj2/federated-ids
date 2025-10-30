@@ -288,6 +288,7 @@ class TorchClient(fl.client.NumPyClient):
         dp_delta = float(runtime_config.get("dp_delta", 1e-5))
         self.dp_accountant = DPAccountant(delta=dp_delta)
         self._dp_enabled_previous = bool(runtime_config.get("dp_enabled", False))
+        self.logger = get_logger("client")
 
     def get_parameters(self, config):
         return get_parameters(self.model)
@@ -309,6 +310,17 @@ class TorchClient(fl.client.NumPyClient):
             secure_seed = base_seed * 1000 + int(self.metrics_logger.client_id) * 97 + self.round_num
         secure_aggregation_active = secure_requested and secure_seed is not None
         self._last_secure_seed = secure_seed if secure_aggregation_active else None
+        if secure_aggregation_active:
+            try:
+                self.logger.info(
+                    "secure_aggregation_enabled",
+                    extra={
+                        "client_id": self.metrics_logger.client_id,
+                        "round": self.round_num,
+                    },
+                )
+            except Exception:
+                pass
 
         # Get training hyperparameters
         epochs = int(config.get("epoch", self.runtime_config.get("local_epochs", 1)))
