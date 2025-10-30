@@ -40,7 +40,7 @@ def test_train_epoch_uses_adamw_defaults(monkeypatch):
     model = SimpleNet(num_features=4, num_classes=2)
     set_parameters(model, get_parameters(model))
 
-    loss, grad_norm = train_epoch(
+    loss = train_epoch(
         model=model,
         loader=loader,
         device=torch.device("cpu"),
@@ -48,7 +48,6 @@ def test_train_epoch_uses_adamw_defaults(monkeypatch):
     )
 
     assert isinstance(loss, float)
-    assert isinstance(grad_norm, float)
     assert captured["lr"] == pytest.approx(0.001)
     assert captured["weight_decay"] == pytest.approx(1e-4)
     assert len(captured["params"]) > 0

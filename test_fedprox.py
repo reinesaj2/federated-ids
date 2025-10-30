@@ -42,7 +42,7 @@ def test_fedprox_proximal_term():
             param += torch.randn_like(param) * 0.1
 
     # Train with FedProx (mu > 0)
-    loss_with_fedprox, grad_norm_with_fedprox = train_epoch(
+    loss_with_fedprox = train_epoch(
         model=model_copy,
         loader=loader,
         device=device,
@@ -55,7 +55,7 @@ def test_fedprox_proximal_term():
     model_copy2 = SimpleNet(num_features=10, num_classes=2)
     set_parameters(model_copy2, get_parameters(model_copy))  # Same starting point
 
-    loss_without_fedprox, grad_norm_without_fedprox = train_epoch(
+    loss_without_fedprox = train_epoch(
         model=model_copy2,
         loader=loader,
         device=device,
@@ -68,8 +68,6 @@ def test_fedprox_proximal_term():
     # (though this isn't guaranteed in all cases, this test mainly checks implementation)
     assert isinstance(loss_with_fedprox, float)
     assert isinstance(loss_without_fedprox, float)
-    assert isinstance(grad_norm_with_fedprox, float)
-    assert isinstance(grad_norm_without_fedprox, float)
     assert loss_with_fedprox >= 0.0
     assert loss_without_fedprox >= 0.0
 
@@ -106,7 +104,7 @@ def test_fedprox_different_mu_values():
         model_test = SimpleNet(num_features=5, num_classes=2)
         set_parameters(model_test, get_parameters(model))
 
-        loss, grad_norm = train_epoch(
+        loss = train_epoch(
             model=model_test,
             loader=loader,
             device=device,
@@ -114,14 +112,14 @@ def test_fedprox_different_mu_values():
             global_params=global_params,
             fedprox_mu=mu,
         )
-        losses[mu] = (loss, grad_norm)
+        losses[mu] = loss
 
     print("FedProx losses with different mu values:")
-    for mu, (loss, grad_norm) in losses.items():
-        print(f"  mu={mu}: loss={loss:.6f}, grad_norm={grad_norm:.6f}")
+    for mu, loss in losses.items():
+        print(f"  mu={mu}: loss={loss:.6f}")
 
     # Basic sanity check - all losses should be non-negative
-    assert all(loss >= 0.0 for loss, _ in losses.values())
+    assert all(loss >= 0.0 for loss in losses.values())
 
 
 if __name__ == "__main__":

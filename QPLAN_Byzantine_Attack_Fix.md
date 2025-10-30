@@ -26,7 +26,7 @@
 
 ---
 
-## 📋 Sprint 1: Core Fixes (Days 1-3) - 8 Story Points
+##  [READY] Sprint 1: Core Fixes (Days 1-3) - 8 Story Points
 
 ### User Story 1.1: Implement Gradient Clipping for Adversaries ⭐
 **Story Points:** 3  
@@ -79,7 +79,7 @@ if clip_factor > 0:
 
 ---
 
-## 📋 Sprint 2: Experimental Validation (Days 4-7) - 5 Story Points
+##  [READY] Sprint 2: Experimental Validation (Days 4-7) - 5 Story Points
 
 ### User Story 2.1: Run Gradient Magnitude Analysis
 **Story Points:** 2  

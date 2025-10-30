@@ -22,7 +22,7 @@ Implemented 3 MUST-level improvements from QPLAN:
 7. **Hidden Dependencies**: ✓ None; completely self-contained
 8. **Function Names**: ✓ Good (alternatives: "is_feasible", "check_constraints" less clear)
 
-**Status**: ✅ PASS - Clean, testable, minimal logic
+**Status**:  [PASS] PASS - Clean, testable, minimal logic
 
 ---
 
@@ -38,7 +38,7 @@ Implemented 3 MUST-level improvements from QPLAN:
 7. **Hidden Dependencies**: ✓ Only dependency is ExperimentConstraints (provided)
 8. **Function Names**: ✓ Good; "validate_all" is clear
 
-**Status**: ✅ PASS - Well-structured, tested
+**Status**:  [PASS] PASS - Well-structured, tested
 
 ---
 
@@ -54,7 +54,7 @@ Implemented 3 MUST-level improvements from QPLAN:
 7. **Hidden Dependencies**: ✓ None
 8. **Function Names**: ✓ Excellent; "categorize_failure" clearly indicates intent
 
-**Status**: ✅ PASS - Explicit failure categorization
+**Status**:  [PASS] PASS - Explicit failure categorization
 
 ---
 
@@ -98,7 +98,7 @@ Implemented 3 MUST-level improvements from QPLAN:
 
 **Test Results**: 11/11 PASS ✓
 
-**Status**: ✅ PASS - Comprehensive coverage, clear semantics
+**Status**:  [PASS] PASS - Comprehensive coverage, clear semantics
 
 ---
 
@@ -125,7 +125,7 @@ Implemented 3 MUST-level improvements from QPLAN:
 - Created ExperimentDiagnostic + DiagnosticsCollector (stubs)
 - Tests not yet written (incomplete), but structure in place for TDD
 
-**Status**: ✅ PARTIAL (M2 complete, M3 scaffolded)
+**Status**:  [PASS] PARTIAL (M2 complete, M3 scaffolded)
 
 ---
 
@@ -136,7 +136,7 @@ Implemented 3 MUST-level improvements from QPLAN:
 - "n_clients", "aggregation" match QPLAN terminology
 - "categorize_failure" (not "label_error")
 
-**Status**: ✅ PASS
+**Status**:  [PASS] PASS
 
 ---
 
@@ -159,63 +159,63 @@ Implemented 3 MUST-level improvements from QPLAN:
 ✓ Composable: DiagnosticsCollector uses other functions
 ✓ Testable: All pure functions, no side effects
 
-**Status**: ✅ PASS
+**Status**:  [PASS] PASS
 
 ---
 
 ### C-5 (MUST): Prefer Branded Types for IDs
 N/A - No IDs in this module
 
-**Status**: ✅ N/A
+**Status**:  [PASS] N/A
 
 ---
 
 ### C-6 (MUST): Use `import type` for Type-Only Imports
 ✓ Imports properly separated (Literal, Tuple marked as type-only)
 
-**Status**: ✅ PASS
+**Status**:  [PASS] PASS
 
 ---
 
 ### C-7 (SHOULD NOT): Add Comments Except Critical Caveats
 ✓ Minimal inline comments; docstrings on all functions
 
-**Status**: ✅ PASS
+**Status**:  [PASS] PASS
 
 ---
 
 ### C-8 (SHOULD): Default to `type`; Use `interface` Only When Needed
 ✓ Used @dataclass appropriately
 
-**Status**: ✅ PASS
+**Status**:  [PASS] PASS
 
 ---
 
 ### C-9 (SHOULD NOT): Extract Functions Unless Reused
 ✓ ExperimentConstraints.validate() reused and independently tested
 
-**Status**: ✅ PASS
+**Status**:  [PASS] PASS
 
 ---
 
 ### C-10 (SHOULD NOT): Use Emojis
 ✓ No emojis in code
 
-**Status**: ✅ PASS
+**Status**:  [PASS] PASS
 
 ---
 
 ### G-3 (MUST): `black` Passes for Python
 ✓ All files formatted: validate_experiment_matrix.py, experiment_diagnostics.py, test file
 
-**Status**: ✅ PASS
+**Status**:  [PASS] PASS
 
 ---
 
 ### G-4 (MUST): `flake8` Passes for Python
 ✓ All files pass with --max-line-length=100
 
-**Status**: ✅ PASS
+**Status**:  [PASS] PASS
 
 ---
 
@@ -223,13 +223,13 @@ N/A - No IDs in this module
 
 | Category | Status | Notes |
 |----------|--------|-------|
-| Writing Functions | ✅ PASS | All functions well-designed, testable |
-| Writing Tests | ✅ PASS | 11/11 tests pass; edge cases covered |
-| Implementation | ✅ PASS | Follows CLAUDE.md guidelines |
-| Code Style | ✅ PASS | black + flake8 passing |
-| Domain Vocabulary | ✅ PASS | FL/Byzantine terminology consistent |
+| Writing Functions |  [PASS] PASS | All functions well-designed, testable |
+| Writing Tests |  [PASS] PASS | 11/11 tests pass; edge cases covered |
+| Implementation |  [PASS] PASS | Follows CLAUDE.md guidelines |
+| Code Style |  [PASS] PASS | black + flake8 passing |
+| Domain Vocabulary |  [PASS] PASS | FL/Byzantine terminology consistent |
 
-**Overall**: ✅ **APPROVED FOR MERGE**
+**Overall**:  [PASS] **APPROVED FOR MERGE**
 
 ---
 
@@ -238,17 +238,17 @@ N/A - No IDs in this module
 ### M1: Success Threshold Update
 - **File**: `.github/workflows/comparative-analysis-nightly.yml`
 - **Change**: 50% → 95% success requirement
-- **Status**: ✅ COMPLETE
+- **Status**:  [PASS] COMPLETE
 
 ### M2: Byzantine Constraint Validator
 - **Files**:
   - `scripts/validate_experiment_matrix.py` (217 LOC)
   - `test_validate_experiment_matrix.py` (11 tests, all passing)
-- **Status**: ✅ COMPLETE with full TDD coverage
+- **Status**:  [PASS] COMPLETE with full TDD coverage
 
 ### M3: Structured Failure Diagnostics
 - **File**: `scripts/experiment_diagnostics.py` (156 LOC)
-- **Status**: ✅ SCAFFOLDED (tests pending)
+- **Status**:  [PASS] SCAFFOLDED (tests pending)
 
 ---
 
