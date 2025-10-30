@@ -78,6 +78,10 @@ class ClientMetricsLogger:
                     "dp_delta",
                     "dp_sigma",
                     "dp_clip_norm",
+                    "dp_enabled",
+                    "secure_aggregation",
+                    "secure_aggregation_seed",
+                    "secure_aggregation_mask_checksum",
                 ]
             else:
                 headers = [
@@ -137,6 +141,10 @@ class ClientMetricsLogger:
         dp_delta: Optional[float] = None,
         dp_sigma: Optional[float] = None,
         dp_clip_norm: Optional[float] = None,
+        dp_enabled_flag: Optional[bool] = None,
+        secure_aggregation_flag: bool = False,
+        secure_aggregation_seed: Optional[int] = None,
+        secure_aggregation_mask_checksum: Optional[float] = None,
     ) -> None:
         """Log metrics for a single client training round."""
         if self.extended:
@@ -180,6 +188,10 @@ class ClientMetricsLogger:
                 str(dp_delta) if dp_delta is not None else "",
                 str(dp_sigma) if dp_sigma is not None else "",
                 str(dp_clip_norm) if dp_clip_norm is not None else "",
+                str(bool(dp_enabled_flag)) if dp_enabled_flag is not None else "",
+                str(bool(secure_aggregation_flag)),
+                str(secure_aggregation_seed) if secure_aggregation_seed is not None else "",
+                str(secure_aggregation_mask_checksum) if secure_aggregation_mask_checksum is not None else "",
             ]
         else:
             row = [
