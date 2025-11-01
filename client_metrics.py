@@ -4,7 +4,6 @@ import csv
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import List, Optional
 
 import numpy as np
 
@@ -12,7 +11,7 @@ import numpy as np
 class ClientMetricsLogger:
     """Handles CSV logging of client-side federated learning metrics."""
 
-    def __init__(self, csv_path: str, client_id: int, extended: Optional[bool] = None) -> None:
+    def __init__(self, csv_path: str, client_id: int, extended: bool | None = None) -> None:
         """Initialize the client metrics logger with a CSV file path and client ID."""
         self.csv_path = Path(csv_path)
         self.client_id = client_id
@@ -107,36 +106,36 @@ class ClientMetricsLogger:
         round_num: int,
         dataset_size: int,
         n_classes: int,
-        loss_before: Optional[float],
-        acc_before: Optional[float],
-        loss_after: Optional[float],
-        acc_after: Optional[float],
-        macro_f1_before: Optional[float] = None,
-        macro_f1_after: Optional[float] = None,
-        macro_f1_argmax: Optional[float] = None,
-        benign_fpr_argmax: Optional[float] = None,
-        f1_per_class_after_json: Optional[str] = None,
-        precision_per_class_json: Optional[str] = None,
-        recall_per_class_json: Optional[str] = None,
-        fpr_after: Optional[float] = None,
-        pr_auc_after: Optional[float] = None,
-        threshold_tau: Optional[float] = None,
-        f1_bin_tau: Optional[float] = None,
-        benign_fpr_bin_tau: Optional[float] = None,
-        tau_bin: Optional[float] = None,
-        seed: Optional[int] = None,
-        weight_norm_before: Optional[float] = None,
-        weight_norm_after: Optional[float] = None,
-        weight_update_norm: Optional[float] = None,
-        grad_norm_l2: Optional[float] = None,
-        t_fit_ms: Optional[float] = None,
+        loss_before: float | None,
+        acc_before: float | None,
+        loss_after: float | None,
+        acc_after: float | None,
+        macro_f1_before: float | None = None,
+        macro_f1_after: float | None = None,
+        macro_f1_argmax: float | None = None,
+        benign_fpr_argmax: float | None = None,
+        f1_per_class_after_json: str | None = None,
+        precision_per_class_json: str | None = None,
+        recall_per_class_json: str | None = None,
+        fpr_after: float | None = None,
+        pr_auc_after: float | None = None,
+        threshold_tau: float | None = None,
+        f1_bin_tau: float | None = None,
+        benign_fpr_bin_tau: float | None = None,
+        tau_bin: float | None = None,
+        seed: int | None = None,
+        weight_norm_before: float | None = None,
+        weight_norm_after: float | None = None,
+        weight_update_norm: float | None = None,
+        grad_norm_l2: float | None = None,
+        t_fit_ms: float | None = None,
         epochs_completed: int = 0,
         lr: float = 0.0,
         batch_size: int = 0,
-        dp_epsilon: Optional[float] = None,
-        dp_delta: Optional[float] = None,
-        dp_sigma: Optional[float] = None,
-        dp_clip_norm: Optional[float] = None,
+        dp_epsilon: float | None = None,
+        dp_delta: float | None = None,
+        dp_sigma: float | None = None,
+        dp_clip_norm: float | None = None,
     ) -> None:
         """Log metrics for a single client training round."""
         if self.extended:
@@ -208,11 +207,11 @@ class ClientMetricsLogger:
     def log_personalization_metrics(
         self,
         round_num: int,
-        macro_f1_global: Optional[float] = None,
-        macro_f1_personalized: Optional[float] = None,
-        benign_fpr_global: Optional[float] = None,
-        benign_fpr_personalized: Optional[float] = None,
-        personalization_gain: Optional[float] = None,
+        macro_f1_global: float | None = None,
+        macro_f1_personalized: float | None = None,
+        benign_fpr_global: float | None = None,
+        benign_fpr_personalized: float | None = None,
+        personalization_gain: float | None = None,
     ) -> None:
         """Log personalization metrics for a round (appends to existing row)."""
         if not self.extended:
@@ -223,7 +222,7 @@ class ClientMetricsLogger:
         header = None
         target_row_idx = None
 
-        with open(self.csv_path, "r", newline="") as f:
+        with open(self.csv_path, newline="") as f:
             reader = csv.reader(f)
             header = next(reader)
             rows.append(header)
@@ -249,13 +248,9 @@ class ClientMetricsLogger:
 
                 # Update the row
                 rows[target_row_idx][global_f1_idx] = str(macro_f1_global) if macro_f1_global is not None else ""
-                rows[target_row_idx][pers_f1_idx] = (
-                    str(macro_f1_personalized) if macro_f1_personalized is not None else ""
-                )
+                rows[target_row_idx][pers_f1_idx] = str(macro_f1_personalized) if macro_f1_personalized is not None else ""
                 rows[target_row_idx][global_fpr_idx] = str(benign_fpr_global) if benign_fpr_global is not None else ""
-                rows[target_row_idx][pers_fpr_idx] = (
-                    str(benign_fpr_personalized) if benign_fpr_personalized is not None else ""
-                )
+                rows[target_row_idx][pers_fpr_idx] = str(benign_fpr_personalized) if benign_fpr_personalized is not None else ""
                 rows[target_row_idx][gain_idx] = str(personalization_gain) if personalization_gain is not None else ""
 
                 # Write back the entire CSV
@@ -271,7 +266,7 @@ class ClientFitTimer:
     """Utility for measuring client fit timing."""
 
     def __init__(self) -> None:
-        self._last_fit_time_ms: Optional[float] = None
+        self._last_fit_time_ms: float | None = None
 
     @contextmanager
     def time_fit(self):
@@ -283,12 +278,12 @@ class ClientFitTimer:
             end_time = time.perf_counter()
             self._last_fit_time_ms = (end_time - start_time) * 1000.0
 
-    def get_last_fit_time_ms(self) -> Optional[float]:
+    def get_last_fit_time_ms(self) -> float | None:
         """Get the time in milliseconds for the last fit operation."""
         return self._last_fit_time_ms
 
 
-def calculate_weight_norms(weights: List[np.ndarray]) -> float:
+def calculate_weight_norms(weights: list[np.ndarray]) -> float:
     """Calculate the L2 norm of a list of weight arrays."""
     total_norm_sq = 0.0
     for arr in weights:
@@ -296,10 +291,10 @@ def calculate_weight_norms(weights: List[np.ndarray]) -> float:
     return np.sqrt(total_norm_sq)
 
 
-def calculate_weight_update_norm(weights_before: List[np.ndarray], weights_after: List[np.ndarray]) -> float:
+def calculate_weight_update_norm(weights_before: list[np.ndarray], weights_after: list[np.ndarray]) -> float:
     """Calculate the L2 norm of the weight update (difference)."""
     total_norm_sq = 0.0
-    for arr_before, arr_after in zip(weights_before, weights_after):
+    for arr_before, arr_after in zip(weights_before, weights_after, strict=False):
         diff = arr_after - arr_before
         total_norm_sq += float(np.sum(diff * diff))
     return np.sqrt(total_norm_sq)
@@ -319,5 +314,5 @@ def create_label_histogram_json(labels: np.ndarray) -> str:
     import json
 
     unique_labels, counts = np.unique(labels, return_counts=True)
-    label_hist = {str(label): int(count) for label, count in zip(unique_labels, counts)}
+    label_hist = {str(label): int(count) for label, count in zip(unique_labels, counts, strict=False)}
     return json.dumps(label_hist, sort_keys=True)

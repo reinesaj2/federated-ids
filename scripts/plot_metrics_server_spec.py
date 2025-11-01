@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
+import importlib
 import sys
+from pathlib import Path
 
 import matplotlib
 
@@ -16,14 +17,17 @@ for candidate in (ROOT, ROOT / "scripts"):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
-from plot_config import ConfidenceIntervalConfig, PlotStyle, create_default_config
-from plot_metrics_server import (
-    plot_server_metrics,
-    _render_server_dispersion,
-    _render_server_norms,
-    _render_server_robustness,
-    _render_server_timing,
-)
+plot_config_mod = importlib.import_module("plot_config")
+ConfidenceIntervalConfig = plot_config_mod.ConfidenceIntervalConfig
+PlotStyle = plot_config_mod.PlotStyle
+create_default_config = plot_config_mod.create_default_config
+
+plot_metrics_server_mod = importlib.import_module("plot_metrics_server")
+_render_server_dispersion = plot_metrics_server_mod._render_server_dispersion
+_render_server_norms = plot_metrics_server_mod._render_server_norms
+_render_server_robustness = plot_metrics_server_mod._render_server_robustness
+_render_server_timing = plot_metrics_server_mod._render_server_timing
+plot_server_metrics = plot_metrics_server_mod.plot_server_metrics
 
 
 def _default_server_args(style: PlotStyle):

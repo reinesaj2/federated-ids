@@ -4,12 +4,11 @@ import csv
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import List, Optional
 
 import numpy as np
 
-from robust_aggregation import AggregationMethod
 from logging_utils import get_logger
+from robust_aggregation import AggregationMethod
 
 logger = get_logger(__name__)
 
@@ -55,18 +54,18 @@ class ServerMetricsLogger:
         round_num: int,
         agg_method: AggregationMethod,
         n_clients: int,
-        byzantine_f: Optional[int],
-        l2_to_benign_mean: Optional[float],
-        cos_to_benign_mean: Optional[float],
-        coord_median_agree_pct: Optional[float],
-        update_norm_mean: Optional[float],
-        update_norm_std: Optional[float],
-        t_aggregate_ms: Optional[float],
-        t_round_ms: Optional[float],
-        pairwise_cosine_mean: Optional[float] = None,
-        pairwise_cosine_std: Optional[float] = None,
-        l2_dispersion_mean: Optional[float] = None,
-        l2_dispersion_std: Optional[float] = None,
+        byzantine_f: int | None,
+        l2_to_benign_mean: float | None,
+        cos_to_benign_mean: float | None,
+        coord_median_agree_pct: float | None,
+        update_norm_mean: float | None,
+        update_norm_std: float | None,
+        t_aggregate_ms: float | None,
+        t_round_ms: float | None,
+        pairwise_cosine_mean: float | None = None,
+        pairwise_cosine_std: float | None = None,
+        l2_dispersion_mean: float | None = None,
+        l2_dispersion_std: float | None = None,
     ) -> None:
         """Log metrics for a single federated learning round."""
         row = [
@@ -96,7 +95,7 @@ class AggregationTimer:
     """Utility for measuring aggregation timing."""
 
     def __init__(self) -> None:
-        self._last_aggregation_time_ms: Optional[float] = None
+        self._last_aggregation_time_ms: float | None = None
 
     @contextmanager
     def time_aggregation(self):
@@ -108,7 +107,7 @@ class AggregationTimer:
             end_time = time.perf_counter()
             self._last_aggregation_time_ms = (end_time - start_time) * 1000.0
 
-    def get_last_aggregation_time_ms(self) -> Optional[float]:
+    def get_last_aggregation_time_ms(self) -> float | None:
         """Get the time in milliseconds for the last aggregation operation."""
         return self._last_aggregation_time_ms
 
@@ -167,24 +166,24 @@ def validate_metrics(metrics: dict[str, float], dimension: str, min_expected_cos
 
 
 def calculate_robustness_metrics(
-    client_updates: List[List[np.ndarray]],
-    benign_mean: List[np.ndarray],
-    aggregated: List[np.ndarray],
+    client_updates: list[list[np.ndarray]],
+    benign_mean: list[np.ndarray],
+    aggregated: list[np.ndarray],
 ) -> dict[str, float]:
     """Calculate robustness metrics for federated learning aggregation."""
 
-    def _flatten_update(update: List[np.ndarray]) -> np.ndarray:
+    def _flatten_update(update: list[np.ndarray]) -> np.ndarray:
         """Flatten a multi-layer update into a single vector."""
         return np.concatenate([arr.reshape(-1) for arr in update])
 
-    def _l2_distance(a: List[np.ndarray], b: List[np.ndarray]) -> float:
+    def _l2_distance(a: list[np.ndarray], b: list[np.ndarray]) -> float:
         """Calculate L2 distance between two multi-layer updates."""
         total_dist_sq = 0.0
-        for arr_a, arr_b in zip(a, b):
+        for arr_a, arr_b in zip(a, b, strict=False):
             total_dist_sq += float(np.sum((arr_a - arr_b) ** 2))
         return np.sqrt(total_dist_sq)
 
-    def _cosine_similarity(a: List[np.ndarray], b: List[np.ndarray]) -> float:
+    def _cosine_similarity(a: list[np.ndarray], b: list[np.ndarray]) -> float:
         """Calculate cosine similarity between two multi-layer updates.
 
         Args:
@@ -223,14 +222,14 @@ def calculate_robustness_metrics(
 
         return cosine
 
-    def _coordinate_median_agreement(client_updates: List[List[np.ndarray]], aggregated: List[np.ndarray]) -> float:
+    def _coordinate_median_agreement(client_updates: list[list[np.ndarray]], aggregated: list[np.ndarray]) -> float:
         """Calculate percentage of coordinates where aggregated equals coordinate-wise median."""
         if not client_updates:
             return 0.0
 
         # Calculate coordinate-wise median
         num_layers = len(client_updates[0])
-        median_update: List[np.ndarray] = []
+        median_update: list[np.ndarray] = []
 
         for layer_idx in range(num_layers):
             layer_stack = np.stack([client[layer_idx] for client in client_updates], axis=0)
@@ -241,7 +240,7 @@ def calculate_robustness_metrics(
         total_coords = 0
         matching_coords = 0
 
-        for agg_layer, median_layer in zip(aggregated, median_update):
+        for agg_layer, median_layer in zip(aggregated, median_update, strict=False):
             total_coords += int(agg_layer.size)
             # Use small tolerance for floating point comparison
             matches = np.isclose(agg_layer, median_layer, rtol=1e-10, atol=1e-10)
@@ -249,7 +248,7 @@ def calculate_robustness_metrics(
 
         return float(matching_coords / total_coords * 100.0) if total_coords > 0 else 0.0
 
-    def _update_norm_stats(client_updates: List[List[np.ndarray]]) -> tuple[float, float]:
+    def _update_norm_stats(client_updates: list[list[np.ndarray]]) -> tuple[float, float]:
         """Calculate mean and std of client update norms."""
         norms = []
         for update in client_updates:

@@ -5,7 +5,6 @@ import logging
 from datetime import datetime
 from io import StringIO
 
-
 from logging_utils import JsonFormatter, configure_logging, get_logger
 
 

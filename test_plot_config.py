@@ -8,12 +8,12 @@ import pandas as pd
 import pytest
 
 from scripts.plot_config import (
-    PlotStyle,
+    PALETTES,
+    ConfidenceIntervalConfig,
     LayoutConfig,
     MetricDetector,
+    PlotStyle,
     SmoothingConfig,
-    ConfidenceIntervalConfig,
-    PALETTES,
 )
 
 
@@ -75,15 +75,17 @@ def test_layout_config_compute_grid_fixed_both():
 
 def test_metric_detector_server_all_available():
     """Test detection of all server metrics when available."""
-    df = pd.DataFrame({
-        "round": [1, 2, 3],
-        "t_aggregate_ms": [100, 110, 105],
-        "l2_to_benign_mean": [0.5, 0.4, 0.3],
-        "cos_to_benign_mean": [0.8, 0.85, 0.9],
-        "update_norm_mean": [1.0, 1.1, 1.2],
-        "pairwise_cosine_mean": [0.7, 0.75, 0.8],
-        "l2_dispersion_mean": [0.3, 0.25, 0.2],
-    })
+    df = pd.DataFrame(
+        {
+            "round": [1, 2, 3],
+            "t_aggregate_ms": [100, 110, 105],
+            "l2_to_benign_mean": [0.5, 0.4, 0.3],
+            "cos_to_benign_mean": [0.8, 0.85, 0.9],
+            "update_norm_mean": [1.0, 1.1, 1.2],
+            "pairwise_cosine_mean": [0.7, 0.75, 0.8],
+            "l2_dispersion_mean": [0.3, 0.25, 0.2],
+        }
+    )
 
     detector = MetricDetector()
     available = detector.detect_available(df, metric_type="server")
@@ -96,11 +98,13 @@ def test_metric_detector_server_all_available():
 
 def test_metric_detector_server_partial_available():
     """Test detection with only some metrics available."""
-    df = pd.DataFrame({
-        "round": [1, 2, 3],
-        "t_aggregate_ms": [100, 110, 105],
-        "update_norm_mean": [1.0, 1.1, 1.2],
-    })
+    df = pd.DataFrame(
+        {
+            "round": [1, 2, 3],
+            "t_aggregate_ms": [100, 110, 105],
+            "update_norm_mean": [1.0, 1.1, 1.2],
+        }
+    )
 
     detector = MetricDetector()
     available = detector.detect_available(df, metric_type="server")
@@ -113,11 +117,13 @@ def test_metric_detector_server_partial_available():
 
 def test_metric_detector_server_alternate_columns():
     """Test detection using alternate column names."""
-    df = pd.DataFrame({
-        "round": [1, 2, 3],
-        "aggregation_time_ms": [100, 110, 105],  # Alternate name
-        "update_norm_std": [0.1, 0.2, 0.15],  # Alternate name
-    })
+    df = pd.DataFrame(
+        {
+            "round": [1, 2, 3],
+            "aggregation_time_ms": [100, 110, 105],  # Alternate name
+            "update_norm_std": [0.1, 0.2, 0.15],  # Alternate name
+        }
+    )
 
     detector = MetricDetector()
     available = detector.detect_available(df, metric_type="server")
@@ -128,11 +134,13 @@ def test_metric_detector_server_alternate_columns():
 
 def test_metric_detector_server_na_columns():
     """Test that columns with all NaN values are not detected."""
-    df = pd.DataFrame({
-        "round": [1, 2, 3],
-        "t_aggregate_ms": [np.nan, np.nan, np.nan],
-        "update_norm_mean": [1.0, 1.1, 1.2],
-    })
+    df = pd.DataFrame(
+        {
+            "round": [1, 2, 3],
+            "t_aggregate_ms": [np.nan, np.nan, np.nan],
+            "update_norm_mean": [1.0, 1.1, 1.2],
+        }
+    )
 
     detector = MetricDetector()
     available = detector.detect_available(df, metric_type="server")
@@ -158,14 +166,16 @@ def test_metric_detector_count_available_plots():
 
 def test_metric_detector_client_metrics():
     """Test detection of client metrics."""
-    df = pd.DataFrame({
-        "round": [1, 2, 3],
-        "loss_after": [0.5, 0.4, 0.3],
-        "acc_after": [0.7, 0.75, 0.8],
-        "weight_norm_after": [1.0, 1.1, 1.2],
-        "tau_bin": [0.5, 0.5, 0.5],
-        "benign_fpr_bin_tau": [0.1, 0.09, 0.08],
-    })
+    df = pd.DataFrame(
+        {
+            "round": [1, 2, 3],
+            "loss_after": [0.5, 0.4, 0.3],
+            "acc_after": [0.7, 0.75, 0.8],
+            "weight_norm_after": [1.0, 1.1, 1.2],
+            "tau_bin": [0.5, 0.5, 0.5],
+            "benign_fpr_bin_tau": [0.1, 0.09, 0.08],
+        }
+    )
 
     detector = MetricDetector()
     available = detector.detect_available(df, metric_type="client")

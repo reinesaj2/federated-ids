@@ -104,10 +104,7 @@ def main():
 
     with ProcessPoolExecutor(max_workers=args.workers) as executor:
         # Submit all tasks with unique port offsets to avoid conflicts
-        futures = {
-            executor.submit(run_experiment_safe, config, base_dir, idx): config
-            for idx, config in enumerate(pending_configs)
-        }
+        futures = {executor.submit(run_experiment_safe, config, base_dir, idx): config for idx, config in enumerate(pending_configs)}
 
         # Process as they complete
         for future in as_completed(futures):
@@ -118,15 +115,11 @@ def main():
             progress_pct = (completed_count + completed_tasks) / total * 100
 
             if result["status"] == "success":
-                print(
-                    f"[{completed_count + completed_tasks}/{total}] "
-                    f"({progress_pct:.1f}%) [PASS] {result['preset']}"
-                )
+                print(f"[{completed_count + completed_tasks}/{total}] " f"({progress_pct:.1f}%) [PASS] {result['preset']}")
             else:
                 failed_tasks += 1
                 print(
-                    f"[{completed_count + completed_tasks}/{total}] "
-                    f"({progress_pct:.1f}%) [FAIL] {result['preset']}: {result['error']}"
+                    f"[{completed_count + completed_tasks}/{total}] " f"({progress_pct:.1f}%) [FAIL] {result['preset']}: {result['error']}"
                 )
 
     # Summary

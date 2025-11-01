@@ -19,7 +19,6 @@ import csv
 import json
 import sys
 from pathlib import Path
-from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -44,7 +43,7 @@ plt.rcParams["legend.fontsize"] = 9
 plt.rcParams["figure.titlesize"] = 14
 
 
-def parse_experiment_name(exp_dir: Path) -> Dict[str, any]:
+def parse_experiment_name(exp_dir: Path) -> dict[str, any]:
     """
     Parse experiment directory name into components.
 
@@ -127,7 +126,7 @@ def load_personalization_data(logs_dir: Path) -> pd.DataFrame:
     return pd.DataFrame(all_data)
 
 
-def compute_summary_stats(df: pd.DataFrame) -> Dict:
+def compute_summary_stats(df: pd.DataFrame) -> dict:
     """Compute summary statistics for personalization gains."""
     summary = {}
 
@@ -262,7 +261,7 @@ def plot_gains_by_config(df: pd.DataFrame, ax: plt.Axes) -> None:
     )
 
     # Color bars: green for positive, red for near-zero
-    for i, (bar, gain) in enumerate(zip(bars, config_df["mean"])):
+    for _, (bar, gain) in enumerate(zip(bars, config_df["mean"], strict=False)):
         if gain > 0.01:
             bar.set_color("green")
             bar.set_alpha(0.7)
@@ -459,10 +458,7 @@ def generate_latex_table(df: pd.DataFrame, output_dir: Path) -> None:
     latex_lines.append("\\label{tab:personalization-gains}")
     latex_lines.append("\\begin{tabular}{llrrrrr}")
     latex_lines.append("\\hline")
-    latex_lines.append(
-        "Dataset & $\\alpha$ & Pers. Epochs & Global F1 & "
-        "Personalized F1 & Gain (Mean) & Gain (Std) \\\\"
-    )
+    latex_lines.append("Dataset & $\\alpha$ & Pers. Epochs & Global F1 & " "Personalized F1 & Gain (Mean) & Gain (Std) \\\\")
     latex_lines.append("\\hline")
 
     for row in config_df.itertuples():
@@ -475,8 +471,7 @@ def generate_latex_table(df: pd.DataFrame, output_dir: Path) -> None:
         gain_std = row[7]
 
         latex_lines.append(
-            f"{dataset} & {alpha:.2f} & {epochs} & {global_f1:.4f} & {pers_f1:.4f} & "
-            f"{gain_mean:.4f} & {gain_std:.4f} \\\\"
+            f"{dataset} & {alpha:.2f} & {epochs} & {global_f1:.4f} & {pers_f1:.4f} & " f"{gain_mean:.4f} & {gain_std:.4f} \\\\"
         )
 
     latex_lines.append("\\hline")

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import importlib
 import sys
 from pathlib import Path
 
@@ -14,7 +15,8 @@ for candidate in (ROOT, ROOT / "scripts"):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
-from plot_metrics_utils import compute_confidence_interval  # noqa: E402
+plot_metrics_utils_mod = importlib.import_module("plot_metrics_utils")
+compute_confidence_interval = plot_metrics_utils_mod.compute_confidence_interval
 
 
 def test_compute_ci_for_sample_data():
@@ -95,7 +97,7 @@ def test_raises_for_empty_array():
     data = np.array([])
     try:
         compute_confidence_interval(data)
-        assert False, "Expected ValueError for empty array"
+        raise AssertionError("Expected ValueError for empty array")
     except ValueError as e:
         assert "empty" in str(e).lower()
 

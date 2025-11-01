@@ -6,16 +6,12 @@ Tests plot repository commit functionality with file system operations,
 git integration, and error handling scenarios.
 """
 
-import csv
-import os
 import subprocess
 import tempfile
 import unittest.mock
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from scripts.commit_plots import (
     cleanup_old_plots,
@@ -438,7 +434,7 @@ class TestFailureScenarios:
                 # Restore permissions for cleanup
                 try:
                     restricted_file.chmod(0o644)
-                except:
+                except OSError:
                     pass
 
     def test_cleanup_handles_malformed_date_directories_gracefully(self):
@@ -537,8 +533,9 @@ class TestBoundaryConditions:
 
     def test_cleanup_exactly_at_retention_boundary(self):
         """Test cleanup behavior at exact retention boundary."""
-        from scripts.commit_plots import cleanup_old_plots
         from datetime import datetime, timedelta
+
+        from scripts.commit_plots import cleanup_old_plots
 
         with tempfile.TemporaryDirectory() as temp_dir:
             plots_dir = Path(temp_dir) / "plots"
@@ -581,8 +578,9 @@ class TestBoundaryConditions:
 
     def test_cleanup_with_large_retention_days(self):
         """Test cleanup with large retention period."""
-        from scripts.commit_plots import cleanup_old_plots
         from datetime import datetime, timedelta
+
+        from scripts.commit_plots import cleanup_old_plots
 
         with tempfile.TemporaryDirectory() as temp_dir:
             plots_dir = Path(temp_dir) / "plots"

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
+import importlib
 import sys
+from pathlib import Path
 
 import matplotlib
 
@@ -16,17 +17,22 @@ for candidate in (ROOT, ROOT / "scripts"):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
-from plot_config import ConfidenceIntervalConfig, PlotStyle, create_default_config
-from plot_metrics_client import (
-    plot_client_metrics,
-    _render_client_accuracy,
-    _render_client_f1_overlay,
-    _render_client_fpr,
-    _render_client_loss,
-    _render_client_norms,
-    _render_client_tau,
-)
-from plot_metrics_utils import render_mu_scatter
+plot_config_mod = importlib.import_module("plot_config")
+ConfidenceIntervalConfig = plot_config_mod.ConfidenceIntervalConfig
+PlotStyle = plot_config_mod.PlotStyle
+create_default_config = plot_config_mod.create_default_config
+
+plot_metrics_client_mod = importlib.import_module("plot_metrics_client")
+_render_client_accuracy = plot_metrics_client_mod._render_client_accuracy
+_render_client_f1_overlay = plot_metrics_client_mod._render_client_f1_overlay
+_render_client_fpr = plot_metrics_client_mod._render_client_fpr
+_render_client_loss = plot_metrics_client_mod._render_client_loss
+_render_client_norms = plot_metrics_client_mod._render_client_norms
+_render_client_tau = plot_metrics_client_mod._render_client_tau
+plot_client_metrics = plot_metrics_client_mod.plot_client_metrics
+
+plot_metrics_utils_mod = importlib.import_module("plot_metrics_utils")
+render_mu_scatter = plot_metrics_utils_mod.render_mu_scatter
 
 
 def test_render_client_loss_draws_series():

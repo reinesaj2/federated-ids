@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-
 from plot_config import (
     ConfidenceIntervalConfig,
     LayoutConfig,
@@ -26,8 +23,8 @@ def _render_server_timing(
     ax,
     df: pd.DataFrame,
     style: PlotStyle,
-    available: Dict[str, str | None],
-    colors: List[str],
+    available: dict[str, str | None],
+    colors: list[str],
     ci_config: ConfidenceIntervalConfig,
 ) -> bool:
     column = available.get("timing")
@@ -112,8 +109,8 @@ def _render_server_robustness(
     ax,
     df: pd.DataFrame,
     style: PlotStyle,
-    available: Dict[str, str | None],
-    colors: List[str],
+    available: dict[str, str | None],
+    colors: list[str],
     ci_config: ConfidenceIntervalConfig,
 ) -> bool:
     column = available.get("robustness")
@@ -170,8 +167,8 @@ def _render_server_norms(
     ax,
     df: pd.DataFrame,
     style: PlotStyle,
-    available: Dict[str, str | None],
-    colors: List[str],
+    available: dict[str, str | None],
+    colors: list[str],
     ci_config: ConfidenceIntervalConfig,
 ) -> bool:
     column = available.get("norms")
@@ -204,8 +201,8 @@ def _render_server_dispersion(
     ax,
     df: pd.DataFrame,
     style: PlotStyle,
-    available: Dict[str, str | None],
-    colors: List[str],
+    available: dict[str, str | None],
+    colors: list[str],
     ci_config: ConfidenceIntervalConfig,
 ) -> bool:
     palette = colors or style.get_colors(4)
@@ -315,7 +312,7 @@ def plot_server_metrics(metrics_path: str, output_path: str, config: dict | None
 
     caption_cfg = config.get("caption", {})
     if caption_cfg.get("enabled"):
-        rows: List[Dict] = []
+        rows: list[dict] = []
 
         for label, column in (
             ("Aggregation Time (ms)", available.get("timing")),

@@ -4,7 +4,6 @@ import argparse
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -29,7 +28,7 @@ class RegressionRecord:
 
 @dataclass
 class ComparisonResult:
-    regressions: List[RegressionRecord]
+    regressions: list[RegressionRecord]
     total_compared: int
     baseline_missing: bool = False
 
@@ -44,12 +43,9 @@ def _safe_ratio(baseline: float, candidate: float) -> float:
     return candidate / baseline
 
 
-def _gather_convergence_rows(summary: Dict) -> Dict[str, Dict[str, Optional[float]]]:
-    results: Dict[str, Dict[str, Optional[float]]] = {}
-    convergence = (
-        summary.get("raw_analysis_results", {})
-        .get("convergence_analysis", {})
-    )
+def _gather_convergence_rows(summary: dict) -> dict[str, dict[str, float | None]]:
+    results: dict[str, dict[str, float | None]] = {}
+    convergence = summary.get("raw_analysis_results", {}).get("convergence_analysis", {})
     for key, values in convergence.items():
         results[key] = {
             "final_l2_distance": values.get("final_l2_distance"),
@@ -61,8 +57,8 @@ def _gather_convergence_rows(summary: Dict) -> Dict[str, Dict[str, Optional[floa
 
 
 def compare_summaries(
-    baseline_summary: Optional[Dict],
-    candidate_summary: Dict,
+    baseline_summary: dict | None,
+    candidate_summary: dict,
     thresholds: MetricThresholds,
 ) -> ComparisonResult:
     if baseline_summary is None:
@@ -71,7 +67,7 @@ def compare_summaries(
     baseline_rows = _gather_convergence_rows(baseline_summary)
     candidate_rows = _gather_convergence_rows(candidate_summary)
 
-    regressions: List[RegressionRecord] = []
+    regressions: list[RegressionRecord] = []
     total_compared = 0
 
     for key, candidate_metrics in candidate_rows.items():
@@ -159,19 +155,13 @@ def format_regression_report(result: ComparisonResult) -> str:
 
     for record in result.regressions:
         lines.append(
-            "- {metric} @ {config}: baseline={baseline:.6f}, candidate={candidate:.6f} ({detail})".format(
-                metric=record.metric,
-                config=record.config_key,
-                baseline=record.baseline_value,
-                candidate=record.candidate_value,
-                detail=record.detail,
-            )
+            f"- {record.metric} @ {record.config_key}: baseline={record.baseline_value:.6f}, candidate={record.candidate_value:.6f} ({record.detail})"
         )
 
     return "\n".join(lines)
 
 
-def _load_summary(path: Path) -> Dict:
+def _load_summary(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 

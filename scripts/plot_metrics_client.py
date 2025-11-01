@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 from plot_config import (
     ConfidenceIntervalConfig,
     LayoutConfig,
@@ -29,7 +27,7 @@ def _render_client_loss(
     style: PlotStyle,
     label: str,
     color: str,
-    available: Dict[str, str | None],
+    available: dict[str, str | None],
 ) -> bool:
     column = available.get("loss")
     if not column or column not in df.columns:
@@ -62,7 +60,7 @@ def _render_client_accuracy(
     style: PlotStyle,
     label: str,
     color: str,
-    available: Dict[str, str | None],
+    available: dict[str, str | None],
 ) -> bool:
     column = available.get("accuracy")
     if not column or column not in df.columns:
@@ -95,7 +93,7 @@ def _render_client_norms(
     style: PlotStyle,
     label: str,
     color: str,
-    available: Dict[str, str | None],
+    available: dict[str, str | None],
 ) -> bool:
     weight_column = available.get("norms")
     grad_column = available.get("grad_norms")
@@ -144,7 +142,7 @@ def _render_client_f1_overlay(
     style: PlotStyle,
     label: str,
     color: str,
-    available: Dict[str, str | None],
+    available: dict[str, str | None],
 ) -> bool:
     column = available.get("f1_comparison")
     if not column or column not in df.columns:
@@ -153,9 +151,7 @@ def _render_client_f1_overlay(
     argmax_series = first_present(df, [column])
     tau_series = first_present(df, ["f1_bin_tau"])
 
-    if (argmax_series is None or argmax_series.isna().all()) and (
-        tau_series is None or tau_series.isna().all()
-    ):
+    if (argmax_series is None or argmax_series.isna().all()) and (tau_series is None or tau_series.isna().all()):
         return False
 
     rounds = pd.to_numeric(df.get("round"), errors="coerce")
@@ -195,7 +191,7 @@ def _render_client_tau(
     style: PlotStyle,
     label: str,
     color: str,
-    available: Dict[str, str | None],
+    available: dict[str, str | None],
 ) -> bool:
     column = available.get("threshold")
     if not column or column not in df.columns:
@@ -228,7 +224,7 @@ def _render_client_fpr(
     style: PlotStyle,
     label: str,
     color: str,
-    available: Dict[str, str | None],
+    available: dict[str, str | None],
 ) -> bool:
     column = available.get("fpr")
     if not column or column not in df.columns:
@@ -256,7 +252,7 @@ def _render_client_fpr(
 
 
 def plot_client_metrics(
-    client_metrics_paths: List[str],
+    client_metrics_paths: list[str],
     output_path: str,
     config: dict | None = None,
 ) -> None:
@@ -291,8 +287,8 @@ def plot_client_metrics(
     }
 
     plotted_flags = {name: False for name in axis_map}
-    mu_records: List[Dict[str, float | str]] = []
-    client_summary: Dict[str, Dict] = {}
+    mu_records: list[dict[str, float | str]] = []
+    client_summary: dict[str, dict] = {}
 
     render_plan = [
         ("loss", _render_client_loss),
@@ -329,7 +325,7 @@ def plot_client_metrics(
             mu_series = pd.to_numeric(df["mu"], errors="coerce")
             metric_series = pd.to_numeric(df[available["f1_comparison"]], errors="coerce")
             valid = ~(mu_series.isna() | metric_series.isna())
-            for mu_value, metric_value in zip(mu_series[valid], metric_series[valid]):
+            for mu_value, metric_value in zip(mu_series[valid], metric_series[valid], strict=False):
                 mu_records.append(
                     {
                         "mu": float(mu_value),

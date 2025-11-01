@@ -15,8 +15,8 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 from torch.utils.data import DataLoader  # noqa: E402
 
+from client import DEFAULT_CLIENT_LR, DEFAULT_WEIGHT_DECAY, SimpleNet, create_adamw_optimizer  # noqa: E402
 from data_preprocessing import create_synthetic_classification_loaders  # noqa: E402
-from client import SimpleNet, DEFAULT_CLIENT_LR, DEFAULT_WEIGHT_DECAY, create_adamw_optimizer  # noqa: E402
 
 
 def measure_gradient_norms(
@@ -44,7 +44,7 @@ def measure_gradient_norms(
 
     norms_per_round = []
 
-    for round_num in range(num_rounds):
+    for _ in range(num_rounds):
         model.train()
         round_norms = []
 

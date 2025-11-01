@@ -6,11 +6,10 @@ Provides configurable styling, palettes, and layout options for thesis-ready plo
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Any
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-
 
 # Colorblind-safe palettes for various client counts
 PALETTES = {
@@ -34,7 +33,7 @@ class PlotStyle:
     label_size: int = 11
     legend_size: int = 9
     dpi: int = 150
-    figsize: Tuple[int, int] = (15, 10)
+    figsize: tuple[int, int] = (15, 10)
     alpha: float = 0.8
     linewidth: float = 2.0
     markersize: float = 8.0
@@ -42,16 +41,18 @@ class PlotStyle:
     def apply(self):
         """Apply style to matplotlib."""
         sns.set_style(self.theme)
-        plt.rcParams.update({
-            "font.family": self.font_family,
-            "font.size": self.font_size,
-            "axes.titlesize": self.title_size,
-            "axes.labelsize": self.label_size,
-            "legend.fontsize": self.legend_size,
-            "figure.dpi": self.dpi,
-        })
+        plt.rcParams.update(
+            {
+                "font.family": self.font_family,
+                "font.size": self.font_size,
+                "axes.titlesize": self.title_size,
+                "axes.labelsize": self.label_size,
+                "legend.fontsize": self.legend_size,
+                "figure.dpi": self.dpi,
+            }
+        )
 
-    def get_colors(self, n: int) -> List[str]:
+    def get_colors(self, n: int) -> list[str]:
         """Get n colors from selected palette, extending if needed."""
         base_colors = PALETTES.get(self.palette, PALETTES["colorblind"])
 
@@ -70,14 +71,14 @@ class PlotStyle:
 class LayoutConfig:
     """Layout configuration for subplot grids."""
 
-    rows: Optional[int] = None
-    cols: Optional[int] = None
+    rows: int | None = None
+    cols: int | None = None
     legend_position: str = "best"
     legend_outside: bool = False
     shared_legend: bool = False
     tight_layout: bool = True
 
-    def compute_grid(self, num_plots: int) -> Tuple[int, int]:
+    def compute_grid(self, num_plots: int) -> tuple[int, int]:
         """Compute optimal grid dimensions for num_plots."""
         if self.rows and self.cols:
             return self.rows, self.cols
@@ -102,28 +103,26 @@ class LayoutConfig:
         """Setup legend according to configuration."""
         if self.shared_legend:
             handles, labels = [], []
-            for ax in axes.flat if hasattr(axes, 'flat') else [axes]:
-                h, l = ax.get_legend_handles_labels()
-                if h:
-                    handles.extend(h)
-                    labels.extend(l)
+            for ax in axes.flat if hasattr(axes, "flat") else [axes]:
+                legend_handles, legend_labels = ax.get_legend_handles_labels()
+                if legend_handles:
+                    handles.extend(legend_handles)
+                    labels.extend(legend_labels)
 
             # Deduplicate while preserving order
-            unique = {}
-            for h, l in zip(handles, labels):
-                if l not in unique:
-                    unique[l] = h
+            unique: dict[str, Any] = {}
+            for handle, label in zip(handles, labels, strict=False):
+                if label not in unique:
+                    unique[label] = handle
 
             if unique:
                 if self.legend_outside:
-                    fig.legend(unique.values(), unique.keys(),
-                             loc='center left', bbox_to_anchor=(1, 0.5))
+                    fig.legend(unique.values(), unique.keys(), loc="center left", bbox_to_anchor=(1, 0.5))
                 else:
-                    fig.legend(unique.values(), unique.keys(),
-                             loc='upper right')
+                    fig.legend(unique.values(), unique.keys(), loc="upper right")
 
                 # Remove individual legends
-                for ax in axes.flat if hasattr(axes, 'flat') else [axes]:
+                for ax in axes.flat if hasattr(axes, "flat") else [axes]:
                     legend = ax.get_legend()
                     if legend:
                         legend.remove()
@@ -133,24 +132,28 @@ class LayoutConfig:
 class MetricDetector:
     """Auto-detect available metrics in dataframe."""
 
-    server_metric_map: Dict[str, List[str]] = field(default_factory=lambda: {
-        "timing": ["t_aggregate_ms", "aggregation_time_ms", "t_round_ms"],
-        "robustness": ["l2_to_benign_mean", "cos_to_benign_mean"],
-        "norms": ["update_norm_mean", "update_norm_std"],
-        "dispersion": ["pairwise_cosine_mean", "l2_dispersion_mean"],
-    })
+    server_metric_map: dict[str, list[str]] = field(
+        default_factory=lambda: {
+            "timing": ["t_aggregate_ms", "aggregation_time_ms", "t_round_ms"],
+            "robustness": ["l2_to_benign_mean", "cos_to_benign_mean"],
+            "norms": ["update_norm_mean", "update_norm_std"],
+            "dispersion": ["pairwise_cosine_mean", "l2_dispersion_mean"],
+        }
+    )
 
-    client_metric_map: Dict[str, List[str]] = field(default_factory=lambda: {
-        "loss": ["loss_after", "local_loss"],
-        "accuracy": ["acc_after", "local_accuracy"],
-        "norms": ["weight_norm_after", "weight_norm"],
-        "grad_norms": ["grad_norm_l2"],
-        "f1_comparison": ["macro_f1_argmax", "f1_bin_tau"],
-        "threshold": ["tau_bin", "threshold_tau"],
-        "fpr": ["benign_fpr_bin_tau", "fpr_after"],
-    })
+    client_metric_map: dict[str, list[str]] = field(
+        default_factory=lambda: {
+            "loss": ["loss_after", "local_loss"],
+            "accuracy": ["acc_after", "local_accuracy"],
+            "norms": ["weight_norm_after", "weight_norm"],
+            "grad_norms": ["grad_norm_l2"],
+            "f1_comparison": ["macro_f1_argmax", "f1_bin_tau"],
+            "threshold": ["tau_bin", "threshold_tau"],
+            "fpr": ["benign_fpr_bin_tau", "fpr_after"],
+        }
+    )
 
-    def detect_available(self, df, metric_type: str = "server") -> Dict[str, Optional[str]]:
+    def detect_available(self, df, metric_type: str = "server") -> dict[str, str | None]:
         """Detect which metrics are available in dataframe."""
         metric_map = self.server_metric_map if metric_type == "server" else self.client_metric_map
         available = {}
@@ -165,7 +168,7 @@ class MetricDetector:
 
         return available
 
-    def count_available_plots(self, available_metrics: Dict[str, Optional[str]]) -> int:
+    def count_available_plots(self, available_metrics: dict[str, str | None]) -> int:
         """Count how many plots can be generated from available metrics."""
         return sum(1 for v in available_metrics.values() if v is not None)
 
@@ -181,7 +184,6 @@ class SmoothingConfig:
     def apply(self, data):
         """Apply smoothing to data series."""
         import pandas as pd
-        import numpy as np
 
         if not self.enabled or len(data) < self.window_size:
             return data
@@ -203,7 +205,7 @@ class ConfidenceIntervalConfig:
     method: str = "t_distribution"
     alpha: float = 0.2
 
-    def compute(self, data_groups: List):
+    def compute(self, data_groups: list):
         """Compute confidence intervals from multiple runs."""
         import numpy as np
         from scipy import stats
@@ -231,7 +233,7 @@ class ConfidenceIntervalConfig:
         }
 
 
-def create_default_config(title: str = "Federated Learning Metrics") -> Dict:
+def create_default_config(title: str = "Federated Learning Metrics") -> dict:
     """Create default configuration dict."""
     return {
         "style": PlotStyle(),

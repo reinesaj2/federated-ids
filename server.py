@@ -2,23 +2,24 @@ import argparse
 import os
 import random
 import time
-from typing import List, Optional, Tuple
 
 import flwr as fl
 import numpy as np
 from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
+from flwr.common.typing import FitRes, Parameters, Scalar
+from flwr.server.client_proxy import ClientProxy
 
+from logging_utils import configure_logging, get_logger
 from robust_aggregation import (
     AggregationMethod,
-    aggregate_weights,
     aggregate_weighted_mean,
+    aggregate_weights,
 )
 from server_metrics import (
-    ServerMetricsLogger,
     AggregationTimer,
+    ServerMetricsLogger,
     calculate_robustness_metrics,
 )
-from logging_utils import configure_logging, get_logger
 
 
 def _set_global_seed(seed: int) -> None:
@@ -124,20 +125,25 @@ def main() -> None:
     class RobustStrategy(fl.server.strategy.FedAvg):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.round_start_time: Optional[float] = None
+            self.round_start_time: float | None = None
 
         def configure_fit(self, server_round: int, parameters, client_manager):
             # Track round start time
             self.round_start_time = time.perf_counter()
             return super().configure_fit(server_round, parameters, client_manager)
 
-        def aggregate_fit(self, rnd, results, failures):  # type: ignore[override]
+        def aggregate_fit(
+            self,
+            server_round: int,
+            results: list[tuple[ClientProxy, FitRes]],
+            failures: list[tuple[ClientProxy, FitRes] | BaseException],
+        ) -> tuple[Parameters | None, dict[str, Scalar]]:
             if len(results) == 0:
                 return None, {}
 
             # Convert client parameters to numpy lists per client
-            client_weights: List[List[np.ndarray]] = []
-            sample_counts: List[int] = []
+            client_weights: list[list[np.ndarray]] = []
+            sample_counts: list[int] = []
             for _, fit_res in results:
                 nds = parameters_to_ndarrays(fit_res.parameters)
                 client_weights.append(nds)
@@ -163,7 +169,7 @@ def main() -> None:
             robustness_metrics = calculate_robustness_metrics(client_weights, benign_mean, aggregated)
 
             # Compute pairwise dispersion metrics
-            def _flatten(update: List[np.ndarray]) -> np.ndarray:
+            def _flatten(update: list[np.ndarray]) -> np.ndarray:
                 return np.concatenate([u.reshape(-1) for u in update])
 
             pairwise_cos = []
@@ -188,7 +194,7 @@ def main() -> None:
 
             # Log metrics
             metrics_logger.log_round_metrics(
-                round_num=rnd,
+                round_num=server_round,
                 agg_method=agg_method,
                 n_clients=len(client_weights),
                 byzantine_f=f_arg,
@@ -206,12 +212,12 @@ def main() -> None:
             )
 
             parameters = ndarrays_to_parameters(aggregated)
-            metrics = {}
+            metrics: dict[str, Scalar] = {}
             return parameters, metrics
 
-        def _estimate_benign_mean(self, client_weights: List[List[np.ndarray]]) -> List[np.ndarray]:
+        def _estimate_benign_mean(self, client_weights: list[list[np.ndarray]]) -> list[np.ndarray]:
             """Estimate benign mean by using a simple average (FedAvg).
-            
+
             This provides a stable, independent reference point to compare
             robust aggregation methods against. For FedAvg itself, we use
             the same computation but avoid circular reference.
@@ -225,30 +231,25 @@ def main() -> None:
             num_clients = len(client_weights)
             if num_clients == 0:
                 return []
-            
+
             # Compute element-wise average across all clients
             num_layers = len(client_weights[0])
             benign_mean = []
-            
+
             for layer_idx in range(num_layers):
                 # Stack all client layers for this layer index
                 layer_stack = np.stack([client[layer_idx] for client in client_weights], axis=0)
                 # Compute mean across clients (axis=0)
                 layer_mean = np.mean(layer_stack, axis=0)
                 benign_mean.append(layer_mean)
-            
+
             return benign_mean
 
     def _on_fit_config(rnd: int):
         # Pass through seed and default hyperparameters; rounds can adjust epochs if desired
-        return {
-            "epoch": 1, 
-            "lr": 0.01, 
-            "seed": seed,
-            "fedprox_mu": args.fedprox_mu
-        }
+        return {"epoch": 1, "lr": 0.01, "seed": seed, "fedprox_mu": args.fedprox_mu}
 
-    def _eval_metrics_agg(results: List[Tuple[int, dict]]):
+    def _eval_metrics_agg(results: list[tuple[int, dict]]):
         # results: list of (num_examples, metrics)
         if not results:
             return {}

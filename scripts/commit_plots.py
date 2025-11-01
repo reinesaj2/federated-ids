@@ -7,24 +7,22 @@ Organizes plots by date and experiment type, with automatic cleanup.
 """
 
 import argparse
-import os
 import shutil
 import subprocess
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
 
 
-def run_git_command(args: List[str], cwd: Optional[str] = None) -> bool:
+def run_git_command(args: list[str], cwd: str | None = None) -> bool:
     """Run a git command safely."""
     try:
-        result = subprocess.run(
+        subprocess.run(
             ["git"] + args,
             cwd=cwd,
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         return True
     except subprocess.CalledProcessError as e:
@@ -53,8 +51,8 @@ def copy_plots_to_repository(
     source_dir: str,
     plots_dir: str,
     experiment_type: str,
-    date_str: Optional[str] = None
-) -> List[str]:
+    date_str: str | None = None
+) -> list[str]:
     """Copy plots from source directory to repository plots structure."""
     if date_str is None:
         date_str = datetime.now().strftime("%Y-%m-%d")
@@ -123,7 +121,7 @@ def cleanup_old_plots(plots_dir: str, retention_days: int = 30):
     return removed_dirs
 
 
-def commit_plots(plots_dir: str, experiment_type: str, copied_files: List[str]) -> bool:
+def commit_plots(plots_dir: str, experiment_type: str, copied_files: list[str]) -> bool:
     """Commit the new plots to git."""
     if not copied_files:
         print("No plots to commit")

@@ -1,13 +1,15 @@
 """Tests for multi-class IDS model support."""
 
 import json
+
 import numpy as np
 import pandas as pd
 import torch
+
 from client import SimpleNet
 from data_preprocessing import (
-    prepare_partitions_from_dataframe,
     create_synthetic_classification_loaders,
+    prepare_partitions_from_dataframe,
 )
 
 
@@ -101,9 +103,7 @@ class TestPerClassMetrics:
         sample_recalls = [0.91, 0.87, 0.94, 0.82, 0.89, 0.86, 0.90, 0.88]
 
         f1_json = json.dumps({str(i): f for i, f in enumerate(sample_f1s)})
-        precision_json = json.dumps(
-            {str(i): p for i, p in enumerate(sample_precisions)}
-        )
+        precision_json = json.dumps({str(i): p for i, p in enumerate(sample_precisions)})
         recall_json = json.dumps({str(i): r for i, r in enumerate(sample_recalls)})
 
         f1_parsed = json.loads(f1_json)

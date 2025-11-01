@@ -5,9 +5,9 @@ Following TDD approach: write tests first, then implement.
 """
 
 from privacy_accounting import (
+    DPAccountant,
     compute_epsilon,
     compute_noise_multiplier_for_target_epsilon,
-    DPAccountant,
 )
 
 
@@ -16,27 +16,19 @@ class TestComputeEpsilon:
 
     def test_zero_noise_gives_infinite_epsilon(self):
         """Zero noise provides no privacy (infinite epsilon)."""
-        epsilon = compute_epsilon(
-            noise_multiplier=0.0, delta=1e-5, num_steps=1, sample_rate=1.0
-        )
+        epsilon = compute_epsilon(noise_multiplier=0.0, delta=1e-5, num_steps=1, sample_rate=1.0)
         assert epsilon == float("inf")
 
     def test_high_noise_gives_low_epsilon(self):
         """High noise should give strong privacy (low epsilon)."""
-        epsilon = compute_epsilon(
-            noise_multiplier=10.0, delta=1e-5, num_steps=1, sample_rate=1.0
-        )
+        epsilon = compute_epsilon(noise_multiplier=10.0, delta=1e-5, num_steps=1, sample_rate=1.0)
         assert epsilon < 1.0
         assert epsilon > 0.0
 
     def test_epsilon_increases_with_more_steps(self):
         """Privacy budget degrades with more training rounds."""
-        eps_1_step = compute_epsilon(
-            noise_multiplier=1.0, delta=1e-5, num_steps=1, sample_rate=1.0
-        )
-        eps_10_steps = compute_epsilon(
-            noise_multiplier=1.0, delta=1e-5, num_steps=10, sample_rate=1.0
-        )
+        eps_1_step = compute_epsilon(noise_multiplier=1.0, delta=1e-5, num_steps=1, sample_rate=1.0)
+        eps_10_steps = compute_epsilon(noise_multiplier=1.0, delta=1e-5, num_steps=10, sample_rate=1.0)
         assert eps_10_steps > eps_1_step
 
     def test_known_value_validation(self):
@@ -45,9 +37,7 @@ class TestComputeEpsilon:
         From Abadi et al. 2016, sigma=1.0, delta=1e-5, T=1 step
         should give epsilon approximately 1.0-2.0 (order of magnitude check).
         """
-        epsilon = compute_epsilon(
-            noise_multiplier=1.0, delta=1e-5, num_steps=1, sample_rate=1.0
-        )
+        epsilon = compute_epsilon(noise_multiplier=1.0, delta=1e-5, num_steps=1, sample_rate=1.0)
         # Sanity check: epsilon should be in reasonable range
         assert 0.5 < epsilon < 5.0
 
@@ -57,26 +47,18 @@ class TestComputeNoiseMuiltiplier:
 
     def test_target_epsilon_1_0(self):
         """Compute sigma for target epsilon=1.0."""
-        sigma = compute_noise_multiplier_for_target_epsilon(
-            target_epsilon=1.0, delta=1e-5, num_steps=10
-        )
+        sigma = compute_noise_multiplier_for_target_epsilon(target_epsilon=1.0, delta=1e-5, num_steps=10)
         assert sigma > 0.0
         # Verify: computing epsilon with this sigma should give ~1.0
-        eps = compute_epsilon(
-            noise_multiplier=sigma, delta=1e-5, num_steps=10, sample_rate=1.0
-        )
+        eps = compute_epsilon(noise_multiplier=sigma, delta=1e-5, num_steps=10, sample_rate=1.0)
         assert abs(eps - 1.0) < 0.5  # Allow some tolerance
 
     def test_target_epsilon_5_0(self):
         """Compute sigma for target epsilon=5.0."""
-        sigma = compute_noise_multiplier_for_target_epsilon(
-            target_epsilon=5.0, delta=1e-5, num_steps=20
-        )
+        sigma = compute_noise_multiplier_for_target_epsilon(target_epsilon=5.0, delta=1e-5, num_steps=20)
         assert sigma > 0.0
         # Verify: computing epsilon with this sigma should give ~5.0
-        eps = compute_epsilon(
-            noise_multiplier=sigma, delta=1e-5, num_steps=20, sample_rate=1.0
-        )
+        eps = compute_epsilon(noise_multiplier=sigma, delta=1e-5, num_steps=20, sample_rate=1.0)
         assert abs(eps - 5.0) < 1.0
 
 

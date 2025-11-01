@@ -8,9 +8,7 @@ import pandas as pd
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Create a sampled UNSW-NB15 CSV for fast demos"
-    )
+    parser = argparse.ArgumentParser(description="Create a sampled UNSW-NB15 CSV for fast demos")
     parser.add_argument(
         "--input",
         type=str,
@@ -23,9 +21,7 @@ def main() -> None:
         default="",
         help="Output CSV path; default appends .sample.csv next to input",
     )
-    parser.add_argument(
-        "--frac", type=float, default=0.10, help="Sample fraction in (0,1]"
-    )
+    parser.add_argument("--frac", type=float, default=0.10, help="Sample fraction in (0,1]")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     args = parser.parse_args()
 

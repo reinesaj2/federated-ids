@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from enum import Enum
-from typing import List, Sequence, Tuple, Optional
 
 import numpy as np
 
@@ -16,22 +16,22 @@ class AggregationMethod(Enum):
     BULYAN = "bulyan"
 
     @staticmethod
-    def from_string(value: str) -> "AggregationMethod":
+    def from_string(value: str) -> AggregationMethod:
         try:
             return AggregationMethod(value.lower())
         except Exception:
             return AggregationMethod.FED_AVG
 
 
-def _stack_layers(weights_per_client: List[List[np.ndarray]], layer_idx: int) -> np.ndarray:
+def _stack_layers(weights_per_client: list[list[np.ndarray]], layer_idx: int) -> np.ndarray:
     return np.stack([client[layer_idx] for client in weights_per_client], axis=0)
 
 
 def _flatten_client_update(
     client_layers: Sequence[np.ndarray],
-) -> Tuple[np.ndarray, List[Tuple[Tuple[int, ...], int]]]:
-    shapes_and_sizes: List[Tuple[Tuple[int, ...], int]] = []
-    flat_parts = []
+) -> tuple[np.ndarray, list[tuple[tuple[int, ...], int]]]:
+    shapes_and_sizes: list[tuple[tuple[int, ...], int]] = []
+    flat_parts: list[np.ndarray] = []
     for arr in client_layers:
         shapes_and_sizes.append((arr.shape, arr.size))
         flat_parts.append(arr.reshape(-1))
@@ -76,7 +76,7 @@ def _guess_f_byzantine(n: int) -> int:
     return max(0, (n - 3) // 4)
 
 
-def _krum_candidate_indices(vectors: np.ndarray, f: int, multi: bool) -> List[int]:
+def _krum_candidate_indices(vectors: np.ndarray, f: int, multi: bool) -> list[int]:
     n = vectors.shape[0]
 
     # Handle edge case: single client
@@ -86,7 +86,7 @@ def _krum_candidate_indices(vectors: np.ndarray, f: int, multi: bool) -> List[in
     dists = _pairwise_sq_dists(vectors)
     # For each client, sum the distances to its closest n - f - 2 others
     m = max(1, min(n - f - 2, n - 1))  # Ensure m doesn't exceed available neighbors
-    scores = []
+    scores: list[tuple[float, int]] = []
     for i in range(n):
         # Handle case where we have fewer neighbors than needed
         available_neighbors = min(m, n - 1)  # Exclude self
@@ -115,18 +115,18 @@ def _krum_candidate_indices(vectors: np.ndarray, f: int, multi: bool) -> List[in
     return selected
 
 
-def _average_selected(weights_per_client: List[List[np.ndarray]], selected: Sequence[int]) -> List[np.ndarray]:
+def _average_selected(weights_per_client: list[list[np.ndarray]], selected: Sequence[int]) -> list[np.ndarray]:
     num_layers = len(weights_per_client[0])
-    aggregated: List[np.ndarray] = []
+    aggregated: list[np.ndarray] = []
     for layer_idx in range(num_layers):
         stacked = np.stack([weights_per_client[i][layer_idx] for i in selected], axis=0)
         aggregated.append(np.mean(stacked, axis=0))
     return aggregated
 
 
-def _median_aggregate(weights_per_client: List[List[np.ndarray]]) -> List[np.ndarray]:
+def _median_aggregate(weights_per_client: list[list[np.ndarray]]) -> list[np.ndarray]:
     num_layers = len(weights_per_client[0])
-    aggregated: List[np.ndarray] = []
+    aggregated: list[np.ndarray] = []
     for layer_idx in range(num_layers):
         stacked = _stack_layers(weights_per_client, layer_idx)
         aggregated.append(np.median(stacked, axis=0))
@@ -182,7 +182,7 @@ def _coordinate_wise_trimmed_mean(stacked: np.ndarray, beta: int) -> np.ndarray:
     return np.mean(trimmed, axis=0)
 
 
-def _bulyan_aggregate(weights_per_client: List[List[np.ndarray]], f: int) -> List[np.ndarray]:
+def _bulyan_aggregate(weights_per_client: list[list[np.ndarray]], f: int) -> list[np.ndarray]:
     """
     True Bulyan aggregation per El Mhamdi et al. 2018.
 
@@ -221,7 +221,7 @@ def _bulyan_aggregate(weights_per_client: List[List[np.ndarray]], f: int) -> Lis
         raise ValueError(f"Bulyan requires n >= 4f + 3 for Byzantine resilience. " f"Got n={n}, f={f}, but need n >= {4 * f + 3}")
 
     # Flatten client updates for distance-based selection
-    flats = []
+    flats: list[np.ndarray] = []
     for client_layers in weights_per_client:
         flat, _ = _flatten_client_update(client_layers)
         flats.append(flat)
@@ -235,7 +235,7 @@ def _bulyan_aggregate(weights_per_client: List[List[np.ndarray]], f: int) -> Lis
     # Step 2: Coordinate-wise trimmed mean with β = 2f trimming
     beta = 2 * f
     num_layers = len(weights_per_client[0])
-    aggregated: List[np.ndarray] = []
+    aggregated: list[np.ndarray] = []
 
     for layer_idx in range(num_layers):
         stacked = np.stack([weights_per_client[i][layer_idx] for i in selected], axis=0)
@@ -245,10 +245,10 @@ def _bulyan_aggregate(weights_per_client: List[List[np.ndarray]], f: int) -> Lis
 
 
 def aggregate_weights(
-    weights_per_client: List[List[np.ndarray]],
+    weights_per_client: list[list[np.ndarray]],
     method: AggregationMethod,
     byzantine_f: int | None = None,
-) -> List[np.ndarray]:
+) -> list[np.ndarray]:
     """
     Aggregate model weights across clients. Each client contributes a list of ndarrays (one per layer).
     - fedavg: simple mean
@@ -267,7 +267,7 @@ def aggregate_weights(
 
     if method in (AggregationMethod.KRUM, AggregationMethod.BULYAN):
         # Prepare flattened vectors for selection
-        flats = []
+        flats: list[np.ndarray] = []
         for client_layers in weights_per_client:
             flat, _ = _flatten_client_update(client_layers)
             flats.append(flat)
@@ -282,14 +282,14 @@ def aggregate_weights(
 
     # Default: simple mean (FedAvg-like without sample weighting)
     num_layers = len(weights_per_client[0])
-    aggregated_mean: List[np.ndarray] = []
+    aggregated_mean: list[np.ndarray] = []
     for layer_idx in range(num_layers):
         stacked = _stack_layers(weights_per_client, layer_idx)
         aggregated_mean.append(np.mean(stacked, axis=0))
     return aggregated_mean
 
 
-def aggregate_weighted_mean(weights_per_client: List[List[np.ndarray]], sample_counts: Sequence[float]) -> List[np.ndarray]:
+def aggregate_weighted_mean(weights_per_client: list[list[np.ndarray]], sample_counts: Sequence[float]) -> list[np.ndarray]:
     """
     Compute sample-size weighted average of client weights per layer.
     sample_counts can be ints or floats; must be non-negative and length match clients.
@@ -302,9 +302,9 @@ def aggregate_weighted_mean(weights_per_client: List[List[np.ndarray]], sample_c
     if totals <= 0:
         raise ValueError("Total sample count must be positive")
     num_layers = len(weights_per_client[0])
-    aggregated: List[np.ndarray] = []
+    aggregated: list[np.ndarray] = []
     for layer_idx in range(num_layers):
-        acc: Optional[np.ndarray] = None
+        acc: np.ndarray | None = None
         for client_idx, client_layers in enumerate(weights_per_client):
             weight = float(sample_counts[client_idx]) / totals
             contrib = client_layers[layer_idx] * weight

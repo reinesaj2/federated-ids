@@ -6,14 +6,12 @@ Tests workflow configuration, job dependencies, and end-to-end integration
 between GitHub Actions and plot repository storage.
 """
 
-import os
-import subprocess
 import tempfile
-import yaml
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+import yaml
 
 
 class TestWorkflowConfiguration:
@@ -24,7 +22,7 @@ class TestWorkflowConfiguration:
         workflow_path = Path(".github/workflows/fedprox-nightly.yml")
         assert workflow_path.exists(), "Workflow file must exist"
 
-        with open(workflow_path, 'r') as f:
+        with open(workflow_path) as f:
             workflow_content = yaml.safe_load(f)
 
         # Verify basic workflow structure
@@ -38,7 +36,7 @@ class TestWorkflowConfiguration:
         """Test that workflow has contents:write permission for plot commits."""
         workflow_path = Path(".github/workflows/fedprox-nightly.yml")
 
-        with open(workflow_path, 'r') as f:
+        with open(workflow_path) as f:
             workflow_content = yaml.safe_load(f)
 
         assert "permissions" in workflow_content
@@ -50,7 +48,7 @@ class TestWorkflowConfiguration:
         """Test that commit_plots job depends on fedprox_summary."""
         workflow_path = Path(".github/workflows/fedprox-nightly.yml")
 
-        with open(workflow_path, 'r') as f:
+        with open(workflow_path) as f:
             workflow_content = yaml.safe_load(f)
 
         jobs = workflow_content["jobs"]
@@ -65,7 +63,7 @@ class TestWorkflowConfiguration:
         """Test that commit_plots job calls the correct Python script."""
         workflow_path = Path(".github/workflows/fedprox-nightly.yml")
 
-        with open(workflow_path, 'r') as f:
+        with open(workflow_path) as f:
             workflow_content = yaml.safe_load(f)
 
         commit_plots_job = workflow_content["jobs"]["commit_plots"]
@@ -90,7 +88,7 @@ class TestWorkflowConfiguration:
         """Nightly artifacts should be retained for 90 days to support trend analysis."""
         workflow_path = Path(".github/workflows/fedprox-nightly.yml")
 
-        with open(workflow_path, "r") as f:
+        with open(workflow_path) as f:
             workflow_content = yaml.safe_load(f)
 
         comparison_upload = next(
@@ -107,7 +105,7 @@ class TestWorkflowConfiguration:
         """Manual artifact download should only trigger on workflow_dispatch to avoid failures."""
         workflow_path = Path(".github/workflows/fedprox-nightly.yml")
 
-        with open(workflow_path, "r") as f:
+        with open(workflow_path) as f:
             workflow_content = yaml.safe_load(f)
 
         manual_download_step = next(
@@ -132,11 +130,7 @@ class TestWorkflowScriptIntegration:
             fedprox_summary_dir.mkdir()
 
             # Create plots matching workflow output
-            workflow_plots = [
-                "fedprox_comparison_summary.json",
-                "fedprox_performance_plots.png",
-                "fedprox_thesis_tables.tex"
-            ]
+            workflow_plots = ["fedprox_comparison_summary.json", "fedprox_performance_plots.png", "fedprox_thesis_tables.tex"]
 
             for plot_file in workflow_plots:
                 (fedprox_summary_dir / plot_file).write_bytes(b"workflow_data")
@@ -144,11 +138,7 @@ class TestWorkflowScriptIntegration:
             plots_dir = temp_path / "plots"
 
             # Execute script as workflow would
-            copied_files = copy_plots_to_repository(
-                str(fedprox_summary_dir),
-                str(plots_dir),
-                "fedprox-nightly"
-            )
+            copied_files = copy_plots_to_repository(str(fedprox_summary_dir), str(plots_dir), "fedprox-nightly")
 
             # Verify PNG files copied (JSON/TEX should be skipped)
             assert len(copied_files) == 1
@@ -165,11 +155,7 @@ class TestWorkflowScriptIntegration:
             manual_dir = temp_path / "manual-comparison"
             runs_dir = manual_dir / "runs"
 
-            experiment_dirs = [
-                "manual_fedprox_alpha0.05_mu0.0",
-                "manual_fedprox_alpha0.05_mu0.1",
-                "manual_fedprox_alpha0.1_mu0.0"
-            ]
+            experiment_dirs = ["manual_fedprox_alpha0.05_mu0.0", "manual_fedprox_alpha0.05_mu0.1", "manual_fedprox_alpha0.1_mu0.0"]
 
             for exp_dir in experiment_dirs:
                 exp_path = runs_dir / exp_dir
@@ -179,11 +165,7 @@ class TestWorkflowScriptIntegration:
 
             plots_dir = temp_path / "plots"
 
-            copied_files = copy_plots_to_repository(
-                str(manual_dir),
-                str(plots_dir),
-                "fedprox-manual"
-            )
+            copied_files = copy_plots_to_repository(str(manual_dir), str(plots_dir), "fedprox-manual")
 
             # Should copy all PNG files from all experiment directories
             assert len(copied_files) == 6  # 2 plots × 3 experiments
@@ -214,9 +196,7 @@ class TestFailureScenarios:
             plots_dir = str(Path(temp_dir) / "plots")
 
             # Should handle gracefully and return empty list
-            copied_files = copy_plots_to_repository(
-                non_existent_source, plots_dir, "test-experiment"
-            )
+            copied_files = copy_plots_to_repository(non_existent_source, plots_dir, "test-experiment")
 
             assert copied_files == []
 
@@ -237,9 +217,7 @@ class TestFailureScenarios:
 
             try:
                 # Should handle permission error gracefully
-                copied_files = copy_plots_to_repository(
-                    str(source_dir), str(plots_dir), "permission-test"
-                )
+                copy_plots_to_repository(str(source_dir), str(plots_dir), "permission-test")
                 # May succeed or fail depending on system, but shouldn't crash
             except PermissionError:
                 # Expected on some systems
@@ -280,7 +258,7 @@ class TestFailureScenarios:
 
             try:
                 # Should handle permission error gracefully
-                removed_dirs = cleanup_old_plots(str(plots_dir), retention_days=30)
+                cleanup_old_plots(str(plots_dir), retention_days=30)
                 # May or may not remove depending on system
             except PermissionError:
                 # Expected behavior - should not crash
@@ -329,9 +307,7 @@ class TestEdgeCases:
 
             plots_dir = temp_path / "plots"
 
-            copied_files = copy_plots_to_repository(
-                str(source_dir), str(plots_dir), "long-name-test"
-            )
+            copied_files = copy_plots_to_repository(str(source_dir), str(plots_dir), "long-name-test")
 
             assert len(copied_files) == 1
             assert long_name in copied_files[0]
@@ -350,7 +326,7 @@ class TestEdgeCases:
         # This would be tested in actual CI, but we can verify the continue-on-error
         workflow_path = Path(".github/workflows/fedprox-nightly.yml")
 
-        with open(workflow_path, 'r') as f:
+        with open(workflow_path) as f:
             workflow_content = yaml.safe_load(f)
 
         commit_plots_job = workflow_content["jobs"]["commit_plots"]

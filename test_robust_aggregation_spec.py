@@ -11,7 +11,7 @@ from robust_aggregation import (
 def _make_client_updates(n_clients: int = 5, n_layers: int = 3, shape=(4,)):
     rng = np.random.default_rng(42)
     clients = []
-    for i in range(n_clients):
+    for _client_idx in range(n_clients):
         layers = []
         for _ in range(n_layers):
             layers.append(rng.normal(0, 1, size=shape))
@@ -38,7 +38,7 @@ def test_krum_selects_single_reasonable_candidate():
     agg = aggregate_weights(clients, AggregationMethod.KRUM)
     # Krum returns a single candidate's update; verify shapes match and values are finite
     assert len(agg) == len(clients[0])
-    assert all(a.shape == c.shape for a, c in zip(agg, clients[0]))
+    assert all(a.shape == c.shape for a, c in zip(agg, clients[0], strict=False))
     vals = np.concatenate([a.reshape(-1) for a in agg])
     assert np.isfinite(vals).all()
 

@@ -25,7 +25,7 @@ def test_server_metrics_csv_creation():
         assert metrics_path.exists()
 
         # Check headers
-        with open(metrics_path, 'r') as f:
+        with open(metrics_path) as f:
             reader = csv.reader(f)
             headers = next(reader)
             expected = [
@@ -73,7 +73,7 @@ def test_server_metrics_logging_complete_record():
         )
 
         # Read and verify
-        with open(metrics_path, 'r') as f:
+        with open(metrics_path) as f:
             reader = csv.reader(f)
             next(reader)  # Skip headers
             row = next(reader)
@@ -124,7 +124,7 @@ def test_server_metrics_multiple_rounds():
             )
 
         # Verify all rounds logged
-        with open(metrics_path, 'r') as f:
+        with open(metrics_path) as f:
             reader = csv.reader(f)
             next(reader)  # Skip headers
             rows = list(reader)
@@ -136,7 +136,7 @@ def test_server_metrics_multiple_rounds():
             l2_values = [float(row[4]) for row in rows]
             expected_l2 = [0.1, 0.2, 0.3]
             assert len(l2_values) == len(expected_l2)
-            for actual, expected in zip(l2_values, expected_l2):
+            for actual, expected in zip(l2_values, expected_l2, strict=False):
                 assert abs(actual - expected) < 1e-10
 
 
@@ -165,7 +165,7 @@ def test_server_metrics_with_none_values():
         )
 
         # Read and verify None values are handled
-        with open(metrics_path, 'r') as f:
+        with open(metrics_path) as f:
             reader = csv.reader(f)
             next(reader)  # Skip headers
             row = next(reader)

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
-
 from plot_config import ConfidenceIntervalConfig, PlotStyle
 
 
@@ -16,9 +15,7 @@ def first_present(df: pd.DataFrame, columns: Sequence[str]) -> pd.Series | None:
     return None
 
 
-def compute_confidence_interval(
-    data: np.ndarray | Sequence[float], confidence: float = 0.95
-) -> Tuple[float, float, float]:
+def compute_confidence_interval(data: np.ndarray | Sequence[float], confidence: float = 0.95) -> tuple[float, float, float]:
     """
     Compute mean and confidence interval using t-distribution.
 
@@ -111,7 +108,7 @@ def format_numeric(value) -> str:
 
 def write_caption_table(
     path: Path | str,
-    rows: Sequence[Dict],
+    rows: Sequence[dict],
     fmt: str = "markdown",
     *,
     title: str | None = None,
@@ -151,7 +148,7 @@ def summarize_final_metric(
     df: pd.DataFrame,
     column: str | None,
     ci_config: ConfidenceIntervalConfig | None = None,
-) -> Dict | None:
+) -> dict | None:
     if not column or column not in df.columns:
         return None
 
@@ -159,7 +156,7 @@ def summarize_final_metric(
     if series.empty:
         return None
 
-    summary: Dict[str, float] = {"value": float(series.iloc[-1])}
+    summary: dict[str, float] = {"value": float(series.iloc[-1])}
 
     if ci_config and ci_config.enabled and "seed" in df.columns:
         last_round = df["round"].max()
@@ -183,7 +180,7 @@ def summarize_final_metric(
 
 def render_mu_scatter(
     ax,
-    records: Iterable[Dict[str, float | str]],
+    records: Iterable[dict[str, float | str]],
     style: PlotStyle,
     ci_config: ConfidenceIntervalConfig | None = None,
 ) -> bool:
@@ -204,11 +201,11 @@ def render_mu_scatter(
     clients = [clients[i] for i, flag in enumerate(valid) if flag]
 
     unique_clients = sorted(set(clients))
-    client_colors = {client: color for client, color in zip(unique_clients, style.get_colors(len(unique_clients)))}
+    client_colors = {client: color for client, color in zip(unique_clients, style.get_colors(len(unique_clients)), strict=False)}
 
     rng = np.random.default_rng(42)
     jitter_scale = max(0.01, 0.02 * (mu_values.max() - mu_values.min() or 1.0))
-    for mu, metric, client in zip(mu_values, metric_values, clients):
+    for mu, metric, client in zip(mu_values, metric_values, clients, strict=False):
         jitter = rng.normal(0, jitter_scale)
         ax.scatter(
             mu + jitter,
@@ -220,14 +217,14 @@ def render_mu_scatter(
         )
 
     grouped = {}
-    for mu, metric in zip(mu_values, metric_values):
+    for mu, metric in zip(mu_values, metric_values, strict=False):
         grouped.setdefault(mu, []).append(metric)
 
     sorted_mu = sorted(grouped.keys())
     means = [float(np.mean(grouped[mu])) for mu in sorted_mu]
 
-    lower_bounds: List[Optional[float]] = []
-    upper_bounds: List[Optional[float]] = []
+    lower_bounds: list[float | None] = []
+    upper_bounds: list[float | None] = []
     if ci_config and ci_config.enabled:
         from scipy import stats
 
@@ -257,7 +254,7 @@ def render_mu_scatter(
         label="Global Mean",
     )
 
-    for mu, low, high in zip(sorted_mu, lower_bounds, upper_bounds):
+    for mu, low, high in zip(sorted_mu, lower_bounds, upper_bounds, strict=False):
         if low is None or high is None:
             continue
         ax.fill_between(

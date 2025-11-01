@@ -1,20 +1,25 @@
 from __future__ import annotations
 
 import time
-import numpy as np
+
 import hypothesis as hy
 import hypothesis.strategies as st
+import numpy as np
 
 from robust_aggregation import (
     AggregationMethod,
     aggregate_weights,
 )
 
+N_CLIENTS_STRATEGY = st.integers(min_value=5, max_value=20)
+N_LAYERS_STRATEGY = st.integers(min_value=1, max_value=3)
+LAYER_DIM_STRATEGY = st.integers(min_value=4, max_value=32)
+
 
 def _make_client_updates(n_clients: int = 5, n_layers: int = 3, shape=(4,)):
     rng = np.random.default_rng(42)
     clients = []
-    for i in range(n_clients):
+    for _client_idx in range(n_clients):
         layers = []
         for _ in range(n_layers):
             layers.append(rng.normal(0, 1, size=shape))
@@ -25,8 +30,8 @@ def _make_client_updates(n_clients: int = 5, n_layers: int = 3, shape=(4,)):
 def test_median_robust_to_outliers_coordinatewise():
     clients = _make_client_updates(n_clients=7)
     # Inject a strong outlier on client 0
-    for l in range(len(clients[0])):
-        clients[0][l] = clients[0][l] + 1000.0
+    for layer_idx in range(len(clients[0])):
+        clients[0][layer_idx] = clients[0][layer_idx] + 1000.0
     agg = aggregate_weights(clients, AggregationMethod.MEDIAN)
     # Median should not be ~1000 shifted; check it's finite and near typical scale
     vals = np.concatenate([a.reshape(-1) for a in agg])
@@ -36,12 +41,12 @@ def test_median_robust_to_outliers_coordinatewise():
 def test_krum_selects_single_reasonable_candidate():
     clients = _make_client_updates(n_clients=6)
     # Make one malicious far-away
-    for l in range(len(clients[1])):
-        clients[1][l] = clients[1][l] + 50.0
+    for layer_idx in range(len(clients[1])):
+        clients[1][layer_idx] = clients[1][layer_idx] + 50.0
     agg = aggregate_weights(clients, AggregationMethod.KRUM)
     # Krum returns a single candidate's update; verify shapes match and values are finite
     assert len(agg) == len(clients[0])
-    assert all(a.shape == c.shape for a, c in zip(agg, clients[0]))
+    assert all(a.shape == c.shape for a, c in zip(agg, clients[0], strict=False))
     vals = np.concatenate([a.reshape(-1) for a in agg])
     assert np.isfinite(vals).all()
 
@@ -49,10 +54,10 @@ def test_krum_selects_single_reasonable_candidate():
 def test_bulyan_behaves_reasonably_with_outliers():
     clients = _make_client_updates(n_clients=8)
     # Two outliers
-    for l in range(len(clients[2])):
-        clients[2][l] = clients[2][l] - 50.0
-    for l in range(len(clients[5])):
-        clients[5][l] = clients[5][l] + 50.0
+    for layer_idx in range(len(clients[2])):
+        clients[2][layer_idx] = clients[2][layer_idx] - 50.0
+    for layer_idx in range(len(clients[5])):
+        clients[5][layer_idx] = clients[5][layer_idx] + 50.0
     agg = aggregate_weights(clients, AggregationMethod.BULYAN)
     vals = np.concatenate([a.reshape(-1) for a in agg])
     assert np.isfinite(vals).all()
@@ -62,8 +67,8 @@ def test_bulyan_behaves_reasonably_with_outliers():
 
 def test_krum_and_bulyan_accept_explicit_byzantine_f():
     clients = _make_client_updates(n_clients=7)
-    for l in range(len(clients[0])):
-        clients[0][l] = clients[0][l] + 80.0
+    for layer_idx in range(len(clients[0])):
+        clients[0][layer_idx] = clients[0][layer_idx] + 80.0
     agg1 = aggregate_weights(clients, AggregationMethod.KRUM, byzantine_f=1)
     agg2 = aggregate_weights(clients, AggregationMethod.BULYAN, byzantine_f=1)
     v1 = np.concatenate([a.reshape(-1) for a in agg1])
@@ -73,9 +78,12 @@ def test_krum_and_bulyan_accept_explicit_byzantine_f():
 
 # Property-based tests with Hypothesis
 @st.composite
-def client_updates_with_benign_mean(draw, n_clients=st.integers(min_value=5, max_value=20),
-                                   n_layers=st.integers(min_value=1, max_value=3),
-                                   layer_dim=st.integers(min_value=4, max_value=32)):
+def client_updates_with_benign_mean(
+    draw,
+    n_clients: st.SearchStrategy[int] = N_CLIENTS_STRATEGY,
+    n_layers: st.SearchStrategy[int] = N_LAYERS_STRATEGY,
+    layer_dim: st.SearchStrategy[int] = LAYER_DIM_STRATEGY,
+):
     n = draw(n_clients)
     layers = draw(n_layers)
     dim = draw(layer_dim)
@@ -83,8 +91,7 @@ def client_updates_with_benign_mean(draw, n_clients=st.integers(min_value=5, max
     # Generate benign mean for each layer
     benign_means = []
     for _ in range(layers):
-        mean_vals = draw(st.lists(st.floats(-1, 1, allow_nan=False, allow_infinity=False),
-                                min_size=dim, max_size=dim))
+        mean_vals = draw(st.lists(st.floats(-1, 1, allow_nan=False, allow_infinity=False), min_size=dim, max_size=dim))
         benign_means.append(np.array(mean_vals, dtype=np.float32))
 
     # Generate benign clients (n-1) with small noise around means
@@ -110,7 +117,7 @@ def client_updates_with_benign_mean(draw, n_clients=st.integers(min_value=5, max
 def _l2_distance(a, b):
     """Compute L2 distance between two lists of arrays."""
     total_dist = 0.0
-    for arr_a, arr_b in zip(a, b):
+    for arr_a, arr_b in zip(a, b, strict=False):
         total_dist += float(np.linalg.norm(arr_a - arr_b) ** 2)
     return np.sqrt(total_dist)
 
@@ -123,14 +130,12 @@ def test_benign_invariance_property(data):
     # Create scenario where all clients have identical updates
     identical_clients = [benign_means for _ in range(len(clients))]
 
-    for method in [AggregationMethod.FED_AVG, AggregationMethod.MEDIAN,
-                   AggregationMethod.KRUM, AggregationMethod.BULYAN]:
+    for method in [AggregationMethod.FED_AVG, AggregationMethod.MEDIAN, AggregationMethod.KRUM, AggregationMethod.BULYAN]:
         agg = aggregate_weights(identical_clients, method)
 
         # Aggregation should equal the identical update
-        for expected, actual in zip(benign_means, agg):
-            assert np.allclose(expected, actual, rtol=1e-5, atol=1e-6), \
-                f"Benign invariance failed for {method.value}"
+        for expected, actual in zip(benign_means, agg, strict=False):
+            assert np.allclose(expected, actual, rtol=1e-5, atol=1e-6), f"Benign invariance failed for {method.value}"
 
 
 @hy.given(client_updates_with_benign_mean())
@@ -153,9 +158,7 @@ def test_outlier_resistance_property(data):
     bulyan_dist = _l2_distance(bulyan_agg, benign_means)
 
     # At least one robust method should be closer to benign mean than FedAvg
-    robust_better = (median_dist <= fedavg_dist or
-                    krum_dist <= fedavg_dist or
-                    bulyan_dist <= fedavg_dist)
+    robust_better = median_dist <= fedavg_dist or krum_dist <= fedavg_dist or bulyan_dist <= fedavg_dist
 
     assert robust_better, (
         f"No robust method closer to benign mean than FedAvg: "
@@ -166,8 +169,7 @@ def test_outlier_resistance_property(data):
 
 def test_empty_input_returns_empty_list():
     """Empty client list should return empty list."""
-    for method in [AggregationMethod.FED_AVG, AggregationMethod.MEDIAN,
-                   AggregationMethod.KRUM, AggregationMethod.BULYAN]:
+    for method in [AggregationMethod.FED_AVG, AggregationMethod.MEDIAN, AggregationMethod.KRUM, AggregationMethod.BULYAN]:
         result = aggregate_weights([], method)
         assert result == [], f"Empty input should return empty list for {method.value}"
 
@@ -177,11 +179,10 @@ def test_single_client_returns_that_update():
     client_update = [np.array([1.0, 2.0, 3.0]), np.array([[4.0, 5.0], [6.0, 7.0]])]
     clients = [client_update]
 
-    for method in [AggregationMethod.FED_AVG, AggregationMethod.MEDIAN,
-                   AggregationMethod.KRUM, AggregationMethod.BULYAN]:
+    for method in [AggregationMethod.FED_AVG, AggregationMethod.MEDIAN, AggregationMethod.KRUM, AggregationMethod.BULYAN]:
         agg = aggregate_weights(clients, method)
 
-        for expected, actual in zip(client_update, agg):
+        for expected, actual in zip(client_update, agg, strict=False):
             assert np.allclose(expected, actual), f"Single client test failed for {method.value}"
 
 
@@ -208,8 +209,7 @@ def test_aggregation_timing_performance():
     n_params = 1000
     clients = _make_client_updates(n_clients=n_clients, n_layers=2, shape=(n_params,))
 
-    for method in [AggregationMethod.FED_AVG, AggregationMethod.MEDIAN,
-                   AggregationMethod.KRUM, AggregationMethod.BULYAN]:
+    for method in [AggregationMethod.FED_AVG, AggregationMethod.MEDIAN, AggregationMethod.KRUM, AggregationMethod.BULYAN]:
         start_time = time.perf_counter()
         agg = aggregate_weights(clients, method)
         elapsed = time.perf_counter() - start_time
@@ -224,14 +224,10 @@ def test_large_magnitude_stability():
     large_val = 1e6
     clients = []
     for i in range(5):
-        client_layers = [
-            np.array([large_val + i, -large_val + i]),
-            np.array([[large_val * 2, -large_val * 2]])
-        ]
+        client_layers = [np.array([large_val + i, -large_val + i]), np.array([[large_val * 2, -large_val * 2]])]
         clients.append(client_layers)
 
-    for method in [AggregationMethod.FED_AVG, AggregationMethod.MEDIAN,
-                   AggregationMethod.KRUM, AggregationMethod.BULYAN]:
+    for method in [AggregationMethod.FED_AVG, AggregationMethod.MEDIAN, AggregationMethod.KRUM, AggregationMethod.BULYAN]:
         agg = aggregate_weights(clients, method)
 
         # Results should be finite

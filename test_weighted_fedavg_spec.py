@@ -22,8 +22,5 @@ def test_weighted_mean_matches_manual_per_layer_average():
     totals = np.sum(sample_counts)
     # Check each layer
     for layer_idx in range(len(agg)):
-        manual = sum(
-            layers_per_client[i][layer_idx] * (sample_counts[i] / totals)
-            for i in range(n_clients)
-        )
+        manual = sum(layers_per_client[i][layer_idx] * (sample_counts[i] / totals) for i in range(n_clients))
         assert np.allclose(agg[layer_idx], manual)
