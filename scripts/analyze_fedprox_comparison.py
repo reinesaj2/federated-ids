@@ -14,11 +14,18 @@ import json
 import math
 import os
 import re
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
+
+if __package__ in (None, ""):
+    _CURRENT_FILE = Path(__file__).resolve()
+    _REPO_ROOT = _CURRENT_FILE.parent.parent
+    if str(_REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(_REPO_ROOT))
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -41,6 +48,8 @@ class RunMetrics:
     mean_aggregation_time_ms: float
     rounds: int
     run_dir: Path
+    final_l2_distance: float
+    final_cosine_similarity: float
 
 
 def _safe_float(value: object) -> float | None:
@@ -180,7 +189,30 @@ def collect_run_metrics(artifacts_dir: Path) -> list[RunMetrics]:
             else:
                 mean_agg_time = float("nan")
 
-            rounds = int(server_df["round"].max()) if server_df is not None else 0
+            if server_df is not None and not server_df.empty:
+                last_row = server_df.iloc[-1].to_dict()
+                final_l2 = _extract_float(
+                    last_row,
+                    (
+                        "final_l2_distance",
+                        "l2_distance",
+                        "global_l2_distance",
+                    ),
+                )
+                final_cosine = _extract_float(
+                    last_row,
+                    (
+                        "final_cosine_similarity",
+                        "cosine_similarity",
+                        "global_cosine_similarity",
+                    ),
+                )
+                rounds_value = _safe_float(last_row.get("round"))
+                rounds = int(rounds_value) if rounds_value is not None else int(server_df["round"].max())
+            else:
+                final_l2 = None
+                final_cosine = None
+                rounds = int(server_df["round"].max()) if server_df is not None else 0
 
             algorithm = _resolve_algorithm(mu, run_dir / "metadata.json")
 
@@ -194,6 +226,8 @@ def collect_run_metrics(artifacts_dir: Path) -> list[RunMetrics]:
                     mean_aggregation_time_ms=float(mean_agg_time),
                     rounds=rounds,
                     run_dir=run_dir,
+                    final_l2_distance=float(final_l2) if final_l2 is not None else float("nan"),
+                    final_cosine_similarity=float(final_cosine) if final_cosine is not None else float("nan"),
                 )
             )
 
@@ -393,18 +427,44 @@ def write_summary(
         for run in run_metrics
     ]
 
-    convergence_analysis = {}
+    convergence_accumulator: dict[tuple[float, float, str], dict[str, list[float]]] = {}
     for run in run_metrics:
-        key = f"alpha_{run.alpha}_mu_{run.mu}"
-        if key not in convergence_analysis:
-            convergence_analysis[key] = {
+        accumulator = convergence_accumulator.setdefault(
+            (run.alpha, run.mu, run.algorithm),
+            {
                 "alpha": run.alpha,
                 "mu": run.mu,
                 "algorithm": run.algorithm,
-                "final_l2_distance": float("nan"),
-                "final_cosine_similarity": float("nan"),
-                "avg_aggregation_time": run.mean_aggregation_time_ms,
-            }
+                "final_l2": [],
+                "final_cosine": [],
+                "aggregation": [],
+            },
+        )
+
+        if not math.isnan(run.final_l2_distance):
+            accumulator["final_l2"].append(run.final_l2_distance)
+        if not math.isnan(run.final_cosine_similarity):
+            accumulator["final_cosine"].append(run.final_cosine_similarity)
+        if not math.isnan(run.mean_aggregation_time_ms):
+            accumulator["aggregation"].append(run.mean_aggregation_time_ms)
+
+    def _mean_or_nan(values: Sequence[float]) -> float:
+        cleaned = [v for v in values if not math.isnan(v)]
+        if not cleaned:
+            return float("nan")
+        return float(sum(cleaned) / len(cleaned))
+
+    convergence_analysis: dict[str, dict[str, object]] = {}
+    for (alpha, mu, algorithm), accumulator in convergence_accumulator.items():
+        key = f"alpha_{alpha}_mu_{mu}_{algorithm.lower()}"
+        convergence_analysis[key] = {
+            "alpha": alpha,
+            "mu": mu,
+            "algorithm": algorithm,
+            "final_l2_distance": _mean_or_nan(accumulator["final_l2"]),
+            "final_cosine_similarity": _mean_or_nan(accumulator["final_cosine"]),
+            "avg_aggregation_time": _mean_or_nan(accumulator["aggregation"]),
+        }
 
     summary = {
         "run_timestamp": run_timestamp,
@@ -505,7 +565,7 @@ def generate_thesis_tables(
     for _, row in macro_df.iterrows():
         bounds_lines.append(
             f"{row['algorithm']} & {row['alpha']} & {row['mu']} & {row['mean']:.4f} & "
-            f"[{row['ci_lower']:.4f}, {row['ci_upper']:.4f}] \\\\" 
+            f"[{row['ci_lower']:.4f}, {row['ci_upper']:.4f}] \\\\"
         )
     bounds_lines.extend(["\\bottomrule", "\\end{tabular}", "\\end{table}"])
     (output_dir / "fedprox_thesis_tables_bounds.tex").write_text(
@@ -554,8 +614,8 @@ def main() -> None:
     try:
         ensure_minimum_samples(run_metrics, minimum=minimum_seeds_env)
     except ValueError as e:
-        # Do not fail the entire job for insufficient seeds; continue with a warning
-        print(f"WARNING: {e}")
+        print(f"ERROR: {e}", file=sys.stderr)
+        raise SystemExit(1)
 
     aggregated = aggregate_run_metrics(run_metrics)
     if aggregated.empty:
