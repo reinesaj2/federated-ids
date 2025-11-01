@@ -3,9 +3,16 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
+
+if __package__ in (None, ""):
+    _CURRENT_FILE = Path(__file__).resolve()
+    _REPO_ROOT = _CURRENT_FILE.parent.parent
+    if str(_REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(_REPO_ROOT))
 
 from scripts.statistical_utils import paired_t_test
 
