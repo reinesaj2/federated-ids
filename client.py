@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import os
 import random
@@ -33,7 +34,7 @@ from client_metrics import (
     create_label_histogram_json,
 )
 from privacy_accounting import DPAccountant, compute_epsilon
-from secure_aggregation import generate_mask_sequence, mask_updates
+from secure_aggregation import generate_client_mask_sequence, mask_updates
 from logging_utils import configure_logging, get_logger
 
 
@@ -273,7 +274,9 @@ class TorchClient(fl.client.NumPyClient):
         self.runtime_config = runtime_config
         self.secure_aggregation_enabled = bool(runtime_config.get("secure_aggregation", False))
         self._secure_aggregation_seed_override = runtime_config.get("secure_aggregation_seed")
+        self._secure_pairwise_seeds_override = runtime_config.get("secure_pairwise_seeds")
         self._last_secure_seed: Optional[int] = None
+        self._last_pairwise_seeds: dict[str, int] = {}
         dp_delta = float(runtime_config.get("dp_delta", 1e-5))
         self.dp_accountant = DPAccountant(delta=dp_delta)
         self._dp_enabled_previous = bool(runtime_config.get("dp_enabled", False))
@@ -299,6 +302,24 @@ class TorchClient(fl.client.NumPyClient):
             secure_seed = base_seed * 1000 + int(self.metrics_logger.client_id) * 97 + self.round_num
         secure_aggregation_active = secure_requested and secure_seed is not None
         self._last_secure_seed = secure_seed if secure_aggregation_active else None
+        pairwise_config = config.get("secure_pairwise_seeds")
+        if pairwise_config is None:
+            pairwise_config = self._secure_pairwise_seeds_override
+        pairwise_seeds: dict[str, int] = {}
+        if pairwise_config:
+            parsed_pairs = pairwise_config
+            if isinstance(pairwise_config, str):
+                try:
+                    parsed_pairs = json.loads(pairwise_config)
+                except json.JSONDecodeError:
+                    parsed_pairs = {}
+            if isinstance(parsed_pairs, dict):
+                for peer_id, seed_value in parsed_pairs.items():
+                    try:
+                        pairwise_seeds[str(peer_id)] = int(seed_value)
+                    except (TypeError, ValueError):
+                        continue
+        self._last_pairwise_seeds = pairwise_seeds if secure_aggregation_active else {}
         if secure_aggregation_active:
             try:
                 self.logger.info(
@@ -616,9 +637,15 @@ class TorchClient(fl.client.NumPyClient):
         num_examples = len(self.train_loader.dataset)
         weights_to_send = weights_after
         secure_metrics: dict[str, float | int | bool | None] = {"secure_aggregation": False}
+        effective_pairwise = self._last_pairwise_seeds if secure_aggregation_active else {}
         if secure_aggregation_active and self._last_secure_seed is not None:
-            shapes = [w.shape for w in weights_after]
-            mask_sequence = generate_mask_sequence(self._last_secure_seed, shapes)
+            shapes = [tuple(w.shape) for w in weights_after]
+            mask_sequence = generate_client_mask_sequence(
+                str(self.metrics_logger.client_id),
+                shapes,
+                int(self._last_secure_seed),
+                effective_pairwise,
+            )
             weights_to_send = [mask_updates(w, mask) for w, mask in zip(weights_after, mask_sequence)]
             secure_metrics = {
                 "secure_aggregation": True,
@@ -1108,6 +1135,7 @@ def main() -> None:
                 args.secure_aggregation or os.environ.get("D2_SECURE_AGG", "0").lower() not in ("0", "false", "no", "")
             ),
             "secure_aggregation_seed": None,
+            "secure_pairwise_seeds": None,
             "dp_enabled": bool(args.dp_enabled or os.environ.get("D2_DP_ENABLED", "0").lower() not in ("0", "false", "no", "")),
             "dp_clip": float(os.environ.get("D2_DP_CLIP", str(args.dp_clip))),
             "dp_noise_multiplier": float(os.environ.get("D2_DP_NOISE_MULTIPLIER", str(args.dp_noise_multiplier))),

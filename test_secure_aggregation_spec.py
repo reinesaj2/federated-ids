@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from secure_aggregation import (
+    generate_client_mask_sequence,
     generate_mask_sequence,
     generate_secret_shares,
     mask_updates,
@@ -47,3 +48,37 @@ def test_unmask_aggregate_restores_single_layer_sum():
     aggregate = sum_updates([masked_a, masked_b])
     unmasked = unmask_aggregate(aggregate, [mask_a + mask_b])
     np.testing.assert_allclose(unmasked, sum_updates([update_a, update_b]), atol=1e-6)
+
+
+def test_pairwise_masks_cancel_between_clients():
+    shapes = [(5,)]
+    pair_seed = 7788
+    mask_a = generate_client_mask_sequence("a", shapes, 1357, {"b": pair_seed})
+    mask_b = generate_client_mask_sequence("b", shapes, 2468, {"a": pair_seed})
+
+    personal_a = generate_mask_sequence(1357, shapes)
+    personal_b = generate_mask_sequence(2468, shapes)
+
+    for combined_a, combined_b, personal_component_a, personal_component_b in zip(
+        mask_a, mask_b, personal_a, personal_b
+    ):
+        pair_component_a = combined_a - personal_component_a
+        pair_component_b = combined_b - personal_component_b
+        np.testing.assert_allclose(pair_component_a, -pair_component_b, atol=1e-6)
+
+
+def test_client_server_masks_align_with_pairwise_peers():
+    shapes = [(3, 2)]
+    client_id = "alice"
+    peers = {"bob": 9991, "carol": 9992}
+    personal_seed = 4242
+
+    client_masks = generate_client_mask_sequence(client_id, shapes, personal_seed, peers)
+    update = [np.random.randn(*shape) for shape in shapes]
+    masked = [mask_updates(layer, mask) for layer, mask in zip(update, client_masks)]
+
+    server_masks = generate_client_mask_sequence(client_id, shapes, personal_seed, peers)
+    recovered = [layer - mask for layer, mask in zip(masked, server_masks)]
+
+    for original, restored in zip(update, recovered):
+        np.testing.assert_allclose(restored, original, atol=1e-6)
