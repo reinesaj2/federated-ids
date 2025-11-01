@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import math
+import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -148,6 +151,8 @@ def test_aggregate_run_metrics_computes_mean_and_ci(tmp_path: Path) -> None:
             mean_aggregation_time_ms=100.0,
             rounds=20,
             run_dir=tmp_path,
+            final_l2_distance=math.nan,
+            final_cosine_similarity=math.nan,
         ),
         RunMetrics(
             alpha=0.1,
@@ -158,6 +163,8 @@ def test_aggregate_run_metrics_computes_mean_and_ci(tmp_path: Path) -> None:
             mean_aggregation_time_ms=120.0,
             rounds=20,
             run_dir=tmp_path,
+            final_l2_distance=math.nan,
+            final_cosine_similarity=math.nan,
         ),
         RunMetrics(
             alpha=0.1,
@@ -168,6 +175,8 @@ def test_aggregate_run_metrics_computes_mean_and_ci(tmp_path: Path) -> None:
             mean_aggregation_time_ms=150.0,
             rounds=20,
             run_dir=tmp_path,
+            final_l2_distance=math.nan,
+            final_cosine_similarity=math.nan,
         ),
         RunMetrics(
             alpha=0.1,
@@ -178,6 +187,8 @@ def test_aggregate_run_metrics_computes_mean_and_ci(tmp_path: Path) -> None:
             mean_aggregation_time_ms=180.0,
             rounds=20,
             run_dir=tmp_path,
+            final_l2_distance=math.nan,
+            final_cosine_similarity=math.nan,
         ),
     ]
 
@@ -216,6 +227,8 @@ def test_compute_paired_statistics_returns_effect_size(tmp_path: Path) -> None:
                 mean_aggregation_time_ms=100 + seed,
                 rounds=20,
                 run_dir=tmp_path,
+                final_l2_distance=math.nan,
+                final_cosine_similarity=math.nan,
             )
         )
         runs.append(
@@ -228,6 +241,8 @@ def test_compute_paired_statistics_returns_effect_size(tmp_path: Path) -> None:
                 mean_aggregation_time_ms=120 + seed,
                 rounds=20,
                 run_dir=tmp_path,
+                final_l2_distance=math.nan,
+                final_cosine_similarity=math.nan,
             )
         )
 
@@ -256,6 +271,8 @@ def test_ensure_minimum_samples_raises_when_insufficient_runs(tmp_path: Path) ->
             mean_aggregation_time_ms=100.0,
             rounds=10,
             run_dir=tmp_path,
+            final_l2_distance=math.nan,
+            final_cosine_similarity=math.nan,
         )
     ]
 
@@ -283,6 +300,8 @@ def test_compute_paired_statistics_uses_statistical_utils(tmp_path: Path) -> Non
                 mean_aggregation_time_ms=100 + seed,
                 rounds=20,
                 run_dir=tmp_path,
+                final_l2_distance=math.nan,
+                final_cosine_similarity=math.nan,
             )
         )
         runs.append(
@@ -295,6 +314,8 @@ def test_compute_paired_statistics_uses_statistical_utils(tmp_path: Path) -> Non
                 mean_aggregation_time_ms=120 + seed,
                 rounds=20,
                 run_dir=tmp_path,
+                final_l2_distance=math.nan,
+                final_cosine_similarity=math.nan,
             )
         )
 
@@ -328,6 +349,8 @@ def test_compute_paired_statistics_aggregation_time_metric(tmp_path: Path) -> No
                 mean_aggregation_time_ms=fedavg_time,
                 rounds=20,
                 run_dir=tmp_path,
+                final_l2_distance=math.nan,
+                final_cosine_similarity=math.nan,
             )
         )
         runs.append(
@@ -340,6 +363,8 @@ def test_compute_paired_statistics_aggregation_time_metric(tmp_path: Path) -> No
                 mean_aggregation_time_ms=fedprox_time,
                 rounds=20,
                 run_dir=tmp_path,
+                final_l2_distance=math.nan,
+                final_cosine_similarity=math.nan,
             )
         )
 
@@ -350,3 +375,128 @@ def test_compute_paired_statistics_aggregation_time_metric(tmp_path: Path) -> No
     assert row["metric"] == "mean_aggregation_time_ms"
     assert row["p_value"] < 0.05
     assert not pd.isna(row["effect_size"])
+
+
+def _create_cli_artifacts(root: Path, seeds: range) -> None:
+    for seed in seeds:
+        client_rows = [
+            [
+                {
+                    "round": 1,
+                    "dataset_size": 100,
+                    "macro_f1_after": 0.75 + 0.01 * seed,
+                },
+                {
+                    "round": 2,
+                    "dataset_size": 100,
+                    "macro_f1_after": 0.76 + 0.01 * seed,
+                },
+            ]
+        ]
+        server_rows = [
+            {
+                "round": 1,
+                "t_aggregate_ms": 100.0 + seed,
+                "final_l2_distance": 2.0,
+                "final_cosine_similarity": 0.5,
+            },
+            {
+                "round": 2,
+                "t_aggregate_ms": 110.0 + seed,
+                "final_l2_distance": 1.0 + 0.1 * seed,
+                "final_cosine_similarity": 0.6,
+            },
+        ]
+        _write_run_artifact(root, 0.1, 0.0, seed, client_rows, server_rows)
+
+        prox_client_rows = [
+            [
+                {
+                    "round": 1,
+                    "dataset_size": 120,
+                    "macro_f1_after": 0.80 + 0.01 * seed,
+                },
+                {
+                    "round": 2,
+                    "dataset_size": 120,
+                    "macro_f1_after": 0.82 + 0.01 * seed,
+                },
+            ]
+        ]
+        prox_server_rows = [
+            {
+                "round": 1,
+                "t_aggregate_ms": 130.0 + seed,
+                "final_l2_distance": 1.5,
+                "final_cosine_similarity": 0.55,
+            },
+            {
+                "round": 2,
+                "t_aggregate_ms": 140.0 + seed,
+                "final_l2_distance": 0.9 + 0.05 * seed,
+                "final_cosine_similarity": 0.7,
+            },
+        ]
+        _write_run_artifact(root, 0.1, 0.1, seed, prox_client_rows, prox_server_rows)
+
+
+def test_cli_invocation_succeeds_and_populates_summary(tmp_path: Path) -> None:
+    artifacts_dir = tmp_path / "artifacts"
+    _create_cli_artifacts(artifacts_dir, range(5))
+    output_dir = tmp_path / "summary"
+
+    repo_root = Path(__file__).resolve().parents[1]
+    script_path = repo_root / "scripts" / "analyze_fedprox_comparison.py"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(script_path),
+            "--artifacts_dir",
+            str(artifacts_dir),
+            "--output_dir",
+            str(output_dir),
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        raise AssertionError(f"CLI execution failed: {result.stderr}")
+
+    summary_path = output_dir / "fedprox_comparison_summary.json"
+    assert summary_path.exists()
+
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    convergence = summary["raw_analysis_results"]["convergence_analysis"]
+    sample_key = next(iter(convergence))
+    sample_entry = convergence[sample_key]
+    assert not math.isnan(sample_entry["final_l2_distance"])
+    assert not math.isnan(sample_entry["final_cosine_similarity"])
+
+
+def test_cli_fails_when_seed_threshold_not_met(tmp_path: Path) -> None:
+    artifacts_dir = tmp_path / "artifacts"
+    _create_cli_artifacts(artifacts_dir, range(2))
+    output_dir = tmp_path / "summary"
+
+    repo_root = Path(__file__).resolve().parents[1]
+    script_path = repo_root / "scripts" / "analyze_fedprox_comparison.py"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(script_path),
+            "--artifacts_dir",
+            str(artifacts_dir),
+            "--output_dir",
+            str(output_dir),
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "require at least" in result.stderr
