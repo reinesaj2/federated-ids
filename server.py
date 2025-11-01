@@ -1,8 +1,9 @@
 import argparse
+import json
 import os
 import random
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, FrozenSet, List, Optional, Tuple
 
 import flwr as fl
 import numpy as np
@@ -13,7 +14,7 @@ from robust_aggregation import (
     aggregate_weights,
     aggregate_weighted_mean,
 )
-from secure_aggregation import generate_mask_sequence
+from secure_aggregation import generate_client_mask_sequence
 from server_metrics import (
     ServerMetricsLogger,
     AggregationTimer,
@@ -113,7 +114,10 @@ def main() -> None:
     secure_agg_enabled = bool(args.secure_aggregation or os.environ.get("D2_SECURE_AGG", "0").lower() not in ("0", "false", "no", ""))
     logger.info(
         "secure_aggregation_mode",
-        extra={"enabled": bool(secure_agg_enabled), "note": "additive masking with deterministic seeds"},
+        extra={
+            "enabled": bool(secure_agg_enabled),
+            "note": "additive + pairwise masking with deterministic seeds",
+        },
     )
 
     # Initialize metrics logging
@@ -128,19 +132,35 @@ def main() -> None:
             self.round_start_time: Optional[float] = None
             self.secure_aggregation_enabled = secure_enabled
             self.secure_round_seeds: Dict[int, Dict[str, int]] = {}
+            self.secure_pairwise_seeds: Dict[int, Dict[FrozenSet[str], int]] = {}
 
         def configure_fit(self, server_round: int, parameters, client_manager):
             # Track round start time
             self.round_start_time = time.perf_counter()
             assignments = super().configure_fit(server_round, parameters, client_manager)
             if self.secure_aggregation_enabled:
-                round_map: Dict[str, int] = {}
+                client_ids = [client_proxy.cid for client_proxy, _ in assignments]
+                round_map: Dict[str, int] = {
+                    cid: random.randrange(1, 2**31) for cid in client_ids
+                }
+                pairwise_map: Dict[FrozenSet[str], int] = {}
+                for idx, cid in enumerate(client_ids):
+                    for peer_id in client_ids[idx + 1 :]:
+                        pairwise_map[frozenset({cid, peer_id})] = random.randrange(1, 2**31)
+
                 for client_proxy, fit_ins in assignments:
-                    seed = random.randrange(1, 2**31)
-                    round_map[client_proxy.cid] = seed
+                    cid = client_proxy.cid
                     fit_ins.config["secure_aggregation"] = True
-                    fit_ins.config["secure_aggregation_seed"] = seed
+                    fit_ins.config["secure_aggregation_seed"] = round_map[cid]
+                    peer_seeds = {
+                        peer_id: pairwise_map[frozenset({cid, peer_id})]
+                        for peer_id in client_ids
+                        if peer_id != cid
+                    }
+                    fit_ins.config["secure_pairwise_seeds"] = json.dumps(peer_seeds)
+
                 self.secure_round_seeds[server_round] = round_map
+                self.secure_pairwise_seeds[server_round] = pairwise_map
             return assignments
 
         def aggregate_fit(self, rnd, results, failures):  # type: ignore[override]
@@ -158,7 +178,10 @@ def main() -> None:
                 sample_counts.append(int(fit_res.num_examples))
 
             if self.secure_aggregation_enabled:
-                round_seeds = self.secure_round_seeds.pop(rnd, {})
+                round_seeds = self.secure_round_seeds.get(rnd, {})
+                pairwise_seeds = self.secure_pairwise_seeds.get(rnd, {})
+                all_client_ids = set(round_seeds.keys())
+
                 for idx, client_id in enumerate(ordered_client_ids):
                     seed = round_seeds.get(client_id)
                     if seed is None:
@@ -167,11 +190,22 @@ def main() -> None:
                             extra={"round": rnd, "client_id": client_id},
                         )
                         continue
-                    shapes = [layer.shape for layer in client_weights[idx]]
-                    masks = generate_mask_sequence(seed, shapes)
+                    peer_map: Dict[str, int] = {}
+                    for peer_id in all_client_ids:
+                        if peer_id == client_id:
+                            continue
+                        pair_seed = pairwise_seeds.get(frozenset({client_id, peer_id}))
+                        if pair_seed is not None:
+                            peer_map[peer_id] = pair_seed
+
+                    shapes = [tuple(layer.shape) for layer in client_weights[idx]]
+                    masks = generate_client_mask_sequence(client_id, shapes, seed, peer_map)
                     client_weights[idx] = [
                         masked_layer - mask for masked_layer, mask in zip(client_weights[idx], masks)
                     ]
+
+                self.secure_round_seeds.pop(rnd, None)
+                self.secure_pairwise_seeds.pop(rnd, None)
 
             # Time the aggregation
             with agg_timer.time_aggregation():

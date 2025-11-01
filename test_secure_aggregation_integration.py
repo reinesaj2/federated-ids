@@ -1,5 +1,6 @@
 import csv
 import os
+import random
 import socket
 import subprocess
 import sys
@@ -10,9 +11,16 @@ import pytest
 
 
 def _find_free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+    for _ in range(64):
+        candidate = random.randint(20000, 60000)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind(("127.0.0.1", candidate))
+            except OSError:
+                continue
+            return candidate
+    raise RuntimeError("Unable to locate an available TCP port for integration test")
 
 
 def _wait_for_server(port: int, proc: subprocess.Popen[str], timeout: float = 15.0) -> None:
@@ -43,7 +51,10 @@ def _read_last_row(csv_path: Path) -> dict[str, str]:
 @pytest.mark.integration
 def test_secure_aggregation_round_completes(tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parent
-    port = _find_free_port()
+    try:
+        port = _find_free_port()
+    except RuntimeError as exc:
+        pytest.skip(str(exc))
     logdir = tmp_path / "logs"
     logdir.mkdir(parents=True, exist_ok=True)
 
@@ -141,3 +152,5 @@ def test_secure_aggregation_round_completes(tmp_path: Path) -> None:
         assert last_row.get("secure_aggregation") == "True"
         checksum = last_row.get("secure_aggregation_mask_checksum")
         assert checksum is not None and checksum != "", "Mask checksum should be recorded"
+        seed_value = last_row.get("secure_aggregation_seed")
+        assert seed_value is not None and seed_value != "", "Secure aggregation seed should be recorded"
