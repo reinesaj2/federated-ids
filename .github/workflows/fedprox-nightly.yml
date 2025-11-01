@@ -370,6 +370,8 @@ jobs:
         with:
           name: ${{ steps.find_baseline.outputs.artifact_name }}
           path: baseline-summary
+          run-id: ${{ steps.find_baseline.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compare summary against baseline
         id: regression_check
