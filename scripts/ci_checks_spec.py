@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+import numpy as np
+
 from scripts import ci_checks
 
 
@@ -33,3 +35,12 @@ def test_validate_seed_coverage_raises_when_fewer_than_five(tmp_path: Path) -> N
 
     with pytest.raises(ci_checks.ArtifactValidationError):
         ci_checks.validate_seed_coverage(list(runs_dir.iterdir()), minimum_seeds=5)
+
+
+def test_safe_float_handles_real_like_inputs() -> None:
+    assert ci_checks._safe_float(1.5) == pytest.approx(1.5)
+    assert ci_checks._safe_float(np.float64(2.0)) == pytest.approx(2.0)
+    assert ci_checks._safe_float(" 3.25 ") == pytest.approx(3.25)
+    assert ci_checks._safe_float("") is None
+    assert ci_checks._safe_float(None) is None
+    assert ci_checks._safe_float("not-a-number") is None

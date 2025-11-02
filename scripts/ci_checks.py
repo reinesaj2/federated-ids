@@ -10,6 +10,7 @@ import math
 import re
 import sys
 from collections import defaultdict
+from numbers import Real
 from pathlib import Path
 
 
@@ -24,13 +25,19 @@ MIN_WEIGHTED_ACCURACY = 0.70
 MAX_FINAL_L2_DISTANCE = 1.5
 
 
-def _safe_float(value: str | None) -> float | None:
-    if value in ("", None):
+def _safe_float(value: str | Real | None) -> float | None:
+    if value is None:
         return None
-    try:
+    if isinstance(value, Real):
         return float(value)
-    except (TypeError, ValueError):
-        return None
+    if isinstance(value, str):
+        if value.strip() == "":
+            return None
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
 
 
 def _load_csv_rows(csv_path: Path) -> list[dict[str, str]]:

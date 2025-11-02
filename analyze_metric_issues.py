@@ -10,8 +10,9 @@ def analyze_metrics_file(csv_path: Path) -> dict:
     """Analyze a single metrics CSV file for issues."""
     try:
         df = pd.read_csv(csv_path)
-
-        results = {"file": str(csv_path), "total_rows": len(df), "cosine_issues": [], "l2_issues": [], "f1_issues": []}
+        cosine_issues: list[str] = []
+        l2_issues: list[str] = []
+        f1_issues: list[str] = []
 
         # Check cosine similarity issues
         if "cos_to_benign_mean" in df.columns:
@@ -21,11 +22,11 @@ def analyze_metrics_file(csv_path: Path) -> dict:
                 cos_max = cosine_col.max()
 
                 if cos_min < 0.5:
-                    results["cosine_issues"].append(f"Min cosine {cos_min:.6f} < 0.5")
+                    cosine_issues.append(f"Min cosine {cos_min:.6f} < 0.5")
                 if cos_max == 1.0 and cosine_col.std() < 1e-6:
-                    results["cosine_issues"].append("All cosine values = 1.0 (no variance)")
+                    cosine_issues.append("All cosine values = 1.0 (no variance)")
                 if cos_min < 0.9:
-                    results["cosine_issues"].append(f"Min cosine {cos_min:.6f} < 0.9 (suspicious)")
+                    cosine_issues.append(f"Min cosine {cos_min:.6f} < 0.9 (suspicious)")
 
         # Check L2 distance issues
         if "l2_to_benign_mean" in df.columns:
@@ -33,9 +34,9 @@ def analyze_metrics_file(csv_path: Path) -> dict:
             if len(l2_col) > 0:
                 l2_zeros = (l2_col == 0.0).sum()
                 if l2_zeros > 0:
-                    results["l2_issues"].append(f"{l2_zeros} L2 values = 0.0 exactly")
+                    l2_issues.append(f"{l2_zeros} L2 values = 0.0 exactly")
                 if l2_zeros > 1:
-                    results["l2_issues"].append("Multiple L2=0 values (possible bug)")
+                    l2_issues.append("Multiple L2=0 values (possible bug)")
 
         # Check F1 ceiling effect
         if "macro_f1" in df.columns:
@@ -43,9 +44,15 @@ def analyze_metrics_file(csv_path: Path) -> dict:
             if len(f1_col) > 0:
                 f1_perfect = (f1_col >= 0.999).sum()
                 if f1_perfect > len(f1_col) * 0.8:
-                    results["f1_issues"].append(f"{f1_perfect}/{len(f1_col)} F1 values ≥ 0.999 (ceiling effect)")
+                    f1_issues.append(f"{f1_perfect}/{len(f1_col)} F1 values ≥ 0.999 (ceiling effect)")
 
-        return results
+        return {
+            "file": str(csv_path),
+            "total_rows": len(df),
+            "cosine_issues": cosine_issues,
+            "l2_issues": l2_issues,
+            "f1_issues": f1_issues,
+        }
 
     except Exception as e:
         return {"file": str(csv_path), "error": str(e)}

@@ -70,7 +70,16 @@ jobs:
           mypy --version
           black --check .
           ruff check .
-          mypy robust_aggregation.py privacy_accounting.py
+          mypy \
+            analyze_metric_issues.py \
+            client.py \
+            client_metrics.py \
+            server.py \
+            scripts/ci_checks.py \
+            scripts/analyze_fedprox_comparison.py \
+            scripts/check_regressions.py \
+            robust_aggregation.py \
+            privacy_accounting.py
 
       - name: Lint & unit tests
         env:

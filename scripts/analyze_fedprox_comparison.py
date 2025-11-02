@@ -16,6 +16,7 @@ import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from numbers import Real
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -40,12 +41,21 @@ class RunMetrics:
 
 
 def _safe_float(value: object) -> float | None:
-    if value in ("", None):
+    if value is None:
         return None
-    try:
+    if isinstance(value, Real):
         return float(value)
-    except (TypeError, ValueError):
-        return None
+    if isinstance(value, np.generic):
+        return float(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped == "":
+            return None
+        try:
+            return float(stripped)
+        except ValueError:
+            return None
+    return None
 
 
 def _extract_float(row: Mapping[str, object], keys: Sequence[str]) -> float | None:
