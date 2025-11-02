@@ -2,8 +2,6 @@
 omit =
     */test_*.py
     */*_spec.py
-    */worktrees/*
-    */tmp/*
 
 [report]
 exclude_lines =
