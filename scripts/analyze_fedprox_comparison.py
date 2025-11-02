@@ -46,7 +46,7 @@ def _safe_float(value: object) -> float | None:
     if isinstance(value, Real):
         return float(value)
     if isinstance(value, np.generic):
-        return float(value)
+        return float(value.item())
     if isinstance(value, str):
         stripped = value.strip()
         if stripped == "":
