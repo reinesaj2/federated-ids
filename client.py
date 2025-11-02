@@ -33,7 +33,7 @@ from client_metrics import (
     analyze_data_distribution,
     create_label_histogram_json,
 )
-from privacy_accounting import DPAccountant, compute_epsilon
+from privacy_accounting import DPAccountant
 from secure_aggregation import generate_client_mask_sequence, mask_updates
 from logging_utils import configure_logging, get_logger
 

@@ -140,9 +140,7 @@ def main() -> None:
             assignments = super().configure_fit(server_round, parameters, client_manager)
             if self.secure_aggregation_enabled:
                 client_ids = [client_proxy.cid for client_proxy, _ in assignments]
-                round_map: Dict[str, int] = {
-                    cid: random.randrange(1, 2**31) for cid in client_ids
-                }
+                round_map: Dict[str, int] = {cid: random.randrange(1, 2**31) for cid in client_ids}
                 pairwise_map: Dict[FrozenSet[str], int] = {}
                 for idx, cid in enumerate(client_ids):
                     for peer_id in client_ids[idx + 1 :]:
@@ -152,11 +150,7 @@ def main() -> None:
                     cid = client_proxy.cid
                     fit_ins.config["secure_aggregation"] = True
                     fit_ins.config["secure_aggregation_seed"] = round_map[cid]
-                    peer_seeds = {
-                        peer_id: pairwise_map[frozenset({cid, peer_id})]
-                        for peer_id in client_ids
-                        if peer_id != cid
-                    }
+                    peer_seeds = {peer_id: pairwise_map[frozenset({cid, peer_id})] for peer_id in client_ids if peer_id != cid}
                     fit_ins.config["secure_pairwise_seeds"] = json.dumps(peer_seeds)
 
                 self.secure_round_seeds[server_round] = round_map
@@ -200,9 +194,7 @@ def main() -> None:
 
                     shapes = [tuple(layer.shape) for layer in client_weights[idx]]
                     masks = generate_client_mask_sequence(client_id, shapes, seed, peer_map)
-                    client_weights[idx] = [
-                        masked_layer - mask for masked_layer, mask in zip(client_weights[idx], masks)
-                    ]
+                    client_weights[idx] = [masked_layer - mask for masked_layer, mask in zip(client_weights[idx], masks)]
 
                 self.secure_round_seeds.pop(rnd, None)
                 self.secure_pairwise_seeds.pop(rnd, None)

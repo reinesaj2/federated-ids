@@ -32,7 +32,7 @@ def generate_client_mask_sequence(
     if a peer drops out before sending an update.
     """
     shape_list = [tuple(shape) for shape in shapes]
-    masks = [np.zeros(shape, dtype=np.float32) for shape in shape_list]
+    masks: List[np.ndarray] = [np.zeros(shape, dtype=np.float32) for shape in shape_list]
 
     if personal_seed is not None:
         for idx, personal_mask in enumerate(generate_mask_sequence(personal_seed, shape_list)):
