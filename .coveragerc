@@ -2,6 +2,12 @@
 omit =
     */test_*.py
     */*_spec.py
+    scripts/*
+    analyze_*.py
+    validate_*.py
+    **/debug_*.py
+    **/prepare_*.py
+    **/plan_*.py
 
 [report]
 exclude_lines =
