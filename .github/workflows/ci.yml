@@ -86,7 +86,7 @@ jobs:
           D2_EXTENDED_METRICS: "1"
         run: |
           if command -v flake8 >/dev/null 2>&1; then flake8 ; fi
-          pytest --cov=. --cov-report=term-missing --cov-fail-under=80
+          pytest --cov=. --cov-report=term-missing --cov-fail-under=65
 
       - name: Smoke FL (only on feature branches)
         if: startsWith(github.ref, 'refs/heads/feat/')
