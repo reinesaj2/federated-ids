@@ -126,9 +126,7 @@ class ComparisonMatrix:
         for alpha in self.alpha_values:
             for mu in self.fedprox_mu_values:
                 for seed in self.seeds:
-                    configs.append(
-                        self._create_config(self._base_config(seed), alpha=alpha, fedprox_mu=mu)
-                    )
+                    configs.append(self._create_config(self._base_config(seed), alpha=alpha, fedprox_mu=mu))
         return configs
 
     def _generate_attack_configs(self) -> list[ExperimentConfig]:
@@ -304,8 +302,9 @@ def managed_subprocess(cmd: list[str], log_file: Path, cwd: Path, timeout: int =
                 proc.wait()
 
 
-def run_federated_experiment(config: ExperimentConfig, base_dir: Path, port_start: int = 8080,
-                           server_timeout: int = 300, client_timeout: int = 900) -> dict:
+def run_federated_experiment(
+    config: ExperimentConfig, base_dir: Path, port_start: int = 8080, server_timeout: int = 300, client_timeout: int = 900
+) -> dict:
     """Run a single federated learning experiment with proper error handling.
 
     Args:
@@ -520,9 +519,7 @@ def main():
         print(f"  Progress: {successful_experiments} successful, {failed_experiments} failed")
 
         try:
-            result = run_federated_experiment(config, base_dir,
-                                            server_timeout=args.server_timeout,
-                                            client_timeout=args.client_timeout)
+            result = run_federated_experiment(config, base_dir, server_timeout=args.server_timeout, client_timeout=args.client_timeout)
             results.append(result)
 
             if result.get('metrics_exist', False):
