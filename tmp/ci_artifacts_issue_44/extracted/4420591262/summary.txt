@@ -1,0 +1,7 @@
+Artifact compression completed for aggregation (cic)
+total 1112
+drwxr-xr-x  2 runner runner   4096 Oct 30 16:58 .
+drwxr-xr-x 28 runner runner   4096 Oct 30 16:58 ..
+-rw-r--r--  1 runner runner 849622 Oct 30 16:58 experiment-results.tar.gz
+-rw-r--r--  1 runner runner     53 Oct 30 16:58 summary.txt
+-rw-r--r--  1 runner runner 273245 Oct 30 16:58 thesis-plots.tar.gz

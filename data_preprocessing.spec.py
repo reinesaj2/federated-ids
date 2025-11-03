@@ -4,11 +4,11 @@ import numpy as np
 import pandas as pd
 
 from data_preprocessing import (
-    fit_preprocessor_global,
-    transform_with_preprocessor,
-    prepare_partitions_from_dataframe,
     dirichlet_partition,
+    fit_preprocessor_global,
+    prepare_partitions_from_dataframe,
     protocol_partition,
+    transform_with_preprocessor,
 )
 
 
@@ -73,11 +73,12 @@ def test_dirichlet_partition_index_coverage_and_disjointness():
 def test_protocol_partition_assigns_each_protocol_to_single_client():
     df = _make_dummy_df(n=240)
     shards = protocol_partition(protocols=df["proto"].tolist(), num_clients=3, seed=42)
+    proto_values = df["proto"].astype(str).to_numpy()
     # For each protocol, ensure it appears in exactly one client shard
     proto_to_clients = {}
     for client_id, shard in enumerate(shards):
         for idx in shard:
-            proto = str(df.iloc[idx]["proto"])  # type: ignore[index]
+            proto = proto_values[idx]
             proto_to_clients.setdefault(proto, set()).add(client_id)
     assert all(len(clients) == 1 for clients in proto_to_clients.values())
 

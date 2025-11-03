@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Validation script to verify cosine similarity fix for issue #76."""
 
-import csv
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 
@@ -43,8 +41,9 @@ def validate_cosine_in_csv(csv_path: Path) -> dict:
             results["valid"] = False
 
         # Check for FP precision issues (slightly outside but within epsilon)
-        fp_errors = cosine_col[((cosine_col > 1.0) & (cosine_col <= 1.0 + epsilon)) |
-                                 ((cosine_col < -1.0) & (cosine_col >= -1.0 - epsilon))]
+        fp_errors = cosine_col[
+            ((cosine_col > 1.0) & (cosine_col <= 1.0 + epsilon)) | ((cosine_col < -1.0) & (cosine_col >= -1.0 - epsilon))
+        ]
         if len(fp_errors) > 0:
             results["fp_precision_errors"] = fp_errors.tolist()
 
@@ -121,8 +120,7 @@ def main():
         else:
             status = "[PASS]" if results["cosine_values"] else "[FAIL]"
             if results["cosine_values"]:
-                print(f"{status} {csv_path.parent.name}: "
-                      f"cosine ∈ [{results['cosine_min']:.6f}, {results['cosine_max']:.6f}]")
+                print(f"{status} {csv_path.parent.name}: " f"cosine ∈ [{results['cosine_min']:.6f}, {results['cosine_max']:.6f}]")
 
         if results["l2_zero_count"] > 0:
             l2_zero_files.append((csv_path, results["l2_zero_count"]))

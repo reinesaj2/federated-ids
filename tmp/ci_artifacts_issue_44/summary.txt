@@ -1,0 +1,7 @@
+Artifact compression completed for attack (cic)
+total 4260
+drwxr-xr-x  2 runner runner    4096 Oct 30 22:13 .
+drwxr-xr-x 28 runner runner    4096 Oct 30 22:13 ..
+-rw-r--r--  1 runner runner 3622219 Oct 30 22:13 experiment-results.tar.gz
+-rw-r--r--  1 runner runner      48 Oct 30 22:13 summary.txt
+-rw-r--r--  1 runner runner  722824 Oct 30 22:13 thesis-plots.tar.gz

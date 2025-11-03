@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import os
 import csv
+import os
 import tempfile
 import time
 from pathlib import Path
-from typing import List
+
 import numpy as np
-import pytest
 
 
 def test_client_metrics_csv_creation():
@@ -17,13 +16,13 @@ def test_client_metrics_csv_creation():
 
         from client_metrics import ClientMetricsLogger
 
-        logger = ClientMetricsLogger(str(metrics_path), client_id=0)
+        ClientMetricsLogger(str(metrics_path), client_id=0)
 
         # Check file exists after creation
         assert metrics_path.exists()
 
         # Check headers - expect extended headers by default (Issue #77 fix)
-        with open(metrics_path, "r") as f:
+        with open(metrics_path) as f:
             reader = csv.reader(f)
             headers = next(reader)
 
@@ -132,13 +131,13 @@ def test_client_metrics_logging_complete_record():
         )
 
         # Read and verify key values are logged correctly
-        with open(metrics_path, "r") as f:
+        with open(metrics_path) as f:
             reader = csv.reader(f)
             headers = next(reader)
             row = next(reader)
 
             # Verify basic structure - convert to dict for easier checking
-            row_dict = dict(zip(headers, row))
+            row_dict = dict(zip(headers, row, strict=False))
             assert row_dict["client_id"] == "5"
             assert row_dict["round"] == "3"
             assert row_dict["dataset_size"] == "1000"
@@ -188,7 +187,7 @@ def test_client_metrics_multiple_rounds():
             )
 
         # Verify all rounds logged
-        with open(metrics_path, "r") as f:
+        with open(metrics_path) as f:
             reader = csv.reader(f)
             next(reader)  # Skip headers
             rows = list(reader)
@@ -228,13 +227,13 @@ def test_client_metrics_with_none_values():
         )
 
         # Read and verify None values are handled
-        with open(metrics_path, "r") as f:
+        with open(metrics_path) as f:
             reader = csv.reader(f)
             headers = next(reader)
             row = next(reader)
 
             # None values should be empty strings in CSV - check by column name
-            row_dict = dict(zip(headers, row))
+            row_dict = dict(zip(headers, row, strict=False))
             assert row_dict["client_id"] == "7"
             assert row_dict["round"] == "1"
             assert row_dict["dataset_size"] == "800"
@@ -319,7 +318,7 @@ def test_client_metrics_directory_creation():
         from client_metrics import ClientMetricsLogger
 
         # Should create parent directories
-        logger = ClientMetricsLogger(str(nested_path), client_id=10)
+        ClientMetricsLogger(str(nested_path), client_id=10)
 
         assert nested_path.exists()
         assert nested_path.parent.exists()
@@ -361,9 +360,9 @@ def test_client_metrics_extended_enabled_by_default_issue77():
             if old_env is not None:
                 del os.environ["D2_EXTENDED_METRICS"]
 
-            logger = ClientMetricsLogger(str(metrics_path), client_id=0)
+            ClientMetricsLogger(str(metrics_path), client_id=0)
 
-            with open(metrics_path, "r") as f:
+            with open(metrics_path) as f:
                 reader = csv.reader(f)
                 headers = next(reader)
 
@@ -375,9 +374,7 @@ def test_client_metrics_extended_enabled_by_default_issue77():
             ]
 
             for col in expected_f1_columns:
-                assert col in headers, (
-                    f"Column {col} not found in headers. " "Extended metrics should be enabled by default."
-                )
+                assert col in headers, f"Column {col} not found in headers. " "Extended metrics should be enabled by default."
 
         finally:
             if old_env is not None:
@@ -391,9 +388,9 @@ def test_client_metrics_extended_explicit_false():
 
         from client_metrics import ClientMetricsLogger
 
-        logger = ClientMetricsLogger(str(metrics_path), client_id=0, extended=False)
+        ClientMetricsLogger(str(metrics_path), client_id=0, extended=False)
 
-        with open(metrics_path, "r") as f:
+        with open(metrics_path) as f:
             reader = csv.reader(f)
             headers = next(reader)
 
@@ -411,9 +408,7 @@ def test_client_metrics_extended_explicit_false():
 
         unexpected_f1_columns = ["macro_f1_after", "macro_f1_before"]
         for col in unexpected_f1_columns:
-            assert col not in headers, (
-                f"Column {col} should not be in basic mode, " "but extended=False was set explicitly"
-            )
+            assert col not in headers, f"Column {col} should not be in basic mode, " "but extended=False was set explicitly"
 
 
 def test_client_metrics_logs_macro_f1_values_issue77():
@@ -444,7 +439,7 @@ def test_client_metrics_logs_macro_f1_values_issue77():
             weight_norm_after=2.0,
         )
 
-        with open(metrics_path, "r") as f:
+        with open(metrics_path) as f:
             reader = csv.reader(f)
             headers = next(reader)
             row = next(reader)

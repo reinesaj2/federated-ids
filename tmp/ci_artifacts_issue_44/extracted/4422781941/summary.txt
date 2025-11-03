@@ -1,0 +1,7 @@
+Artifact compression completed for heterogeneity_fedprox (cic)
+total 3024
+drwxr-xr-x  2 runner runner    4096 Oct 30 20:24 .
+drwxr-xr-x 28 runner runner    4096 Oct 30 20:24 ..
+-rw-r--r--  1 runner runner 2552586 Oct 30 20:24 experiment-results.tar.gz
+-rw-r--r--  1 runner runner      63 Oct 30 20:24 summary.txt
+-rw-r--r--  1 runner runner  525427 Oct 30 20:24 thesis-plots.tar.gz

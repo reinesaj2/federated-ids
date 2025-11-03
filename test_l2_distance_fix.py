@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from robust_aggregation import AggregationMethod, aggregate_weights
 from server_metrics import calculate_robustness_metrics
-from robust_aggregation import aggregate_weights, AggregationMethod
 
 
 def test_l2_distance_is_not_zero_for_median_aggregation():

@@ -22,14 +22,12 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Dict
 
 import numpy as np
 import pandas as pd
 
-
 # Target sample counts per label (total = 10,000)
-TARGET_DISTRIBUTION: Dict[str, int] = {
+TARGET_DISTRIBUTION: dict[str, int] = {
     "BENIGN": 4000,
     "DoS Hulk": 1500,
     "PortScan": 1500,
@@ -62,9 +60,7 @@ def load_all_csvs(raw_dir: Path) -> pd.DataFrame:
     return combined
 
 
-def stratified_sample(
-    df: pd.DataFrame, label_col: str, targets: Dict[str, int], seed: int = 42
-) -> pd.DataFrame:
+def stratified_sample(df: pd.DataFrame, label_col: str, targets: dict[str, int], seed: int = 42) -> pd.DataFrame:
     """Create stratified sample based on target counts per label."""
     rng = np.random.default_rng(seed)
     sampled_parts = []
@@ -81,9 +77,7 @@ def stratified_sample(
         # If we don't have enough samples, take all available
         n_sample = min(target_count, available)
         if n_sample < target_count:
-            print(
-                f"  [WARNING]  {label}: {n_sample}/{target_count} (insufficient data)"
-            )
+            print(f"  [WARNING]  {label}: {n_sample}/{target_count} (insufficient data)")
         else:
             print(f"  [PASS]  {label}: {n_sample}/{target_count}")
 
@@ -101,9 +95,7 @@ def stratified_sample(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Create stratified multi-class CIC-IDS2017 sample"
-    )
+    parser = argparse.ArgumentParser(description="Create stratified multi-class CIC-IDS2017 sample")
     parser.add_argument(
         "--input_dir",
         type=str,
@@ -116,9 +108,7 @@ def main() -> None:
         default="data/cic/cic_ids2017_multiclass.csv",
         help="Output CSV path (default: data/cic/cic_ids2017_multiclass.csv)",
     )
-    parser.add_argument(
-        "--seed", type=int, default=42, help="Random seed (default: 42)"
-    )
+    parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
     args = parser.parse_args()
 
     input_dir = Path(args.input_dir)
@@ -132,9 +122,7 @@ def main() -> None:
     # Detect label column (CIC-IDS2017 uses " Label" with leading space)
     label_col = " Label" if " Label" in df.columns else "Label"
     if label_col not in df.columns:
-        raise SystemExit(
-            "Could not find label column. Tried: ' Label', 'Label'"
-        )
+        raise SystemExit("Could not find label column. Tried: ' Label', 'Label'")
 
     print(f"\nLabel column: '{label_col}'")
     print(f"Unique labels ({df[label_col].nunique()}):")

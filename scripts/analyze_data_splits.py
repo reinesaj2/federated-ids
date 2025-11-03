@@ -18,8 +18,8 @@ from sklearn.model_selection import train_test_split
 
 from data_preprocessing import (
     fit_preprocessor_global,
-    load_unsw_nb15,
     load_cic_ids2017,
+    load_unsw_nb15,
     prepare_partitions_from_dataframe,
 )
 
