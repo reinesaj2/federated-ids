@@ -477,6 +477,7 @@ class TorchClient(fl.client.NumPyClient):
                 clip = float(self.runtime_config.get("dp_clip", 1.0))
                 noise_mult = float(self.runtime_config.get("dp_noise_multiplier", 0.0))
                 sample_rate = float(self.runtime_config.get("dp_sample_rate", 1.0))
+                dp_sample_rate = sample_rate
                 # Build update (delta)
                 deltas: List[np.ndarray] = [
                     wa - wb for wb, wa in zip(weights_before, weights_after)
@@ -722,6 +723,8 @@ class TorchClient(fl.client.NumPyClient):
             dp_delta=dp_delta,
             dp_sigma=dp_sigma,
             dp_clip_norm=dp_clip_norm,
+            dp_sample_rate=dp_sample_rate,
+            dp_total_steps=dp_total_steps,
             secure_aggregation=secure_agg_enabled,
             secure_aggregation_mask_checksum=secure_mask_checksum,
         )

@@ -76,6 +76,8 @@ def test_client_metrics_csv_creation():
                     "dp_delta",
                     "dp_sigma",
                     "dp_clip_norm",
+                    "dp_sample_rate",
+                    "dp_total_steps",
                 ]
             else:
                 expected = [
