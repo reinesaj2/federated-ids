@@ -10,8 +10,8 @@ from scripts.analyze_fedprox_comparison import (
     RunMetrics,
     aggregate_run_metrics,
     collect_run_metrics,
-    compute_weighted_macro_f1,
     compute_paired_statistics,
+    compute_weighted_macro_f1,
     ensure_minimum_samples,
 )
 
@@ -87,7 +87,7 @@ def test_collect_run_metrics_loads_macro_f1_and_times(tmp_path: Path) -> None:
         ],
     )
 
-    run_b = _write_run_artifact(
+    _write_run_artifact(
         tmp_path,
         alpha=0.1,
         mu=0.1,

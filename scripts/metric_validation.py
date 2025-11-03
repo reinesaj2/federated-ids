@@ -13,10 +13,10 @@ This module implements the validation framework described in Issue #78:
 """
 
 import logging
-import pandas as pd
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Dict, List, Optional
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class PlotQualityChecklist:
     # Coverage
     multiple_parameter_levels: bool = False
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Return list of failing checks."""
         failures = []
         for field in fields(self):
@@ -60,7 +60,7 @@ class MetricValidator:
         self.min_expected_cosine = min_expected_cosine
         self.f1_ceiling_threshold = f1_ceiling_threshold
 
-    def validate_plot_metrics(self, df: pd.DataFrame, dimension: str) -> List[str]:
+    def validate_plot_metrics(self, df: pd.DataFrame, dimension: str) -> list[str]:
         """Validate metrics before plotting.
 
         Args:
@@ -94,7 +94,7 @@ class MetricValidator:
 
         return warnings
 
-    def _validate_cosine_similarity(self, cosine_series: pd.Series, dimension: str) -> List[str]:
+    def _validate_cosine_similarity(self, cosine_series: pd.Series, dimension: str) -> list[str]:
         """Validate cosine similarity values."""
         warnings = []
         cosine = cosine_series.dropna()
@@ -122,7 +122,7 @@ class MetricValidator:
 
         return warnings
 
-    def _validate_l2_distance(self, l2_series: pd.Series, dimension: str) -> List[str]:
+    def _validate_l2_distance(self, l2_series: pd.Series, dimension: str) -> list[str]:
         """Validate L2 distance values."""
         warnings = []
         l2 = l2_series.dropna()
@@ -145,7 +145,7 @@ class MetricValidator:
 
         return warnings
 
-    def _validate_f1_ceiling(self, f1_series: pd.Series, dimension: str) -> List[str]:
+    def _validate_f1_ceiling(self, f1_series: pd.Series, dimension: str) -> list[str]:
         """Validate F1 scores for ceiling effect."""
         warnings = []
         f1 = f1_series.dropna()
@@ -165,7 +165,7 @@ class MetricValidator:
 
         return warnings
 
-    def _validate_sample_size(self, seed_series: pd.Series, dimension: str) -> List[str]:
+    def _validate_sample_size(self, seed_series: pd.Series, dimension: str) -> list[str]:
         """Validate sample size for statistical power."""
         warnings = []
         unique_seeds = seed_series.nunique()
@@ -211,7 +211,7 @@ class MetricValidator:
         return checklist
 
 
-def validate_experiment_data(runs_dir: Path, output_dir: Optional[Path] = None) -> Dict[str, List[str]]:
+def validate_experiment_data(runs_dir: Path, output_dir: Path | None = None) -> dict[str, list[str]]:
     """Validate all experiment data in runs directory.
 
     Args:

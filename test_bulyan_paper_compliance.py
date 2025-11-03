@@ -14,12 +14,13 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
 
 from robust_aggregation import (
     AggregationMethod,
-    _coordinate_wise_trimmed_mean,
     _bulyan_aggregate,
+    _coordinate_wise_trimmed_mean,
     aggregate_weights,
 )
 
@@ -28,7 +29,7 @@ def _make_simple_client_updates(n_clients: int, n_layers: int = 2, shape=(3,)):
     """Create simple client updates with known values for testing."""
     rng = np.random.default_rng(42)
     clients = []
-    for i in range(n_clients):
+    for _client_idx in range(n_clients):
         layers = []
         for _ in range(n_layers):
             layers.append(rng.normal(loc=0.0, scale=1.0, size=shape))
@@ -321,7 +322,7 @@ def test_bulyan_preserves_layer_shapes():
     result = _bulyan_aggregate(clients, f=f)
 
     assert len(result) == n_layers
-    for layer_result, expected_shape in zip(result, layer_shapes):
+    for layer_result, expected_shape in zip(result, layer_shapes, strict=False):
         assert layer_result.shape == expected_shape
 
 

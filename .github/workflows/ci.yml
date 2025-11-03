@@ -63,27 +63,30 @@ jobs:
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
-      - name: Define static-check file list
-        run: |
-          FILES="server.py client.py logging_utils.py privacy_accounting.py"
-          echo "FILES=$FILES" >> "$GITHUB_ENV"
-
       - name: Static analysis (ruff, black, mypy)
         run: |
           ruff --version
           black --version
           mypy --version
-          # Auto-format the selected files, then lint and type-check
-          black $FILES
-          ruff check $FILES
-          mypy $FILES
+          black --check .
+          ruff check .
+          mypy \
+            analyze_metric_issues.py \
+            client.py \
+            client_metrics.py \
+            server.py \
+            scripts/ci_checks.py \
+            scripts/analyze_fedprox_comparison.py \
+            scripts/check_regressions.py \
+            robust_aggregation.py \
+            privacy_accounting.py
 
       - name: Lint & unit tests
         env:
           D2_EXTENDED_METRICS: "1"
         run: |
           if command -v flake8 >/dev/null 2>&1; then flake8 ; fi
-          pytest -q
+          pytest --cov=. --cov-report=term-missing --cov-fail-under=65
 
       - name: Smoke FL (only on feature branches)
         if: startsWith(github.ref, 'refs/heads/feat/')

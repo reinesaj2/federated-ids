@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from server_metrics import validate_metrics, calculate_robustness_metrics
+from server_metrics import calculate_robustness_metrics, validate_metrics
 
 
 class TestMetricValidation:

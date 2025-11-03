@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import math
-import random
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -13,9 +12,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 
-
 # Drop silently if missing; helps avoid leakage/time proxies in IDS datasets
-DEFAULT_DROP_COLS: List[str] = [
+DEFAULT_DROP_COLS: list[str] = [
     "Flow ID",
     "Timestamp",
     "Src IP",
@@ -28,12 +26,12 @@ DEFAULT_DROP_COLS: List[str] = [
 @dataclass
 class DatasetStats:
     num_samples: int
-    class_counts: Dict[int, int]
+    class_counts: dict[int, int]
 
 
-def _compute_class_counts(labels: np.ndarray) -> Dict[int, int]:
+def _compute_class_counts(labels: np.ndarray) -> dict[int, int]:
     unique, counts = np.unique(labels, return_counts=True)
-    return {int(k): int(v) for k, v in zip(unique, counts)}
+    return {int(k): int(v) for k, v in zip(unique, counts, strict=False)}
 
 
 def create_synthetic_classification_loaders(
@@ -42,7 +40,7 @@ def create_synthetic_classification_loaders(
     batch_size: int,
     seed: int = 42,
     num_classes: int = 2,
-) -> Tuple[DataLoader, DataLoader]:
+) -> tuple[DataLoader, DataLoader]:
     rng = np.random.default_rng(seed)
 
     # Multi-class synthetic data with controlled separation
@@ -105,7 +103,7 @@ def dirichlet_partition(
     num_clients: int,
     alpha: float,
     seed: int = 42,
-) -> List[List[int]]:
+) -> list[list[int]]:
     """
     Partition indices into num_clients shards using a Dirichlet distribution over label proportions.
     Returns a list of index lists per client.
@@ -116,7 +114,7 @@ def dirichlet_partition(
 
     # For each class, sample proportions for clients
     class_indices = [np.where(labels == c)[0] for c in range(num_classes)]
-    client_indices: List[List[int]] = [[] for _ in range(num_clients)]
+    client_indices: list[list[int]] = [[] for _ in range(num_clients)]
 
     for idxs in class_indices:
         if len(idxs) == 0:
@@ -157,7 +155,7 @@ def dirichlet_partition(
 
 def iid_partition(
     num_samples: int, num_clients: int, seed: int = 42
-) -> List[List[int]]:
+) -> list[list[int]]:
     rng = np.random.default_rng(seed)
     indices = np.arange(num_samples)
     rng.shuffle(indices)
@@ -168,7 +166,7 @@ def protocol_partition(
     protocols: Sequence[object],
     num_clients: int,
     seed: int = 42,
-) -> List[List[int]]:
+) -> list[list[int]]:
     """
     Partition deterministically by protocol: samples with the same protocol label go to the same client
     (round-robin assign unique protocol values to clients for balance).
@@ -177,19 +175,19 @@ def protocol_partition(
     protocols = np.asarray(protocols)
     unique_protocols = sorted({str(p) for p in protocols})
     rng.shuffle(unique_protocols)
-    proto_to_client: Dict[str, int] = {}
+    proto_to_client: dict[str, int] = {}
     for i, proto in enumerate(unique_protocols):
         proto_to_client[proto] = i % num_clients
 
-    client_indices: List[List[int]] = [[] for _ in range(num_clients)]
+    client_indices: list[list[int]] = [[] for _ in range(num_clients)]
     for idx, p in enumerate(protocols):
         client_indices[proto_to_client[str(p)]].append(idx)
     return client_indices
 
 
 def infer_feature_columns(
-    df: pd.DataFrame, label_col: str, drop_cols: Optional[List[str]] = None
-) -> Tuple[List[str], List[str]]:
+    df: pd.DataFrame, label_col: str, drop_cols: list[str] | None = None
+) -> tuple[list[str], list[str]]:
     drop_cols = drop_cols or []
     feature_df = df.drop(columns=[label_col] + drop_cols, errors="ignore")
     categorical_cols = [
@@ -203,7 +201,7 @@ def infer_feature_columns(
 
 
 def build_preprocessor(
-    numeric_cols: List[str], categorical_cols: List[str]
+    numeric_cols: list[str], categorical_cols: list[str]
 ) -> ColumnTransformer:
     numeric_transformer = StandardScaler()
     # Toggle sparsity via env var for high-cardinality safety; default to dense for simplicity
@@ -253,8 +251,8 @@ def _encode_labels_to_ints(labels: pd.Series) -> np.ndarray:
 
 
 def fit_preprocessor_global(
-    df: pd.DataFrame, label_col: str, drop_cols: Optional[List[str]] = None
-) -> Tuple[ColumnTransformer, np.ndarray, np.ndarray]:
+    df: pd.DataFrame, label_col: str, drop_cols: list[str] | None = None
+) -> tuple[ColumnTransformer, np.ndarray, np.ndarray]:
     numeric_cols, categorical_cols = infer_feature_columns(df, label_col, drop_cols)
     pre = build_preprocessor(numeric_cols, categorical_cols)
     X = pre.fit_transform(df)
@@ -265,7 +263,7 @@ def fit_preprocessor_global(
 
 def transform_with_preprocessor(
     df: pd.DataFrame, label_col: str, pre: ColumnTransformer
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     X = pre.transform(df)
     y = _encode_labels_to_ints(df[label_col])
     X = X.astype(np.float32)
@@ -278,7 +276,7 @@ def numpy_to_loaders(
     batch_size: int,
     seed: int = 42,
     test_size: float = 0.2,
-) -> Tuple[DataLoader, DataLoader]:
+) -> tuple[DataLoader, DataLoader]:
     # Defensive guard: handle empty shards gracefully
     if len(X) == 0 or len(y) == 0:
         # Return dummy loaders with minimal tensors
@@ -314,8 +312,8 @@ def numpy_to_train_val_test_loaders(
     y: np.ndarray,
     batch_size: int,
     seed: int = 42,
-    splits: Tuple[float, float, float] = (0.7, 0.15, 0.15),
-) -> Tuple[DataLoader, DataLoader, DataLoader]:
+    splits: tuple[float, float, float] = (0.7, 0.15, 0.15),
+) -> tuple[DataLoader, DataLoader, DataLoader]:
     """Create stratified train/val/test loaders from numpy arrays.
 
     Default splits are 70/15/15. The splits tuple must sum to 1.0.
@@ -352,7 +350,7 @@ def numpy_to_train_val_test_loaders(
 def load_csv_dataset(
     csv_path: str,
     label_col: str,
-    drop_cols: Optional[List[str]] = None,
+    drop_cols: list[str] | None = None,
 ) -> pd.DataFrame:
     df = pd.read_csv(csv_path)
     df.columns = [col.strip() if isinstance(col, str) else col for col in df.columns]
@@ -363,7 +361,7 @@ def load_csv_dataset(
     return df
 
 
-def load_unsw_nb15(csv_path: str) -> Tuple[pd.DataFrame, str, Optional[str]]:
+def load_unsw_nb15(csv_path: str) -> tuple[pd.DataFrame, str, str | None]:
     """
     Load UNSW-NB15 CSV and return (dataframe, label_col, protocol_col).
     Tries common column names across variants.
@@ -395,7 +393,7 @@ def load_unsw_nb15(csv_path: str) -> Tuple[pd.DataFrame, str, Optional[str]]:
     return df, label_col, proto_col
 
 
-def load_cic_ids2017(csv_path: str) -> Tuple[pd.DataFrame, str, Optional[str]]:
+def load_cic_ids2017(csv_path: str) -> tuple[pd.DataFrame, str, str | None]:
     """
     Load CIC-IDS2017 CSV and return (dataframe, label_col, protocol_col).
     Tries common column names across merged/day CSVs.
@@ -429,9 +427,9 @@ def load_cic_ids2017(csv_path: str) -> Tuple[pd.DataFrame, str, Optional[str]]:
 def fit_preprocessor_train_only_and_transform_all(
     df: pd.DataFrame,
     label_col: str,
-    drop_cols: Optional[List[str]] = None,
+    drop_cols: list[str] | None = None,
     seed: int = 42,
-) -> Tuple[ColumnTransformer, np.ndarray, np.ndarray]:
+) -> tuple[ColumnTransformer, np.ndarray, np.ndarray]:
     """Split first; fit preprocessor on train only; transform all rows.
 
     Returns (pre, X_all, y_all) where pre is fitted on the train subset.
@@ -461,9 +459,9 @@ def prepare_partitions_from_dataframe(
     num_clients: int,
     seed: int = 42,
     alpha: float = 0.1,
-    protocol_col: Optional[str] = None,
+    protocol_col: str | None = None,
     leakage_safe: bool = False,
-) -> Tuple[ColumnTransformer, List[np.ndarray], List[np.ndarray], int]:
+) -> tuple[ColumnTransformer, list[np.ndarray], list[np.ndarray], int]:
     # Drop default identifiers/time proxies if leakage_safe
     drop_cols = DEFAULT_DROP_COLS if leakage_safe else None
     if leakage_safe:

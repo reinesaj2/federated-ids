@@ -18,7 +18,6 @@ import logging
 import math
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,14 +31,15 @@ for candidate in (ROOT, ROOT / "scripts"):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
+from metric_validation import MetricValidator  # noqa: E402
 from plot_metrics_utils import compute_confidence_interval  # noqa: E402
+
 from privacy_accounting import compute_epsilon  # noqa: E402
-from metric_validation import MetricValidator, validate_experiment_data  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 
-def _resolve_run_dir(reference: str, runs_root: Path) -> Optional[Path]:
+def _resolve_run_dir(reference: str, runs_root: Path) -> Path | None:
     if not reference:
         return None
 
@@ -61,7 +61,7 @@ def _resolve_run_dir(reference: str, runs_root: Path) -> Optional[Path]:
     return None
 
 
-def _extract_macro_f1(row: pd.Series) -> Optional[float]:
+def _extract_macro_f1(row: pd.Series) -> float | None:
     macro_columns = [
         "macro_f1_after",
         "macro_f1_global",
@@ -75,7 +75,7 @@ def _extract_macro_f1(row: pd.Series) -> Optional[float]:
     return None
 
 
-def _compute_epsilon_fallback(row: Dict, final_row: Optional[pd.Series]) -> Optional[float]:
+def _compute_epsilon_fallback(row: dict, final_row: pd.Series | None) -> float | None:
     noise = None
     if final_row is not None and "dp_sigma" in final_row:
         noise = final_row.get("dp_sigma")
@@ -154,8 +154,8 @@ def _prepare_privacy_curve_data(final_rounds: pd.DataFrame, runs_root: Path) -> 
     if "run_dir" not in final_rounds.columns:
         return pd.DataFrame(), pd.DataFrame()
 
-    dp_records: List[Dict] = []
-    baseline_records: List[Dict] = []
+    dp_records: list[dict] = []
+    baseline_records: list[dict] = []
 
     for row in final_rounds.to_dict(orient="records"):
         run_path = _resolve_run_dir(str(row.get("run_dir", "")), runs_root)
@@ -166,8 +166,8 @@ def _prepare_privacy_curve_data(final_rounds: pd.DataFrame, runs_root: Path) -> 
         if not client_files:
             continue
 
-        macro_values: List[float] = []
-        epsilon_candidates: List[float] = []
+        macro_values: list[float] = []
+        epsilon_candidates: list[float] = []
 
         for client_file in client_files:
             try:
@@ -218,7 +218,7 @@ def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output
     if dp_df.empty:
         return
 
-    summary_rows: List[Dict] = []
+    summary_rows: list[dict] = []
 
     for epsilon, subset in dp_df.groupby("epsilon"):
         macros = subset["macro_f1"].dropna()
@@ -247,7 +247,7 @@ def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output
             }
         )
 
-    baseline_row: Optional[Dict] = None
+    baseline_row: dict | None = None
     if not baseline_df.empty:
         baseline_macros = baseline_df["macro_f1"].dropna()
         if not baseline_macros.empty:
@@ -317,7 +317,7 @@ def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output
     plt.close(fig)
 
 
-def compute_server_macro_f1_from_clients(run_dir: Path, round_num: int) -> Optional[float]:
+def compute_server_macro_f1_from_clients(run_dir: Path, round_num: int) -> float | None:
     """Compute server-level macro-F1 by averaging client macro-F1 scores for a given round."""
     client_f1_scores = []
 
@@ -395,22 +395,22 @@ def load_experiment_results(runs_dir: Path) -> pd.DataFrame:
         return pd.DataFrame()
 
     combined_df = pd.concat(all_data, ignore_index=True)
-    
+
     # Validate metrics before returning
     validator = MetricValidator()
     warnings = validator.validate_plot_metrics(combined_df, "experiment_data")
-    
+
     if warnings:
         logger.warning(f"Metric validation warnings: {len(warnings)} issues found")
         for warning in warnings[:5]:  # Show first 5 warnings
             logger.warning(f"  {warning}")
         if len(warnings) > 5:
             logger.warning(f"  ... and {len(warnings) - 5} more warnings")
-    
+
     return combined_df
 
 
-def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str) -> Dict:
+def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str) -> dict:
     """Perform statistical significance tests between groups."""
     groups = df[group_col].unique()
 
@@ -704,15 +704,15 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 1: Final L2 Distance by Alpha and Mu
     ax1 = axes[0, 0]
     alpha_mu_data = df.groupby(['alpha', 'fedprox_mu'])['l2_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
-    
+
     for alpha in sorted(df['alpha'].unique()):
         alpha_data = alpha_mu_data[alpha_mu_data['alpha'] == alpha]
         mu_values = alpha_data['fedprox_mu'].values
         means = alpha_data['mean'].values
         stds = alpha_data['std'].values
-        
+
         ax1.errorbar(mu_values, means, yerr=stds, marker='o', label=f'Alpha={alpha}', linewidth=2, markersize=8)
-    
+
     ax1.set_xlabel('FedProx Mu Value')
     ax1.set_ylabel('Final L2 Distance to Benign Model')
     ax1.set_title('L2 Distance vs FedProx Strength by Heterogeneity Level')
@@ -723,15 +723,15 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 2: Final Cosine Similarity by Alpha and Mu
     ax2 = axes[0, 1]
     alpha_mu_cos_data = df.groupby(['alpha', 'fedprox_mu'])['cos_to_benign_mean'].agg(['mean', 'std', 'count']).reset_index()
-    
+
     for alpha in sorted(df['alpha'].unique()):
         alpha_data = alpha_mu_cos_data[alpha_mu_cos_data['alpha'] == alpha]
         mu_values = alpha_data['fedprox_mu'].values
         means = alpha_data['mean'].values
         stds = alpha_data['std'].values
-        
+
         ax2.errorbar(mu_values, means, yerr=stds, marker='s', label=f'Alpha={alpha}', linewidth=2, markersize=8)
-    
+
     ax2.set_xlabel('FedProx Mu Value')
     ax2.set_ylabel('Final Cosine Similarity to Benign Model')
     ax2.set_title('Cosine Similarity vs FedProx Strength by Heterogeneity Level')
@@ -742,13 +742,13 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 3: Convergence Curves for Different Mu Values (Alpha=0.1)
     ax3 = axes[1, 0]
     extreme_non_iid = df[df['alpha'] == 0.1]
-    
+
     for mu in sorted(extreme_non_iid['fedprox_mu'].unique()):
         mu_data = extreme_non_iid[extreme_non_iid['fedprox_mu'] == mu]
         if 'round' in mu_data.columns and 'l2_to_benign_mean' in mu_data.columns:
             round_means = mu_data.groupby('round')['l2_to_benign_mean'].mean()
             ax3.plot(round_means.index, round_means.values, marker='o', label=f'Mu={mu}', linewidth=2)
-    
+
     ax3.set_xlabel('Round')
     ax3.set_ylabel('L2 Distance to Benign Model')
     ax3.set_title('Convergence Curves: Extreme Non-IID (Alpha=0.1)')
@@ -758,7 +758,7 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     # Plot 4: Heatmap of Final Performance
     ax4 = axes[1, 1]
     pivot_data = df.groupby(['alpha', 'fedprox_mu'])['l2_to_benign_mean'].mean().unstack()
-    
+
     im = ax4.imshow(pivot_data.values, cmap='viridis', aspect='auto')
     ax4.set_xticks(range(len(pivot_data.columns)))
     ax4.set_xticklabels([f'{mu:.2f}' for mu in pivot_data.columns])
@@ -767,13 +767,13 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     ax4.set_xlabel('FedProx Mu Value')
     ax4.set_ylabel('Alpha (Heterogeneity Level)')
     ax4.set_title('L2 Distance Heatmap: Alpha vs Mu')
-    
+
     # Add colorbar
     cbar = plt.colorbar(im, ax=ax4)
     cbar.set_label('Final L2 Distance')
 
     plt.tight_layout()
-    
+
     # Save plot
     output_file = output_dir / "fedprox_heterogeneity_analysis.png"
     plt.savefig(output_file, dpi=300, bbox_inches='tight')
@@ -1137,7 +1137,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     plt.close()
 
 
-def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[Path] = None):
+def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Path | None = None):
     """Plot privacy-utility tradeoff."""
     if "dp_enabled" not in df.columns:
         return
