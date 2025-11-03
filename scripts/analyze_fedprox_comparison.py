@@ -12,17 +12,20 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from numbers import Real
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Mapping, Optional, Sequence
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-from scipy import stats
+
+from scripts.statistical_utils import cohens_d as compute_cohens_d
+from scripts.statistical_utils import compute_ci, paired_t_test
+
 
 ARTIFACT_DIR_PATTERN = re.compile(r"fedprox-nightly-alpha(?P<alpha>[0-9.]+)-mu(?P<mu>[0-9.]+)-")
 RUN_DIR_PATTERN = re.compile(r"nightly_fedprox_alpha(?P<alpha>[0-9.]+)_mu(?P<mu>[0-9.]+)_seed(?P<seed>\d+)")
@@ -41,21 +44,12 @@ class RunMetrics:
 
 
 def _safe_float(value: object) -> float | None:
-    if value is None:
+    if value in ("", None):
         return None
-    if isinstance(value, Real):
+    try:
         return float(value)
-    if isinstance(value, np.generic):
-        return float(value.item())
-    if isinstance(value, str):
-        stripped = value.strip()
-        if stripped == "":
-            return None
-        try:
-            return float(stripped)
-        except ValueError:
-            return None
-    return None
+    except (TypeError, ValueError):
+        return None
 
 
 def _extract_float(row: Mapping[str, object], keys: Sequence[str]) -> float | None:
@@ -207,21 +201,8 @@ def collect_run_metrics(artifacts_dir: Path) -> list[RunMetrics]:
 
 
 def _mean_ci(values: Sequence[float], confidence: float = 0.95) -> tuple[float, float, float]:
-    arr = np.array([v for v in values if not math.isnan(v)], dtype=float)
-    if arr.size == 0:
-        return float("nan"), float("nan"), float("nan")
-
-    mean = float(arr.mean())
-    if arr.size == 1:
-        return mean, mean, mean
-
-    std = float(arr.std(ddof=1))
-    if std == 0.0:
-        return mean, mean, mean
-
-    t_crit = float(stats.t.ppf((1 + confidence) / 2, df=arr.size - 1))
-    margin = t_crit * std / math.sqrt(arr.size)
-    return mean, mean - margin, mean + margin
+    """Compute confidence interval for a set of values."""
+    return compute_ci(values, confidence=confidence)
 
 
 def aggregate_run_metrics(
@@ -264,8 +245,11 @@ def aggregate_run_metrics(
 # Statistical validation helpers
 
 
-def ensure_minimum_samples(run_metrics: Sequence[RunMetrics], minimum: int = 5) -> None:
-    """Ensure every configuration has at least ``minimum`` seeds available."""
+def ensure_minimum_samples(run_metrics: Sequence[RunMetrics], minimum: int = 5, *, strict: bool = True) -> None:
+    """Ensure configurations have at least ``minimum`` seeds; warn or raise.
+
+    If ``strict`` is False, emit a warning and continue instead of raising.
+    """
     sample_counts: dict[tuple[float, float, str], set[int]] = defaultdict(set)
     for run in run_metrics:
         sample_counts[(run.alpha, run.mu, run.algorithm)].add(run.seed)
@@ -273,11 +257,20 @@ def ensure_minimum_samples(run_metrics: Sequence[RunMetrics], minimum: int = 5) 
     violations = [(alpha, mu, algorithm, len(seeds)) for (alpha, mu, algorithm), seeds in sample_counts.items() if len(seeds) < minimum]
 
     if violations:
-        alpha, mu, algorithm, observed = sorted(violations, key=lambda t: (t[0], t[1], t[2]))[0]
-        raise ValueError(
-            f"FedProx nightly runs for alpha={alpha} mu={mu} algorithm={algorithm} "
-            f"have only {observed} seeds; require at least {minimum}."
-        )
+        try:
+            import warnings as _warnings
+
+            for alpha, mu, algorithm, observed in sorted(violations, key=lambda t: (t[0], t[1], t[2])):
+                msg = f"Under-sampled config alpha={alpha} mu={mu} algorithm={algorithm}: " f"observed={observed} < minimum={minimum}"
+                _warnings.warn(msg)
+        except Exception:
+            pass
+        if strict:
+            alpha, mu, algorithm, observed = sorted(violations, key=lambda t: (t[0], t[1], t[2]))[0]
+            raise ValueError(
+                f"FedProx nightly runs for alpha={alpha} mu={mu} algorithm={algorithm} "
+                f"have only {observed} seeds; require at least {minimum}."
+            )
 
 
 def compute_paired_statistics(
@@ -285,7 +278,11 @@ def compute_paired_statistics(
     metric_name: str = "weighted_macro_f1",
     baseline_algorithm: str = "FedAvg",
 ) -> list[dict[str, object]]:
-    """Compute paired t-tests and effect sizes comparing FedProx to FedAvg."""
+    """Compute paired t-tests and effect sizes comparing FedProx to FedAvg.
+
+    Uses statistical_utils for rigorous hypothesis testing and effect size
+    calculation across all metrics.
+    """
     baseline_values: dict[tuple[float, int], float] = {}
     candidate_map: dict[tuple[float, float], list[tuple[int, float, str]]] = defaultdict(list)
 
@@ -319,14 +316,10 @@ def compute_paired_statistics(
             continue
 
         mean_diff, ci_lower, ci_upper = _mean_ci(diffs)
-        if n > 1:
-            std_diff = float(np.std(diffs, ddof=1))
-            effect_size = mean_diff / std_diff if std_diff > 0 else 0.0
-            _, p_value = stats.ttest_rel(prox_values, fedavg_values)
-            p_value = float(p_value)
-        else:
-            effect_size = 0.0
-            p_value = float("nan")
+
+        t_test_result = paired_t_test(prox_values, fedavg_values)
+        p_value = t_test_result["p_value"]
+        effect_size = compute_cohens_d(prox_values, fedavg_values)
 
         results.append(
             {
@@ -365,7 +358,11 @@ def plot_aggregated_metrics(aggregated: pd.DataFrame, output_dir: Path) -> None:
             lower = sorted_group["ci_lower"].to_numpy()
             upper = sorted_group["ci_upper"].to_numpy()
             label = f"{algorithm} (α={alpha})"
-            ax.plot(x, mean, marker="o", label=label)
+            # Policy: when μ grid is sparse, use marker-only to avoid misleading lines
+            if x.size <= 3:
+                ax.scatter(x, mean, marker="o", label=label)
+            else:
+                ax.plot(x, mean, marker="o", label=label)
             ax.fill_between(x, lower, upper, alpha=0.2)
 
         ax.set_xlabel("FedProx μ")
@@ -387,8 +384,12 @@ def write_summary(
     aggregated: pd.DataFrame,
     significance: Sequence[dict[str, object]],
     output_dir: Path,
-) -> None:
+    run_timestamp: Optional[str] = None,
+) -> dict[str, object]:
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    if run_timestamp is None:
+        run_timestamp = datetime.now(timezone.utc).isoformat()
 
     runs_payload = [
         {
@@ -404,10 +405,25 @@ def write_summary(
         for run in run_metrics
     ]
 
+    convergence_analysis = {}
+    for run in run_metrics:
+        key = f"alpha_{run.alpha}_mu_{run.mu}"
+        if key not in convergence_analysis:
+            convergence_analysis[key] = {
+                "alpha": run.alpha,
+                "mu": run.mu,
+                "algorithm": run.algorithm,
+                "final_l2_distance": float("nan"),
+                "final_cosine_similarity": float("nan"),
+                "avg_aggregation_time": run.mean_aggregation_time_ms,
+            }
+
     summary = {
+        "run_timestamp": run_timestamp,
         "runs": runs_payload,
         "aggregated": aggregated.to_dict(orient="records"),
         "significance": list(significance),
+        "raw_analysis_results": {"convergence_analysis": convergence_analysis},
     }
 
     (output_dir / "fedprox_comparison_summary.json").write_text(
@@ -415,6 +431,8 @@ def write_summary(
         encoding="utf-8",
     )
     aggregated.to_csv(output_dir / "fedprox_comparison_summary.csv", index=False)
+
+    return summary
 
 
 def generate_thesis_tables(
@@ -484,6 +502,29 @@ def generate_thesis_tables(
         encoding="utf-8",
     )
 
+    # Emit an additional table with exact bounds for captions
+    bounds_lines: list[str] = [
+        "% Auto-generated by analyze_fedprox_comparison.py",
+        "\\begin{table}[ht]",
+        "\\centering",
+        "\\caption{FedAvg vs FedProx Macro-F1 with exact 95\\% CI bounds}",
+        "\\label{tab:fedprox_macro_f1_bounds}",
+        "\\begin{tabular}{lcccc}",
+        "\\toprule",
+        "Algorithm & $\\alpha$ & $\\mu$ & Mean & [CI lower, CI upper] \\\\",
+        "\\midrule",
+    ]
+    for _, row in macro_df.iterrows():
+        bounds_lines.append(
+            f"{row['algorithm']} & {row['alpha']} & {row['mu']} & {row['mean']:.4f} & "
+            f"[{row['ci_lower']:.4f}, {row['ci_upper']:.4f}] \\\\"
+        )
+    bounds_lines.extend(["\\bottomrule", "\\end{tabular}", "\\end{table}"])
+    (output_dir / "fedprox_thesis_tables_bounds.tex").write_text(
+        "\n".join(bounds_lines),
+        encoding="utf-8",
+    )
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Aggregate FedProx nightly comparison artifacts.")
@@ -499,6 +540,12 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="Directory where outputs (plots/tables) will be written.",
     )
+    parser.add_argument(
+        "--baseline_dir",
+        type=Path,
+        required=False,
+        help="Directory containing historical baseline artifacts for regression detection.",
+    )
     return parser.parse_args()
 
 
@@ -509,7 +556,11 @@ def main() -> None:
         print("No FedProx artifacts found; nothing to summarize.")
         return
 
-    ensure_minimum_samples(run_metrics, minimum=5)
+    import os as _os
+
+    min_seeds = int(_os.environ.get("SUMMARY_MIN_SEEDS", "5"))
+    strict_seeds = _os.environ.get("SUMMARY_STRICT_SEEDS", "1").lower() in ("1", "true", "yes")
+    ensure_minimum_samples(run_metrics, minimum=min_seeds, strict=strict_seeds)
 
     aggregated = aggregate_run_metrics(run_metrics)
     if aggregated.empty:
@@ -520,9 +571,57 @@ def main() -> None:
     for metric_name in ("weighted_macro_f1", "mean_aggregation_time_ms"):
         significance_rows.extend(compute_paired_statistics(run_metrics, metric_name=metric_name))
 
-    write_summary(run_metrics, aggregated, significance_rows, args.output_dir)
+    summary = write_summary(run_metrics, aggregated, significance_rows, args.output_dir)
     plot_aggregated_metrics(aggregated, args.output_dir)
     generate_thesis_tables(aggregated, significance_rows, args.output_dir)
+
+    if args.baseline_dir:
+        try:
+            from scripts.historical_tracking import (
+                append_to_baseline,
+                generate_regression_report,
+                load_baseline_window,
+                plot_metric_trend_90d,
+                trim_baseline_to_window,
+            )
+
+            baseline_path = args.output_dir / "historical" / "baselines.csv"
+            commit_sha = os.getenv("GITHUB_SHA", "local")
+
+            append_to_baseline(summary, baseline_path, commit_sha)
+            trim_baseline_to_window(baseline_path, window_days=90)
+
+            baseline_df = load_baseline_window(baseline_path, window_days=90)
+
+            if not baseline_df.empty and len(baseline_df) >= 5:
+                regression_report = generate_regression_report(summary, baseline_df, threshold_std=2.0)
+
+                regression_path = args.output_dir / "historical" / "regression_report.json"
+                regression_path.write_text(json.dumps(regression_report, indent=2), encoding="utf-8")
+
+                trend_dir = args.output_dir / "historical" / "trend_plots"
+                trend_dir.mkdir(parents=True, exist_ok=True)
+
+                metrics_to_plot = [
+                    ("final_l2_distance", "L2 Distance to Benign Mean"),
+                    ("final_cosine_similarity", "Cosine Similarity to Benign Mean"),
+                    ("avg_aggregation_time_ms", "Aggregation Time (ms)"),
+                ]
+
+                for metric_name, metric_label in metrics_to_plot:
+                    plot_path = trend_dir / f"{metric_name}_trend_90d.png"
+                    plot_metric_trend_90d(baseline_df, None, metric_name, plot_path, metric_label)
+
+                print(f"Historical tracking: baseline updated, {len(baseline_df)} records in 90-day window")
+                if regression_report["any_regression_detected"]:
+                    print("WARNING: Regression detected in one or more metrics")
+            else:
+                print("Historical tracking: insufficient baseline data for regression detection")
+
+        except ImportError as e:
+            print(f"Historical tracking disabled: {e}")
+        except Exception as e:
+            print(f"Historical tracking failed: {e}")
 
 
 if __name__ == "__main__":
