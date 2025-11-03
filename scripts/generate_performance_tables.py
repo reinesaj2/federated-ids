@@ -14,12 +14,7 @@ MACRO_F1_MIN, MACRO_F1_MAX = 0.0, 1.0
 
 
 def load_attack_resilience() -> List[Dict[str, float]]:
-    csv_path = (
-        REPO_ROOT
-        / "results"
-        / "comparative_analysis"
-        / "attack_resilience_stats.csv"
-    )
+    csv_path = REPO_ROOT / "results" / "comparative_analysis" / "attack_resilience_stats.csv"
     if not csv_path.exists():
         raise FileNotFoundError(csv_path)
 
@@ -69,18 +64,14 @@ def summarise_attack_resilience(
 
 
 def load_personalization_summary() -> Dict[str, object]:
-    json_path = (
-        REPO_ROOT / "analysis" / "personalization" / "personalization_summary.json"
-    )
+    json_path = REPO_ROOT / "analysis" / "personalization" / "personalization_summary.json"
     if not json_path.exists():
         raise FileNotFoundError(json_path)
     return json.loads(json_path.read_text())
 
 
 def load_fedprox_summary() -> Dict[str, object]:
-    json_path = (
-        REPO_ROOT / "analysis" / "fedprox_nightly" / "fedprox_comparison_summary.json"
-    )
+    json_path = REPO_ROOT / "analysis" / "fedprox_nightly" / "fedprox_comparison_summary.json"
     if not json_path.exists():
         raise FileNotFoundError(json_path)
     return json.loads(json_path.read_text())
@@ -107,26 +98,12 @@ def load_privacy_curve() -> List[Dict[str, object]]:
             rows.append(
                 {
                     "epsilon": epsilon,
-                    "macro_f1_mean": (
-                        float(row["macro_f1_mean"])
-                        if row.get("macro_f1_mean")
-                        else None
-                    ),
-                    "ci_lower": (
-                        float(row["ci_lower"]) if row.get("ci_lower") else None
-                    ),
-                    "ci_upper": (
-                        float(row["ci_upper"]) if row.get("ci_upper") else None
-                    ),
-                    "noise_multiplier": (
-                        float(row["dp_noise_multiplier"])
-                        if row.get("dp_noise_multiplier")
-                        else None
-                    ),
+                    "macro_f1_mean": (float(row["macro_f1_mean"]) if row.get("macro_f1_mean") else None),
+                    "ci_lower": (float(row["ci_lower"]) if row.get("ci_lower") else None),
+                    "ci_upper": (float(row["ci_upper"]) if row.get("ci_upper") else None),
+                    "noise_multiplier": (float(row["dp_noise_multiplier"]) if row.get("dp_noise_multiplier") else None),
                     "is_baseline": bool(int(row.get("is_baseline", "0") or 0)),
-                    "samples": (
-                        int(float(row["n"])) if row.get("n") not in (None, "") else None
-                    ),
+                    "samples": (int(float(row["n"])) if row.get("n") not in (None, "") else None),
                 }
             )
     return rows
@@ -212,11 +189,7 @@ def compute_privacy_table(rows: List[Dict[str, object]]) -> str:
             "| {epsilon} | {macro} | {sigma} | {samples} |".format(
                 epsilon=epsilon,
                 macro=format_macro(row["macro_f1_mean"]),
-                sigma=(
-                    f"{row['noise_multiplier']:.2f}"
-                    if row["noise_multiplier"] is not None
-                    else "—"
-                ),
+                sigma=(f"{row['noise_multiplier']:.2f}" if row["noise_multiplier"] is not None else "—"),
                 samples=row["samples"] or "—",
             )
         )
@@ -232,9 +205,7 @@ def build_markdown() -> str:
 
     sections: List[str] = []
     sections.append("# Performance Comparison Tables")
-    sections.append(
-        "Consolidated metrics derived from the latest committed experiment artifacts."
-    )
+    sections.append("Consolidated metrics derived from the latest committed experiment artifacts.")
 
     sections.append("## Attack Resilience (Macro-F1)")
     sections.append(
@@ -254,9 +225,7 @@ def build_markdown() -> str:
     sections.append(compute_privacy_table(privacy_rows))
 
     sections.append("---")
-    sections.append(
-        "_Last regenerated via `python scripts/generate_performance_tables.py`._"
-    )
+    sections.append("_Last regenerated via `python scripts/generate_performance_tables.py`._")
 
     return "\n\n".join(sections) + "\n"
 
