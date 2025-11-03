@@ -169,9 +169,7 @@ def main() -> None:
                         continue
                     shapes = [layer.shape for layer in client_weights[idx]]
                     masks = generate_mask_sequence(seed, shapes)
-                    client_weights[idx] = [
-                        masked_layer - mask for masked_layer, mask in zip(client_weights[idx], masks)
-                    ]
+                    client_weights[idx] = [masked_layer - mask for masked_layer, mask in zip(client_weights[idx], masks)]
 
             # Time the aggregation
             with agg_timer.time_aggregation():

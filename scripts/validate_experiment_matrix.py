@@ -34,10 +34,7 @@ class ExperimentConstraints:
         if self.aggregation == "bulyan":
             required = 4 * f + 3
             if self.n_clients < required:
-                msg = (
-                    f"Bulyan requires n >= 4f+3; "
-                    f"got n={self.n_clients}, f={f}, required={required}"
-                )
+                msg = f"Bulyan requires n >= 4f+3; " f"got n={self.n_clients}, f={f}, required={required}"
                 return (False, msg)
 
         elif self.aggregation == "krum":
@@ -49,10 +46,7 @@ class ExperimentConstraints:
         elif self.aggregation == "median":
             required = 2 * f + 1
             if self.n_clients < required:
-                msg = (
-                    f"Median requires n >= 2f+1; "
-                    f"got n={self.n_clients}, f={f}, required={required}"
-                )
+                msg = f"Median requires n >= 2f+1; " f"got n={self.n_clients}, f={f}, required={required}"
                 return (False, msg)
 
         elif self.aggregation == "fedavg":
