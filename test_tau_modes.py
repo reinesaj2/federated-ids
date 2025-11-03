@@ -41,9 +41,7 @@ def test_tau_low_fpr_mode():
     actual_fpr = fp / max(fp + tn, 1)
 
     # Assert FPR is within tolerance (±0.02)
-    assert (
-        abs(actual_fpr - target_fpr) <= 0.02
-    ), f"FPR {actual_fpr:.3f} not within tolerance of target {target_fpr:.3f}"
+    assert abs(actual_fpr - target_fpr) <= 0.02, f"FPR {actual_fpr:.3f} not within tolerance of target {target_fpr:.3f}"
 
     # Assert tau is reasonable (between 0 and 1)
     assert 0 <= tau <= 1, f"Tau {tau} out of valid range [0, 1]"
@@ -77,10 +75,7 @@ def test_tau_max_f1_mode():
     max_f1 = max(f1_scores)
 
     # Assert selected tau achieves near-maximum F1 (within 5% relative)
-    assert f1_at_tau >= 0.95 * max_f1, (
-        f"F1 at tau={tau:.3f} is {f1_at_tau:.3f}, "
-        f"but max F1 in neighborhood is {max_f1:.3f}"
-    )
+    assert f1_at_tau >= 0.95 * max_f1, f"F1 at tau={tau:.3f} is {f1_at_tau:.3f}, " f"but max F1 in neighborhood is {max_f1:.3f}"
 
     # Assert tau is reasonable
     assert 0 <= tau <= 1, f"Tau {tau} out of valid range [0, 1]"

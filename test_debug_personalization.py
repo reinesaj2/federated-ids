@@ -15,12 +15,12 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 from client import SimpleNet, TorchClient, get_parameters
-from scripts.debug_personalization import summarize_client_metrics
 from client_metrics import (
     ClientFitTimer,
     ClientMetricsLogger,
     analyze_data_distribution,
 )
+from scripts.debug_personalization import summarize_client_metrics
 
 
 def test_debug_logging_enabled():

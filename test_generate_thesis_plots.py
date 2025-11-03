@@ -387,6 +387,7 @@ def test_compute_f1_degradation_bounded():
 def test_attack_resilience_csv_structure():
     """Test attack resilience CSV has correct structure and bounded degradation."""
     import matplotlib.pyplot as plt
+
     from scripts.generate_thesis_plots import plot_attack_resilience
 
     with TemporaryDirectory() as tmpdir:
@@ -522,6 +523,7 @@ def test_attack_resilience_ci_computation():
 def test_attack_resilience_plot_artifacts():
     """Test that plot_attack_resilience generates all required artifacts."""
     import matplotlib.pyplot as plt
+
     from scripts.generate_thesis_plots import plot_attack_resilience
 
     with TemporaryDirectory() as tmpdir:

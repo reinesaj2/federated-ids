@@ -10,8 +10,8 @@ import math
 import re
 import sys
 from collections import defaultdict
+from numbers import Real
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
 
 
 class ArtifactValidationError(Exception):
@@ -25,29 +25,35 @@ MIN_WEIGHTED_ACCURACY = 0.70
 MAX_FINAL_L2_DISTANCE = 1.5
 
 
-def _safe_float(value: str | None) -> float | None:
-    if value in ("", None):
+def _safe_float(value: str | Real | None) -> float | None:
+    if value is None:
         return None
-    try:
+    if isinstance(value, Real):
         return float(value)
-    except (TypeError, ValueError):
-        return None
+    if isinstance(value, str):
+        if value.strip() == "":
+            return None
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
 
 
-def _load_csv_rows(csv_path: Path) -> List[Dict[str, str]]:
+def _load_csv_rows(csv_path: Path) -> list[dict[str, str]]:
     """Load all rows from a CSV file as dictionaries."""
-    with open(csv_path, "r", encoding="utf-8") as handle:
+    with open(csv_path, encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         return list(reader)
 
 
-def validate_csv_schema(csv_path: Path, expected_columns: Set[str]) -> None:
+def validate_csv_schema(csv_path: Path, expected_columns: set[str]) -> None:
     """Validate that a CSV file exists and has expected columns."""
     if not csv_path.exists():
         raise ArtifactValidationError(f"Required CSV file missing: {csv_path}")
 
     try:
-        with open(csv_path, "r") as f:
+        with open(csv_path) as f:
             reader = csv.DictReader(f)
             actual_columns = set(reader.fieldnames or [])
 
@@ -58,13 +64,13 @@ def validate_csv_schema(csv_path: Path, expected_columns: Set[str]) -> None:
             # Validate at least one data row exists
             try:
                 next(reader)
-            except StopIteration:
-                raise ArtifactValidationError(f"CSV {csv_path} has no data rows")
+            except StopIteration as err:
+                raise ArtifactValidationError(f"CSV {csv_path} has no data rows") from err
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 (re-raising with context)
         if isinstance(e, ArtifactValidationError):
             raise
-        raise ArtifactValidationError(f"Failed to read CSV {csv_path}: {e}")
+        raise ArtifactValidationError(f"Failed to read CSV {csv_path}: {e}") from e
 
 
 def validate_plot_files(run_dir: Path) -> None:
@@ -98,7 +104,7 @@ def validate_fpr_tolerance(
 
     for client_file in client_metrics_files:
         try:
-            with open(client_file, "r") as f:
+            with open(client_file) as f:
                 reader = csv.DictReader(f)
                 headers = set(reader.fieldnames or [])
 
@@ -199,18 +205,14 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True, require_plots
 
     weighted_macro_f1 = macro_sum / macro_weight
     if not math.isfinite(weighted_macro_f1) or weighted_macro_f1 < MIN_WEIGHTED_MACRO_F1:
-        raise ArtifactValidationError(
-            f"Weighted macro_f1_after={weighted_macro_f1:.3f} below minimum {MIN_WEIGHTED_MACRO_F1:.2f}"
-        )
+        raise ArtifactValidationError(f"Weighted macro_f1_after={weighted_macro_f1:.3f} below minimum {MIN_WEIGHTED_MACRO_F1:.2f}")
 
     if acc_samples == 0 or acc_weight == 0:
         raise ArtifactValidationError(f"No acc_after values found in {run_dir}")
 
     weighted_accuracy = acc_sum / acc_weight
     if not math.isfinite(weighted_accuracy) or weighted_accuracy < MIN_WEIGHTED_ACCURACY:
-        raise ArtifactValidationError(
-            f"Weighted acc_after={weighted_accuracy:.3f} below minimum {MIN_WEIGHTED_ACCURACY:.2f}"
-        )
+        raise ArtifactValidationError(f"Weighted acc_after={weighted_accuracy:.3f} below minimum {MIN_WEIGHTED_ACCURACY:.2f}")
 
     # Validate server convergence metrics (L2 distance)
     server_rows = _load_csv_rows(server_metrics_path)
@@ -219,13 +221,9 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True, require_plots
     final_server_row = server_rows[-1]
     l2_value = _safe_float(final_server_row.get("l2_to_benign_mean"))
     if l2_value is None:
-        raise ArtifactValidationError(
-            f"Server metrics missing l2_to_benign_mean in {server_metrics_path}"
-        )
+        raise ArtifactValidationError(f"Server metrics missing l2_to_benign_mean in {server_metrics_path}")
     if not math.isfinite(l2_value) or l2_value > MAX_FINAL_L2_DISTANCE:
-        raise ArtifactValidationError(
-            f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {MAX_FINAL_L2_DISTANCE:.1f}"
-        )
+        raise ArtifactValidationError(f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {MAX_FINAL_L2_DISTANCE:.1f}")
 
     # Validate FPR tolerance if using low_fpr tau mode
     validate_fpr_tolerance(run_dir, target_fpr=0.10, tolerance=0.02, strict=fpr_strict)
@@ -233,7 +231,7 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True, require_plots
     print(f"[PASS] Run directory {run_dir.name} validation passed")
 
 
-def find_run_directories(runs_dir: Path) -> List[Path]:
+def find_run_directories(runs_dir: Path) -> list[Path]:
     """Find all FL run directories in the runs directory."""
     if not runs_dir.exists():
         raise ArtifactValidationError(f"Runs directory does not exist: {runs_dir}")
@@ -249,8 +247,8 @@ def find_run_directories(runs_dir: Path) -> List[Path]:
 RUN_NAME_PATTERN = re.compile(r"nightly_fedprox_alpha(?P<alpha>[0-9.]+)_mu(?P<mu>[0-9.]+)_seed(?P<seed>\d+)")
 
 
-def _collect_seed_counts(run_directories: List[Path]) -> Dict[Tuple[str, str], Set[int]]:
-    seed_map: Dict[Tuple[str, str], Set[int]] = defaultdict(set)
+def _collect_seed_counts(run_directories: list[Path]) -> dict[tuple[str, str], set[int]]:
+    seed_map: dict[tuple[str, str], set[int]] = defaultdict(set)
     for run_dir in run_directories:
         match = RUN_NAME_PATTERN.match(run_dir.name)
         if not match:
@@ -260,7 +258,7 @@ def _collect_seed_counts(run_directories: List[Path]) -> Dict[Tuple[str, str], S
     return seed_map
 
 
-def validate_seed_coverage(run_directories: List[Path], minimum_seeds: int = 5) -> None:
+def validate_seed_coverage(run_directories: list[Path], minimum_seeds: int = 5) -> None:
     """Ensure each FedProx nightly configuration has at least ``minimum_seeds`` runs."""
     seed_map = _collect_seed_counts(run_directories)
     if not seed_map:
