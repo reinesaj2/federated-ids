@@ -296,7 +296,7 @@ def main():
         args.workers = calculate_optimal_workers(args.dataset_type)
 
     print(f"\n{'='*70}")
-    print("🚀 OPTIMIZED EXPERIMENT RUNNER FOR FULL DATASETS")
+    print("OPTIMIZED EXPERIMENT RUNNER FOR FULL DATASETS")
     print(f"{'='*70}")
 
     # Generate configs
@@ -413,7 +413,7 @@ def main():
                 retry_info = f"retry {result.get('retry_count', 0)}/{args.max_retries}"
                 print(
                     f"[{completed_count + completed_tasks}/{total}] "
-                    f"({progress_pct:.1f}%) ❌ {result['preset']}: "
+                    f"({progress_pct:.1f}%) FAILED {result['preset']}: "
                     f"{result['error'][:50]}... [{retry_info}]"
                 )
 

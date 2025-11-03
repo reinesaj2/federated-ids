@@ -1389,6 +1389,8 @@ def plot_personalization_benefit(df: pd.DataFrame, output_dir: Path):
             client_df = pd.read_csv(client_metrics)
             if "macro_f1_global" in client_df.columns and "macro_f1_personalized" in client_df.columns:
                 # Get last round
+                if client_df.empty:
+                    continue
                 last_row = client_df.iloc[-1]
                 personalization_data.append(
                     {

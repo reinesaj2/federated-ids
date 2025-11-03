@@ -494,7 +494,7 @@ class TestFailureScenarios:
             # Simulate git output with unicode characters
             mock_run.return_value = MagicMock(
                 returncode=0,
-                stdout="🎉 Unicode commit message",
+                stdout="SUCCESS: Unicode commit message",
                 stderr=""
             )
 

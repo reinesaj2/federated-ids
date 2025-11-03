@@ -4,20 +4,20 @@
   "num_clients": 6,
   "num_rounds": 20,
   "seeds": [
-    101,
-    202,
-    303,
-    404,
-    505
+    42,
+    43,
+    44,
+    45,
+    46
   ],
   "alpha_values": [
-    "inf",
-    "1",
-    "0.5",
-    "0.2",
-    "0.1",
+    "0.02",
     "0.05",
-    "0.02"
+    "0.1",
+    "0.2",
+    "0.5",
+    "1",
+    "inf"
   ],
   "fedprox_mu_values": [
     "0",
@@ -44,16 +44,16 @@
         "0"
       ],
       "sample_presets": [
-        "comp_cic_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed101",
-        "comp_cic_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed202",
-        "comp_cic_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed303",
-        "comp_cic_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed404",
-        "comp_cic_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed505"
+        "comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed42",
+        "comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed43",
+        "comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed44",
+        "comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed45",
+        "comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed46"
       ]
     },
     {
       "dimension": "attack",
-      "count": 45,
+      "count": 60,
       "datasets": [
         "cic"
       ],
@@ -64,16 +64,16 @@
         "0"
       ],
       "sample_presets": [
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed101",
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed202",
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed303",
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed404",
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed505"
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42",
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43",
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed44",
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed45",
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed46"
       ]
     },
     {
       "dimension": "heterogeneity",
-      "count": 315,
+      "count": 35,
       "datasets": [
         "cic"
       ],
@@ -87,22 +87,14 @@
         "inf"
       ],
       "mu_values": [
-        "0",
-        "0.002",
-        "0.005",
-        "0.01",
-        "0.02",
-        "0.05",
-        "0.08",
-        "0.1",
-        "0.2"
+        "0"
       ],
       "sample_presets": [
-        "comp_cic_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed101",
-        "comp_cic_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed202",
-        "comp_cic_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed303",
-        "comp_cic_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed404",
-        "comp_cic_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed505"
+        "comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed42",
+        "comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed43",
+        "comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed44",
+        "comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed45",
+        "comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed46"
       ]
     },
     {
@@ -118,11 +110,11 @@
         "0"
       ],
       "sample_presets": [
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed101",
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed202",
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed303",
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed404",
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed505"
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42",
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43",
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed44",
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed45",
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed46"
       ]
     },
     {
@@ -138,11 +130,11 @@
         "0"
       ],
       "sample_presets": [
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed101",
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed202",
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed303",
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed404",
-        "comp_cic_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed505"
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42",
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43",
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed44",
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed45",
+        "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed46"
       ]
     }
   ]

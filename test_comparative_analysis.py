@@ -499,10 +499,10 @@ def test_comparison_matrix_fedprox_mu_values():
     matrix = ComparisonMatrix()
 
     assert hasattr(matrix, "fedprox_mu_values")
-    assert len(matrix.fedprox_mu_values) == 3
+    assert len(matrix.fedprox_mu_values) == 9
     assert 0.01 in matrix.fedprox_mu_values
     assert 0.1 in matrix.fedprox_mu_values
-    assert 1.0 in matrix.fedprox_mu_values
+    assert 0.0 in matrix.fedprox_mu_values
 
 
 def test_comparison_matrix_heterogeneity_fedprox_dimension():
