@@ -14,8 +14,8 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from client import SimpleNet, TorchClient, get_parameters
 from client_metrics import (
-    ClientMetricsLogger,
     ClientFitTimer,
+    ClientMetricsLogger,
     analyze_data_distribution,
 )
 
@@ -66,7 +66,7 @@ def test_personalization_disabled_when_epochs_zero():
         returned_params, _, _ = client.fit(initial_params, {})
 
         # Verify CSV does not have personalization metrics filled
-        with open(metrics_path, "r") as f:
+        with open(metrics_path) as f:
             reader = csv.DictReader(f)
             row = list(reader)[0]
             # When disabled, personalization fields should be empty or not set
@@ -128,7 +128,7 @@ def test_personalization_computes_metrics_and_improves():
         returned_params, _, _ = client.fit(initial_params, {})
 
         # Verify personalization metrics are logged correctly
-        with open(metrics_path, "r") as f:
+        with open(metrics_path) as f:
             reader = csv.DictReader(f)
             row = list(reader)[0]
 
@@ -149,10 +149,7 @@ def test_personalization_computes_metrics_and_improves():
 
             # With 5 personalization epochs on local train data,
             # personalized model SHOULD improve on local test set
-            assert pers_f1 > global_f1, (
-                f"Personalization should improve F1: "
-                f"global={global_f1:.4f}, personalized={pers_f1:.4f}"
-            )
+            assert pers_f1 > global_f1, f"Personalization should improve F1: " f"global={global_f1:.4f}, personalized={pers_f1:.4f}"
 
 
 def test_personalization_returns_global_weights():
@@ -218,7 +215,7 @@ def test_personalization_returns_global_weights():
 
         # Verify weights changed (FL training occurred)
         weights_changed = False
-        for ret_param, init_param in zip(returned_params, weights_before_fit):
+        for ret_param, init_param in zip(returned_params, weights_before_fit, strict=False):
             if not np.allclose(ret_param, init_param, rtol=1e-5, atol=1e-6):
                 weights_changed = True
                 break
@@ -276,7 +273,7 @@ def test_personalization_metrics_logged_correctly():
         client.fit(initial_params, {})
 
         # Verify CSV structure
-        with open(metrics_path, "r") as f:
+        with open(metrics_path) as f:
             reader = csv.DictReader(f)
             rows = list(reader)
 

@@ -16,15 +16,14 @@ import os
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional, Tuple
 
 
 def summarize_client_metrics(
     row: dict,
-) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+) -> tuple[float | None, float | None, float | None]:
     """Extract global/personalized F1 and gain from a metrics CSV row."""
 
-    def to_float(value: Optional[str]) -> Optional[float]:
+    def to_float(value: str | None) -> float | None:
         if value is None:
             return None
         value_str = str(value).strip()
@@ -41,9 +40,7 @@ def summarize_client_metrics(
 
     # Fall back to post-evaluation metrics when personalization columns are empty
     if global_f1 is None:
-        global_f1 = to_float(row.get("macro_f1_after")) or to_float(
-            row.get("macro_f1_before")
-        )
+        global_f1 = to_float(row.get("macro_f1_after")) or to_float(row.get("macro_f1_before"))
     if pers_f1 is None:
         pers_f1 = to_float(row.get("macro_f1_after")) or global_f1
 
@@ -65,10 +62,7 @@ def run_experiment(
 ) -> None:
     """Run single experiment with debug logging enabled."""
     print(f"\n{'=' * 80}")
-    print(
-        f"Experiment: dataset={dataset}, alpha={alpha}, "
-        f"pers_epochs={personalization_epochs}, lr={lr}"
-    )
+    print(f"Experiment: dataset={dataset}, alpha={alpha}, " f"pers_epochs={personalization_epochs}, lr={lr}")
     print(f"{'=' * 80}\n")
 
     # Set environment variables for debug output
@@ -78,9 +72,7 @@ def run_experiment(
     env["SEED"] = "42"
 
     # Clean up logs directory for this experiment only
-    exp_name = f"{dataset}_alpha{alpha}_pers{personalization_epochs}_lr{lr}".replace(
-        ".", "p"
-    )
+    exp_name = f"{dataset}_alpha{alpha}_pers{personalization_epochs}_lr{lr}".replace(".", "p")
     logs_dir = Path("logs_debug") / exp_name
     if logs_dir.exists():
         import shutil
@@ -100,9 +92,7 @@ def run_experiment(
         f"127.0.0.1:{port}",
     ]
     print(f"Starting server: {' '.join(server_cmd)}")
-    server_proc = subprocess.Popen(
-        server_cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-    )
+    server_proc = subprocess.Popen(server_cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     # Wait for server to start
     time.sleep(3)
@@ -136,13 +126,8 @@ def run_experiment(
             "--logdir",
             str(logs_dir),
         ]
-        print(
-            f"Starting client {client_id}: "
-            f"personalization_epochs={personalization_epochs}"
-        )
-        proc = subprocess.Popen(
-            client_cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        )
+        print(f"Starting client {client_id}: " f"personalization_epochs={personalization_epochs}")
+        proc = subprocess.Popen(client_cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         client_procs.append(proc)
 
     # Wait for all clients
@@ -168,12 +153,7 @@ def run_experiment(
                 if rows:
                     last_row = rows[-1]
                     global_f1, pers_f1, gain = summarize_client_metrics(last_row)
-                    print(
-                        f"Client {client_id}: "
-                        f"global_F1={global_f1}, "
-                        f"pers_F1={pers_f1}, "
-                        f"gain={gain}"
-                    )
+                    print(f"Client {client_id}: " f"global_F1={global_f1}, " f"pers_F1={pers_f1}, " f"gain={gain}")
 
 
 def main() -> None:

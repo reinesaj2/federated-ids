@@ -14,15 +14,15 @@ import json
 import math
 import re
 from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from numbers import Real
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import stats
-
 
 ARTIFACT_DIR_PATTERN = re.compile(r"fedprox-nightly-alpha(?P<alpha>[0-9.]+)-mu(?P<mu>[0-9.]+)-")
 RUN_DIR_PATTERN = re.compile(r"nightly_fedprox_alpha(?P<alpha>[0-9.]+)_mu(?P<mu>[0-9.]+)_seed(?P<seed>\d+)")
@@ -41,12 +41,21 @@ class RunMetrics:
 
 
 def _safe_float(value: object) -> float | None:
-    if value in ("", None):
+    if value is None:
         return None
-    try:
+    if isinstance(value, Real):
         return float(value)
-    except (TypeError, ValueError):
-        return None
+    if isinstance(value, np.generic):
+        return float(value.item())
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped == "":
+            return None
+        try:
+            return float(stripped)
+        except ValueError:
+            return None
+    return None
 
 
 def _extract_float(row: Mapping[str, object], keys: Sequence[str]) -> float | None:
@@ -250,6 +259,7 @@ def aggregate_run_metrics(
 
     return pd.DataFrame(rows)
 
+
 # ---------------------------------------------------------------------------
 # Statistical validation helpers
 
@@ -260,11 +270,7 @@ def ensure_minimum_samples(run_metrics: Sequence[RunMetrics], minimum: int = 5) 
     for run in run_metrics:
         sample_counts[(run.alpha, run.mu, run.algorithm)].add(run.seed)
 
-    violations = [
-        (alpha, mu, algorithm, len(seeds))
-        for (alpha, mu, algorithm), seeds in sample_counts.items()
-        if len(seeds) < minimum
-    ]
+    violations = [(alpha, mu, algorithm, len(seeds)) for (alpha, mu, algorithm), seeds in sample_counts.items() if len(seeds) < minimum]
 
     if violations:
         alpha, mu, algorithm, observed = sorted(violations, key=lambda t: (t[0], t[1], t[2]))[0]

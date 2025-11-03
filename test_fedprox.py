@@ -3,14 +3,10 @@
 Test FedProx implementation to ensure proximal regularization is working correctly.
 """
 
-import tempfile
-from pathlib import Path
 
-import numpy as np
 import torch
-from torch import nn
 
-from client import train_epoch, SimpleNet, get_parameters, set_parameters
+from client import SimpleNet, get_parameters, set_parameters, train_epoch
 
 
 def test_fedprox_proximal_term():
@@ -22,7 +18,7 @@ def test_fedprox_proximal_term():
     y = torch.randint(0, 2, (100,))
 
     # Create DataLoader
-    from torch.utils.data import TensorDataset, DataLoader
+    from torch.utils.data import DataLoader, TensorDataset
 
     dataset = TensorDataset(X, y)
     loader = DataLoader(dataset, batch_size=32)
@@ -82,7 +78,7 @@ def test_fedprox_different_mu_values():
     X = torch.randn(50, 5)
     y = torch.randint(0, 2, (50,))
 
-    from torch.utils.data import TensorDataset, DataLoader
+    from torch.utils.data import DataLoader, TensorDataset
 
     dataset = TensorDataset(X, y)
     loader = DataLoader(dataset, batch_size=16)

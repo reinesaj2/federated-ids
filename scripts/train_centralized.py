@@ -1,6 +1,5 @@
 import argparse
 import os
-from typing import Tuple
 
 import numpy as np
 import torch
@@ -8,10 +7,9 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from data_preprocessing import (
-    load_unsw_nb15,
-    load_cic_ids2017,
     fit_preprocessor_global,
-    transform_with_preprocessor,
+    load_cic_ids2017,
+    load_unsw_nb15,
     numpy_to_train_val_test_loaders,
 )
 
@@ -50,7 +48,7 @@ def train(model: nn.Module, loader: DataLoader, device: torch.device, lr: float)
     return total_loss / max(n, 1)
 
 
-def evaluate_probs(model: nn.Module, loader: DataLoader, device: torch.device) -> Tuple[float, np.ndarray, np.ndarray]:
+def evaluate_probs(model: nn.Module, loader: DataLoader, device: torch.device) -> tuple[float, np.ndarray, np.ndarray]:
     model.eval()
     criterion = nn.CrossEntropyLoss()
     total_loss = 0.0
@@ -80,7 +78,7 @@ def evaluate_probs(model: nn.Module, loader: DataLoader, device: torch.device) -
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Centralized baseline training")
-    parser.add_argument("--dataset", type=str, required=True, choices=["unsw", "cic"]) 
+    parser.add_argument("--dataset", type=str, required=True, choices=["unsw", "cic"])
     parser.add_argument("--data_path", type=str, required=True)
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch_size", type=int, default=64)
@@ -89,7 +87,6 @@ def main() -> None:
     parser.add_argument("--logdir", type=str, default="./logs")
     args = parser.parse_args()
 
-    rng = np.random.default_rng(args.seed)
     torch.manual_seed(args.seed)
 
     if args.dataset == "unsw":
@@ -105,16 +102,15 @@ def main() -> None:
         X_all, y_all, batch_size=args.batch_size, seed=args.seed, splits=(0.7, 0.15, 0.15)
     )
 
-    device = torch.device(
-        "mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu")
-    )
+    device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
     model = SimpleNet(num_features=num_features, num_classes=num_classes).to(device)
 
-    for ep in range(args.epochs):
-        _ = train(model, train_loader, device, args.lr)
+    for _ in range(args.epochs):
+        train(model, train_loader, device, args.lr)
 
     # Evaluate on val and test
-    from sklearn.metrics import f1_score, precision_recall_curve, average_precision_score
+    from sklearn.metrics import average_precision_score, f1_score, precision_recall_curve
+
     val_loss, val_probs, val_labels = evaluate_probs(model, val_loader, device)
     test_loss, test_probs, test_labels = evaluate_probs(model, test_loader, device)
 
@@ -126,31 +122,31 @@ def main() -> None:
     support = counts / counts.sum() if counts.sum() > 0 else counts
     per_class_f1 = []
     for c in labels_unique:
-      mask = (test_labels == c)
-      f1_c = float(f1_score(test_labels, preds_test == c, labels=[c], average="macro")) if mask.sum() > 0 else 0.0
-      per_class_f1.append((int(c), f1_c))
+        mask = test_labels == c
+        f1_c = float(f1_score(test_labels, preds_test == c, labels=[c], average="macro")) if mask.sum() > 0 else 0.0
+        per_class_f1.append((int(c), f1_c))
 
     os.makedirs(args.logdir, exist_ok=True)
     # Write class-level CSVs
     sup_path = os.path.join(args.logdir, "per_class_support.csv")
     with open(sup_path, "w") as f:
-      f.write("label,support_fraction\n")
-      for c, frac in zip(labels_unique, support):
-        f.write(f"{int(c)},{float(frac)}\n")
+        f.write("label,support_fraction\n")
+        for c, frac in zip(labels_unique, support, strict=False):
+            f.write(f"{int(c)},{float(frac)}\n")
 
     f1_path = os.path.join(args.logdir, "per_class_f1.csv")
     with open(f1_path, "w") as f:
-      f.write("label,f1\n")
-      for c, f1c in per_class_f1:
-        f.write(f"{c},{f1c}\n")
+        f.write("label,f1\n")
+        for c, f1c in per_class_f1:
+            f.write(f"{c},{f1c}\n")
 
     rare_path = os.path.join(args.logdir, "rare_classes_f1.csv")
     with open(rare_path, "w") as f:
-      f.write("label,f1\n")
-      for c, frac in zip(labels_unique, support):
-        if float(frac) <= 0.05:
-          f1c = next((v for k,v in per_class_f1 if k == int(c)), 0.0)
-          f.write(f"{int(c)},{f1c}\n")
+        f.write("label,f1\n")
+        for c, frac in zip(labels_unique, support, strict=False):
+            if float(frac) <= 0.05:
+                f1c = next((v for k, v in per_class_f1 if k == int(c)), 0.0)
+                f.write(f"{int(c)},{f1c}\n")
 
     # Binary BENIGN vs attack metrics
     benign_idx = 0 if num_classes >= 2 else 0
@@ -165,7 +161,7 @@ def main() -> None:
     best_idx = int(np.argmax(f1_curve))
     tau = float(thresholds[best_idx - 1]) if best_idx > 0 and best_idx - 1 < len(thresholds) else 0.5
     y_pred_attack = (attack_probs_test >= tau).astype(int)
-    benign_mask = (y_test_bin == 0)
+    benign_mask = y_test_bin == 0
     fp = int(np.sum(y_pred_attack[benign_mask] == 1))
     tn = int(np.sum(y_pred_attack[benign_mask] == 0))
     fpr = float(fp / max(fp + tn, 1))
@@ -180,5 +176,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

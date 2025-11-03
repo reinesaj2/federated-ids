@@ -2,7 +2,7 @@
 line-length = 140
 target-version = ["py311"]
 skip-string-normalization = true
-extend-exclude = "(\\.venv|__pycache__|runs|logs|datasets|data|plots|analysis|docs|scripts)"
+extend-exclude = "(\\.venv|__pycache__|runs|logs|datasets|data|plots|analysis|docs)"
 
 [tool.ruff]
 line-length = 140
@@ -17,22 +17,31 @@ exclude = [
   "plots",
   "analysis",
   "docs",
-  "scripts",
   ".mypy_cache",
   ".pytest_cache",
 ]
 
 [tool.ruff.lint]
-select = ["E", "F"]
+select = ["E", "F", "I", "UP", "B", "W"]
 ignore = ["E501", "E203"]
 
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
 follow_imports = "skip"
-warn_unused_ignores = false
+warn_unused_ignores = true
 warn_redundant_casts = true
 no_implicit_optional = false
 check_untyped_defs = false
 disallow_untyped_defs = false
-exclude = "(runs/|logs/|datasets/|data/|plots/|analysis/|docs/|scripts/)"
+exclude = "(runs/|logs/|datasets/|data/|plots/|analysis/|docs/)"
+
+[[tool.mypy.overrides]]
+module = ["robust_aggregation"]
+check_untyped_defs = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["privacy_accounting"]
+check_untyped_defs = true
+disallow_untyped_defs = true
