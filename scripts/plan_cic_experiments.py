@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """Emit CIC-IDS2017 experiment manifest summaries."""
 
+from __future__ import annotations
+
 import json
+import math
 import sys
 from pathlib import Path
-from typing import Dict, List
-
-import math
+from typing import TYPE_CHECKING
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.append(str(REPO_ROOT))
 
-from scripts.comparative_analysis import ComparisonMatrix
+if TYPE_CHECKING:
+    from scripts.comparative_analysis import ComparisonMatrix
 
 
 def _serialize(value):
@@ -23,7 +25,7 @@ def _serialize(value):
     return str(value)
 
 
-def summarize_dimension(matrix: ComparisonMatrix, dimension: str) -> Dict:
+def summarize_dimension(matrix: ComparisonMatrix, dimension: str) -> dict:
     configs = matrix.generate_configs(filter_dimension=dimension)
     presets = [cfg.to_preset_name() for cfg in configs]
     return {
@@ -37,6 +39,8 @@ def summarize_dimension(matrix: ComparisonMatrix, dimension: str) -> Dict:
 
 
 def main() -> None:
+    from scripts.comparative_analysis import ComparisonMatrix
+
     base_dir = Path.cwd()
     output_dir = base_dir / "analysis" / "cic_experiments"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -46,7 +50,7 @@ def main() -> None:
         data_path="data/cic/cic_ids2017_multiclass.csv",
     )
 
-    dimensions: List[str] = [
+    dimensions: list[str] = [
         "aggregation",
         "attack",
         "heterogeneity",

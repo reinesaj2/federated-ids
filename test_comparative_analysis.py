@@ -497,7 +497,7 @@ def test_experiment_config_preset_name_includes_mu():
 def test_comparison_matrix_fedprox_mu_values():
     """Test that ComparisonMatrix includes fedprox_mu_values field."""
     matrix = ComparisonMatrix()
-    
+
     assert hasattr(matrix, "fedprox_mu_values")
     assert len(matrix.fedprox_mu_values) == 9
     assert 0.01 in matrix.fedprox_mu_values

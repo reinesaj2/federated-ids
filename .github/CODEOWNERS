@@ -1,0 +1,11 @@
+# Default owners
+* @reinesaj2
+
+# Documentation
+docs/ @reinesaj2
+
+# CI and automation
+.github/workflows/ @reinesaj2
+
+# Experiment scripts
+scripts/ @reinesaj2

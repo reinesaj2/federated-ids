@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it using the metadata from this file.
+title: Federated IDS Demo (Flower + PyTorch)
+type: software
+version: 0.0.0
+authors:
+  - family-names: Reines
+    given-names: Abraham J.
+repository-code: https://github.com/reinesaj2/federated-ids
+license: MIT
+keywords:
+  - federated learning
+  - intrusion detection
+  - robustness
+  - privacy
+  - Flower
+preferred-citation:
+  type: software
+  title: Federated IDS Demo (Flower + PyTorch)
+  authors:
+    - family-names: Reines
+      given-names: Abraham J.
+  repository-code: https://github.com/reinesaj2/federated-ids
+  license: MIT
+  version: 0.0.0

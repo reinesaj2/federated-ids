@@ -18,7 +18,6 @@ import logging
 import math
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,14 +31,15 @@ for candidate in (ROOT, ROOT / "scripts"):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
+from metric_validation import MetricValidator  # noqa: E402
 from plot_metrics_utils import compute_confidence_interval  # noqa: E402
+
 from privacy_accounting import compute_epsilon  # noqa: E402
-from metric_validation import MetricValidator, validate_experiment_data  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 
-def _resolve_run_dir(reference: str, runs_root: Path) -> Optional[Path]:
+def _resolve_run_dir(reference: str, runs_root: Path) -> Path | None:
     if not reference:
         return None
 
@@ -61,7 +61,7 @@ def _resolve_run_dir(reference: str, runs_root: Path) -> Optional[Path]:
     return None
 
 
-def _extract_macro_f1(row: pd.Series) -> Optional[float]:
+def _extract_macro_f1(row: pd.Series) -> float | None:
     macro_columns = [
         "macro_f1_after",
         "macro_f1_global",
@@ -75,7 +75,7 @@ def _extract_macro_f1(row: pd.Series) -> Optional[float]:
     return None
 
 
-def _compute_epsilon_fallback(row: Dict, final_row: Optional[pd.Series]) -> Optional[float]:
+def _compute_epsilon_fallback(row: dict, final_row: pd.Series | None) -> float | None:
     noise = None
     if final_row is not None and "dp_sigma" in final_row:
         noise = final_row.get("dp_sigma")
@@ -154,8 +154,8 @@ def _prepare_privacy_curve_data(final_rounds: pd.DataFrame, runs_root: Path) -> 
     if "run_dir" not in final_rounds.columns:
         return pd.DataFrame(), pd.DataFrame()
 
-    dp_records: List[Dict] = []
-    baseline_records: List[Dict] = []
+    dp_records: list[dict] = []
+    baseline_records: list[dict] = []
 
     for row in final_rounds.to_dict(orient="records"):
         run_path = _resolve_run_dir(str(row.get("run_dir", "")), runs_root)
@@ -166,8 +166,8 @@ def _prepare_privacy_curve_data(final_rounds: pd.DataFrame, runs_root: Path) -> 
         if not client_files:
             continue
 
-        macro_values: List[float] = []
-        epsilon_candidates: List[float] = []
+        macro_values: list[float] = []
+        epsilon_candidates: list[float] = []
 
         for client_file in client_files:
             try:
@@ -218,7 +218,7 @@ def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output
     if dp_df.empty:
         return
 
-    summary_rows: List[Dict] = []
+    summary_rows: list[dict] = []
 
     for epsilon, subset in dp_df.groupby("epsilon"):
         macros = subset["macro_f1"].dropna()
@@ -247,7 +247,7 @@ def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output
             }
         )
 
-    baseline_row: Optional[Dict] = None
+    baseline_row: dict | None = None
     if not baseline_df.empty:
         baseline_macros = baseline_df["macro_f1"].dropna()
         if not baseline_macros.empty:
@@ -317,7 +317,7 @@ def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output
     plt.close(fig)
 
 
-def compute_server_macro_f1_from_clients(run_dir: Path, round_num: int) -> Optional[float]:
+def compute_server_macro_f1_from_clients(run_dir: Path, round_num: int) -> float | None:
     """Compute server-level macro-F1 by averaging client macro-F1 scores for a given round."""
     client_f1_scores = []
 
@@ -410,7 +410,7 @@ def load_experiment_results(runs_dir: Path) -> pd.DataFrame:
     return combined_df
 
 
-def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str) -> Dict:
+def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str) -> dict:
     """Perform statistical significance tests between groups."""
     groups = df[group_col].unique()
 
@@ -1134,7 +1134,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     plt.close()
 
 
-def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[Path] = None):
+def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Path | None = None):
     """Plot privacy-utility tradeoff."""
     if "dp_enabled" not in df.columns:
         return
