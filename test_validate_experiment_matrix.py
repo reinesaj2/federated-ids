@@ -73,9 +73,7 @@ class TestExperimentConstraints:
     def test_fedavg_always_feasible(self):
         """FedAvg has no Byzantine constraint."""
         for adv_frac in [0.0, 0.1, 0.3, 0.5]:
-            config = ExperimentConstraints(
-                aggregation="fedavg", n_clients=2, adversary_fraction=adv_frac
-            )
+            config = ExperimentConstraints(aggregation="fedavg", n_clients=2, adversary_fraction=adv_frac)
             is_valid, reason = config.validate()
             assert is_valid is True
             assert reason == "OK"

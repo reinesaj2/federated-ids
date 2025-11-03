@@ -35,11 +35,7 @@ class TestCopyPlotsToRepository:
             source_dir.mkdir()
 
             test_plot_content = b"fake_png_data"
-            test_files = [
-                "experiment_plot.png",
-                "summary_chart.png",
-                "metrics_visualization.jpg"
-            ]
+            test_files = ["experiment_plot.png", "summary_chart.png", "metrics_visualization.jpg"]
 
             for filename in test_files:
                 (source_dir / filename).write_bytes(test_plot_content)
@@ -49,9 +45,7 @@ class TestCopyPlotsToRepository:
             test_date = "2025-01-15"
 
             # Execute copy operation
-            copied_files = copy_plots_to_repository(
-                str(source_dir), str(plots_dir), experiment_type, test_date
-            )
+            copied_files = copy_plots_to_repository(str(source_dir), str(plots_dir), experiment_type, test_date)
 
             # Verify directory structure created
             expected_dir = plots_dir / test_date / experiment_type
@@ -88,9 +82,7 @@ class TestCopyPlotsToRepository:
 
             plots_dir = temp_path / "plots"
 
-            copied_files = copy_plots_to_repository(
-                str(source_dir), str(plots_dir), "test-experiment"
-            )
+            copied_files = copy_plots_to_repository(str(source_dir), str(plots_dir), "test-experiment")
 
             # Verify both files copied with conflict resolution
             assert len(copied_files) == 2
@@ -125,9 +117,7 @@ class TestCopyPlotsToRepository:
 
             plots_dir = temp_path / "plots"
 
-            copied_files = copy_plots_to_repository(
-                str(source_dir), str(plots_dir), "filter-test"
-            )
+            copied_files = copy_plots_to_repository(str(source_dir), str(plots_dir), "filter-test")
 
             # Only valid plot should be copied
             assert len(copied_files) == 1
@@ -145,9 +135,7 @@ class TestCopyPlotsToRepository:
             # Non-existent plots directory
             plots_dir = temp_path / "plots"
 
-            copied_files = copy_plots_to_repository(
-                str(source_dir), str(plots_dir), "create-test"
-            )
+            copied_files = copy_plots_to_repository(str(source_dir), str(plots_dir), "create-test")
 
             assert len(copied_files) == 1
             assert plots_dir.exists()
@@ -233,20 +221,12 @@ class TestRunGitCommand:
         result = run_git_command(["status"], cwd="/test/dir")
 
         assert result is True
-        mock_run.assert_called_once_with(
-            ["git", "status"],
-            cwd="/test/dir",
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        mock_run.assert_called_once_with(["git", "status"], cwd="/test/dir", capture_output=True, text=True, check=True)
 
     @patch('subprocess.run')
     def test_returns_false_on_git_command_failure(self, mock_run):
         """Test that failed git commands return False and print error."""
-        mock_run.side_effect = subprocess.CalledProcessError(
-            1, "git status", output="", stderr="fatal: not a git repository"
-        )
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git status", output="", stderr="fatal: not a git repository")
 
         with patch('builtins.print') as mock_print:
             result = run_git_command(["status"])
@@ -262,13 +242,7 @@ class TestRunGitCommand:
         result = run_git_command(["--version"])
 
         assert result is True
-        mock_run.assert_called_once_with(
-            ["git", "--version"],
-            cwd=None,
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        mock_run.assert_called_once_with(["git", "--version"], cwd=None, capture_output=True, text=True, check=True)
 
 
 class TestSetupGitConfig:
@@ -286,7 +260,7 @@ class TestSetupGitConfig:
         expected_calls = [
             unittest.mock.call(["config", "user.name", "GitHub Actions"]),
             unittest.mock.call(["config", "user.email", "actions@github.com"]),
-            unittest.mock.call(["config", "core.autocrlf", "false"])
+            unittest.mock.call(["config", "core.autocrlf", "false"]),
         ]
 
         mock_git.assert_has_calls(expected_calls)
@@ -315,10 +289,7 @@ class TestCommitPlots:
 
         plots_dir = "plots"
         experiment_type = "fedprox-test"
-        copied_files = [
-            "2025-01-15/fedprox-test/plot1.png",
-            "2025-01-15/fedprox-test/plot2.png"
-        ]
+        copied_files = ["2025-01-15/fedprox-test/plot1.png", "2025-01-15/fedprox-test/plot2.png"]
 
         result = commit_plots(plots_dir, experiment_type, copied_files)
 
@@ -372,9 +343,7 @@ class TestIntegration:
             plots_dir = temp_path / "plots"
 
             # Copy current experiment
-            copied_files = copy_plots_to_repository(
-                str(source_dir), str(plots_dir), "integration-test"
-            )
+            copied_files = copy_plots_to_repository(str(source_dir), str(plots_dir), "integration-test")
 
             # Create old directory for cleanup test
             old_date = (datetime.now() - timedelta(days=35)).strftime("%Y-%m-%d")
@@ -423,9 +392,7 @@ class TestFailureScenarios:
             plots_dir = temp_path / "plots"
 
             try:
-                copied_files = copy_plots_to_repository(
-                    str(source_dir), str(plots_dir), "corruption-test"
-                )
+                copied_files = copy_plots_to_repository(str(source_dir), str(plots_dir), "corruption-test")
 
                 # Should copy valid file, may skip restricted file
                 assert len(copied_files) >= 1
@@ -449,8 +416,8 @@ class TestFailureScenarios:
                 "2025-12-32",  # Invalid day
                 "not-a-date",
                 "invalid-format",
-                "2025-1",      # Too short
-                ""
+                "2025-1",  # Too short
+                "",
             ]
 
             for dir_name in malformed_dirs:
@@ -479,9 +446,7 @@ class TestFailureScenarios:
 
             plots_dir = temp_path / "plots"
 
-            copied_files = copy_plots_to_repository(
-                str(source_dir), str(plots_dir), "copy-failure-test"
-            )
+            copied_files = copy_plots_to_repository(str(source_dir), str(plots_dir), "copy-failure-test")
 
             # Should handle failure gracefully and return empty list
             assert len(copied_files) == 0
@@ -492,11 +457,7 @@ class TestFailureScenarios:
 
         with patch('subprocess.run') as mock_run:
             # Simulate git output with unicode characters
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout="SUCCESS: Unicode commit message",
-                stderr=""
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout="SUCCESS: Unicode commit message", stderr="")
 
             result = run_git_command(["log", "--oneline", "-1"])
 
@@ -565,9 +526,7 @@ class TestBoundaryConditions:
 
             plots_dir = temp_path / "plots"
 
-            copied_files = copy_plots_to_repository(
-                str(source_dir), str(plots_dir), "empty-test"
-            )
+            copied_files = copy_plots_to_repository(str(source_dir), str(plots_dir), "empty-test")
 
             assert len(copied_files) == 0
 

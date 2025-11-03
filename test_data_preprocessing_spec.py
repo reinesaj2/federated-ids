@@ -60,6 +60,7 @@ def test_partition_outputs_have_same_feature_dimension_across_clients():
     assert sum(len(y) for y in y_parts) == len(df)
     # Global classes equals number of unique labels
     import numpy as _np
+
     assert num_classes_global == len(_np.unique(df["label"]))
 
 
