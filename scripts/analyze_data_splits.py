@@ -47,9 +47,7 @@ def analyze_client_data_split(
         )
     except ValueError:
         # Fall back to non-stratified if necessary
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_client, y_client, test_size=test_size, random_state=seed, stratify=None
-        )
+        X_train, X_test, y_train, y_test = train_test_split(X_client, y_client, test_size=test_size, random_state=seed, stratify=None)
 
     # Class distributions
     print(f"\nTotal samples: {len(y_client)}")
@@ -73,17 +71,9 @@ def analyze_client_data_split(
     print(f"\nMax class distribution difference: {max_diff:.4f}%")
 
     if max_diff < 1.0:
-        print(
-            "[WARNING]  WARNING: Train and test have nearly identical " "class distributions!"
-        )
-        print(
-            "   This is expected for stratified splits but limits "
-            "personalization benefit."
-        )
-        print(
-            "   Personalization helps most when train/test "
-            "distributions differ significantly."
-        )
+        print("[WARNING]  WARNING: Train and test have nearly identical " "class distributions!")
+        print("   This is expected for stratified splits but limits " "personalization benefit.")
+        print("   Personalization helps most when train/test " "distributions differ significantly.")
 
     # Feature statistics
     print("\nFeature Statistics:")
@@ -103,30 +93,16 @@ def analyze_client_data_split(
     # Recommendation
     print("\nPersonalization Likelihood:")
     if max_diff < 1.0 and mean_diff < 0.01:
-        print(
-            "[LOW] - Train/test distributions are nearly identical "
-            "(stratified split)"
-        )
-        print(
-            "   Personalization unlikely to help unless model is "
-            "underfitting globally."
-        )
+        print("[LOW] - Train/test distributions are nearly identical " "(stratified split)")
+        print("   Personalization unlikely to help unless model is " "underfitting globally.")
     elif max_diff < 5.0:
-        print(
-            "[WARNING]  MODERATE - Some distribution difference exists but "
-            "limited benefit expected"
-        )
+        print("[WARNING]  MODERATE - Some distribution difference exists but " "limited benefit expected")
     else:
-        print(
-            "[HIGH] - Significant distribution differences; "
-            "personalization should help"
-        )
+        print("[HIGH] - Significant distribution differences; " "personalization should help")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Analyze data splits for personalization"
-    )
+    parser = argparse.ArgumentParser(description="Analyze data splits for personalization")
     parser.add_argument("--dataset", type=str, default="unsw", choices=["unsw", "cic"])
     parser.add_argument(
         "--data_path",
@@ -191,9 +167,7 @@ def main() -> None:
         X_client = X[indices]
         y_client = y[indices]
 
-        analyze_client_data_split(
-            X_client, y_client, client_id, test_size=0.2, seed=args.seed
-        )
+        analyze_client_data_split(X_client, y_client, client_id, test_size=0.2, seed=args.seed)
 
     # Overall summary
     print(f"\n\n{'=' * 80}")
@@ -201,9 +175,7 @@ def main() -> None:
     print(f"{'=' * 80}\n")
 
     print("Key Findings:")
-    print(
-        "1. Stratified train_test_split maintains class proportions in train and test"
-    )
+    print("1. Stratified train_test_split maintains class proportions in train and test")
     print("2. This is good for unbiased evaluation but reduces personalization benefit")
     print("3. Personalization helps most when:")
     print("   - Train and test have different class distributions")
@@ -215,10 +187,7 @@ def main() -> None:
     print("2. Increase personalization_epochs (5-10 instead of 2-3)")
     print("3. Consider using validation set for personalization instead of train set")
     print("4. Use higher learning rate for personalization (e.g., 0.01 or 0.02)")
-    print(
-        "5. If gains remain zero, this may indicate the global model "
-        "already performs optimally"
-    )
+    print("5. If gains remain zero, this may indicate the global model " "already performs optimally")
 
 
 if __name__ == "__main__":

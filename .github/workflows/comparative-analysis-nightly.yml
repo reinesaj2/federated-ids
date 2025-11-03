@@ -1,6 +1,9 @@
+---
 name: Comparative Analysis Nightly
 
 on:
+  push:
+    branches: ['**']
   schedule:
     - cron: "0 3 * * 0" # 3 AM UTC every Sunday
   workflow_dispatch:
@@ -30,7 +33,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  noop_on_push:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "No-op for push event (workflow file change)"
+
   comparative_analysis:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 480 # 8 hours for full dataset experiments
     strategy:
@@ -74,16 +84,16 @@ jobs:
           echo "  Memory: $(free -h | grep '^Mem:' | awk '{print $2}')"
           echo "  CPU cores: $(nproc)"
           echo "  Disk space: $(df -h . | tail -1 | awk '{print $4}')"
-          
+
           # Monitor memory usage during execution
-          python scripts/comparative_analysis.py \
+          python -m scripts.comparative_analysis \
             --dimension ${{ matrix.dimension }} \
             --output_dir results/comparative_analysis
 
       - name: Generate thesis plots
         run: |
           echo "Generating thesis plots for dimension: ${{ matrix.dimension }}"
-          
+
           # Check if we have experiment data
           if [ ! -d "runs" ] || [ -z "$(ls -A runs/comp_* 2>/dev/null)" ]; then
             echo "ERROR: No experiment data found in runs/ directory"
@@ -91,13 +101,13 @@ jobs:
             ls -la runs/ || echo "runs/ directory does not exist"
             exit 1
           fi
-          
+
           # Generate plots with error handling
-          python scripts/generate_thesis_plots.py \
+          python -m scripts.generate_thesis_plots \
             --dimension ${{ matrix.dimension }} \
             --runs_dir runs \
             --output_dir results/thesis_plots/${{ matrix.dimension }}
-          
+
           # Verify plots were generated
           if [ -d "results/thesis_plots/${{ matrix.dimension }}" ]; then
             PLOT_COUNT=$(find results/thesis_plots/${{ matrix.dimension }} -name "*.png" -o -name "*.pdf" | wc -l)
@@ -107,13 +117,14 @@ jobs:
             exit 1
           fi
 
-      - name: Validate results
+      - name: Validate results (optimized)
         run: |
           echo "Validating experiment results..."
           FOUND=0
           FAILED=0
           TOTAL=0
-          
+          THRESHOLD=${VALIDATION_MIN_SUCCESS_RATE:-0.5}
+
           for dir in runs/comp_*/; do
             TOTAL=$((TOTAL + 1))
             if [ -f "$dir/metrics.csv" ]; then
@@ -124,22 +135,31 @@ jobs:
               FAILED=$((FAILED + 1))
             fi
           done
-          
+
           echo "VALIDATION SUMMARY:"
           echo "  Total experiments: $TOTAL"
           echo "  Successful: $FOUND"
           echo "  Failed: $FAILED"
-          echo "  Success rate: $((FOUND * 100 / TOTAL))%"
-          
-          # Require at least 50% success rate for workflow to pass
+          if [ $TOTAL -gt 0 ]; then
+            echo "  Success rate: $((FOUND * 100 / TOTAL))%"
+          else
+            echo "  Success rate: 0%"
+          fi
+
+          # Require at least THRESHOLD success rate for workflow to pass
           if [ $FOUND -eq 0 ]; then
             echo "ERROR: No experiments produced metrics"
             exit 1
-          elif [ $FOUND -lt $((TOTAL / 2)) ]; then
-            echo "WARNING: Low success rate ($((FOUND * 100 / TOTAL))%), but continuing..."
-          else
-            echo "SUCCESS: Adequate experiment completion rate"
           fi
+          python - <<PY || echo "WARNING: Success rate below threshold ($THRESHOLD), continuing..."
+          found=$FOUND
+          total=$TOTAL
+          thr=float("$THRESHOLD")
+          rate=(found/total) if total else 0.0
+          print(f"Computed success rate: {rate:.2f}, threshold: {thr:.2f}")
+          import sys
+          sys.exit(0 if rate >= thr else 1)
+          PY
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -155,9 +175,9 @@ jobs:
           retention-days: 90
 
   consolidated_summary:
+    if: github.event_name != 'push' && always()
     needs: comparative_analysis
     runs-on: ubuntu-latest
-    if: always()
     steps:
       - uses: actions/checkout@v4
 
@@ -211,7 +231,7 @@ jobs:
   commit_thesis_plots:
     needs: [consolidated_summary]
     runs-on: ubuntu-latest
-    if: always() && needs.consolidated_summary.result == 'success'
+    if: github.event_name != 'push' && always() && needs.consolidated_summary.result == 'success'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -256,7 +276,7 @@ jobs:
   notify_failure:
     needs: comparative_analysis
     runs-on: ubuntu-latest
-    if: always() && needs.comparative_analysis.result == 'failure'
+    if: github.event_name != 'push' && always() && needs.comparative_analysis.result == 'failure'
     steps:
       - name: Log comparative analysis failure
         run: |

@@ -37,7 +37,7 @@ def setup_git_config():
     commands = [
         ["config", "user.name", "GitHub Actions"],
         ["config", "user.email", "actions@github.com"],
-        ["config", "core.autocrlf", "false"]
+        ["config", "core.autocrlf", "false"],
     ]
 
     for cmd in commands:
@@ -47,12 +47,7 @@ def setup_git_config():
     return True
 
 
-def copy_plots_to_repository(
-    source_dir: str,
-    plots_dir: str,
-    experiment_type: str,
-    date_str: str | None = None
-) -> list[str]:
+def copy_plots_to_repository(source_dir: str, plots_dir: str, experiment_type: str, date_str: str | None = None) -> list[str]:
     """Copy plots from source directory to repository plots structure."""
     if date_str is None:
         date_str = datetime.now().strftime("%Y-%m-%d")
@@ -65,10 +60,7 @@ def copy_plots_to_repository(
     source_path = Path(source_dir)
 
     # Common plot file patterns
-    plot_patterns = [
-        "*.png", "*.jpg", "*.jpeg", "*.svg", "*.pdf",
-        "*.html"  # For interactive plots
-    ]
+    plot_patterns = ["*.png", "*.jpg", "*.jpeg", "*.svg", "*.pdf", "*.html"]  # For interactive plots
 
     for pattern in plot_patterns:
         for plot_file in source_path.rglob(pattern):
@@ -132,10 +124,7 @@ def commit_plots(plots_dir: str, experiment_type: str, copied_files: list[str]) 
         return False
 
     # Check if there are changes to commit
-    result = subprocess.run(
-        ["git", "diff", "--cached", "--quiet"],
-        capture_output=True
-    )
+    result = subprocess.run(["git", "diff", "--cached", "--quiet"], capture_output=True)
 
     if result.returncode == 0:
         print("No changes to commit")
@@ -156,39 +145,13 @@ def commit_plots(plots_dir: str, experiment_type: str, copied_files: list[str]) 
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Commit experiment plots to repository"
-    )
-    parser.add_argument(
-        "--source_dir",
-        required=True,
-        help="Source directory containing plots"
-    )
-    parser.add_argument(
-        "--plots_dir",
-        default="plots",
-        help="Target plots directory in repository"
-    )
-    parser.add_argument(
-        "--experiment_type",
-        required=True,
-        help="Type of experiment (e.g., fedprox-nightly)"
-    )
-    parser.add_argument(
-        "--date",
-        help="Date string (YYYY-MM-DD), defaults to today"
-    )
-    parser.add_argument(
-        "--retention_days",
-        type=int,
-        default=30,
-        help="Days to keep old plots"
-    )
-    parser.add_argument(
-        "--skip_commit",
-        action="store_true",
-        help="Copy plots but don't commit to git"
-    )
+    parser = argparse.ArgumentParser(description="Commit experiment plots to repository")
+    parser.add_argument("--source_dir", required=True, help="Source directory containing plots")
+    parser.add_argument("--plots_dir", default="plots", help="Target plots directory in repository")
+    parser.add_argument("--experiment_type", required=True, help="Type of experiment (e.g., fedprox-nightly)")
+    parser.add_argument("--date", help="Date string (YYYY-MM-DD), defaults to today")
+    parser.add_argument("--retention_days", type=int, default=30, help="Days to keep old plots")
+    parser.add_argument("--skip_commit", action="store_true", help="Copy plots but don't commit to git")
 
     args = parser.parse_args()
 
@@ -204,12 +167,7 @@ def main():
 
     # Copy plots to repository
     print(f"Copying plots from {args.source_dir} to {args.plots_dir}")
-    copied_files = copy_plots_to_repository(
-        args.source_dir,
-        args.plots_dir,
-        args.experiment_type,
-        args.date
-    )
+    copied_files = copy_plots_to_repository(args.source_dir, args.plots_dir, args.experiment_type, args.date)
 
     if not copied_files:
         print("No plots found to copy")

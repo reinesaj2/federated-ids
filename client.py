@@ -2,40 +2,68 @@ import argparse
 import logging
 import os
 import random
+import hashlib
+from typing import List, Tuple, Optional
 
 import flwr as fl
 import numpy as np
 import torch
-from sklearn.metrics import (
-    average_precision_score,
-    f1_score,
-    precision_recall_curve,
-    precision_score,
-    recall_score,
-)
 from torch import nn
 from torch.utils.data import DataLoader
-
-from client_metrics import (
-    ClientFitTimer,
-    ClientMetricsLogger,
-    analyze_data_distribution,
-    calculate_weight_norms,
-    calculate_weight_update_norm,
-    create_label_histogram_json,
+from sklearn.metrics import (
+    f1_score,
+    precision_score,
+    recall_score,
+    precision_recall_curve,
+    average_precision_score,
 )
+
 from data_preprocessing import (
     create_synthetic_classification_loaders,
-    load_cic_ids2017,
     load_unsw_nb15,
-    numpy_to_loaders,
+    load_cic_ids2017,
     prepare_partitions_from_dataframe,
+    numpy_to_loaders,
 )
-from logging_utils import configure_logging, get_logger
+from client_metrics import (
+    ClientMetricsLogger,
+    ClientFitTimer,
+    calculate_weight_norms,
+    calculate_weight_update_norm,
+    analyze_data_distribution,
+    create_label_histogram_json,
+)
 from privacy_accounting import compute_epsilon
+from logging_utils import configure_logging, get_logger
+
 
 DEFAULT_CLIENT_LR = 1e-3
 DEFAULT_WEIGHT_DECAY = 1e-4
+
+
+class DPAccountant:
+    """Simple DP accountant wrapper for testing and epsilon estimation.
+
+    Tracks the number of DP steps and can estimate epsilon using
+    privacy_accounting.compute_epsilon.
+    """
+
+    def __init__(self, delta: float = 1e-5) -> None:
+        self.steps = 0
+        self.delta = float(delta)
+
+    def step(self, *, noise_multiplier: float, sample_rate: float) -> None:  # noqa: ARG002
+        self.steps += 1
+
+    def get_epsilon(self, *, noise_multiplier: float, sample_rate: float) -> float:
+        return float(
+            compute_epsilon(
+                noise_multiplier=noise_multiplier,
+                delta=self.delta,
+                num_steps=self.steps,
+                sample_rate=sample_rate,
+            )
+        )
 
 
 def create_adamw_optimizer(parameters, lr: float, weight_decay: float = DEFAULT_WEIGHT_DECAY) -> torch.optim.Optimizer:
@@ -63,14 +91,14 @@ class SimpleNet(nn.Module):
         return self.net(x)
 
 
-def get_parameters(model: nn.Module) -> list[np.ndarray]:
+def get_parameters(model: nn.Module) -> List[np.ndarray]:
     return [p.detach().cpu().numpy() for _, p in model.state_dict().items()]
 
 
-def set_parameters(model: nn.Module, parameters: list[np.ndarray]) -> None:
+def set_parameters(model: nn.Module, parameters: List[np.ndarray]) -> None:
     state_dict = model.state_dict()
     new_state_dict = {}
-    for (name, old_tensor), param in zip(state_dict.items(), parameters, strict=False):
+    for (name, old_tensor), param in zip(state_dict.items(), parameters):
         new_state_dict[name] = torch.tensor(param, dtype=old_tensor.dtype)
     model.load_state_dict(new_state_dict, strict=True)
 
@@ -80,7 +108,7 @@ def train_epoch(
     loader: DataLoader,
     device: torch.device,
     lr: float,
-    global_params: list[np.ndarray] | None = None,
+    global_params: Optional[List[np.ndarray]] = None,
     fedprox_mu: float = 0.0,
     weight_decay: float = DEFAULT_WEIGHT_DECAY,
 ) -> float:
@@ -105,7 +133,7 @@ def train_epoch(
         # Add FedProx proximal term: mu/2 * ||w - w_global||^2
         if fedprox_mu > 0.0 and global_tensors is not None:
             prox_term = torch.tensor(0.0, device=device)
-            for param, global_param in zip(model.parameters(), global_tensors, strict=False):
+            for param, global_param in zip(model.parameters(), global_tensors):
                 prox_term += torch.sum((param - global_param) ** 2)
             loss = loss + (fedprox_mu / 2.0) * prox_term
 
@@ -116,7 +144,7 @@ def train_epoch(
     return total_loss / max(num_batches, 1)
 
 
-def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> tuple[float, float, np.ndarray, np.ndarray]:
+def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> Tuple[float, float, np.ndarray, np.ndarray]:
     model.eval()
     criterion = nn.CrossEntropyLoss()
     correct = 0
@@ -304,7 +332,7 @@ class TorchClient(fl.client.NumPyClient):
         # Time the training
         with self.fit_timer.time_fit():
             epochs_completed = 0
-            for _ in range(epochs):
+            for epoch in range(epochs):
                 mode = str(self.runtime_config.get("adversary_mode", "none"))
                 if mode == "grad_ascent":
                     # Perform gradient ascent by negating the loss
@@ -328,7 +356,7 @@ class TorchClient(fl.client.NumPyClient):
                         # Add FedProx proximal term (even for adversarial training)
                         if fedprox_mu > 0.0 and global_tensors is not None:
                             prox_term = 0.0
-                            for param, global_param in zip(self.model.parameters(), global_tensors, strict=False):
+                            for param, global_param in zip(self.model.parameters(), global_tensors):
                                 prox_term += torch.sum((param - global_param) ** 2)
                             loss = loss + (fedprox_mu / 2.0) * prox_term
 
@@ -366,7 +394,7 @@ class TorchClient(fl.client.NumPyClient):
                         # Add FedProx proximal term
                         if fedprox_mu > 0.0 and global_tensors is not None:
                             prox_term = 0.0
-                            for param, global_param in zip(self.model.parameters(), global_tensors, strict=False):
+                            for param, global_param in zip(self.model.parameters(), global_tensors):
                                 prox_term += torch.sum((param - global_param) ** 2)
                             loss = loss + (fedprox_mu / 2.0) * prox_term
 
@@ -400,6 +428,8 @@ class TorchClient(fl.client.NumPyClient):
         dp_delta = None
         dp_sigma = None
         dp_clip_norm = None
+        dp_sample_rate = None
+        dp_total_steps = None
 
         # Differential Privacy: clip update and add Gaussian noise (if enabled)
         try:
@@ -407,15 +437,17 @@ class TorchClient(fl.client.NumPyClient):
             if dp_enabled:
                 clip = float(self.runtime_config.get("dp_clip", 1.0))
                 noise_mult = float(self.runtime_config.get("dp_noise_multiplier", 0.0))
+                sample_rate = float(self.runtime_config.get("dp_sample_rate", 1.0))
+                dp_sample_rate = sample_rate
                 # Build update (delta)
-                deltas: list[np.ndarray] = [wa - wb for wb, wa in zip(weights_before, weights_after, strict=False)]
+                deltas: List[np.ndarray] = [wa - wb for wb, wa in zip(weights_before, weights_after)]
                 # Compute global L2 norm of concatenated delta
                 flat = np.concatenate([d.reshape(-1) for d in deltas]) if deltas else np.zeros(1, dtype=np.float32)
                 l2 = float(np.linalg.norm(flat))
                 scale = 1.0
                 if l2 > 0.0:
                     scale = min(1.0, clip / l2)
-                clipped: list[np.ndarray] = [d * scale for d in deltas]
+                clipped: List[np.ndarray] = [d * scale for d in deltas]
                 # Noise scale
                 sigma = noise_mult * clip
                 # RNG seed prioritizes config seed, then env SEED, finally round number
@@ -423,18 +455,16 @@ class TorchClient(fl.client.NumPyClient):
                 if dp_seed < 0:
                     dp_seed = int(os.environ.get("SEED", "42"))
                 rng = np.random.default_rng(dp_seed + self.round_num)
-                noisy: list[np.ndarray] = [c + rng.normal(loc=0.0, scale=sigma, size=c.shape).astype(c.dtype) for c in clipped]
+                noisy: List[np.ndarray] = [c + rng.normal(loc=0.0, scale=sigma, size=c.shape).astype(c.dtype) for c in clipped]
                 # Reconstruct noisy weights as weights_before + noisy_delta
-                weights_after = [wb + nd for wb, nd in zip(weights_before, noisy, strict=False)]
+                weights_after = [wb + nd for wb, nd in zip(weights_before, noisy)]
 
                 # Compute epsilon privacy budget for this round
-                dp_delta = 1e-5  # Standard delta for (epsilon, delta)-DP
-                dp_epsilon = compute_epsilon(
-                    noise_multiplier=noise_mult,
-                    delta=dp_delta,
-                    num_steps=self.round_num,  # Cumulative across rounds
-                    sample_rate=1.0,  # Full batch per round
-                )
+                dp_delta = float(self.runtime_config.get("dp_delta", 1e-5))
+                # Use DPAccountant to track steps and compute epsilon
+                accountant = DPAccountant(delta=dp_delta)
+                accountant.step(noise_multiplier=noise_mult, sample_rate=sample_rate)
+                dp_epsilon = accountant.get_epsilon(noise_multiplier=noise_mult, sample_rate=sample_rate)
                 dp_sigma = noise_mult
                 dp_clip_norm = clip
         except Exception:
@@ -446,7 +476,7 @@ class TorchClient(fl.client.NumPyClient):
         grad_norm_l2 = None
         try:
             if lr > 0:
-                scaled = [(wa - wb) / lr for wb, wa in zip(weights_before, weights_after, strict=False)]
+                scaled = [(wa - wb) / lr for wb, wa in zip(weights_before, weights_after)]
                 grad_norm_l2 = calculate_weight_norms(scaled)
         except Exception:
             pass
@@ -573,6 +603,16 @@ class TorchClient(fl.client.NumPyClient):
         # Get timing
         t_fit_ms = self.fit_timer.get_last_fit_time_ms()
 
+        # Secure aggregation stub metadata
+        secure_agg_enabled = bool(
+            self.runtime_config.get("secure_aggregation", False)
+            or os.environ.get("D2_SECURE_AGG", "0").lower() not in ("0", "false", "no", "")
+        )
+        secure_mask_checksum = None
+        if secure_agg_enabled:
+            checksum_src = f"{self.metrics_logger.client_id}-{self.round_num}-{os.environ.get('SEED','0')}"
+            secure_mask_checksum = hashlib.sha256(checksum_src.encode("utf-8")).hexdigest()[:16]
+
         # Log metrics
         self.metrics_logger.log_round_metrics(
             round_num=self.round_num,
@@ -608,6 +648,10 @@ class TorchClient(fl.client.NumPyClient):
             dp_delta=dp_delta,
             dp_sigma=dp_sigma,
             dp_clip_norm=dp_clip_norm,
+            dp_sample_rate=dp_sample_rate,
+            dp_total_steps=dp_total_steps,
+            secure_aggregation=secure_agg_enabled,
+            secure_aggregation_mask_checksum=secure_mask_checksum,
         )
 
         # Personalization: post-FL local fine-tuning (if enabled)
@@ -616,7 +660,12 @@ class TorchClient(fl.client.NumPyClient):
         # Early exit if personalization disabled or no test data
         if personalization_epochs == 0 or len(self.test_loader.dataset) == 0:
             num_examples = len(self.train_loader.dataset)
-            metrics = {}
+            raw_metrics = {
+                "dp_enabled": bool(self.runtime_config.get("dp_enabled", False)),
+                "dp_epsilon": dp_epsilon,
+                "secure_aggregation": secure_agg_enabled,
+            }
+            metrics = {k: v for k, v in raw_metrics.items() if v is not None}
             return weights_after, num_examples, metrics
 
         # Save global model performance (already computed above)
@@ -666,9 +715,7 @@ class TorchClient(fl.client.NumPyClient):
                 # Check if weights changed after first epoch
                 weights_after_first = get_parameters(self.model)
                 norm_after_first = float(np.sqrt(sum(np.sum(w**2) for w in weights_after_first)))
-                weight_delta = float(
-                    np.sqrt(sum(np.sum((w1 - w2) ** 2) for w1, w2 in zip(weights_after_first, weights_before_pers, strict=False)))
-                )
+                weight_delta = float(np.sqrt(sum(np.sum((w1 - w2) ** 2) for w1, w2 in zip(weights_after_first, weights_before_pers))))
                 cid = self.metrics_logger.client_id
                 logging.getLogger("client").info(
                     "personalization_epoch",

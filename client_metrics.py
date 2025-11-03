@@ -4,6 +4,7 @@ import csv
 import time
 from contextlib import contextmanager
 from pathlib import Path
+from typing import List, Optional
 
 import numpy as np
 
@@ -11,7 +12,7 @@ import numpy as np
 class ClientMetricsLogger:
     """Handles CSV logging of client-side federated learning metrics."""
 
-    def __init__(self, csv_path: str, client_id: int, extended: bool | None = None) -> None:
+    def __init__(self, csv_path: str, client_id: int, extended: Optional[bool] = None) -> None:
         """Initialize the client metrics logger with a CSV file path and client ID."""
         self.csv_path = Path(csv_path)
         self.client_id = client_id
@@ -77,6 +78,8 @@ class ClientMetricsLogger:
                     "dp_delta",
                     "dp_sigma",
                     "dp_clip_norm",
+                    "dp_sample_rate",
+                    "dp_total_steps",
                 ]
             else:
                 headers = [
@@ -106,36 +109,40 @@ class ClientMetricsLogger:
         round_num: int,
         dataset_size: int,
         n_classes: int,
-        loss_before: float | None,
-        acc_before: float | None,
-        loss_after: float | None,
-        acc_after: float | None,
-        macro_f1_before: float | None = None,
-        macro_f1_after: float | None = None,
-        macro_f1_argmax: float | None = None,
-        benign_fpr_argmax: float | None = None,
-        f1_per_class_after_json: str | None = None,
-        precision_per_class_json: str | None = None,
-        recall_per_class_json: str | None = None,
-        fpr_after: float | None = None,
-        pr_auc_after: float | None = None,
-        threshold_tau: float | None = None,
-        f1_bin_tau: float | None = None,
-        benign_fpr_bin_tau: float | None = None,
-        tau_bin: float | None = None,
-        seed: int | None = None,
-        weight_norm_before: float | None = None,
-        weight_norm_after: float | None = None,
-        weight_update_norm: float | None = None,
-        grad_norm_l2: float | None = None,
-        t_fit_ms: float | None = None,
+        loss_before: Optional[float],
+        acc_before: Optional[float],
+        loss_after: Optional[float],
+        acc_after: Optional[float],
+        macro_f1_before: Optional[float] = None,
+        macro_f1_after: Optional[float] = None,
+        macro_f1_argmax: Optional[float] = None,
+        benign_fpr_argmax: Optional[float] = None,
+        f1_per_class_after_json: Optional[str] = None,
+        precision_per_class_json: Optional[str] = None,
+        recall_per_class_json: Optional[str] = None,
+        fpr_after: Optional[float] = None,
+        pr_auc_after: Optional[float] = None,
+        threshold_tau: Optional[float] = None,
+        f1_bin_tau: Optional[float] = None,
+        benign_fpr_bin_tau: Optional[float] = None,
+        tau_bin: Optional[float] = None,
+        seed: Optional[int] = None,
+        weight_norm_before: Optional[float] = None,
+        weight_norm_after: Optional[float] = None,
+        weight_update_norm: Optional[float] = None,
+        grad_norm_l2: Optional[float] = None,
+        t_fit_ms: Optional[float] = None,
         epochs_completed: int = 0,
         lr: float = 0.0,
         batch_size: int = 0,
-        dp_epsilon: float | None = None,
-        dp_delta: float | None = None,
-        dp_sigma: float | None = None,
-        dp_clip_norm: float | None = None,
+        dp_epsilon: Optional[float] = None,
+        dp_delta: Optional[float] = None,
+        dp_sigma: Optional[float] = None,
+        dp_clip_norm: Optional[float] = None,
+        dp_sample_rate: Optional[float] = None,
+        dp_total_steps: Optional[int] = None,
+        secure_aggregation: Optional[bool] = None,
+        secure_aggregation_mask_checksum: Optional[str] = None,
     ) -> None:
         """Log metrics for a single client training round."""
         if self.extended:
@@ -179,6 +186,8 @@ class ClientMetricsLogger:
                 str(dp_delta) if dp_delta is not None else "",
                 str(dp_sigma) if dp_sigma is not None else "",
                 str(dp_clip_norm) if dp_clip_norm is not None else "",
+                str(dp_sample_rate) if dp_sample_rate is not None else "",
+                str(dp_total_steps) if dp_total_steps is not None else "",
             ]
         else:
             row = [
@@ -200,18 +209,68 @@ class ClientMetricsLogger:
                 str(batch_size),
             ]
 
+        # If secure aggregation metadata provided, ensure headers exist (extended mode only)
+        if self.extended and (secure_aggregation is not None or secure_aggregation_mask_checksum is not None):
+            self._append_missing_headers(
+                [
+                    "secure_aggregation",
+                    "secure_aggregation_mask_checksum",
+                ]
+            )
+
+        # If headers now include secure agg columns, append to row
+        try:
+            with open(self.csv_path, "r", newline="") as f:
+                header_reader = csv.reader(f)
+                header = next(header_reader)
+        except Exception:
+            header = []
+
+        if self.extended and "secure_aggregation" in header and "secure_aggregation_mask_checksum" in header:
+            row = row + [
+                ("True" if secure_aggregation else ("False" if secure_aggregation is not None else "")),
+                (secure_aggregation_mask_checksum or ""),
+            ]
+
         with open(self.csv_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(row)
 
+    def _append_missing_headers(self, new_columns: list[str]) -> None:
+        """Append new columns to the CSV header if missing and rewrite file."""
+        if not self.csv_path.exists() or not new_columns:
+            return
+        with open(self.csv_path, "r", newline="") as f:
+            reader = csv.reader(f)
+            try:
+                header = next(reader)
+            except StopIteration:
+                header = []
+            rows = list(reader)
+
+        updated = False
+        for col in new_columns:
+            if col not in header:
+                header.append(col)
+                updated = True
+                # pad existing rows with empty value for each new column
+                for r in rows:
+                    r.append("")
+
+        if updated:
+            with open(self.csv_path, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(header)
+                writer.writerows(rows)
+
     def log_personalization_metrics(
         self,
         round_num: int,
-        macro_f1_global: float | None = None,
-        macro_f1_personalized: float | None = None,
-        benign_fpr_global: float | None = None,
-        benign_fpr_personalized: float | None = None,
-        personalization_gain: float | None = None,
+        macro_f1_global: Optional[float] = None,
+        macro_f1_personalized: Optional[float] = None,
+        benign_fpr_global: Optional[float] = None,
+        benign_fpr_personalized: Optional[float] = None,
+        personalization_gain: Optional[float] = None,
     ) -> None:
         """Log personalization metrics for a round (appends to existing row)."""
         if not self.extended:
@@ -222,7 +281,7 @@ class ClientMetricsLogger:
         header = None
         target_row_idx = None
 
-        with open(self.csv_path, newline="") as f:
+        with open(self.csv_path, "r", newline="") as f:
             reader = csv.reader(f)
             header = next(reader)
             rows.append(header)
@@ -266,7 +325,7 @@ class ClientFitTimer:
     """Utility for measuring client fit timing."""
 
     def __init__(self) -> None:
-        self._last_fit_time_ms: float | None = None
+        self._last_fit_time_ms: Optional[float] = None
 
     @contextmanager
     def time_fit(self):
@@ -278,12 +337,12 @@ class ClientFitTimer:
             end_time = time.perf_counter()
             self._last_fit_time_ms = (end_time - start_time) * 1000.0
 
-    def get_last_fit_time_ms(self) -> float | None:
+    def get_last_fit_time_ms(self) -> Optional[float]:
         """Get the time in milliseconds for the last fit operation."""
         return self._last_fit_time_ms
 
 
-def calculate_weight_norms(weights: list[np.ndarray]) -> float:
+def calculate_weight_norms(weights: List[np.ndarray]) -> float:
     """Calculate the L2 norm of a list of weight arrays."""
     total_norm_sq = 0.0
     for arr in weights:
@@ -291,10 +350,10 @@ def calculate_weight_norms(weights: list[np.ndarray]) -> float:
     return np.sqrt(total_norm_sq)
 
 
-def calculate_weight_update_norm(weights_before: list[np.ndarray], weights_after: list[np.ndarray]) -> float:
+def calculate_weight_update_norm(weights_before: List[np.ndarray], weights_after: List[np.ndarray]) -> float:
     """Calculate the L2 norm of the weight update (difference)."""
     total_norm_sq = 0.0
-    for arr_before, arr_after in zip(weights_before, weights_after, strict=False):
+    for arr_before, arr_after in zip(weights_before, weights_after):
         diff = arr_after - arr_before
         total_norm_sq += float(np.sum(diff * diff))
     return np.sqrt(total_norm_sq)
@@ -314,5 +373,5 @@ def create_label_histogram_json(labels: np.ndarray) -> str:
     import json
 
     unique_labels, counts = np.unique(labels, return_counts=True)
-    label_hist = {str(label): int(count) for label, count in zip(unique_labels, counts, strict=False)}
+    label_hist = {str(label): int(count) for label, count in zip(unique_labels, counts)}
     return json.dumps(label_hist, sort_keys=True)
