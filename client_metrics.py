@@ -141,6 +141,8 @@ class ClientMetricsLogger:
         dp_clip_norm: Optional[float] = None,
         dp_sample_rate: Optional[float] = None,
         dp_total_steps: Optional[int] = None,
+        secure_aggregation: Optional[bool] = None,
+        secure_aggregation_mask_checksum: Optional[str] = None,
     ) -> None:
         """Log metrics for a single client training round."""
         if self.extended:
@@ -207,9 +209,57 @@ class ClientMetricsLogger:
                 str(batch_size),
             ]
 
+        # If secure aggregation metadata provided, ensure headers exist (extended mode only)
+        if self.extended and (secure_aggregation is not None or secure_aggregation_mask_checksum is not None):
+            self._append_missing_headers([
+                "secure_aggregation",
+                "secure_aggregation_mask_checksum",
+            ])
+
+        # If headers now include secure agg columns, append to row
+        try:
+            with open(self.csv_path, "r", newline="") as f:
+                header_reader = csv.reader(f)
+                header = next(header_reader)
+        except Exception:
+            header = []
+
+        if self.extended and "secure_aggregation" in header and "secure_aggregation_mask_checksum" in header:
+            row = row + [
+                ("True" if secure_aggregation else ("False" if secure_aggregation is not None else "")),
+                (secure_aggregation_mask_checksum or ""),
+            ]
+
         with open(self.csv_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(row)
+
+    def _append_missing_headers(self, new_columns: list[str]) -> None:
+        """Append new columns to the CSV header if missing and rewrite file."""
+        if not self.csv_path.exists() or not new_columns:
+            return
+        with open(self.csv_path, "r", newline="") as f:
+            reader = csv.reader(f)
+            try:
+                header = next(reader)
+            except StopIteration:
+                header = []
+            rows = list(reader)
+
+        updated = False
+        for col in new_columns:
+            if col not in header:
+                header.append(col)
+                updated = True
+                # pad existing rows with empty value for each new column
+                for r in rows:
+                    r.append("")
+
+        if updated:
+            with open(self.csv_path, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(header)
+                writer.writerows(rows)
 
     def log_personalization_metrics(
         self,

@@ -3,8 +3,9 @@
 import math
 
 import pytest
+from hypothesis import given, strategies as st
 
-from scripts.analyze_fedprox_comparison import cohens_d, _mean_ci
+from scripts.statistical_utils import cohens_d, compute_ci
 from scripts.ci_checks import (
     ArtifactValidationError,
     check_convergence_quality,
@@ -60,14 +61,14 @@ class TestMeanCI:
 
     def test_mean_ci_single_value(self):
         """CI should equal the value itself for single sample."""
-        mean, ci_lower, ci_upper = _mean_ci([5.0])
+        mean, ci_lower, ci_upper = compute_ci([5.0])
         assert mean == 5.0
         assert ci_lower == 5.0
         assert ci_upper == 5.0
 
     def test_mean_ci_identical_values(self):
         """CI should equal the value for identical samples."""
-        mean, ci_lower, ci_upper = _mean_ci([2.0, 2.0, 2.0])
+        mean, ci_lower, ci_upper = compute_ci([2.0, 2.0, 2.0])
         assert mean == 2.0
         assert ci_lower == 2.0
         assert ci_upper == 2.0
@@ -75,27 +76,27 @@ class TestMeanCI:
     def test_mean_ci_reasonable_range(self):
         """CI width should be reasonable for typical data."""
         values = [0.8, 0.85, 0.9, 0.88, 0.92]
-        mean, ci_lower, ci_upper = _mean_ci(values)
+        mean, ci_lower, ci_upper = compute_ci(values)
         assert ci_lower < mean < ci_upper
         assert (ci_upper - ci_lower) < 0.2
 
     def test_mean_ci_filters_nans(self):
         """Mean CI should filter out NaN values."""
         values = [0.8, float("nan"), 0.9, float("nan")]
-        mean, ci_lower, ci_upper = _mean_ci(values)
+        mean, ci_lower, ci_upper = compute_ci(values)
         assert 0.8 < mean < 0.95
         assert not math.isnan(mean)
 
     def test_mean_ci_all_nans(self):
         """Mean CI should return NaN for all-NaN input."""
-        mean, ci_lower, ci_upper = _mean_ci([float("nan"), float("nan")])
+        mean, ci_lower, ci_upper = compute_ci([float("nan"), float("nan")])
         assert math.isnan(mean)
         assert math.isnan(ci_lower)
         assert math.isnan(ci_upper)
 
     def test_mean_ci_empty_list(self):
         """Mean CI should return NaN for empty list."""
-        mean, ci_lower, ci_upper = _mean_ci([])
+        mean, ci_lower, ci_upper = compute_ci([])
         assert math.isnan(mean)
 
 
@@ -219,3 +220,79 @@ class TestCheckSeedConsistency:
         ]
         with pytest.raises(ArtifactValidationError):
             check_seed_consistency(rows, expected_seeds=5)
+
+
+class TestComputeCIProperties:
+    """Property-based tests for compute_ci confidence interval calculation."""
+
+    @given(
+        values=st.lists(
+            st.floats(allow_nan=False, allow_infinity=False, min_value=-1000, max_value=1000),
+            min_size=2,
+            max_size=100,
+        ),
+        confidence=st.floats(min_value=0.80, max_value=0.99),
+    )
+    def test_compute_ci_mean_in_bounds_property(self, values, confidence):
+        """Mean should always be within computed CI bounds."""
+        mean, ci_lower, ci_upper = compute_ci(values, confidence)
+
+        if not math.isnan(mean):
+            assert ci_lower <= mean <= ci_upper, f"CI [{ci_lower}, {ci_upper}] does not contain mean {mean}"
+
+    @given(
+        values=st.lists(
+            st.floats(allow_nan=False, allow_infinity=False, min_value=-1000, max_value=1000),
+            min_size=2,
+            max_size=100,
+        )
+    )
+    def test_compute_ci_bounds_symmetry_around_mean_property(self, values):
+        """CI should be symmetric around the mean."""
+        mean, ci_lower, ci_upper = compute_ci(values, confidence=0.95)
+
+        if not math.isnan(mean) and not math.isnan(ci_lower) and not math.isnan(ci_upper):
+            margin_lower = mean - ci_lower
+            margin_upper = ci_upper - mean
+            assert pytest.approx(margin_lower, abs=1e-10) == margin_upper, (
+                f"CI margins should be symmetric: " f"lower={margin_lower}, upper={margin_upper}"
+            )
+
+
+class TestCohensDProperties:
+    """Property-based tests for cohens_d effect size calculation."""
+
+    @given(
+        a=st.lists(
+            st.floats(
+                allow_nan=False,
+                allow_infinity=False,
+                min_value=-1000,
+                max_value=1000,
+            ),
+            min_size=2,
+            max_size=100,
+        ),
+        b=st.lists(
+            st.floats(
+                allow_nan=False,
+                allow_infinity=False,
+                min_value=-1000,
+                max_value=1000,
+            ),
+            min_size=2,
+            max_size=100,
+        ),
+    )
+    def test_cohens_d_sign_property(self, a, b):
+        """Cohen's d sign should match mean difference sign."""
+        d = cohens_d(a, b)
+        mean_a = sum(a) / len(a) if a else 0
+        mean_b = sum(b) / len(b) if b else 0
+        mean_diff = mean_a - mean_b
+
+        if not math.isnan(d) and mean_diff != 0:
+            if d > 0:
+                assert mean_diff > 0, f"Positive d={d} should correspond to positive mean_diff={mean_diff}"
+            elif d < 0:
+                assert mean_diff < 0, f"Negative d={d} should correspond to negative mean_diff={mean_diff}"

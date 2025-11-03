@@ -12,6 +12,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
+import os
 
 
 class ArtifactValidationError(Exception):
@@ -20,9 +21,9 @@ class ArtifactValidationError(Exception):
     pass
 
 
-MIN_WEIGHTED_MACRO_F1 = 0.70
-MIN_WEIGHTED_ACCURACY = 0.70
-MAX_FINAL_L2_DISTANCE = 1.5
+MIN_WEIGHTED_MACRO_F1 = float(os.environ.get("MIN_WEIGHTED_MACRO_F1", "0.70"))
+MIN_WEIGHTED_ACCURACY = float(os.environ.get("MIN_WEIGHTED_ACCURACY", "0.70"))
+MAX_FINAL_L2_DISTANCE = float(os.environ.get("MAX_FINAL_L2_DISTANCE", "1.5"))
 
 
 def _safe_float(value: str | None) -> float | None:
@@ -282,6 +283,68 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True, require_plots
     validate_fpr_tolerance(run_dir, target_fpr=0.10, tolerance=0.02, strict=fpr_strict)
 
     print(f"[PASS] Run directory {run_dir.name} validation passed")
+
+
+def validate_privacy_experiments(runs_root: Path) -> None:
+    """Validate presence and schema of DP-related experiment artifacts.
+
+    Scans for comparative-analysis privacy runs and ensures that when DP is
+    enabled, required DP columns exist and contain valid values.
+
+    Args:
+        runs_root: Root directory containing runs (e.g., CI working dir or artifacts dir)
+
+    Raises:
+        ArtifactValidationError: If required columns are missing or invalid when DP is enabled.
+    """
+    # Locate directories like comparative-analysis-privacy-*
+    candidates = [
+        p
+        for p in runs_root.iterdir()
+        if p.is_dir() and p.name.startswith("comparative-analysis-privacy")
+    ]
+
+    if not candidates:
+        return  # Nothing to validate
+
+    required_cols = {"dp_enabled", "dp_epsilon", "dp_delta", "dp_sigma", "dp_clip_norm"}
+
+    for run_dir in candidates:
+        client_files = list(run_dir.glob("client_*_metrics.csv"))
+        if not client_files:
+            # No client files to check in this run
+            continue
+
+        for csv_path in client_files:
+            rows = _load_csv_rows(csv_path)
+            if not rows:
+                continue
+            headers = set(rows[0].keys())
+
+            # If dp_enabled present and true, enforce full schema
+            for row in rows:
+                dp_enabled_raw = row.get("dp_enabled")
+                dp_enabled = str(dp_enabled_raw).lower() in {"1", "true", "yes"}
+
+                if dp_enabled:
+                    if not required_cols.issubset(headers):
+                        missing = required_cols - headers
+                        raise ArtifactValidationError(
+                            f"DP metrics missing required columns {missing} in {csv_path}"
+                        )
+
+                    # Basic numeric sanity
+                    eps = _safe_float(row.get("dp_epsilon"))
+                    delt = _safe_float(row.get("dp_delta"))
+                    sigma = _safe_float(row.get("dp_sigma"))
+                    clip = _safe_float(row.get("dp_clip_norm"))
+
+                    if any(v is None or not math.isfinite(v) for v in [eps, delt, sigma, clip]):
+                        raise ArtifactValidationError(
+                            f"Invalid DP values in {csv_path}: "
+                            f"epsilon={row.get('dp_epsilon')}, delta={row.get('dp_delta')}, "
+                            f"sigma={row.get('dp_sigma')}, clip={row.get('dp_clip_norm')}"
+                        )
 
 
 def find_run_directories(runs_dir: Path) -> List[Path]:

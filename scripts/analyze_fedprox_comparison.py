@@ -21,9 +21,10 @@ from pathlib import Path
 from typing import Mapping, Optional, Sequence
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-from scipy import stats
+
+from scripts.statistical_utils import cohens_d as compute_cohens_d
+from scripts.statistical_utils import compute_ci, paired_t_test
 
 
 ARTIFACT_DIR_PATTERN = re.compile(r"fedprox-nightly-alpha(?P<alpha>[0-9.]+)-mu(?P<mu>[0-9.]+)-")
@@ -200,54 +201,8 @@ def collect_run_metrics(artifacts_dir: Path) -> list[RunMetrics]:
 
 
 def _mean_ci(values: Sequence[float], confidence: float = 0.95) -> tuple[float, float, float]:
-    arr = np.array([v for v in values if not math.isnan(v)], dtype=float)
-    if arr.size == 0:
-        return float("nan"), float("nan"), float("nan")
-
-    mean = float(arr.mean())
-    if arr.size == 1:
-        return mean, mean, mean
-
-    std = float(arr.std(ddof=1))
-    if std == 0.0:
-        return mean, mean, mean
-
-    t_crit = float(stats.t.ppf((1 + confidence) / 2, df=arr.size - 1))
-    margin = t_crit * std / math.sqrt(arr.size)
-    return mean, mean - margin, mean + margin
-
-
-def cohens_d(group1: Sequence[float], group2: Sequence[float]) -> float:
-    """Compute Cohen's d effect size between two groups.
-
-    Args:
-        group1: First group of values
-        group2: Second group of values
-
-    Returns:
-        Cohen's d effect size (mean difference / pooled std)
-    """
-    arr1 = np.array([v for v in group1 if not math.isnan(v)], dtype=float)
-    arr2 = np.array([v for v in group2 if not math.isnan(v)], dtype=float)
-
-    if arr1.size == 0 or arr2.size == 0:
-        return float("nan")
-
-    mean_diff = float(arr1.mean() - arr2.mean())
-    n1, n2 = arr1.size, arr2.size
-
-    if n1 == 1 and n2 == 1:
-        return mean_diff
-
-    var1 = float(arr1.var(ddof=1)) if n1 > 1 else 0.0
-    var2 = float(arr2.var(ddof=1)) if n2 > 1 else 0.0
-
-    pooled_std = math.sqrt((var1 * (n1 - 1) + var2 * (n2 - 1)) / (n1 + n2 - 2))
-
-    if pooled_std == 0.0:
-        return float("nan")
-
-    return mean_diff / pooled_std
+    """Compute confidence interval for a set of values."""
+    return compute_ci(values, confidence=confidence)
 
 
 def aggregate_run_metrics(
@@ -290,8 +245,11 @@ def aggregate_run_metrics(
 # Statistical validation helpers
 
 
-def ensure_minimum_samples(run_metrics: Sequence[RunMetrics], minimum: int = 5) -> None:
-    """Ensure every configuration has at least ``minimum`` seeds available."""
+def ensure_minimum_samples(run_metrics: Sequence[RunMetrics], minimum: int = 5, *, strict: bool = True) -> None:
+    """Ensure configurations have at least ``minimum`` seeds; warn or raise.
+
+    If ``strict`` is False, emit a warning and continue instead of raising.
+    """
     sample_counts: dict[tuple[float, float, str], set[int]] = defaultdict(set)
     for run in run_metrics:
         sample_counts[(run.alpha, run.mu, run.algorithm)].add(run.seed)
@@ -299,11 +257,22 @@ def ensure_minimum_samples(run_metrics: Sequence[RunMetrics], minimum: int = 5) 
     violations = [(alpha, mu, algorithm, len(seeds)) for (alpha, mu, algorithm), seeds in sample_counts.items() if len(seeds) < minimum]
 
     if violations:
-        alpha, mu, algorithm, observed = sorted(violations, key=lambda t: (t[0], t[1], t[2]))[0]
-        raise ValueError(
-            f"FedProx nightly runs for alpha={alpha} mu={mu} algorithm={algorithm} "
-            f"have only {observed} seeds; require at least {minimum}."
-        )
+        try:
+            import warnings as _warnings
+            for alpha, mu, algorithm, observed in sorted(violations, key=lambda t: (t[0], t[1], t[2])):
+                msg = (
+                    f"Under-sampled config alpha={alpha} mu={mu} algorithm={algorithm}: "
+                    f"observed={observed} < minimum={minimum}"
+                )
+                _warnings.warn(msg)
+        except Exception:
+            pass
+        if strict:
+            alpha, mu, algorithm, observed = sorted(violations, key=lambda t: (t[0], t[1], t[2]))[0]
+            raise ValueError(
+                f"FedProx nightly runs for alpha={alpha} mu={mu} algorithm={algorithm} "
+                f"have only {observed} seeds; require at least {minimum}."
+            )
 
 
 def compute_paired_statistics(
@@ -311,7 +280,11 @@ def compute_paired_statistics(
     metric_name: str = "weighted_macro_f1",
     baseline_algorithm: str = "FedAvg",
 ) -> list[dict[str, object]]:
-    """Compute paired t-tests and effect sizes comparing FedProx to FedAvg."""
+    """Compute paired t-tests and effect sizes comparing FedProx to FedAvg.
+
+    Uses statistical_utils for rigorous hypothesis testing and effect size
+    calculation across all metrics.
+    """
     baseline_values: dict[tuple[float, int], float] = {}
     candidate_map: dict[tuple[float, float], list[tuple[int, float, str]]] = defaultdict(list)
 
@@ -345,13 +318,10 @@ def compute_paired_statistics(
             continue
 
         mean_diff, ci_lower, ci_upper = _mean_ci(diffs)
-        if n > 1:
-            effect_size = cohens_d(prox_values, fedavg_values)
-            _, p_value = stats.ttest_rel(prox_values, fedavg_values)
-            p_value = float(p_value)
-        else:
-            effect_size = float("nan")
-            p_value = float("nan")
+
+        t_test_result = paired_t_test(prox_values, fedavg_values)
+        p_value = t_test_result["p_value"]
+        effect_size = compute_cohens_d(prox_values, fedavg_values)
 
         results.append(
             {
@@ -390,7 +360,11 @@ def plot_aggregated_metrics(aggregated: pd.DataFrame, output_dir: Path) -> None:
             lower = sorted_group["ci_lower"].to_numpy()
             upper = sorted_group["ci_upper"].to_numpy()
             label = f"{algorithm} (α={alpha})"
-            ax.plot(x, mean, marker="o", label=label)
+            # Policy: when μ grid is sparse, use marker-only to avoid misleading lines
+            if x.size <= 3:
+                ax.scatter(x, mean, marker="o", label=label)
+            else:
+                ax.plot(x, mean, marker="o", label=label)
             ax.fill_between(x, lower, upper, alpha=0.2)
 
         ax.set_xlabel("FedProx μ")
@@ -530,6 +504,29 @@ def generate_thesis_tables(
         encoding="utf-8",
     )
 
+    # Emit an additional table with exact bounds for captions
+    bounds_lines: list[str] = [
+        "% Auto-generated by analyze_fedprox_comparison.py",
+        "\\begin{table}[ht]",
+        "\\centering",
+        "\\caption{FedAvg vs FedProx Macro-F1 with exact 95\\% CI bounds}",
+        "\\label{tab:fedprox_macro_f1_bounds}",
+        "\\begin{tabular}{lcccc}",
+        "\\toprule",
+        "Algorithm & $\\alpha$ & $\\mu$ & Mean & [CI lower, CI upper] \\\\",
+        "\\midrule",
+    ]
+    for _, row in macro_df.iterrows():
+        bounds_lines.append(
+            f"{row['algorithm']} & {row['alpha']} & {row['mu']} & {row['mean']:.4f} & "
+            f"[{row['ci_lower']:.4f}, {row['ci_upper']:.4f}] \\\\" 
+        )
+    bounds_lines.extend(["\\bottomrule", "\\end{tabular}", "\\end{table}"])
+    (output_dir / "fedprox_thesis_tables_bounds.tex").write_text(
+        "\n".join(bounds_lines),
+        encoding="utf-8",
+    )
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Aggregate FedProx nightly comparison artifacts.")
@@ -561,7 +558,10 @@ def main() -> None:
         print("No FedProx artifacts found; nothing to summarize.")
         return
 
-    ensure_minimum_samples(run_metrics, minimum=5)
+    import os as _os
+    min_seeds = int(_os.environ.get("SUMMARY_MIN_SEEDS", "5"))
+    strict_seeds = _os.environ.get("SUMMARY_STRICT_SEEDS", "1").lower() in ("1", "true", "yes")
+    ensure_minimum_samples(run_metrics, minimum=min_seeds, strict=strict_seeds)
 
     aggregated = aggregate_run_metrics(run_metrics)
     if aggregated.empty:
