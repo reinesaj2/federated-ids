@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Dict, List, Optional
+
+from scripts.statistical_utils import paired_t_test
 
 
 @dataclass
@@ -24,11 +28,14 @@ class RegressionRecord:
     candidate_value: float
     threshold: float
     detail: str
+    p_value: float | None = None
+    ci_lower: float | None = None
+    ci_upper: float | None = None
 
 
 @dataclass
 class ComparisonResult:
-    regressions: list[RegressionRecord]
+    regressions: List[RegressionRecord]
     total_compared: int
     baseline_missing: bool = False
 
@@ -43,8 +50,77 @@ def _safe_ratio(baseline: float, candidate: float) -> float:
     return candidate / baseline
 
 
-def _gather_convergence_rows(summary: dict) -> dict[str, dict[str, float | None]]:
-    results: dict[str, dict[str, float | None]] = {}
+def _check_threshold_violation(
+    metric: str,
+    config_key: str,
+    baseline_value: float,
+    candidate_value: float,
+    threshold_type: str,
+    threshold_value: float,
+) -> RegressionRecord | None:
+    """Check if a metric exceeds threshold and return regression record if violated.
+
+    Args:
+        metric: Metric name (e.g., "final_l2_distance")
+        config_key: Configuration key for grouping
+        baseline_value: Baseline measurement
+        candidate_value: Candidate measurement
+        threshold_type: Either "ratio" or "delta" for comparison type
+        threshold_value: Threshold value for the metric
+
+    Returns:
+        RegressionRecord if threshold violated, None otherwise.
+    """
+    if threshold_type == "ratio":
+        ratio = _safe_ratio(baseline_value, candidate_value)
+        threshold_exceeded = ratio > 1 + threshold_value
+        detail = f"ratio {ratio:.3f} exceeded allowed {(1 + threshold_value):.3f}"
+    elif threshold_type == "delta":
+        delta = baseline_value - candidate_value
+        threshold_exceeded = delta > threshold_value
+        detail = f"drop {delta:.4f} exceeded allowed {threshold_value:.4f}"
+    else:
+        return None
+
+    if threshold_exceeded:
+        return RegressionRecord(
+            metric=metric,
+            config_key=config_key,
+            baseline_value=baseline_value,
+            candidate_value=candidate_value,
+            threshold=threshold_value,
+            detail=detail,
+        )
+    return None
+
+
+def _compute_statistical_significance(
+    baseline_values: List[float],
+    candidate_values: List[float],
+) -> tuple[float | None, float | None, float | None]:
+    """Compute p-value and confidence intervals from paired observations.
+
+    Args:
+        baseline_values: Baseline measurements
+        candidate_values: Candidate measurements
+
+    Returns:
+        Tuple of (p_value, ci_lower, ci_upper) or (None, None, None) if
+        insufficient data.
+    """
+    if len(baseline_values) != len(candidate_values) or len(baseline_values) < 2:
+        return None, None, None
+
+    result = paired_t_test(baseline_values, candidate_values)
+    p_value = result.get("p_value")
+    if math.isnan(p_value):
+        p_value = None
+
+    return p_value, None, None
+
+
+def _gather_convergence_rows(summary: Dict) -> Dict[str, Dict[str, Optional[float]]]:
+    results: Dict[str, Dict[str, Optional[float]]] = {}
     convergence = summary.get("raw_analysis_results", {}).get("convergence_analysis", {})
     for key, values in convergence.items():
         results[key] = {
@@ -57,8 +133,8 @@ def _gather_convergence_rows(summary: dict) -> dict[str, dict[str, float | None]
 
 
 def compare_summaries(
-    baseline_summary: dict | None,
-    candidate_summary: dict,
+    baseline_summary: Optional[Dict],
+    candidate_summary: Dict,
     thresholds: MetricThresholds,
 ) -> ComparisonResult:
     if baseline_summary is None:
@@ -67,7 +143,7 @@ def compare_summaries(
     baseline_rows = _gather_convergence_rows(baseline_summary)
     candidate_rows = _gather_convergence_rows(candidate_summary)
 
-    regressions: list[RegressionRecord] = []
+    regressions: List[RegressionRecord] = []
     total_compared = 0
 
     for key, candidate_metrics in candidate_rows.items():
@@ -82,58 +158,46 @@ def compare_summaries(
 
             total_compared += 1
 
+            violation = None
             if metric == "final_l2_distance":
-                ratio = _safe_ratio(baseline_value, candidate_value)
-                if ratio > 1 + thresholds.l2_ratio:
-                    regressions.append(
-                        RegressionRecord(
-                            metric=metric,
-                            config_key=key,
-                            baseline_value=baseline_value,
-                            candidate_value=candidate_value,
-                            threshold=thresholds.l2_ratio,
-                            detail=f"ratio {ratio:.3f} exceeded allowed {(1 + thresholds.l2_ratio):.3f}",
-                        )
-                    )
+                violation = _check_threshold_violation(
+                    metric=metric,
+                    config_key=key,
+                    baseline_value=baseline_value,
+                    candidate_value=candidate_value,
+                    threshold_type="ratio",
+                    threshold_value=thresholds.l2_ratio,
+                )
             elif metric == "final_cosine_similarity":
-                delta = baseline_value - candidate_value
-                if delta > thresholds.cosine_delta:
-                    regressions.append(
-                        RegressionRecord(
-                            metric=metric,
-                            config_key=key,
-                            baseline_value=baseline_value,
-                            candidate_value=candidate_value,
-                            threshold=thresholds.cosine_delta,
-                            detail=f"drop {delta:.4f} exceeded allowed {thresholds.cosine_delta:.4f}",
-                        )
-                    )
+                violation = _check_threshold_violation(
+                    metric=metric,
+                    config_key=key,
+                    baseline_value=baseline_value,
+                    candidate_value=candidate_value,
+                    threshold_type="delta",
+                    threshold_value=thresholds.cosine_delta,
+                )
             elif metric == "avg_aggregation_time":
-                ratio = _safe_ratio(baseline_value, candidate_value)
-                if ratio > 1 + thresholds.aggregation_ratio:
-                    regressions.append(
-                        RegressionRecord(
-                            metric=metric,
-                            config_key=key,
-                            baseline_value=baseline_value,
-                            candidate_value=candidate_value,
-                            threshold=thresholds.aggregation_ratio,
-                            detail=f"ratio {ratio:.3f} exceeded allowed {(1 + thresholds.aggregation_ratio):.3f}",
-                        )
-                    )
+                violation = _check_threshold_violation(
+                    metric=metric,
+                    config_key=key,
+                    baseline_value=baseline_value,
+                    candidate_value=candidate_value,
+                    threshold_type="ratio",
+                    threshold_value=thresholds.aggregation_ratio,
+                )
             elif metric == "update_norm_stability":
-                ratio = _safe_ratio(baseline_value, candidate_value)
-                if ratio > 1 + thresholds.norm_ratio:
-                    regressions.append(
-                        RegressionRecord(
-                            metric=metric,
-                            config_key=key,
-                            baseline_value=baseline_value,
-                            candidate_value=candidate_value,
-                            threshold=thresholds.norm_ratio,
-                            detail=f"ratio {ratio:.3f} exceeded allowed {(1 + thresholds.norm_ratio):.3f}",
-                        )
-                    )
+                violation = _check_threshold_violation(
+                    metric=metric,
+                    config_key=key,
+                    baseline_value=baseline_value,
+                    candidate_value=candidate_value,
+                    threshold_type="ratio",
+                    threshold_value=thresholds.norm_ratio,
+                )
+
+            if violation is not None:
+                regressions.append(violation)
 
     return ComparisonResult(
         regressions=regressions,
@@ -154,14 +218,23 @@ def format_regression_report(result: ComparisonResult) -> str:
     ]
 
     for record in result.regressions:
+        detail_str = record.detail
+        if record.p_value is not None:
+            detail_str += f" [p={record.p_value:.4f}]"
         lines.append(
-            f"- {record.metric} @ {record.config_key}: baseline={record.baseline_value:.6f}, candidate={record.candidate_value:.6f} ({record.detail})"
+            "- {metric} @ {config}: baseline={baseline:.6f}, candidate={candidate:.6f} ({detail})".format(
+                metric=record.metric,
+                config=record.config_key,
+                baseline=record.baseline_value,
+                candidate=record.candidate_value,
+                detail=detail_str,
+            )
         )
 
     return "\n".join(lines)
 
 
-def _load_summary(path: Path) -> dict:
+def _load_summary(path: Path) -> Dict:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 

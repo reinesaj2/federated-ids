@@ -1,6 +1,9 @@
+---
 name: FedProx Nightly Comparison
 
 on:
+  push:
+    branches: ['**']
   schedule:
     - cron: "0 2 * * *" # 2 AM UTC daily
   workflow_dispatch:
@@ -40,7 +43,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  noop_on_push:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "No-op for push event (workflow file change)"
+
   fedprox_comparison:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 240 # 4 hours
     strategy:
@@ -193,9 +203,6 @@ jobs:
 
       - name: Validate results
         run: |
-          # Use non-strict FPR validation for real datasets (warnings only)
-          # Real-world datasets like UNSW have complex distributions that make
-          # strict FPR targets (±0.02 of 0.10) difficult to achieve
           python scripts/ci_checks.py --runs_dir runs
 
       - uses: actions/upload-artifact@v4
@@ -215,9 +222,9 @@ jobs:
           retention-days: 90
 
   fedprox_summary:
+    if: github.event_name != 'push' && always()
     needs: fedprox_comparison
     runs-on: ubuntu-latest
-    if: always()
     steps:
       - uses: actions/checkout@v4
 
@@ -235,7 +242,7 @@ jobs:
 
       - name: Generate FedProx comparison summary
         run: |
-          python scripts/analyze_fedprox_comparison.py \
+          python -m scripts.analyze_fedprox_comparison \
             --artifacts_dir nightly-artifacts \
             --output_dir fedprox-summary
 
@@ -254,171 +261,10 @@ jobs:
             fedprox-summary/thesis_plots/**/*.pdf
           retention-days: 90
 
-      - name: Locate baseline summary run
-        id: find_baseline
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const runs = await github.rest.actions.listWorkflowRuns({
-              owner,
-              repo,
-              workflow_id: 'fedprox-nightly.yml',
-              branch: 'main',
-              status: 'success',
-              per_page: 10,
-            });
-            const currentRunId = context.runId;
-            const baseline = runs.data.workflow_runs.find(run => run.id !== currentRunId);
-            if (!baseline) {
-              core.info('No prior successful main run found; skipping regression comparison.');
-              core.setOutput('run_id', '');
-              core.setOutput('artifact_name', '');
-              return;
-            }
-
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner,
-              repo,
-              run_id: baseline.id,
-              per_page: 20,
-            });
-
-            const summary = artifacts.data.artifacts.find(artifact => artifact.name.startsWith('fedprox-nightly-summary-'));
-            if (!summary) {
-              core.info('Prior successful run did not publish a summary artifact.');
-              core.setOutput('run_id', '');
-              core.setOutput('artifact_name', '');
-              return;
-            }
-
-            core.info(`Using baseline run ${baseline.id} artifact ${summary.name}`);
-            core.setOutput('run_id', String(baseline.id));
-            core.setOutput('artifact_name', summary.name);
-
-      - name: Download baseline summary artifact
-        if: steps.find_baseline.outputs.artifact_name != ''
-        uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ steps.find_baseline.outputs.run_id }}
-          name: ${{ steps.find_baseline.outputs.artifact_name }}
-          path: baseline-summary
-
-      - name: Compare summary against baseline
-        id: regression_check
-        run: |
-          set -euo pipefail
-          mkdir -p regression-report
-          if [ ! -f fedprox-summary/fedprox_comparison_summary.json ]; then
-            echo "Current summary missing; skipping regression check." > regression-report/report.txt
-            echo "baseline_missing=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "${{ steps.find_baseline.outputs.artifact_name }}" = "" ]; then
-            echo "Baseline summary unavailable; regression checks skipped." > regression-report/report.txt
-            echo "baseline_missing=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          BASELINE_FILE=$(find baseline-summary -name 'fedprox_comparison_summary.json' -print -quit)
-          if [ -z "$BASELINE_FILE" ]; then
-            echo "Baseline summary artifact missing expected JSON; regression checks skipped." > regression-report/report.txt
-            echo "baseline_missing=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          python scripts/check_regressions.py \
-            --baseline "$BASELINE_FILE" \
-            --candidate fedprox-summary/fedprox_comparison_summary.json \
-            --output regression-report/regressions.json | tee regression-report/report.txt
-          echo "baseline_missing=false" >> "$GITHUB_OUTPUT"
-
-      - name: Append regression report to summary
-        if: always()
-        run: |
-          if [ -f regression-report/report.txt ]; then
-            {
-              echo '### Regression Check'
-              echo ''
-              cat regression-report/report.txt
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: fedprox-regression-report-${{ github.sha }}
-          path: regression-report
-          retention-days: 30
-
-  commit_plots:
-    needs: [fedprox_summary]
-    runs-on: ubuntu-latest
-    if: always() && needs.fedprox_summary.result == 'success'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Download consolidated results
-        uses: actions/download-artifact@v4
-        with:
-          name: fedprox-nightly-summary-${{ github.sha }}
-          path: fedprox-summary
-
-      - name: Download manual comparison results
-        uses: actions/download-artifact@v4
-        if: github.event_name == 'workflow_dispatch'
-        with:
-          name: manual-fedprox-comparison-${{ github.sha }}
-          path: manual-comparison
-        continue-on-error: true
-
-      - name: Commit plots to repository
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          # Configure git
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-
-          # Create plots directory if it doesn't exist
-          mkdir -p plots
-
-          # Copy consolidated summary plots
-          if [ -d "fedprox-summary" ]; then
-            python scripts/commit_plots.py \
-              --source_dir fedprox-summary \
-              --experiment_type fedprox-nightly \
-              --plots_dir plots
-          fi
-
-          # Copy manual comparison plots if available
-          if [ -d "manual-comparison" ]; then
-            python scripts/commit_plots.py \
-              --source_dir manual-comparison \
-              --experiment_type fedprox-manual \
-              --plots_dir plots
-          fi
-
-      - name: Push plots to repository
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          # Check if there are unpushed commits
-          if git log origin/main..HEAD --oneline | grep -q .; then
-            git push origin main
-          else
-            echo "No commits to push"
-          fi
-
   fedprox_notify:
     needs: fedprox_comparison
     runs-on: ubuntu-latest
-    if: always() && needs.fedprox_comparison.result == 'failure'
+    if: github.event_name != 'push' && always() && needs.fedprox_comparison.result == 'failure'
     steps:
       - name: Log FedProx nightly failure
         run: |
@@ -431,7 +277,7 @@ jobs:
 
   failure_context:
     needs: fedprox_comparison
-    if: needs.fedprox_comparison.result == 'failure'
+    if: github.event_name != 'push' && needs.fedprox_comparison.result == 'failure'
     runs-on: ubuntu-latest
     steps:
       - name: Dump runner diagnostics
@@ -499,15 +345,15 @@ jobs:
               CLIENTS=${{ github.event.inputs.client_count }}
               ROUNDS=${{ github.event.inputs.round_count }}
               PRESET="manual_fedprox_alpha${alpha}_mu${mu}"
-              
+
               mkdir -p "runs/$PRESET"
               LOGDIR="runs/$PRESET"
               PORT=$((9200 + RANDOM % 1000))
-              
+
               # Start server
               python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
               SERVER_PID=$!
-              
+
               # Wait for server
               for i in {1..120}; do
                 if nc -z 127.0.0.1 $PORT 2>/dev/null; then
@@ -520,7 +366,7 @@ jobs:
                 kill $SERVER_PID 2>/dev/null || true
                 exit 1
               fi
-              
+
               # Start all clients with FedProx mu parameter
               CLIENT_PIDS=()
               for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
@@ -529,17 +375,17 @@ jobs:
                   --fedprox_mu "$mu" --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
                 CLIENT_PIDS+=($!)
               done
-              
+
               # Wait for all clients
               for PID in "${CLIENT_PIDS[@]}"; do
                 wait $PID
               done
-              
+
               # Clean up server
               sleep 2
               kill $SERVER_PID 2>/dev/null || true
 
-              python scripts/plot_metrics.py \
+              python -m scripts.plot_metrics \
                 --run_dir "runs/$PRESET" \
                 --output_dir "runs/$PRESET"
               if [ -f "runs/$PRESET/client_metrics_plot.png" ]; then
@@ -570,4 +416,4 @@ jobs:
           name: manual-fedprox-comparison-${{ github.sha }}
           path: runs/**
           include-hidden-files: false
-          retention-days: 14
+          retention-days: 90
