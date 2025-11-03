@@ -211,10 +211,12 @@ class ClientMetricsLogger:
 
         # If secure aggregation metadata provided, ensure headers exist (extended mode only)
         if self.extended and (secure_aggregation is not None or secure_aggregation_mask_checksum is not None):
-            self._append_missing_headers([
-                "secure_aggregation",
-                "secure_aggregation_mask_checksum",
-            ])
+            self._append_missing_headers(
+                [
+                    "secure_aggregation",
+                    "secure_aggregation_mask_checksum",
+                ]
+            )
 
         # If headers now include secure agg columns, append to row
         try:
@@ -305,13 +307,9 @@ class ClientMetricsLogger:
 
                 # Update the row
                 rows[target_row_idx][global_f1_idx] = str(macro_f1_global) if macro_f1_global is not None else ""
-                rows[target_row_idx][pers_f1_idx] = (
-                    str(macro_f1_personalized) if macro_f1_personalized is not None else ""
-                )
+                rows[target_row_idx][pers_f1_idx] = str(macro_f1_personalized) if macro_f1_personalized is not None else ""
                 rows[target_row_idx][global_fpr_idx] = str(benign_fpr_global) if benign_fpr_global is not None else ""
-                rows[target_row_idx][pers_fpr_idx] = (
-                    str(benign_fpr_personalized) if benign_fpr_personalized is not None else ""
-                )
+                rows[target_row_idx][pers_fpr_idx] = str(benign_fpr_personalized) if benign_fpr_personalized is not None else ""
                 rows[target_row_idx][gain_idx] = str(personalization_gain) if personalization_gain is not None else ""
 
                 # Write back the entire CSV

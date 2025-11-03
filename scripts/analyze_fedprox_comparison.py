@@ -259,11 +259,9 @@ def ensure_minimum_samples(run_metrics: Sequence[RunMetrics], minimum: int = 5, 
     if violations:
         try:
             import warnings as _warnings
+
             for alpha, mu, algorithm, observed in sorted(violations, key=lambda t: (t[0], t[1], t[2])):
-                msg = (
-                    f"Under-sampled config alpha={alpha} mu={mu} algorithm={algorithm}: "
-                    f"observed={observed} < minimum={minimum}"
-                )
+                msg = f"Under-sampled config alpha={alpha} mu={mu} algorithm={algorithm}: " f"observed={observed} < minimum={minimum}"
                 _warnings.warn(msg)
         except Exception:
             pass
@@ -519,7 +517,7 @@ def generate_thesis_tables(
     for _, row in macro_df.iterrows():
         bounds_lines.append(
             f"{row['algorithm']} & {row['alpha']} & {row['mu']} & {row['mean']:.4f} & "
-            f"[{row['ci_lower']:.4f}, {row['ci_upper']:.4f}] \\\\" 
+            f"[{row['ci_lower']:.4f}, {row['ci_upper']:.4f}] \\\\"
         )
     bounds_lines.extend(["\\bottomrule", "\\end{tabular}", "\\end{table}"])
     (output_dir / "fedprox_thesis_tables_bounds.tex").write_text(
@@ -559,6 +557,7 @@ def main() -> None:
         return
 
     import os as _os
+
     min_seeds = int(_os.environ.get("SUMMARY_MIN_SEEDS", "5"))
     strict_seeds = _os.environ.get("SUMMARY_STRICT_SEEDS", "1").lower() in ("1", "true", "yes")
     ensure_minimum_samples(run_metrics, minimum=min_seeds, strict=strict_seeds)

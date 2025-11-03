@@ -54,9 +54,7 @@ def validate_csv_schema(csv_path: Path, expected_columns: Set[str]) -> None:
 
             if not expected_columns.issubset(actual_columns):
                 missing = expected_columns - actual_columns
-                raise ArtifactValidationError(
-                    f"CSV {csv_path} missing required columns: {missing}. " f"Found: {actual_columns}"
-                )
+                raise ArtifactValidationError(f"CSV {csv_path} missing required columns: {missing}. " f"Found: {actual_columns}")
 
             # Validate at least one data row exists
             try:
@@ -253,18 +251,14 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True, require_plots
 
     weighted_macro_f1 = macro_sum / macro_weight
     if not math.isfinite(weighted_macro_f1) or weighted_macro_f1 < MIN_WEIGHTED_MACRO_F1:
-        raise ArtifactValidationError(
-            f"Weighted macro_f1_after={weighted_macro_f1:.3f} below minimum {MIN_WEIGHTED_MACRO_F1:.2f}"
-        )
+        raise ArtifactValidationError(f"Weighted macro_f1_after={weighted_macro_f1:.3f} below minimum {MIN_WEIGHTED_MACRO_F1:.2f}")
 
     if acc_samples == 0 or acc_weight == 0:
         raise ArtifactValidationError(f"No acc_after values found in {run_dir}")
 
     weighted_accuracy = acc_sum / acc_weight
     if not math.isfinite(weighted_accuracy) or weighted_accuracy < MIN_WEIGHTED_ACCURACY:
-        raise ArtifactValidationError(
-            f"Weighted acc_after={weighted_accuracy:.3f} below minimum {MIN_WEIGHTED_ACCURACY:.2f}"
-        )
+        raise ArtifactValidationError(f"Weighted acc_after={weighted_accuracy:.3f} below minimum {MIN_WEIGHTED_ACCURACY:.2f}")
 
     # Validate server convergence metrics (L2 distance)
     server_rows = _load_csv_rows(server_metrics_path)
@@ -275,9 +269,7 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True, require_plots
     if l2_value is None:
         raise ArtifactValidationError(f"Server metrics missing l2_to_benign_mean in {server_metrics_path}")
     if not math.isfinite(l2_value) or l2_value > MAX_FINAL_L2_DISTANCE:
-        raise ArtifactValidationError(
-            f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {MAX_FINAL_L2_DISTANCE:.1f}"
-        )
+        raise ArtifactValidationError(f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {MAX_FINAL_L2_DISTANCE:.1f}")
 
     # Validate FPR tolerance if using low_fpr tau mode
     validate_fpr_tolerance(run_dir, target_fpr=0.10, tolerance=0.02, strict=fpr_strict)
@@ -298,11 +290,7 @@ def validate_privacy_experiments(runs_root: Path) -> None:
         ArtifactValidationError: If required columns are missing or invalid when DP is enabled.
     """
     # Locate directories like comparative-analysis-privacy-*
-    candidates = [
-        p
-        for p in runs_root.iterdir()
-        if p.is_dir() and p.name.startswith("comparative-analysis-privacy")
-    ]
+    candidates = [p for p in runs_root.iterdir() if p.is_dir() and p.name.startswith("comparative-analysis-privacy")]
 
     if not candidates:
         return  # Nothing to validate
@@ -329,9 +317,7 @@ def validate_privacy_experiments(runs_root: Path) -> None:
                 if dp_enabled:
                     if not required_cols.issubset(headers):
                         missing = required_cols - headers
-                        raise ArtifactValidationError(
-                            f"DP metrics missing required columns {missing} in {csv_path}"
-                        )
+                        raise ArtifactValidationError(f"DP metrics missing required columns {missing} in {csv_path}")
 
                     # Basic numeric sanity
                     eps = _safe_float(row.get("dp_epsilon"))
@@ -382,8 +368,7 @@ def validate_seed_coverage(run_directories: List[Path], minimum_seeds: int = 5) 
     for (alpha, mu), seeds in seed_map.items():
         if len(seeds) < minimum_seeds:
             raise ArtifactValidationError(
-                f"FedProx nightly runs for alpha={alpha} mu={mu} have only {len(seeds)} seeds; "
-                f"require at least {minimum_seeds}."
+                f"FedProx nightly runs for alpha={alpha} mu={mu} have only {len(seeds)} seeds; " f"require at least {minimum_seeds}."
             )
 
 
