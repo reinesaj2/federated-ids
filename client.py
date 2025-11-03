@@ -469,6 +469,8 @@ class TorchClient(fl.client.NumPyClient):
         dp_delta = None
         dp_sigma = None
         dp_clip_norm = None
+        dp_sample_rate = None
+        dp_total_steps = None
 
         # Differential Privacy: clip update and add Gaussian noise (if enabled)
         try:
