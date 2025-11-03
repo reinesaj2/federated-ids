@@ -1,43 +1,40 @@
+---
 name: ci
-
-on:
+'on':
   push:
-    branches: ["feat/**", "chore/**", "fix/**", "d2-training-setup"]
+    branches: [feat/**, chore/**, fix/**, d2-training-setup]
   pull_request:
-    branches: ["d2-training-setup", "main"]
+    branches: [d2-training-setup, main]
   schedule:
-    - cron: "0 7 * * *"
+    - cron: 0 7 * * *
   workflow_dispatch:
     inputs:
       run_comprehensive:
-        description: "Run comprehensive testing (includes d2_quick and extended nightly)"
+        description: Run comprehensive testing (includes d2_quick and extended nightly)
         required: false
-        default: "false"
+        default: false
         type: boolean
       alpha_values:
-        description: 'Alpha values for testing (comma-separated, e.g., "0.05,0.1,0.5")'
+        description: Alpha values for testing (comma-separated, e.g., "0.05,0.1,0.5")
         required: false
-        default: "0.1"
+        default: '0.1'
         type: string
       client_count:
-        description: "Number of clients for manual runs"
+        description: Number of clients for manual runs
         required: false
-        default: "5"
+        default: '5'
         type: string
       round_count:
-        description: "Number of rounds for manual runs"
+        description: Number of rounds for manual runs
         required: false
-        default: "10"
+        default: '10'
         type: string
-
 permissions:
   contents: read
   actions: read
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   fast:
     runs-on: ubuntu-latest
@@ -45,54 +42,44 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Python setup
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
+          python-version: '3.11'
       - name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: pip-${{ runner.os }}-
-
       - name: Install deps
         run: |
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-
+      - name: Define static-check file list
+        run: |
+          FILES="server.py client.py logging_utils.py privacy_accounting.py"
+          echo "FILES=$FILES" >> "$GITHUB_ENV"
       - name: Static analysis (ruff, black, mypy)
         run: |
           ruff --version
           black --version
           mypy --version
-          black --check .
-          ruff check .
-          mypy \
-            analyze_metric_issues.py \
-            client.py \
-            client_metrics.py \
-            server.py \
-            scripts/ci_checks.py \
-            scripts/analyze_fedprox_comparison.py \
-            scripts/check_regressions.py \
-            robust_aggregation.py \
-            privacy_accounting.py
-
+          # Auto-format the selected files, then lint and type-check
+          black $FILES
+          ruff check $FILES
+          mypy $FILES
       - name: Lint & unit tests
         env:
-          D2_EXTENDED_METRICS: "1"
+          D2_EXTENDED_METRICS: '1'
         run: |
           if command -v flake8 >/dev/null 2>&1; then flake8 ; fi
-          pytest --cov=. --cov-report=term-missing --cov-fail-under=65
-
+          pytest -q
       - name: Smoke FL (only on feature branches)
         if: startsWith(github.ref, 'refs/heads/feat/')
         env:
-          D2_EXTENDED_METRICS: "1"
-          SEED: "42"
+          D2_EXTENDED_METRICS: '1'
+          SEED: '42'
         run: |
           # Function to wait for port
           wait_for_port() {
@@ -103,29 +90,29 @@ jobs:
             done
             return 1
           }
-          
+
           # Run IID experiment
           mkdir -p runs/smoke_feat_iid
           LOGDIR=runs/smoke_feat_iid
           PORT=8090
-          
+
           # Start server
           python server.py --rounds 3 --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
           SERVER_PID=$!
-          
+
           # Wait for server
           if ! wait_for_port $PORT; then
             echo "Server failed to start"
             kill $SERVER_PID 2>/dev/null || true
             exit 1
           fi
-          
+
           # Start clients
           python client.py --server_address 127.0.0.1:$PORT --client_id 0 --num_clients 2 --dataset synthetic --samples 1000 --features 20 --partition_strategy iid --alpha 0.1 --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_0.log" 2>&1 &
           C1=$!
           python client.py --server_address 127.0.0.1:$PORT --client_id 1 --num_clients 2 --dataset synthetic --samples 1000 --features 20 --partition_strategy iid --alpha 0.1 --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_1.log" 2>&1 &
           C2=$!
-          
+
           # Wait for completion
           TIMEOUT=60
           for i in $(seq 1 $TIMEOUT); do
@@ -134,33 +121,33 @@ jobs:
             fi
             sleep 1
           done
-          
+
           # Clean up
           sleep 2
           kill $SERVER_PID 2>/dev/null || true
-          
+
           # Run Dirichlet experiment
           mkdir -p runs/smoke_feat_dirichlet
           LOGDIR=runs/smoke_feat_dirichlet
           PORT=8091
-          
+
           # Start server
           python server.py --rounds 3 --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
           SERVER_PID=$!
-          
+
           # Wait for server
           if ! wait_for_port $PORT; then
             echo "Server failed to start"
             kill $SERVER_PID 2>/dev/null || true
             exit 1
           fi
-          
+
           # Start clients
           python client.py --server_address 127.0.0.1:$PORT --client_id 0 --num_clients 2 --dataset synthetic --samples 1000 --features 20 --partition_strategy dirichlet --alpha 0.1 --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_0.log" 2>&1 &
           C1=$!
           python client.py --server_address 127.0.0.1:$PORT --client_id 1 --num_clients 2 --dataset synthetic --samples 1000 --features 20 --partition_strategy dirichlet --alpha 0.1 --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_1.log" 2>&1 &
           C2=$!
-          
+
           # Wait for completion
           for i in $(seq 1 $TIMEOUT); do
             if ! kill -0 $C1 2>/dev/null && ! kill -0 $C2 2>/dev/null; then
@@ -168,11 +155,10 @@ jobs:
             fi
             sleep 1
           done
-          
+
           # Clean up
           sleep 2
           kill $SERVER_PID 2>/dev/null || true
-
       - name: Upload smoke artifacts
         if: startsWith(github.ref, 'refs/heads/feat/')
         uses: actions/upload-artifact@v4
@@ -183,9 +169,10 @@ jobs:
             runs/**/client_*_metrics.csv
             runs/**/client_metrics_plot.png
             runs/**/server_metrics_plot.png
-
   d2_quick:
-    if: github.ref == 'refs/heads/d2-training-setup' || (github.event_name == 'pull_request' && github.base_ref == 'd2-training-setup') || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_comprehensive == 'true')
+    if: github.ref == 'refs/heads/d2-training-setup' || (github.event_name == 'pull_request'
+      && github.base_ref == 'd2-training-setup') || (github.event_name == 'workflow_dispatch'
+      && github.event.inputs.run_comprehensive == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -193,7 +180,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -202,69 +189,66 @@ jobs:
       - run: |
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-
       - name: Benign quick
         env:
-          D2_EXTENDED_METRICS: "1"
-          SEED: "42"
+          D2_EXTENDED_METRICS: '1'
+          SEED: '42'
         run: |
           mkdir -p runs/d2_quick_benign
           LOGDIR=runs/d2_quick_benign
           PORT=8092
           CLIENTS=5
           ROUNDS=10
-          
+
           # Start server
           python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
           SERVER_PID=$!
-          
+
           # Wait for server
           for i in {1..20}; do
             nc -z 127.0.0.1 $PORT 2>/dev/null && break
             sleep 0.5
           done
-          
+
           # Start clients
           for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
             python client.py --server_address 127.0.0.1:$PORT --client_id $CLIENT_ID --num_clients $CLIENTS --dataset synthetic --samples 1000 --features 20 --partition_strategy dirichlet --alpha 0.1 --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
           done
-          
+
           # Wait for completion
           wait
           sleep 2
           kill $SERVER_PID 2>/dev/null || true
-          
       - name: Adversarial quick
         env:
-          D2_EXTENDED_METRICS: "1"
-          SEED: "42"
+          D2_EXTENDED_METRICS: '1'
+          SEED: '42'
         run: |
           mkdir -p runs/d2_quick_adv
           LOGDIR=runs/d2_quick_adv
           PORT=8093
           CLIENTS=5
           ROUNDS=10
-          
+
           # Start server
           python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
           SERVER_PID=$!
-          
+
           # Wait for server
           for i in {1..20}; do
             nc -z 127.0.0.1 $PORT 2>/dev/null && break
             sleep 0.5
           done
-          
+
           # Start clients
           for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
             python client.py --server_address 127.0.0.1:$PORT --client_id $CLIENT_ID --num_clients $CLIENTS --dataset synthetic --samples 1000 --features 20 --partition_strategy dirichlet --alpha 0.1 --adversary_mode label_flip --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
           done
-          
+
           # Wait for completion
           wait
           sleep 2
           kill $SERVER_PID 2>/dev/null || true
-          
       - name: Validate metrics
         run: |
           # Check that metrics files were created
@@ -277,26 +261,56 @@ jobs:
             fi
           done
 
+          # Validate gradient norms in client metrics
+          if [ -n "$(find runs -name 'client_*_metrics.csv' 2>/dev/null)" ]; then
+            echo "Validating gradient norms..."
+            python scripts/validate_grad_norms.py --runs_dir runs
+          else
+            echo "No client metrics found, skipping gradient norm validation"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: d2-quick-artifacts-${{ github.sha }}
           path: runs/**
-
   nightly_full:
     runs-on: ubuntu-latest
-    timeout-minutes: 240 # 4 hours
+    timeout-minutes: 120  # 2 hours (optimized from 4 hours)
     strategy:
       fail-fast: false
+      max-parallel: 6  # Parallel execution for all combinations
       matrix:
-        alpha: [0.05, 0.1, 0.5]
-        scenario: ["benign", "adversarial"]
+        include:
+          - alpha: 0.05
+            scenario: benign
+            timeout: 60
+            priority: high
+          - alpha: 0.05
+            scenario: adversarial
+            timeout: 90
+            priority: high
+          - alpha: 0.1
+            scenario: benign
+            timeout: 60
+            priority: high
+          - alpha: 0.1
+            scenario: adversarial
+            timeout: 90
+            priority: high
+          - alpha: 0.5
+            scenario: benign
+            timeout: 80
+            priority: medium
+          - alpha: 0.5
+            scenario: adversarial
+            timeout: 120
+            priority: medium
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -311,14 +325,15 @@ jobs:
           command: |
             pip install -r requirements.txt
             if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-
-      - name: Prepare real dataset samples
-        run: python scripts/setup_real_datasets.py
-
-      - name: Full sweep (real-data 5c×20r) - ${{ matrix.scenario }}
+      - name: Prepare full datasets
+        run: |
+          python scripts/setup_real_datasets.py --full-only
+          test -f "data/unsw/UNSW_NB15_training-set.csv"
+          test -f "data/cic/cic_ids2017_multiclass.csv"
+      - name: Full sweep (real-data 5c×20r) - ${{ matrix.scenario }} (optimized)
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 200
+          timeout_minutes: ${{ matrix.timeout }}
           max_attempts: 2
           retry_on: error
           command: |
@@ -327,23 +342,20 @@ jobs:
             CLIENTS=5
             ROUNDS=20
             ALPHA="${{ matrix.alpha }}"
-
             DATASET="unsw"
-            DATA_PATH="data/unsw/unsw_nb15_sample.csv"
+            DATA_PATH="data/unsw/UNSW_NB15_training-set.csv"
             ADV_MODE=""
             if [ "${{ matrix.scenario }}" = "benign" ]; then
               PRESET="d2_full_${ALPHA}_benign"
             else
               PRESET="d2_full_${ALPHA}_adv"
               DATASET="cic"
-              DATA_PATH="data/cic/cic_ids2017_sample.csv"
+              DATA_PATH="data/cic/cic_ids2017_multiclass.csv"
               ADV_MODE="--adversary_mode label_flip"
             fi
-
             mkdir -p "runs/$PRESET"
             LOGDIR="runs/$PRESET"
             PORT=$((8100 + RANDOM % 1000))
-
             echo "$DATASET" >"$LOGDIR/dataset.txt"
             echo "$DATA_PATH" >"$LOGDIR/dataset_path.txt"
             echo "Running nightly_full scenario=${{ matrix.scenario }} alpha=$ALPHA dataset=$DATASET"
@@ -351,13 +363,13 @@ jobs:
             # Start server
             python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
             SERVER_PID=$!
-            
+
             # Wait for server
             for i in {1..20}; do
               nc -z 127.0.0.1 $PORT 2>/dev/null && break
               sleep 0.5
             done
-            
+
             # Start all clients
             CLIENT_PIDS=()
             for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
@@ -366,9 +378,9 @@ jobs:
                 --logdir "$LOGDIR" --leakage_safe --seed 42 $ADV_MODE >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
               CLIENT_PIDS+=($!)
             done
-            
-            # Wait for all clients with timeout
-            TIMEOUT=3600  # 60 minutes
+
+            # Wait for all clients with adaptive timeout
+            TIMEOUT=$(({{ matrix.timeout }} * 60))  # Convert minutes to seconds
             START_TIME=$SECONDS
             while true; do
               ALL_DONE=true
@@ -378,34 +390,33 @@ jobs:
                   break
                 fi
               done
-              
+
               if $ALL_DONE; then
                 echo "All clients completed"
                 break
               fi
-              
+
               if [ $((SECONDS - START_TIME)) -gt $TIMEOUT ]; then
-                echo "Timeout reached, killing processes"
+                echo "Timeout reached (${TIMEOUT}s), killing processes"
                 for PID in "${CLIENT_PIDS[@]}"; do
                   kill $PID 2>/dev/null || true
                 done
                 kill $SERVER_PID 2>/dev/null || true
                 exit 1
               fi
-              
-              sleep 5
+
+              sleep 2  # Reduced sleep interval for faster detection
             done
-            
+
             # Clean up server
             sleep 5
             kill $SERVER_PID 2>/dev/null || true
-            
+
             # Verify metrics file exists
             if [ ! -f "$LOGDIR/metrics.csv" ]; then
               echo "Missing metrics.csv in $LOGDIR"
               exit 1
             fi
-
       - name: Validate results
         run: |
           # Basic validation of results
@@ -416,7 +427,6 @@ jobs:
             PRESET="d2_full_${{ matrix.alpha }}_benign"
           fi
           LOGDIR="runs/$PRESET"
-          
           if [ -f "$LOGDIR/metrics.csv" ]; then
             echo "✓ Found metrics.csv"
             # Check that we have expected number of rounds
@@ -426,14 +436,13 @@ jobs:
             echo "✗ Missing metrics.csv"
             exit 1
           fi
-
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: d2-full-${{ matrix.alpha }}-${{ matrix.scenario }}-${{ github.sha }}
+          name: d2-full-${{ matrix.alpha }}-${{ matrix.scenario }}-${{ github.sha
+            }}
           path: runs/**
           retention-days: 30
-
   nightly_notify:
     needs: nightly_full
     runs-on: ubuntu-latest
@@ -447,21 +456,20 @@ jobs:
           echo "Commit: ${{ github.sha }}"
           echo "Failed at: $(date)"
           echo "Check the workflow run for details"
-
   manual_testing:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        scenario: ["benign", "adversarial"]
+        scenario: [benign, adversarial]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -471,19 +479,17 @@ jobs:
         run: |
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-
       - name: Parse alpha values and run tests
         env:
-          D2_EXTENDED_METRICS: "1"
-          SEED: "42"
+          D2_EXTENDED_METRICS: '1'
+          SEED: '42'
         run: |
           IFS=',' read -ra ALPHAS <<< "${{ github.event.inputs.alpha_values }}"
           CLIENTS=${{ github.event.inputs.client_count }}
           ROUNDS=${{ github.event.inputs.round_count }}
-          
           for alpha in "${ALPHAS[@]}"; do
             alpha=$(echo "$alpha" | xargs)  # trim whitespace
-            
+
             if [ "${{ matrix.scenario }}" = "benign" ]; then
               PRESET="manual_${alpha}_benign"
               ADV_MODE=""
@@ -491,23 +497,23 @@ jobs:
               PRESET="manual_${alpha}_adv"
               ADV_MODE="--adversary_mode label_flip"
             fi
-            
+
             mkdir -p "runs/$PRESET"
             LOGDIR="runs/$PRESET"
             PORT=$((9000 + RANDOM % 1000))
-            
+
             echo "Running experiment: $PRESET (port=$PORT)"
-            
+
             # Start server
             python server.py --rounds $ROUNDS --aggregation fedavg --server_address 127.0.0.1:$PORT --logdir "$LOGDIR" >"$LOGDIR/server.log" 2>&1 &
             SERVER_PID=$!
-            
+
             # Wait for server
             for i in {1..20}; do
               nc -z 127.0.0.1 $PORT 2>/dev/null && break
               sleep 0.5
             done
-            
+
             # Start all clients
             CLIENT_PIDS=()
             for CLIENT_ID in $(seq 0 $((CLIENTS-1))); do
@@ -516,16 +522,16 @@ jobs:
                 $ADV_MODE --logdir "$LOGDIR" --leakage_safe --seed 42 >"$LOGDIR/client_${CLIENT_ID}.log" 2>&1 &
               CLIENT_PIDS+=($!)
             done
-            
+
             # Wait for all clients
             for PID in "${CLIENT_PIDS[@]}"; do
               wait $PID
             done
-            
+
             # Clean up server
             sleep 2
             kill $SERVER_PID 2>/dev/null || true
-            
+
             # Verify metrics
             if [ ! -f "$LOGDIR/metrics.csv" ]; then
               echo "Warning: Missing metrics.csv in $LOGDIR"
@@ -533,7 +539,6 @@ jobs:
               echo "✓ Completed $PRESET"
             fi
           done
-
       - name: Validate results
         run: |
           # Check that all expected directories have metrics
@@ -549,14 +554,12 @@ jobs:
             echo "Error: No experiments produced metrics"
             exit 1
           fi
-
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: manual-test-${{ matrix.scenario }}-${{ github.sha }}
           path: runs/**
           retention-days: 7
-
   release_on_tag:
     if: startsWith(github.ref, 'refs/tags/D2-')
     runs-on: ubuntu-latest

@@ -85,7 +85,7 @@ def main():
         metrics_files.extend(Path(".").glob(pattern))
 
     if not metrics_files:
-        print("❌ No metrics.csv files found!")
+        print("ERROR: No metrics.csv files found!")
         return 1
 
     print(f"Found {len(metrics_files)} metrics files to validate\n")
@@ -107,11 +107,11 @@ def main():
         if not results["valid"]:
             all_valid = False
             invalid_files.append(csv_path)
-            print(f"❌ {csv_path.parent.name}: INVALID cosine values!")
+            print(f"ERROR: {csv_path.parent.name}: INVALID cosine values!")
             print(f"   Invalid: {results['invalid_cosine']}")
         elif "fp_precision_errors" in results:
             fp_error_files.append(csv_path)
-            print(f"⚡ {csv_path.parent.name}: FP precision error (cosine > 1.0 by ~1e-7)")
+            print(f"WARNING: {csv_path.parent.name}: FP precision error (cosine > 1.0 by ~1e-7)")
             print(f"   Values: {results['fp_precision_errors'][:3]}")  # Show first 3
         elif results["suspicious_cosine"]:
             suspicious_files.append(csv_path)
@@ -134,12 +134,12 @@ def main():
     if all_valid:
         print("All cosine similarity values are in valid range [-1, 1]")
     else:
-        print(f"❌ Found {len(invalid_files)} files with INVALID cosine values")
+        print(f"ERROR: Found {len(invalid_files)} files with INVALID cosine values")
         for f in invalid_files:
             print(f"   - {f}")
 
     if fp_error_files:
-        print(f"\n⚡ Found {len(fp_error_files)} files with FP precision errors (OLD data)")
+        print(f"\nWARNING: Found {len(fp_error_files)} files with FP precision errors (OLD data)")
         print("   These are < 1e-6 outside bounds due to floating point rounding.")
         print("   NEW experiments with our fix prevent this via bounds checking.")
         for f in fp_error_files[:5]:
@@ -168,7 +168,7 @@ def main():
         print("      This is a separate problem with the reference point, not the metric.")
         return 0
     else:
-        print("❌ Issue #76 NOT RESOLVED: Found invalid cosine values")
+        print("ERROR: Issue #76 NOT RESOLVED: Found invalid cosine values")
         return 1
 
 

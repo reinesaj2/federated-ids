@@ -1,0 +1,10 @@
+extends: default
+
+rules:
+  line-length:
+    max: 300
+    level: warning
+  trailing-spaces: enable
+  truthy: enable
+
+ignore: []

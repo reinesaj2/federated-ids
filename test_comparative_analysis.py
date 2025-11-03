@@ -414,7 +414,7 @@ def test_comparison_matrix_default_values():
     assert 0.0 in matrix.adversary_fractions  # Benign
     assert matrix.num_clients == 6
     assert matrix.num_rounds == 20
-    assert len(matrix.seeds) == 3  # Multiple seeds for statistical validity
+    assert len(matrix.seeds) == 5  # Multiple seeds for statistical validity
 
 
 def test_comparison_matrix_attack_uses_subset():
@@ -499,10 +499,10 @@ def test_comparison_matrix_fedprox_mu_values():
     matrix = ComparisonMatrix()
 
     assert hasattr(matrix, "fedprox_mu_values")
-    assert len(matrix.fedprox_mu_values) == 3
+    assert len(matrix.fedprox_mu_values) == 9
     assert 0.01 in matrix.fedprox_mu_values
     assert 0.1 in matrix.fedprox_mu_values
-    assert 1.0 in matrix.fedprox_mu_values
+    assert 0.0 in matrix.fedprox_mu_values
 
 
 def test_comparison_matrix_heterogeneity_fedprox_dimension():

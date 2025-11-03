@@ -1,95 +1,318 @@
 ---
 name: Comparative Analysis Nightly
-
-on:
+'on':
   push:
-    branches: ['**']
+    branches:
+      - exp/issue-44-comprehensive-experiments
+      - milestone/m1-experiments-core
   schedule:
-    - cron: "0 3 * * 0" # 3 AM UTC every Sunday
+    - cron: 0 3 * * 0  # 3 AM UTC every Sunday
   workflow_dispatch:
     inputs:
       dimensions:
-        description: "Dimensions to run (comma-separated: aggregation,heterogeneity,attack,privacy,personalization,all)"
+        description: 'Dimensions to run (comma-separated: aggregation,heterogeneity,attack,privacy,personalization,all)'
         required: false
-        default: "all"
+        default: all
         type: string
       num_clients:
-        description: "Number of clients"
+        description: Number of clients
         required: false
-        default: "6"
+        default: '6'
         type: string
       num_rounds:
-        description: "Number of rounds"
+        description: Number of rounds
         required: false
-        default: "20"
+        default: '20'
         type: string
-
+      run_cic:
+        description: Run CIC-IDS2017 experiments (doubles execution time)
+        required: false
+        default: true
+        type: boolean
 permissions:
   contents: write
   actions: read
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
-  noop_on_push:
-    if: github.event_name == 'push'
+  setup:
     runs-on: ubuntu-latest
-    steps:
-      - run: echo "No-op for push event (workflow file change)"
-
-  comparative_analysis:
-    if: github.event_name != 'push'
-    runs-on: ubuntu-latest
-    timeout-minutes: 480 # 8 hours for full dataset experiments
-    strategy:
-      fail-fast: false
-      max-parallel: 2 # Limit parallel jobs to prevent resource exhaustion
-      matrix:
-        dimension:
-          [aggregation, heterogeneity, heterogeneity_fedprox, attack, privacy, personalization]
+    outputs:
+      cache-key: ${{ steps.cache.outputs.cache-hit }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
-      - uses: actions/cache@v4
+          python-version: '3.11'
+      - name: Cache dependencies
+        id: cache
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}-${{ hashFiles('**/scripts/setup_real_datasets.py')
+            }}
           restore-keys: pip-${{ runner.os }}-
-
-      - name: Prepare real dataset samples
-        run: python scripts/setup_real_datasets.py
-
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
-      - name: Run comparative analysis
+      - name: Validate experiment matrix
+        run: |
+          echo "Pre-flight check: Validating experiment matrix feasibility"
+          python scripts/validate_experiment_matrix.py > matrix_validation.log
+          cat matrix_validation.log
+          echo "Matrix validation complete. Proceeding with experiments."
+
+      - name: Prepare real dataset samples
+        run: python scripts/setup_real_datasets.py
+      - name: Upload dependency cache
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-cache-${{ github.sha }}
+          path: ~/.cache/pip
+          retention-days: 1
+  comparative_analysis:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # 3 hours per dimension (optimized from 15 hours total)
+    strategy:
+      fail-fast: false
+      max-parallel: 3  # Reduced parallel execution to conserve resources
+      matrix:
+        include:
+          - dimension: aggregation
+            dataset: unsw
+            timeout: 120
+            priority: high
+            split_total: 1
+            split_index: 0
+          - dimension: aggregation
+            dataset: cic
+            timeout: 180
+            priority: high
+            split_total: 1
+            split_index: 0
+          - dimension: heterogeneity
+            dataset: unsw
+            timeout: 120
+            priority: high
+            split_total: 1
+            split_index: 0
+          - dimension: heterogeneity
+            dataset: cic
+            timeout: 180
+            priority: high
+            split_total: 1
+            split_index: 0
+          - dimension: heterogeneity_fedprox
+            dataset: unsw
+            timeout: 90
+            priority: medium
+            split_total: 5
+            split_index: 0
+          - dimension: heterogeneity_fedprox
+            dataset: unsw
+            timeout: 90
+            priority: medium
+            split_total: 5
+            split_index: 1
+          - dimension: heterogeneity_fedprox
+            dataset: unsw
+            timeout: 90
+            priority: medium
+            split_total: 5
+            split_index: 2
+          - dimension: heterogeneity_fedprox
+            dataset: unsw
+            timeout: 90
+            priority: medium
+            split_total: 5
+            split_index: 3
+          - dimension: heterogeneity_fedprox
+            dataset: unsw
+            timeout: 90
+            priority: medium
+            split_total: 5
+            split_index: 4
+          - dimension: heterogeneity_fedprox
+            dataset: cic
+            timeout: 120
+            priority: medium
+            split_total: 5
+            split_index: 0
+          - dimension: heterogeneity_fedprox
+            dataset: cic
+            timeout: 120
+            priority: medium
+            split_total: 5
+            split_index: 1
+          - dimension: heterogeneity_fedprox
+            dataset: cic
+            timeout: 120
+            priority: medium
+            split_total: 5
+            split_index: 2
+          - dimension: heterogeneity_fedprox
+            dataset: cic
+            timeout: 120
+            priority: medium
+            split_total: 5
+            split_index: 3
+          - dimension: heterogeneity_fedprox
+            dataset: cic
+            timeout: 120
+            priority: medium
+            split_total: 5
+            split_index: 4
+          - dimension: attack
+            dataset: unsw
+            timeout: 100
+            priority: high
+            split_total: 1
+            split_index: 0
+          - dimension: attack
+            dataset: cic
+            timeout: 150
+            priority: high
+            split_total: 1
+            split_index: 0
+          - dimension: privacy
+            dataset: unsw
+            timeout: 120
+            priority: medium
+            split_total: 1
+            split_index: 0
+          - dimension: privacy
+            dataset: cic
+            timeout: 180
+            priority: medium
+            split_total: 1
+            split_index: 0
+          - dimension: personalization
+            dataset: unsw
+            timeout: 100
+            priority: low
+            split_total: 1
+            split_index: 0
+          - dimension: personalization
+            dataset: cic
+            timeout: 150
+            priority: low
+            split_total: 1
+            split_index: 0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download dependency cache
+        uses: actions/download-artifact@v4
+        with:
+          name: dependency-cache-${{ github.sha }}
+          path: ~/.cache/pip
+        continue-on-error: true
+      - name: Install dependencies (cached)
+        run: |
+          pip install -r requirements.txt
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+      - name: Prepare full datasets
+        run: |
+          python scripts/setup_real_datasets.py --full-only
+          test -f "data/unsw/UNSW_NB15_training-set.csv"
+          test -f "data/cic/cic_ids2017_multiclass.csv"
+      - name: Monitor system resources
+        run: |
+          echo "=== SYSTEM RESOURCES ==="
+          echo "Memory: $(free -h | grep '^Mem:' | awk '{print $2}')"
+          echo "CPU cores: $(nproc)"
+          echo "Disk space: $(df -h . | tail -1 | awk '{print $4}')"
+          echo "Load average: $(uptime | awk -F'load average:' '{print $2}')"
+          echo "========================="
+      - name: Check for cached results
+        id: cache_check
+        run: |
+          echo "cache-key=${{ matrix.dimension }}-${{ matrix.dataset }}-${{ matrix.split_index }}-${{ matrix.split_total }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "cached=false" >> $GITHUB_OUTPUT
+      - name: Run comparative analysis (optimized parallel execution)
+        if: steps.cache_check.outputs.cached == 'false'
         env:
-          D2_EXTENDED_METRICS: "1"
+          D2_EXTENDED_METRICS: '1'
+          OMP_NUM_THREADS: '2'
+          OPENBLAS_NUM_THREADS: '2'
+          MKL_NUM_THREADS: '2'
+          NUMEXPR_NUM_THREADS: '2'
+          PYTHONHASHSEED: '42'
         run: |
           CLIENTS=${{ github.event.inputs.num_clients || '6' }}
           ROUNDS=${{ github.event.inputs.num_rounds || '20' }}
-
-          echo "Starting comparative analysis for dimension: ${{ matrix.dimension }}"
+          TIMEOUT=${{ matrix.timeout }}
+          PRIORITY=${{ matrix.priority }}
+          echo "Starting comparative analysis for dimension: ${{ matrix.dimension }} (${{ matrix.dataset }})"
+          echo "Priority: $PRIORITY, Timeout: ${TIMEOUT}min"
           echo "System resources:"
           echo "  Memory: $(free -h | grep '^Mem:' | awk '{print $2}')"
           echo "  CPU cores: $(nproc)"
           echo "  Disk space: $(df -h . | tail -1 | awk '{print $4}')"
 
-          # Monitor memory usage during execution
-          python -m scripts.comparative_analysis \
+          # Run experiments with optimized parameters
+          python scripts/comparative_analysis.py \
             --dimension ${{ matrix.dimension }} \
-            --output_dir results/comparative_analysis
-
+            --dataset ${{ matrix.dataset }} \
+            --output_dir results/comparative_analysis/${{ matrix.dataset }} \
+            --server_timeout $((TIMEOUT * 60 / 2)) \
+            --client_timeout $((TIMEOUT * 60)) \
+            --split-index ${{ matrix.split_index }} \
+            --split-total ${{ matrix.split_total }}
+      - name: Capture failure logs
+        if: failure()
+        run: |
+          echo "=== COMPARATIVE ANALYSIS FAILURE DIAGNOSTICS ==="
+          echo "Matrix config: dimension=${{ matrix.dimension }} dataset=${{ matrix.dataset }}"
+          echo "Split: ${{ matrix.split_index }}/${{ matrix.split_total }}"
+          echo ""
+          echo "=== Server Logs ==="
+          for log in runs/comp_*/server.log; do
+            if [ -f "$log" ]; then
+              echo "--- $log (last 50 lines) ---"
+              tail -50 "$log"
+              echo ""
+            fi
+          done
+          echo "=== Client Logs (sample) ==="
+          for log in runs/comp_*/client_0.log; do
+            if [ -f "$log" ]; then
+              echo "--- $log (last 30 lines) ---"
+              tail -30 "$log"
+              echo ""
+            fi
+          done
+          echo "=== Experiment Manifest ==="
+          if [ -f "results/comparative_analysis/${{ matrix.dataset }}/experiment_manifest_${{ matrix.dimension }}.json" ]; then
+            cat "results/comparative_analysis/${{ matrix.dataset }}/experiment_manifest_${{ matrix.dimension }}.json"
+          else
+            echo "No manifest found"
+          fi
+          echo "=== System Resources ==="
+          echo "Memory: $(free -h | grep '^Mem:' || echo 'N/A')"
+          echo "Disk: $(df -h . | tail -1)"
+          echo "=== End Diagnostics ==="
+      - name: Use cached results
+        if: steps.cache_check.outputs.cached == 'true'
+        run: |
+          echo "Using cached results for ${{ matrix.dimension }} (${{ matrix.dataset }})"
+          RESULT_COUNT=$(find results/comparative_analysis/${{ matrix.dataset }} -name "metrics.csv" | wc -l)
+          echo "Found $RESULT_COUNT cached experiment results"
+      - name: Validate gradient norms
+        continue-on-error: true
+        run: |
+          echo "Validating gradient norms for dimension: ${{ matrix.dimension }}"
+          python scripts/validate_grad_norms.py --runs_dir runs --fail_on_missing || echo "WARNING: Gradient norm validation failed (non-blocking)"
       - name: Generate thesis plots
         run: |
           echo "Generating thesis plots for dimension: ${{ matrix.dimension }}"
@@ -103,7 +326,7 @@ jobs:
           fi
 
           # Generate plots with error handling
-          python -m scripts.generate_thesis_plots \
+          python scripts/generate_thesis_plots.py \
             --dimension ${{ matrix.dimension }} \
             --runs_dir runs \
             --output_dir results/thesis_plots/${{ matrix.dimension }}
@@ -116,83 +339,93 @@ jobs:
             echo "ERROR: No plots generated for ${{ matrix.dimension }}"
             exit 1
           fi
-
       - name: Validate results (optimized)
         run: |
-          echo "Validating experiment results..."
+          echo "Validating experiment results for ${{ matrix.dimension }} (${{ matrix.dataset }})..."
           FOUND=0
           FAILED=0
           TOTAL=0
-          THRESHOLD=${VALIDATION_MIN_SUCCESS_RATE:-0.5}
 
-          for dir in runs/comp_*/; do
-            TOTAL=$((TOTAL + 1))
-            if [ -f "$dir/metrics.csv" ]; then
-              echo "Found metrics in $(basename $dir)"
-              FOUND=$((FOUND + 1))
-            else
-              echo "Missing metrics in $(basename $dir)"
-              FAILED=$((FAILED + 1))
-            fi
-          done
-
-          echo "VALIDATION SUMMARY:"
+          # Validate directly against generated run outputs
+          RESULTS_DIR="runs"
+          if [ -d "$RESULTS_DIR" ]; then
+            for dir in "$RESULTS_DIR"/comp_*/; do
+              if [ -d "$dir" ]; then
+                TOTAL=$((TOTAL + 1))
+                if [ -f "$dir/metrics.csv" ]; then
+                  echo "Found metrics in $(basename $dir)"
+                  FOUND=$((FOUND + 1))
+                else
+                  echo "Missing metrics in $(basename $dir)"
+                  FAILED=$((FAILED + 1))
+                fi
+              fi
+            done
+          fi
+          echo "VALIDATION SUMMARY for ${{ matrix.dimension }} (${{ matrix.dataset }}):"
           echo "  Total experiments: $TOTAL"
           echo "  Successful: $FOUND"
           echo "  Failed: $FAILED"
           if [ $TOTAL -gt 0 ]; then
             echo "  Success rate: $((FOUND * 100 / TOTAL))%"
-          else
-            echo "  Success rate: 0%"
           fi
 
-          # Require at least THRESHOLD success rate for workflow to pass
+          # Require at least 95% success rate (allow max 3 transient failures out of 54 viable experiments)
+          THRESHOLD=$((TOTAL * 95 / 100))
           if [ $FOUND -eq 0 ]; then
             echo "ERROR: No experiments produced metrics"
             exit 1
+          elif [ $TOTAL -gt 0 ] && [ $FOUND -lt $THRESHOLD ]; then
+            echo "ERROR: Success rate $((FOUND * 100 / TOTAL))% below required 95% ($FOUND/$TOTAL experiments)"
+            echo "This indicates systematic issues. Please review:"
+            echo "  - Byzantine constraint violations"
+            echo "  - Resource exhaustion"
+            echo "  - Port conflicts"
+            exit 1
+          else
+            echo "SUCCESS: Adequate experiment completion rate ($((FOUND * 100 / TOTAL))%)"
           fi
-          python - <<PY || echo "WARNING: Success rate below threshold ($THRESHOLD), continuing..."
-          found=$FOUND
-          total=$TOTAL
-          thr=float("$THRESHOLD")
-          rate=(found/total) if total else 0.0
-          print(f"Computed success rate: {rate:.2f}, threshold: {thr:.2f}")
-          import sys
-          sys.exit(0 if rate >= thr else 1)
-          PY
+      - name: Compress artifacts
+        if: always()
+        run: |
+          mkdir -p compressed-artifacts
 
+          # Compress experiment results
+          if [ -d "runs" ]; then
+            tar -czf compressed-artifacts/experiment-results.tar.gz runs/comp_*
+          fi
+
+          # Compress thesis plots
+          if [ -d "results/thesis_plots/${{ matrix.dimension }}" ]; then
+            tar -czf compressed-artifacts/thesis-plots.tar.gz results/thesis_plots/${{ matrix.dimension }}
+          fi
+
+          # Create summary
+          echo "Artifact compression completed for ${{ matrix.dimension }} (${{ matrix.dataset }})" > compressed-artifacts/summary.txt
+          ls -la compressed-artifacts/ >> compressed-artifacts/summary.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: comparative-analysis-${{ matrix.dimension }}-${{ github.sha }}
-          path: |
-            runs/comp_**/metrics.csv
-            runs/comp_**/client_*_metrics.csv
-            runs/comp_**/config.json
-            runs/comp_**/*.log
-            results/thesis_plots/${{ matrix.dimension }}/**/*.png
-            results/thesis_plots/${{ matrix.dimension }}/**/*.pdf
+          name: comparative-analysis-${{ matrix.dimension }}-${{ matrix.dataset }}-${{
+            github.sha }}
+          path: compressed-artifacts/**
+          if-no-files-found: warn
           retention-days: 90
-
   consolidated_summary:
-    if: github.event_name != 'push' && always()
     needs: comparative_analysis
     runs-on: ubuntu-latest
+    if: always()
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
+          python-version: '3.11'
       - name: Install dependencies
         run: pip install pandas matplotlib seaborn numpy scipy
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: comparative-artifacts
-
       - name: Generate consolidated summary
         run: |
           mkdir -p thesis-summary
@@ -205,13 +438,10 @@ jobs:
           # Create markdown index
           cat > thesis-summary/README.md << 'EOF'
           # Comparative Analysis Thesis Plots
-
           Auto-generated on $(date)
 
           ## Available Plots
-
           EOF
-
           for dim in aggregation heterogeneity attack privacy personalization; do
             echo "### $dim" >> thesis-summary/README.md
             find thesis-summary -name "*${dim}*.png" | while read plot; do
@@ -219,7 +449,6 @@ jobs:
             done
             echo "" >> thesis-summary/README.md
           done
-
       - name: Upload consolidated results
         uses: actions/upload-artifact@v4
         if: always()
@@ -227,33 +456,28 @@ jobs:
           name: thesis-plots-summary-${{ github.sha }}
           path: thesis-summary/**
           retention-days: 90
-
   commit_thesis_plots:
     needs: [consolidated_summary]
     runs-on: ubuntu-latest
-    if: github.event_name != 'push' && always() && needs.consolidated_summary.result == 'success'
+    if: always() && needs.consolidated_summary.result == 'success'
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
+          python-version: '3.11'
       - name: Download consolidated results
         uses: actions/download-artifact@v4
         with:
           name: thesis-plots-summary-${{ github.sha }}
           path: thesis-summary
-
       - name: Commit plots to repository
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-
           mkdir -p plots/thesis
 
           # Copy thesis plots
@@ -263,7 +487,6 @@ jobs:
               --experiment_type thesis-comparative \
               --plots_dir plots/thesis
           fi
-
       - name: Push plots to repository
         run: |
           # Check if there are unpushed commits
@@ -272,14 +495,13 @@ jobs:
           else
             echo "No commits to push"
           fi
-
   notify_failure:
     needs: comparative_analysis
     runs-on: ubuntu-latest
-    if: github.event_name != 'push' && always() && needs.comparative_analysis.result == 'failure'
+    if: always() && needs.comparative_analysis.result == 'failure'
     steps:
       - name: Log comparative analysis failure
-        run: |
+        run: |-
           echo "🚨 Comparative Analysis Nightly Failed"
           echo "Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           echo "Branch: ${{ github.ref }}"
