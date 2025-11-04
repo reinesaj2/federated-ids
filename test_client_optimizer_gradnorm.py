@@ -90,7 +90,7 @@ def test_client_metrics_logger_has_grad_norm_field():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / "test_metrics.csv"
-        logger = ClientMetricsLogger(str(csv_path), client_id=0, extended=True)
+        ClientMetricsLogger(str(csv_path), client_id=0, extended=True)
 
         # Read the CSV header
         with open(csv_path, "r") as f:

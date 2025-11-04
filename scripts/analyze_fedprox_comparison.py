@@ -47,7 +47,7 @@ def _safe_float(value: object) -> float | None:
     if value in ("", None):
         return None
     try:
-        return float(value)
+        return float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return None
 

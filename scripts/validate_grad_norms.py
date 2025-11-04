@@ -127,7 +127,7 @@ def main():
                 print(f"  - {error}")
                 all_errors.append(f"{metrics_file.name}: {error}")
 
-    print(f"\nValidation Summary:")
+    print("\nValidation Summary:")
     print(f"  Total files: {len(client_metrics_files)}")
     print(f"  Passed: {total_validated}")
     print(f"  Failed: {total_failed}")
