@@ -425,6 +425,8 @@ class TorchClient(fl.client.NumPyClient):
         dp_sigma = None
         dp_clip_norm = None
         dp_enabled = bool(self.runtime_config.get("dp_enabled", False))
+        dp_sample_rate = None
+        dp_total_steps: Optional[int] = None
 
         # Differential Privacy: clip update and add Gaussian noise (if enabled)
         if dp_enabled != self._dp_enabled_previous:
@@ -435,6 +437,7 @@ class TorchClient(fl.client.NumPyClient):
                 clip = float(self.runtime_config.get("dp_clip", 1.0))
                 noise_mult = float(self.runtime_config.get("dp_noise_multiplier", 0.0))
                 sample_rate = float(self.runtime_config.get("dp_sample_rate", 1.0))
+                dp_sample_rate = sample_rate
                 # Build update (delta)
                 deltas: List[np.ndarray] = [wa - wb for wb, wa in zip(weights_before, weights_after)]
                 # Compute global L2 norm of concatenated delta
@@ -461,6 +464,7 @@ class TorchClient(fl.client.NumPyClient):
                 dp_delta = self.dp_accountant.delta
                 dp_sigma = noise_mult
                 dp_clip_norm = clip
+                dp_total_steps = self.round_num
         except Exception:
             # Fail-open: if DP step errors, proceed with original weights_after
             pass
@@ -652,6 +656,8 @@ class TorchClient(fl.client.NumPyClient):
             dp_sigma=dp_sigma,
             dp_clip_norm=dp_clip_norm,
             dp_enabled_flag=dp_enabled,
+            dp_sample_rate=dp_sample_rate,
+            dp_total_steps=dp_total_steps,
             secure_aggregation_flag=secure_flag,
             secure_aggregation_seed=secure_seed if isinstance(secure_seed, (int, float)) else None,
             secure_aggregation_mask_checksum=(float(secure_mask_checksum) if isinstance(secure_mask_checksum, (int, float)) else None),

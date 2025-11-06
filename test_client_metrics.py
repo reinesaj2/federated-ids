@@ -76,6 +76,8 @@ def test_client_metrics_csv_creation():
                     "dp_sigma",
                     "dp_clip_norm",
                     "dp_enabled",
+                    "dp_sample_rate",
+                    "dp_total_steps",
                     "secure_aggregation",
                     "secure_aggregation_seed",
                     "secure_aggregation_mask_checksum",
@@ -155,6 +157,8 @@ def test_client_metrics_logging_complete_record():
             assert row_dict["lr"] == "0.01"
             assert row_dict["batch_size"] == "32"
             assert "dp_enabled" in row_dict
+            assert "dp_sample_rate" in row_dict
+            assert "dp_total_steps" in row_dict
             assert row_dict.get("secure_aggregation") == "False"
 
 

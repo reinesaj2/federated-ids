@@ -138,7 +138,7 @@ def validate_fpr_tolerance(
             pass
 
 
-def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
+def validate_run_directory(run_dir: Path, fpr_strict: bool = True, require_plots: bool = True) -> None:
     """Validate a single FL run directory.
 
     Args:
@@ -162,8 +162,9 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True) -> None:
     for client_file in client_metrics_files:
         validate_csv_schema(client_file, required_client_columns)
 
-    # Validate plot files - required
-    validate_plot_files(run_dir)
+    # Validate plot files if required
+    if require_plots:
+        validate_plot_files(run_dir)
 
     # Compute convergence metrics from client summaries
     macro_weight = 0.0
@@ -490,6 +491,12 @@ def main() -> None:
     )
 
     parser.add_argument(
+        "--min-seeds",
+        type=int,
+        default=5,
+        help="Minimum number of seeds required per alpha/mu configuration (default: 5)",
+    )
+    parser.add_argument(
         "--validate_privacy",
         action="store_true",
         help="Validate privacy experiments for DP parameters and epsilon computation.",
@@ -508,12 +515,15 @@ def main() -> None:
     try:
         runs_dir = Path(args.runs_dir)
         run_directories = find_run_directories(runs_dir)
-        validate_seed_coverage(run_directories, minimum_seeds=5)
+        validate_seed_coverage(run_directories, minimum_seeds=args.min_seeds)
 
         print(f"Found {len(run_directories)} run directories to validate")
 
+        require_plots_env = os.environ.get("REQUIRE_PLOTS", "1")
+        require_plots = require_plots_env == "1"
+
         for run_dir in run_directories:
-            validate_run_directory(run_dir, fpr_strict=fpr_strict)
+            validate_run_directory(run_dir, fpr_strict=fpr_strict, require_plots=require_plots)
 
         print(f"[PASS] All {len(run_directories)} run directories passed validation")
 
