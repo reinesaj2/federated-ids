@@ -30,6 +30,7 @@ def _safe_float(value: str | None) -> float | None:
     if value in ("", None):
         return None
     try:
+        assert value is not None  # type narrowing for mypy
         return float(value)
     except (TypeError, ValueError):
         return None
@@ -105,8 +106,8 @@ def check_convergence_quality(rows: List[Dict[str, str]]) -> None:
                 raise ArtifactValidationError(f"Found {val} in {col}: {row}")
 
     # Check final accuracy meets minimum threshold
-    final_f1_vals = [_safe_float(row.get("weighted_macro_f1")) for row in rows[-5:] if row.get("weighted_macro_f1")]
-    final_f1_vals = [v for v in final_f1_vals if v is not None]
+    final_f1_vals_raw = [_safe_float(row.get("weighted_macro_f1")) for row in rows[-5:] if row.get("weighted_macro_f1")]
+    final_f1_vals: list[float] = [v for v in final_f1_vals_raw if v is not None]
 
     if final_f1_vals and min(final_f1_vals) < MIN_WEIGHTED_MACRO_F1:
         avg_final = sum(final_f1_vals) / len(final_f1_vals)
