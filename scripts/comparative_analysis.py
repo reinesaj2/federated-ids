@@ -662,7 +662,7 @@ def main():
             print(f"  FAILED: {e}")
             results.append({"preset": config.to_preset_name(), "error": str(e)})
 
-    print(f"\nEXPERIMENT SUMMARY:")
+    print("\nEXPERIMENT SUMMARY:")
     print(f"  Total experiments: {len(configs)}")
     print(f"  Successful: {successful_experiments}")
     print(f"  Failed: {failed_experiments}")
