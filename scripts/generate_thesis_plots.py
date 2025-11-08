@@ -18,13 +18,14 @@ import logging
 import math
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import stats
+from sklearn.metrics import confusion_matrix as sk_confusion_matrix
 
 # Add scripts directory to path for imports
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,6 +38,368 @@ from privacy_accounting import compute_epsilon  # noqa: E402
 from metric_validation import MetricValidator  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+
+def compute_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int, normalize: bool = False) -> np.ndarray:
+    """
+    Compute confusion matrix for multi-class classification.
+
+    Args:
+        y_true: Ground truth labels (1D array)
+        y_pred: Predicted labels (1D array)
+        num_classes: Number of classes
+        normalize: If True, normalize by row (true class counts)
+
+    Returns:
+        Confusion matrix of shape (num_classes, num_classes)
+        cm[i, j] = count of samples with true label i predicted as j
+    """
+    if len(y_true) == 0:
+        return np.zeros((num_classes, num_classes), dtype=np.int64)
+
+    cm = sk_confusion_matrix(y_true, y_pred, labels=np.arange(num_classes)).astype(np.float64)
+
+    if normalize:
+        row_sums = cm.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0] = 1.0
+        cm = cm / row_sums
+
+    return cm
+
+
+def render_confusion_matrix_heatmap(
+    cm: np.ndarray,
+    class_names: List[str],
+    output_path: Path,
+    normalize: bool = False,
+    title: str = "Confusion Matrix",
+) -> None:
+    """
+    Render confusion matrix as heatmap and save to file.
+
+    Args:
+        cm: Confusion matrix (num_classes x num_classes)
+        class_names: List of class names for axis labels
+        output_path: Path to save PNG file
+        normalize: If True, display percentages instead of counts
+        title: Plot title
+    """
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    if normalize and not np.allclose(cm.sum(axis=1), 1.0):
+        row_sums = cm.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0] = 1.0
+        cm_normalized = cm / row_sums
+    else:
+        cm_normalized = cm
+
+    vmin = 0.0
+    vmax = 1.0 if normalize else cm.max()
+
+    sns.heatmap(
+        cm_normalized,
+        annot=True,
+        fmt=".2f" if normalize else ".0f",
+        cmap="YlOrRd",
+        xticklabels=class_names,
+        yticklabels=class_names,
+        cbar_kws={"label": "Percentage" if normalize else "Count"},
+        vmin=vmin,
+        vmax=vmax,
+        ax=ax,
+    )
+
+    ax.set_xlabel("Predicted Label", fontsize=12)
+    ax.set_ylabel("True Label", fontsize=12)
+    ax.set_title(title, fontsize=14, fontweight="bold")
+
+    plt.xticks(rotation=45, ha="right")
+    plt.yticks(rotation=0)
+
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+def aggregate_confusion_matrices(cms: List[np.ndarray]) -> np.ndarray:
+    """
+    Aggregate multiple confusion matrices by summing.
+
+    Args:
+        cms: List of confusion matrices (same shape)
+
+    Returns:
+        Aggregated confusion matrix (sum of all inputs)
+
+    Raises:
+        ValueError: If cms is empty or matrices have mismatched shapes
+    """
+    if len(cms) == 0:
+        raise ValueError("Cannot aggregate empty list of confusion matrices")
+
+    first_shape = cms[0].shape
+    for i, cm in enumerate(cms[1:], start=1):
+        if cm.shape != first_shape:
+            raise ValueError(f"Confusion matrix shape mismatch: cms[0].shape={first_shape}, cms[{i}].shape={cm.shape}")
+    return np.sum(cms, axis=0)
+
+
+def _prepare_client_scatter_data(df: pd.DataFrame, metric: str) -> pd.DataFrame:
+    """
+    Prepare per-client scatter data for FedProx mu sweep visualization.
+
+    Extracts last available metrics for each (client, seed, mu) combination,
+    adds jitter for x-axis visibility, and filters missing values.
+    """
+    if df.empty:
+        return pd.DataFrame(columns=["fedprox_mu", "client_id", "seed", metric, "jitter"])
+
+    required_cols = ["round", "client_id", "fedprox_mu", "seed", metric]
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        logger.warning(f"Missing columns for scatter data: {missing_cols}")
+        return pd.DataFrame(columns=["fedprox_mu", "client_id", "seed", metric, "jitter"])
+
+    group_cols = ["client_id", "seed", "fedprox_mu"]
+    if "alpha" in df.columns:
+        group_cols.append("alpha")
+
+    final_rounds = df.groupby(group_cols).tail(1).copy()
+    final_rounds = final_rounds.dropna(subset=[metric])
+
+    if final_rounds.empty:
+        return pd.DataFrame(columns=["fedprox_mu", "client_id", "seed", metric, "jitter"])
+
+    np.random.seed(42)
+    jitter_amplitude = 0.02
+    final_rounds["jitter"] = final_rounds["fedprox_mu"].apply(
+        lambda mu: np.random.uniform(-jitter_amplitude * mu, jitter_amplitude * mu)
+    )
+
+    return final_rounds
+
+
+def _compute_global_mean_by_mu(df: pd.DataFrame, metric: str) -> pd.DataFrame:
+    """
+    Compute global mean and 95% CI aggregated across clients and seeds for each mu.
+    """
+    if df.empty:
+        return pd.DataFrame(columns=["mu", "mean", "ci_lower", "ci_upper", "n"])
+
+    if metric not in df.columns:
+        logger.warning(f"Metric {metric} not in DataFrame")
+        return pd.DataFrame(columns=["mu", "mean", "ci_lower", "ci_upper", "n"])
+
+    stats_rows = []
+    for mu in sorted(df["fedprox_mu"].unique()):
+        mu_data = df[df["fedprox_mu"] == mu][metric].dropna().values
+        if len(mu_data) == 0:
+            continue
+
+        if len(mu_data) >= 2:
+            mean, ci_lower, ci_upper = compute_confidence_interval(mu_data)
+        else:
+            mean = ci_lower = ci_upper = float(mu_data[0])
+
+        stats_rows.append({"mu": mu, "mean": mean, "ci_lower": ci_lower, "ci_upper": ci_upper, "n": len(mu_data)})
+
+    return pd.DataFrame(stats_rows)
+
+
+def _render_client_scatter_mu_plot(scatter_df: pd.DataFrame, metric: str, output_path: Path, use_log_y: bool = False) -> None:
+    """
+    Render per-client scatter plot with global mean overlay for FedProx mu sweep.
+    """
+    if scatter_df.empty:
+        raise ValueError("Cannot render scatter plot: empty scatter data")
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    for (client_id, seed), group in scatter_df.groupby(["client_id", "seed"]):
+        x_positions = group["fedprox_mu"] + group["jitter"]
+        ax.scatter(x_positions, group[metric], alpha=0.3, s=20, color="gray", zorder=1)
+
+    global_stats = _compute_global_mean_by_mu(scatter_df, metric)
+
+    if not global_stats.empty:
+        ax.plot(
+            global_stats["mu"],
+            global_stats["mean"],
+            marker="o",
+            linewidth=2,
+            color="red",
+            label="Global Mean",
+            zorder=3,
+        )
+        ax.fill_between(
+            global_stats["mu"],
+            global_stats["ci_lower"],
+            global_stats["ci_upper"],
+            alpha=0.2,
+            color="red",
+            zorder=2,
+        )
+
+    if use_log_y:
+        ax.set_yscale("log")
+
+    metric_label = metric.replace("_", " ").title()
+    ax.set_xlabel("FedProx Proximal Term (mu)")
+    ax.set_ylabel(f'{metric_label} {"(log scale)" if use_log_y else ""}')
+    ax.set_title(f"Per-Client {metric_label} vs mu (95% CI)")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Saved FedProx scatter plot: {output_path}")
+
+
+def _prepare_personalization_delta_f1_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Prepare personalization delta F1 data for analysis.
+    """
+    required_cols = ["client_id", "seed", "alpha", "round", "macro_f1_global", "macro_f1_personalized"]
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        logger.warning(f"Missing columns for personalization delta F1: {missing_cols}")
+        return pd.DataFrame(
+            columns=[
+                "client_id",
+                "seed",
+                "alpha",
+                "round",
+                "f1_global",
+                "f1_personalized",
+                "delta_f1",
+            ]
+        )
+
+    if df.empty:
+        return pd.DataFrame(
+            columns=[
+                "client_id",
+                "seed",
+                "alpha",
+                "round",
+                "f1_global",
+                "f1_personalized",
+                "delta_f1",
+            ]
+        )
+
+    final_rounds = df.groupby(["client_id", "seed", "alpha"]).tail(1).copy()
+    final_rounds = final_rounds.dropna(subset=["macro_f1_global", "macro_f1_personalized"])
+
+    if final_rounds.empty:
+        return pd.DataFrame(
+            columns=[
+                "client_id",
+                "seed",
+                "alpha",
+                "round",
+                "f1_global",
+                "f1_personalized",
+                "delta_f1",
+            ]
+        )
+
+    final_rounds["f1_global"] = final_rounds["macro_f1_global"]
+    final_rounds["f1_personalized"] = final_rounds["macro_f1_personalized"]
+    final_rounds["delta_f1"] = final_rounds["f1_personalized"] - final_rounds["f1_global"]
+
+    return final_rounds[["client_id", "seed", "alpha", "round", "f1_global", "f1_personalized", "delta_f1"]]
+
+
+def _analyze_delta_f1_by_alpha(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Analyze personalization delta F1 statistics stratified by alpha.
+    """
+    if df.empty or "alpha" not in df.columns or "delta_f1" not in df.columns:
+        return pd.DataFrame(columns=["alpha", "mean_delta", "median_delta", "ci_lower", "ci_upper", "pct_positive", "n"])
+
+    stats_rows = []
+    for alpha in sorted(df["alpha"].unique()):
+        alpha_data = df[df["alpha"] == alpha]["delta_f1"].dropna().values
+        if len(alpha_data) == 0:
+            continue
+
+        mean_delta = float(np.mean(alpha_data))
+        median_delta = float(np.median(alpha_data))
+        pct_positive = float((alpha_data > 0).sum() / len(alpha_data) * 100)
+
+        if len(alpha_data) >= 2:
+            _, ci_lower, ci_upper = compute_confidence_interval(alpha_data)
+        else:
+            ci_lower = ci_upper = mean_delta
+
+        stats_rows.append(
+            {
+                "alpha": alpha,
+                "mean_delta": mean_delta,
+                "median_delta": median_delta,
+                "ci_lower": ci_lower,
+                "ci_upper": ci_upper,
+                "pct_positive": pct_positive,
+                "n": len(alpha_data),
+            }
+        )
+
+    return pd.DataFrame(stats_rows)
+
+
+def _render_personalization_delta_f1_plots(scatter_df: pd.DataFrame, stats_df: pd.DataFrame, output_path: Path) -> None:
+    """
+    Render 3-panel personalization delta F1 analysis figure.
+    """
+    if scatter_df.empty:
+        raise ValueError("Cannot render personalization delta F1 plots: empty data")
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig.suptitle("Personalization Benefit Analysis: Delta F1 by Heterogeneity", fontsize=14, fontweight="bold")
+
+    ax1, ax2, ax3 = axes
+
+    sns.violinplot(data=scatter_df, x="alpha", y="delta_f1", ax=ax1)
+    ax1.axhline(0, color="red", linestyle="--", alpha=0.5, linewidth=2, label="No benefit (y=0)")
+    ax1.set_xlabel("Alpha (Dirichlet Parameter)")
+    ax1.set_ylabel("Delta F1 (Personalized - Global)")
+    ax1.set_title("Delta F1 Distribution by Heterogeneity")
+    ax1.legend()
+    ax1.grid(True, alpha=0.3, axis="y")
+
+    ax2.scatter(
+        scatter_df["f1_global"],
+        scatter_df["f1_personalized"],
+        alpha=0.5,
+        s=30,
+        c=scatter_df["alpha"].astype("category").cat.codes,
+        cmap="viridis",
+    )
+    lims = [
+        min(scatter_df["f1_global"].min(), scatter_df["f1_personalized"].min()) - 0.02,
+        max(scatter_df["f1_global"].max(), scatter_df["f1_personalized"].max()) + 0.02,
+    ]
+    ax2.plot(lims, lims, "r--", alpha=0.5, linewidth=2, label="y=x (no benefit)")
+    ax2.set_xlabel("F1 Global")
+    ax2.set_ylabel("F1 Personalized")
+    ax2.set_title("Global vs Personalized Performance")
+    ax2.legend()
+
+    bars = ax3.bar(stats_df["alpha"], stats_df["pct_positive"], color="steelblue", alpha=0.7)
+    ax3.set_xlabel("Alpha")
+    ax3.set_ylabel("% Clients with ΔF1 > 0")
+    ax3.set_title("Personalization Success Rate")
+    ax3.grid(True, alpha=0.3, axis="y")
+    for bar, pct in zip(bars, stats_df["pct_positive"]):
+        ax3.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1, f"{pct:.1f}%", ha="center", va="bottom", fontsize=8)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
 
 def _resolve_run_dir(reference: str, runs_root: Path) -> Optional[Path]:

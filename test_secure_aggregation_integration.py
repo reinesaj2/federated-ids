@@ -9,6 +9,9 @@ from pathlib import Path
 import pytest
 
 
+SKIP_SECAGG = os.environ.get("CI_SECAGG_ALLOW_SOCKET", "0") != "1"
+
+
 def _find_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
@@ -40,7 +43,9 @@ def _read_last_row(csv_path: Path) -> dict[str, str]:
         return rows[-1]
 
 
+# Skip locally when socket binding is not permitted (sandbox)
 @pytest.mark.integration
+@pytest.mark.skipif(SKIP_SECAGG, reason="Secure aggregation integration requires socket permissions")
 def test_secure_aggregation_round_completes(tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parent
     port = _find_free_port()

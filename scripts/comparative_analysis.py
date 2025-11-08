@@ -49,6 +49,17 @@ class ExperimentConfig:
     dataset: str = "unsw"
     data_path: str = "data/unsw/UNSW_NB15_training-set.csv"
 
+    @classmethod
+    def with_dataset(cls, dataset: str, **kwargs):
+        """Create config with dataset-specific defaults."""
+        dataset_paths = {
+            "unsw": "data/unsw/UNSW_NB15_training-set.csv",
+            "cic": "data/cic/cic_ids2017_multiclass.csv",
+        }
+        if dataset not in dataset_paths:
+            raise ValueError(f"Unknown dataset: {dataset}. Supported: {list(dataset_paths.keys())}")
+        return cls(dataset=dataset, data_path=dataset_paths[dataset], **kwargs)
+
     def to_preset_name(self) -> str:
         """Generate unique preset name for this configuration."""
         parts = [
@@ -65,10 +76,13 @@ class ExperimentConfig:
 
 @dataclass
 class ComparisonMatrix:
-    """Defines the full comparison experiment matrix."""
+    """Defines the full comparison experiment matrix.
+
+    Expanded grids per Issue #44 acceptance criteria for thesis validation.
+    """
 
     aggregation_methods: List[str] = field(default_factory=lambda: ["fedavg", "krum", "bulyan", "median"])
-    alpha_values: List[float] = field(default_factory=lambda: [1.0, 0.5, 0.1])
+    alpha_values: List[float] = field(default_factory=lambda: [0.02, 0.05, 0.1, 0.2, 0.5, 1.0, float('inf')])
     adversary_fractions: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.3])
     dp_configs: List[Dict] = field(
         default_factory=lambda: [
@@ -82,15 +96,17 @@ class ComparisonMatrix:
             {"enabled": True, "noise": 2.0},
         ]
     )
-    personalization_epochs: List[int] = field(default_factory=lambda: [0, 5])
-    fedprox_mu_values: List[float] = field(default_factory=lambda: [0.01, 0.1, 1.0])
+    personalization_epochs: List[int] = field(default_factory=lambda: [0, 3, 5])
+    fedprox_mu_values: List[float] = field(default_factory=lambda: [0.0, 0.002, 0.005, 0.01, 0.02, 0.05, 0.08, 0.1, 0.2])
     seeds: List[int] = field(default_factory=lambda: [42, 43, 44, 45, 46])
     num_clients: int = 6
     num_rounds: int = 20
+    dataset: str = "unsw"
+    data_path: Optional[str] = None
 
     def _base_config(self, seed: int) -> Dict:
         """Get baseline config with fixed parameters for controlled experiments."""
-        return {
+        base = {
             "aggregation": DEFAULT_AGGREGATION,
             "alpha": DEFAULT_ALPHA_IID,
             "adversary_fraction": 0.0,
@@ -101,7 +117,11 @@ class ComparisonMatrix:
             "num_clients": self.num_clients,
             "num_rounds": self.num_rounds,
             "seed": seed,
+            "dataset": self.dataset,
         }
+        if self.data_path:
+            base["data_path"] = self.data_path
+        return base
 
     def _create_config(self, base: Dict, **overrides) -> ExperimentConfig:
         """Create config with overrides applied to base."""
@@ -498,6 +518,65 @@ def main():
         default=900,
         help="Client process timeout in seconds (default: 900)",
     )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        choices=["unsw", "cic"],
+        default="unsw",
+        help="Dataset to use (unsw=UNSW-NB15, cic=CIC-IDS2017)",
+    )
+    parser.add_argument(
+        "--data_path",
+        type=str,
+        help="Override default dataset path",
+    )
+    parser.add_argument(
+        "--aggregation-methods",
+        type=str,
+        help="Comma-separated list of aggregation methods to evaluate.",
+    )
+    parser.add_argument(
+        "--alpha-values",
+        type=str,
+        help="Comma-separated list of alpha values to evaluate.",
+    )
+    parser.add_argument(
+        "--fedprox-mu-values",
+        type=str,
+        help="Comma-separated list of FedProx mu values to evaluate.",
+    )
+    parser.add_argument(
+        "--adversary-fractions",
+        type=str,
+        help="Comma-separated list of adversary fractions to evaluate.",
+    )
+    parser.add_argument(
+        "--dp-noise-multipliers",
+        type=str,
+        help="Comma-separated list of DP noise multipliers to evaluate.",
+    )
+    parser.add_argument(
+        "--personalization-epochs",
+        type=str,
+        help="Comma-separated list of personalization epochs to evaluate.",
+    )
+    parser.add_argument(
+        "--seeds",
+        type=str,
+        help="Comma-separated list of random seeds to evaluate.",
+    )
+    parser.add_argument(
+        "--split-index",
+        type=int,
+        default=0,
+        help="Zero-based split index when dividing experiment configs across jobs.",
+    )
+    parser.add_argument(
+        "--split-total",
+        type=int,
+        default=1,
+        help="Total number of splits when dividing experiment configs across jobs.",
+    )
 
     args = parser.parse_args()
 
@@ -505,11 +584,49 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate experiment matrix
-    matrix = ComparisonMatrix()
+    # Generate experiment matrix with dataset configuration
+    dataset_paths = {
+        "unsw": "data/unsw/UNSW_NB15_training-set.csv",
+        "cic": "data/cic/cic_ids2017_multiclass.csv",
+    }
+    data_path = args.data_path if args.data_path else dataset_paths[args.dataset]
+
+    matrix = ComparisonMatrix(dataset=args.dataset, data_path=data_path)
+    if args.aggregation_methods:
+        matrix.aggregation_methods = [method.strip() for method in args.aggregation_methods.split(",") if method.strip()]
+    if args.alpha_values:
+        matrix.alpha_values = [
+            float("inf") if value.strip().lower() in {"inf", "infinity"} else float(value.strip())
+            for value in args.alpha_values.split(",")
+            if value.strip()
+        ]
+    if args.fedprox_mu_values:
+        matrix.fedprox_mu_values = [float(value.strip()) for value in args.fedprox_mu_values.split(",") if value.strip()]
+    if args.adversary_fractions:
+        matrix.adversary_fractions = [float(value.strip()) for value in args.adversary_fractions.split(",") if value.strip()]
+    if args.dp_noise_multipliers:
+        matrix.dp_configs = [
+            {"enabled": float(value.strip()) > 0.0, "noise": float(value.strip())}
+            for value in args.dp_noise_multipliers.split(",")
+            if value.strip()
+        ]
+    if args.personalization_epochs:
+        matrix.personalization_epochs = [int(value.strip()) for value in args.personalization_epochs.split(",") if value.strip()]
+    if args.seeds:
+        matrix.seeds = [int(value.strip()) for value in args.seeds.split(",") if value.strip()]
+    if args.split_total < 1:
+        raise ValueError("--split-total must be >= 1")
+    if args.split_index < 0 or args.split_index >= args.split_total:
+        raise ValueError("--split-index must satisfy 0 <= split_index < split_total")
+
     configs = matrix.generate_configs(filter_dimension=None if args.dimension == "full" else args.dimension)
+    if args.split_total > 1:
+        configs = configs[args.split_index :: args.split_total]
 
     print(f"Generated {len(configs)} experiment configurations for dimension: {args.dimension}")
+    print(f"Dataset: {args.dataset} ({data_path})")
+    if args.split_total > 1:
+        print(f"Split {args.split_index + 1}/{args.split_total}")
 
     if args.dry_run:
         for i, config in enumerate(configs):
@@ -545,14 +662,17 @@ def main():
             print(f"  FAILED: {e}")
             results.append({"preset": config.to_preset_name(), "error": str(e)})
 
-    print("\nEXPERIMENT SUMMARY:")
+    print(f"\nEXPERIMENT SUMMARY:")
     print(f"  Total experiments: {len(configs)}")
     print(f"  Successful: {successful_experiments}")
     print(f"  Failed: {failed_experiments}")
     print(f"  Success rate: {successful_experiments/len(configs)*100:.1f}%")
 
     # Save experiment manifest
-    manifest_path = output_dir / f"experiment_manifest_{args.dimension}.json"
+    manifest_name = f"experiment_manifest_{args.dimension}"
+    if args.split_total > 1:
+        manifest_name += f"_split{args.split_index + 1}of{args.split_total}"
+    manifest_path = output_dir / f"{manifest_name}.json"
     with open(manifest_path, "w") as f:
         json.dump(
             {"dimension": args.dimension, "total_experiments": len(results), "results": results},
