@@ -296,9 +296,7 @@ def validate_run_directory(run_dir: Path, fpr_strict: bool = True, require_plots
     adaptive_limit = _compute_adaptive_l2_threshold(alpha_value)
     if not math.isfinite(l2_value) or l2_value > adaptive_limit:
         alpha_msg = f" (alpha={alpha_value:.2f})" if alpha_value is not None else ""
-        raise ArtifactValidationError(
-            f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {adaptive_limit:.1f}{alpha_msg}"
-        )
+        raise ArtifactValidationError(f"Final l2_to_benign_mean={l2_value:.3f} exceeds maximum {adaptive_limit:.1f}{alpha_msg}")
 
     # Validate FPR tolerance if using low_fpr tau mode
     validate_fpr_tolerance(run_dir, target_fpr=0.10, tolerance=0.02, strict=fpr_strict)
