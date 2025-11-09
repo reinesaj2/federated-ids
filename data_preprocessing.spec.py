@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from data_preprocessing import (
+    MIN_SAMPLES_PER_CLASS,
     dirichlet_partition,
     fit_preprocessor_global,
     prepare_partitions_from_dataframe,
@@ -61,13 +62,51 @@ def test_partition_outputs_have_same_feature_dimension_across_clients():
 
 def test_dirichlet_partition_index_coverage_and_disjointness():
     labels = np.array([0] * 50 + [1] * 50)
-    shards = dirichlet_partition(labels=labels, num_clients=3, alpha=0.1, seed=77)
+    shards = dirichlet_partition(labels=labels, num_clients=3, alpha=0.1, seed=77, min_samples_per_class=1)
     all_indices = sorted(idx for shard in shards for idx in shard)
     assert all_indices == list(range(len(labels)))
     # Mostly disjoint (allow minimal collisions from algorithmic integer splits)
     sets = [set(s) for s in shards]
     intersection = set.intersection(*sets)
     assert len(intersection) == 0
+
+
+def test_dirichlet_partition_enforces_minimum_samples_per_class():
+    """
+    Test that Dirichlet partitioning enforces minimum sample threshold per class.
+
+    Regression test for alpha=0.5 pathological imbalance where clients received
+    only 3-5 attack samples, causing F1=0.15 training failures.
+    """
+    # Create dataset large enough to support minimum threshold for all clients
+    # With 11 clients and min 50/class, need at least 11 * 50 = 550 per class
+    labels = np.array([0] * 600 + [1] * 600)
+    num_clients = 11
+    alpha = 0.5  # Known to create extreme imbalance
+
+    # Use seed that previously caused failures
+    shards = dirichlet_partition(labels=labels, num_clients=num_clients, alpha=alpha, seed=46, min_samples_per_class=MIN_SAMPLES_PER_CLASS)
+
+    # Verify all clients got data
+    assert len(shards) == num_clients
+    assert all(len(shard) > 0 for shard in shards)
+
+    # Verify minimum samples per class for each client
+    for client_id, shard in enumerate(shards):
+        shard_labels = labels[shard]
+        class_0_count = np.sum(shard_labels == 0)
+        class_1_count = np.sum(shard_labels == 1)
+
+        assert class_0_count >= MIN_SAMPLES_PER_CLASS, (
+            f"Client {client_id} has only {class_0_count} class 0 samples " f"(minimum: {MIN_SAMPLES_PER_CLASS})"
+        )
+        assert class_1_count >= MIN_SAMPLES_PER_CLASS, (
+            f"Client {client_id} has only {class_1_count} class 1 samples " f"(minimum: {MIN_SAMPLES_PER_CLASS})"
+        )
+
+    # Verify all indices are covered
+    all_indices = sorted(idx for shard in shards for idx in shard)
+    assert all_indices == list(range(len(labels)))
 
 
 def test_protocol_partition_assigns_each_protocol_to_single_client():
