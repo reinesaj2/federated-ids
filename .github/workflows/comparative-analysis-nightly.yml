@@ -40,29 +40,65 @@ jobs:
         dimension:
           [aggregation, heterogeneity, heterogeneity_fedprox, attack, privacy, personalization]
     steps:
+      - name: Determine dimension filter
+        id: dimension_filter
+        run: |
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          dims="${{ github.event.inputs.dimensions || '' }}"
+          if [ -z "$dims" ] || [ "$dims" = "all" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          should_run=false
+          IFS=',' read -ra DIM_LIST <<< "$dims"
+          for dim in "${DIM_LIST[@]}"; do
+            dim_trim=$(echo "$dim" | xargs)
+            if [ "$dim_trim" = "${{ matrix.dimension }}" ]; then
+              should_run=true
+              break
+            fi
+          done
+
+          echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
+
+      - name: Skip unrequested dimension
+        if: steps.dimension_filter.outputs.should_run != 'true'
+        run: echo "Dimension ${{ matrix.dimension }} not requested; skipping job."
+
       - uses: actions/checkout@v4
+        if: steps.dimension_filter.outputs.should_run == 'true'
         with:
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
+        if: steps.dimension_filter.outputs.should_run == 'true'
         with:
           python-version: "3.11"
 
       - uses: actions/cache@v4
+        if: steps.dimension_filter.outputs.should_run == 'true'
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: pip-${{ runner.os }}-
 
       - name: Prepare real dataset samples
+        if: steps.dimension_filter.outputs.should_run == 'true'
         run: python scripts/setup_real_datasets.py
 
       - name: Install dependencies
+        if: steps.dimension_filter.outputs.should_run == 'true'
         run: |
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
       - name: Run comparative analysis
+        if: steps.dimension_filter.outputs.should_run == 'true'
         env:
           D2_EXTENDED_METRICS: "1"
         run: |
@@ -78,14 +114,36 @@ jobs:
           # Monitor memory usage during execution
           python scripts/comparative_analysis.py \
             --dimension ${{ matrix.dimension }} \
-            --output_dir results/comparative_analysis
+            --output_dir results/comparative_analysis \
+            --num_clients "$CLIENTS" \
+            --num_rounds "$ROUNDS"
+
+      - name: Generate run-level plots
+        if: steps.dimension_filter.outputs.should_run == 'true'
+        run: |
+          shopt -s nullglob
+          found=0
+          for dir in runs/comp_*/; do
+            found=1
+            echo "Generating plots for $dir"
+            python scripts/plot_metrics.py \
+              --run_dir "$dir" \
+              --output_dir "$dir"
+          done
+
+          if [ $found -eq 0 ]; then
+            echo "No run directories found for ${{ matrix.dimension }}; skipping plot generation."
+          fi
 
       - name: Generate thesis plots
+        if: steps.dimension_filter.outputs.should_run == 'true'
         run: |
           echo "Generating thesis plots for dimension: ${{ matrix.dimension }}"
           
           # Check if we have experiment data
-          if [ ! -d "runs" ] || [ -z "$(ls -A runs/comp_* 2>/dev/null)" ]; then
+          shopt -s nullglob
+          run_dirs=(runs/comp_*/)
+          if [ ! -d "runs" ] || [ ${#run_dirs[@]} -eq 0 ]; then
             echo "ERROR: No experiment data found in runs/ directory"
             echo "Available directories:"
             ls -la runs/ || echo "runs/ directory does not exist"
@@ -114,6 +172,7 @@ jobs:
           fi
 
       - name: Validate results
+        if: steps.dimension_filter.outputs.should_run == 'true'
         run: |
           echo "Validating experiment results..."
           FOUND=0
@@ -148,7 +207,7 @@ jobs:
           fi
 
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: steps.dimension_filter.outputs.should_run == 'true'
         with:
           name: comparative-analysis-${{ matrix.dimension }}-${{ github.sha }}
           path: |

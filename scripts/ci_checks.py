@@ -24,6 +24,7 @@ class ArtifactValidationError(Exception):
 MIN_WEIGHTED_MACRO_F1 = float(os.environ.get("MIN_WEIGHTED_MACRO_F1", "0.70"))
 MIN_WEIGHTED_ACCURACY = float(os.environ.get("MIN_WEIGHTED_ACCURACY", "0.70"))
 MAX_FINAL_L2_DISTANCE = float(os.environ.get("MAX_FINAL_L2_DISTANCE", "1.5"))
+L2_ALPHA_SCALE = float(os.environ.get("L2_ALPHA_SCALE", "3.0"))
 
 
 def _safe_float(value: str | None) -> float | None:
@@ -56,8 +57,7 @@ def _compute_adaptive_l2_threshold(alpha: Optional[float]) -> float:
 
     # Clamp alpha to [0, 1]; lower alpha => stronger heterogeneity
     alpha = max(0.0, min(1.0, alpha))
-    scale = 3.0  # Allow up to +3 for alpha -> 0
-    return MAX_FINAL_L2_DISTANCE + (1.0 - alpha) * scale
+    return MAX_FINAL_L2_DISTANCE + (1.0 - alpha) * L2_ALPHA_SCALE
 
 
 def _load_csv_rows(csv_path: Path) -> List[Dict[str, str]]:
