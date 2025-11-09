@@ -28,7 +28,7 @@ name: FedProx Nightly Comparison
       run_full_matrix:
         description: Run the full nightly matrix (set true for manual comprehensive runs)
         required: false
-        default: 'false'
+        default: 'true'
         type: boolean
 permissions:
   contents: write
@@ -389,6 +389,8 @@ jobs:
     needs: fedprox_comparison
     runs-on: ubuntu-latest
     if: always()
+    outputs:
+      has_summary: ${{ steps.summary_check.outputs.has_summary }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -401,13 +403,22 @@ jobs:
         with:
           path: nightly-artifacts
       - name: Generate FedProx comparison summary
+        id: generate_summary
         run: |
           python -m scripts.analyze_fedprox_comparison \
             --artifacts_dir nightly-artifacts \
             --output_dir fedprox-summary
+      - name: Check summary artifacts
+        id: summary_check
+        run: |
+          if compgen -G "fedprox-summary/*" >/dev/null; then
+            echo "has_summary=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_summary=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Upload consolidated results
+        if: steps.summary_check.outputs.has_summary == 'true'
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: fedprox-nightly-summary-${{ github.sha }}
           path: |
@@ -420,6 +431,7 @@ jobs:
             fedprox-summary/thesis_plots/**/*.pdf
           retention-days: 90
       - name: Locate baseline summary run
+        if: steps.summary_check.outputs.has_summary == 'true'
         id: find_baseline
         uses: actions/github-script@v7
         with:
@@ -466,6 +478,7 @@ jobs:
           name: ${{ steps.find_baseline.outputs.artifact_name }}
           path: baseline-summary
       - name: Compare summary against baseline
+        if: steps.summary_check.outputs.has_summary == 'true'
         id: regression_check
         run: |
           set -euo pipefail
@@ -510,7 +523,7 @@ jobs:
   commit_plots:
     needs: [fedprox_summary]
     runs-on: ubuntu-latest
-    if: always() && needs.fedprox_summary.result == 'success'
+    if: always() && needs.fedprox_summary.result == 'success' && needs.fedprox_summary.outputs.has_summary == 'true'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -521,6 +534,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Download consolidated results
+        id: download_summary_artifact
         uses: actions/download-artifact@v4
         with:
           name: fedprox-nightly-summary-${{ github.sha }}
