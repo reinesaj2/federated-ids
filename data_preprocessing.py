@@ -26,6 +26,10 @@ DEFAULT_DROP_COLS: list[str] = [
 # Dirichlet partitioning will resample until all clients meet this threshold
 MIN_SAMPLES_PER_CLASS: int = 50
 
+# Maximum resampling attempts for Dirichlet partitioning before falling back to even distribution
+# Empirically chosen to balance distribution quality with computational cost
+MAX_PARTITION_ATTEMPTS: int = 100
+
 
 @dataclass
 class DatasetStats:
@@ -109,9 +113,10 @@ def dirichlet_partition(
     Partition indices into num_clients shards using a Dirichlet distribution over label proportions.
     Returns a list of index lists per client.
 
-    Resamples up to 100 times to ensure each client receives at least min_samples_per_class
-    samples from each class, preventing pathological data imbalance that would cause
-    training failures (issue: alpha=0.5 creating clients with only 3-5 attack samples).
+    Resamples up to MAX_PARTITION_ATTEMPTS times to ensure each client receives at least
+    min_samples_per_class samples from each class, preventing pathological data imbalance
+    that would cause training failures (issue: alpha=0.5 creating clients with only 3-5
+    attack samples).
     """
     rng = np.random.default_rng(seed)
     labels = np.asarray(labels)
@@ -127,9 +132,8 @@ def dirichlet_partition(
         rng.shuffle(idxs)
 
         # Resample until all shards meet minimum sample threshold
-        max_attempts = 100
         shards = None
-        for attempt in range(max_attempts):
+        for attempt in range(MAX_PARTITION_ATTEMPTS):
             proportions = rng.dirichlet(alpha=[alpha] * num_clients)
             splits = (np.cumsum(proportions) * len(idxs)).astype(int)[:-1]
             shards = np.split(idxs, splits)
@@ -142,7 +146,7 @@ def dirichlet_partition(
                 break
 
             # If we're on the last attempt, redistribute manually
-            if attempt == max_attempts - 1:
+            if attempt == MAX_PARTITION_ATTEMPTS - 1:
                 # Fallback: distribute samples evenly to meet minimum threshold
                 samples_per_client = len(idxs) // num_clients
                 for i in range(num_clients):
