@@ -42,7 +42,7 @@ jobs:
   fast:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -195,7 +195,7 @@ jobs:
     if: github.ref == 'refs/heads/d2-training-setup' || (github.event_name == 'pull_request' && github.base_ref == 'd2-training-setup') || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_comprehensive == 'true')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
@@ -298,7 +298,7 @@ jobs:
         alpha: [0.05, 0.1, 0.5]
         scenario: ["benign", "adversarial"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
@@ -463,7 +463,7 @@ jobs:
       matrix:
         scenario: ["benign", "adversarial"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
@@ -570,7 +570,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Create GitHub Release

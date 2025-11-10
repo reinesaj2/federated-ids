@@ -188,7 +188,7 @@ jobs:
       NUMEXPR_NUM_THREADS: '1'
       L2_ALPHA_SCALE: '4.0'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
@@ -393,7 +393,7 @@ jobs:
     outputs:
       has_summary: ${{ steps.summary_check.outputs.has_summary }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -526,7 +526,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always() && needs.fedprox_summary.result == 'success' && needs.fedprox_summary.outputs.has_summary == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
@@ -626,7 +626,7 @@ jobs:
       NUMEXPR_NUM_THREADS: '1'
       PYTHONHASHSEED: '0'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
