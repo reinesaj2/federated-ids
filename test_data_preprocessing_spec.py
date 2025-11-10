@@ -88,6 +88,18 @@ def test_protocol_partition_assigns_each_protocol_to_single_client():
     assert all(len(clients) == 1 for clients in proto_to_clients.values())
 
 
+def test_protocol_partition_supports_explicit_mapping():
+    df = _make_dummy_df(n=120)
+    mapping = {"HTTP": 0, "FTP": 2}
+    shards = protocol_partition(protocols=df["proto"].tolist(), num_clients=4, seed=7, protocol_mapping=mapping)
+    proto_values = df["proto"].astype(str).str.strip().str.upper().to_numpy()
+    for client_id, shard in enumerate(shards):
+        for idx in shard:
+            proto = proto_values[idx]
+            if proto in mapping:
+                assert client_id == mapping[proto]
+
+
 def test_preprocessor_yields_same_feature_dim_when_fitted_on_shuffled_rows():
     df = _make_dummy_df(n=400, seed=101)
     df_shuffled = df.sample(frac=1.0, random_state=202).reset_index(drop=True)

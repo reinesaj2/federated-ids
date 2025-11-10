@@ -172,22 +172,42 @@ def protocol_partition(
     protocols: Sequence[object],
     num_clients: int,
     seed: int = 42,
+    protocol_mapping: dict[str, int] | None = None,
 ) -> list[list[int]]:
     """
     Partition deterministically by protocol: samples with the same protocol label go to the same client
-    (round-robin assign unique protocol values to clients for balance).
+    (round-robin assign unique protocol values to clients for balance). Accepts optional mapping to
+    pin specific protocols to specific clients.
     """
+    if num_clients <= 0:
+        raise ValueError("num_clients must be positive for protocol partitioning")
+
     rng = np.random.default_rng(seed)
-    protocols = np.asarray(protocols)
-    unique_protocols = sorted({str(p) for p in protocols})
-    rng.shuffle(unique_protocols)
+    normalized_protocols = np.array([str(p).strip().upper() for p in protocols], dtype=object)
+    unique_protocols = sorted(set(normalized_protocols.tolist()))
+
     proto_to_client: dict[str, int] = {}
-    for i, proto in enumerate(unique_protocols):
+    if protocol_mapping:
+        for proto_name, client_id in protocol_mapping.items():
+            try:
+                normalized_proto = str(proto_name).strip().upper()
+                client_idx = int(client_id)
+            except (TypeError, ValueError):
+                continue
+            proto_to_client[normalized_proto] = client_idx % num_clients
+
+    unassigned = [proto for proto in unique_protocols if proto not in proto_to_client]
+    rng.shuffle(unassigned)
+    for i, proto in enumerate(unassigned):
         proto_to_client[proto] = i % num_clients
 
     client_indices: list[list[int]] = [[] for _ in range(num_clients)]
-    for idx, p in enumerate(protocols):
-        client_indices[proto_to_client[str(p)]].append(idx)
+    for idx, proto in enumerate(normalized_protocols):
+        client_idx = proto_to_client.get(proto)
+        if client_idx is None:
+            client_idx = int(rng.integers(0, num_clients))
+            proto_to_client[proto] = client_idx
+        client_indices[client_idx].append(idx)
     return client_indices
 
 
@@ -241,6 +261,27 @@ def _encode_labels_to_ints(labels: pd.Series) -> np.ndarray:
     else:
         codes, _ = pd.factorize(str_labels)
     return codes.astype(np.int64)
+
+
+def infer_class_names_from_series(labels: pd.Series) -> list[str]:
+    """
+    Infer stable class name ordering consistent with _encode_labels_to_ints.
+    """
+    if pd.api.types.is_integer_dtype(labels) or pd.api.types.is_bool_dtype(labels):
+        uniques = list(pd.unique(labels))
+        return [str(int(u)) for u in uniques]
+    if pd.api.types.is_float_dtype(labels):
+        vals = labels.to_numpy()
+        if not np.all(np.equal(vals, np.floor(vals))):
+            raise ValueError("Label column contains non-integer floats; please map labels explicitly")
+        uniques = list(pd.unique(labels.astype(np.int64)))
+        return [str(int(u)) for u in uniques]
+
+    str_labels = labels.astype(str).str.strip().str.upper()
+    uniques = list(pd.unique(str_labels))
+    if "BENIGN" in uniques:
+        return ["BENIGN"] + [u for u in uniques if u != "BENIGN"]
+    return uniques
 
 
 def fit_preprocessor_global(
@@ -440,6 +481,7 @@ def prepare_partitions_from_dataframe(
     alpha: float = 0.1,
     protocol_col: str | None = None,
     leakage_safe: bool = False,
+    protocol_mapping: dict[str, int] | None = None,
 ) -> tuple[ColumnTransformer, list[np.ndarray], list[np.ndarray], int]:
     # Drop default identifiers/time proxies if leakage_safe
     drop_cols = DEFAULT_DROP_COLS if leakage_safe else None
@@ -455,7 +497,12 @@ def prepare_partitions_from_dataframe(
     elif partition_strategy == "protocol":
         if not protocol_col or protocol_col not in df.columns:
             raise ValueError("protocol partition requires a valid protocol_col present in dataframe")
-        shards = protocol_partition(df[protocol_col].tolist(), num_clients=num_clients, seed=seed)
+        shards = protocol_partition(
+            df[protocol_col].tolist(),
+            num_clients=num_clients,
+            seed=seed,
+            protocol_mapping=protocol_mapping,
+        )
     else:
         raise ValueError(f"Unknown partition_strategy: {partition_strategy}")
 

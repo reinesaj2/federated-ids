@@ -3,7 +3,11 @@ import argparse
 import json
 from pathlib import Path
 from typing import Dict
+
+import numpy as np
 import pandas as pd
+
+from confusion_matrix_utils import aggregate_confusion_matrices
 
 
 def coef_variation(series: pd.Series) -> float:
@@ -59,6 +63,86 @@ def compute_fairness_metrics(client_metrics_df: pd.DataFrame) -> Dict:
             fairness["fraction_clients_fpr_le_0_10"] = float(low_fpr_count / len(fpr_by_client))
 
     return fairness
+
+
+def _load_confusion_matrix_from_row(row: pd.Series) -> tuple[np.ndarray, np.ndarray | None, list[str] | None]:
+    counts_raw = row.get("confusion_matrix_counts", "")
+    if pd.isna(counts_raw) or str(counts_raw).strip() == "":
+        return np.array([]), None, None
+    try:
+        counts = np.array(json.loads(str(counts_raw)), dtype=np.float64)
+    except (json.JSONDecodeError, TypeError):
+        return np.array([]), None, None
+
+    normalized_raw = row.get("confusion_matrix_normalized", "")
+    normalized = None
+    if not pd.isna(normalized_raw) and str(normalized_raw).strip() != "":
+        try:
+            normalized = np.array(json.loads(str(normalized_raw)), dtype=np.float64)
+        except (json.JSONDecodeError, TypeError):
+            normalized = None
+
+    names_raw = row.get("confusion_matrix_class_names", "")
+    class_names = None
+    if not pd.isna(names_raw) and str(names_raw).strip() != "":
+        try:
+            class_names = list(json.loads(str(names_raw)))
+        except (json.JSONDecodeError, TypeError):
+            class_names = None
+
+    return counts, normalized, class_names
+
+
+def _collect_confusion_matrices(df: pd.DataFrame) -> Dict:
+    if "confusion_matrix_counts" not in df.columns:
+        return {}
+
+    per_client: Dict[str, Dict] = {}
+    matrices: list[np.ndarray] = []
+    class_names_global: list[str] | None = None
+
+    if "client_id" not in df.columns or "round" not in df.columns:
+        candidates = [df]
+    else:
+        candidates = [df.sort_values("round").groupby("client_id").tail(1)]
+
+    for subset in candidates:
+        for _, row in subset.iterrows():
+            counts, normalized, class_names = _load_confusion_matrix_from_row(row)
+            if counts.size == 0:
+                continue
+            matrices.append(counts)
+            client_key = str(row.get("client_id", "unknown"))
+            if normalized is None:
+                row_sums = counts.sum(axis=1, keepdims=True)
+                row_sums[row_sums == 0] = 1.0
+                normalized = counts / row_sums
+            entry = {"counts": counts.tolist(), "normalized": normalized.tolist()}
+            if class_names:
+                entry["class_names"] = class_names
+            per_client[client_key] = entry
+            if class_names and class_names_global is None:
+                class_names_global = class_names
+
+    if not matrices:
+        return {}
+
+    aggregated = aggregate_confusion_matrices(matrices)
+    row_sums = aggregated.sum(axis=1, keepdims=True)
+    row_sums[row_sums == 0] = 1.0
+    normalized_global = aggregated / row_sums
+
+    if class_names_global is None:
+        class_names_global = [f"CLASS_{i}" for i in range(aggregated.shape[0])]
+
+    return {
+        "class_names": class_names_global,
+        "global": {
+            "counts": aggregated.tolist(),
+            "normalized": normalized_global.tolist(),
+        },
+        "per_client": per_client,
+    }
 
 
 def summarize_clients(run_dir: Path) -> dict:
@@ -158,6 +242,10 @@ def summarize_clients(run_dir: Path) -> dict:
                 }
         except Exception:
             pass
+
+    confusion_summary = _collect_confusion_matrices(df)
+    if confusion_summary:
+        out["confusion_matrix"] = confusion_summary
 
     fairness_metrics = compute_fairness_metrics(df)
     out.update(fairness_metrics)

@@ -9,11 +9,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from scripts.generate_thesis_plots import (
+from confusion_matrix_utils import (
     compute_confusion_matrix,
     render_confusion_matrix_heatmap,
     aggregate_confusion_matrices,
 )
+from scripts.summarize_metrics import summarize_clients
 
 
 def test_compute_confusion_matrix_binary():
@@ -241,3 +242,48 @@ def test_confusion_matrix_json_serializable():
 
         assert "confusion_matrix" in loaded
         assert len(loaded["confusion_matrix"]) == 2
+
+
+def test_summarize_clients_includes_confusion_matrix(tmp_path):
+    """summarize_clients should include aggregated confusion matrix details."""
+    run_dir = Path(tmp_path)
+    class_names = ["BENIGN", "ATTACK"]
+    client0_counts = [[5, 1], [0, 4]]
+    client1_counts = [[4, 2], [1, 3]]
+
+    def _normalized(matrix: list[list[int]]) -> list[list[float]]:
+        arr = np.array(matrix, dtype=np.float64)
+        row_sums = arr.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0] = 1.0
+        return (arr / row_sums).tolist()
+
+    df0 = pd.DataFrame(
+        {
+            "client_id": ["0"],
+            "round": [1],
+            "confusion_matrix_counts": [json.dumps(client0_counts)],
+            "confusion_matrix_normalized": [json.dumps(_normalized(client0_counts))],
+            "confusion_matrix_class_names": [json.dumps(class_names)],
+        }
+    )
+    df1 = pd.DataFrame(
+        {
+            "client_id": ["1"],
+            "round": [1],
+            "confusion_matrix_counts": [json.dumps(client1_counts)],
+            "confusion_matrix_normalized": [json.dumps(_normalized(client1_counts))],
+            "confusion_matrix_class_names": [json.dumps(class_names)],
+        }
+    )
+    df0.to_csv(run_dir / "client_0_metrics.csv", index=False)
+    df1.to_csv(run_dir / "client_1_metrics.csv", index=False)
+
+    summary = summarize_clients(run_dir)
+    assert "confusion_matrix" in summary
+    cm_summary = summary["confusion_matrix"]
+    assert cm_summary["class_names"] == class_names
+    assert "0" in cm_summary["per_client"]
+    assert "1" in cm_summary["per_client"]
+    global_counts = np.array(cm_summary["global"]["counts"])
+    expected_counts = np.array(client0_counts) + np.array(client1_counts)
+    np.testing.assert_array_equal(global_counts, expected_counts)

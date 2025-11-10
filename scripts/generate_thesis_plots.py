@@ -25,7 +25,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import stats
-from sklearn.metrics import confusion_matrix as sk_confusion_matrix
 
 # Add scripts directory to path for imports
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,113 +35,13 @@ for candidate in (ROOT, ROOT / "scripts"):
 from plot_metrics_utils import compute_confidence_interval  # noqa: E402
 from privacy_accounting import compute_epsilon  # noqa: E402
 from metric_validation import MetricValidator  # noqa: E402
+from confusion_matrix_utils import (  # noqa: E402
+    compute_confusion_matrix,
+    render_confusion_matrix_heatmap,
+    aggregate_confusion_matrices,
+)
 
 logger = logging.getLogger(__name__)
-
-
-def compute_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int, normalize: bool = False) -> np.ndarray:
-    """
-    Compute confusion matrix for multi-class classification.
-
-    Args:
-        y_true: Ground truth labels (1D array)
-        y_pred: Predicted labels (1D array)
-        num_classes: Number of classes
-        normalize: If True, normalize by row (true class counts)
-
-    Returns:
-        Confusion matrix of shape (num_classes, num_classes)
-        cm[i, j] = count of samples with true label i predicted as j
-    """
-    if len(y_true) == 0:
-        return np.zeros((num_classes, num_classes), dtype=np.int64)
-
-    cm = sk_confusion_matrix(y_true, y_pred, labels=np.arange(num_classes)).astype(np.float64)
-
-    if normalize:
-        row_sums = cm.sum(axis=1, keepdims=True)
-        row_sums[row_sums == 0] = 1.0
-        cm = cm / row_sums
-
-    return cm
-
-
-def render_confusion_matrix_heatmap(
-    cm: np.ndarray,
-    class_names: List[str],
-    output_path: Path,
-    normalize: bool = False,
-    title: str = "Confusion Matrix",
-) -> None:
-    """
-    Render confusion matrix as heatmap and save to file.
-
-    Args:
-        cm: Confusion matrix (num_classes x num_classes)
-        class_names: List of class names for axis labels
-        output_path: Path to save PNG file
-        normalize: If True, display percentages instead of counts
-        title: Plot title
-    """
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    if normalize and not np.allclose(cm.sum(axis=1), 1.0):
-        row_sums = cm.sum(axis=1, keepdims=True)
-        row_sums[row_sums == 0] = 1.0
-        cm_normalized = cm / row_sums
-    else:
-        cm_normalized = cm
-
-    vmin = 0.0
-    vmax = 1.0 if normalize else cm.max()
-
-    sns.heatmap(
-        cm_normalized,
-        annot=True,
-        fmt=".2f" if normalize else ".0f",
-        cmap="YlOrRd",
-        xticklabels=class_names,
-        yticklabels=class_names,
-        cbar_kws={"label": "Percentage" if normalize else "Count"},
-        vmin=vmin,
-        vmax=vmax,
-        ax=ax,
-    )
-
-    ax.set_xlabel("Predicted Label", fontsize=12)
-    ax.set_ylabel("True Label", fontsize=12)
-    ax.set_title(title, fontsize=14, fontweight="bold")
-
-    plt.xticks(rotation=45, ha="right")
-    plt.yticks(rotation=0)
-
-    fig.tight_layout()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    plt.close(fig)
-
-
-def aggregate_confusion_matrices(cms: List[np.ndarray]) -> np.ndarray:
-    """
-    Aggregate multiple confusion matrices by summing.
-
-    Args:
-        cms: List of confusion matrices (same shape)
-
-    Returns:
-        Aggregated confusion matrix (sum of all inputs)
-
-    Raises:
-        ValueError: If cms is empty or matrices have mismatched shapes
-    """
-    if len(cms) == 0:
-        raise ValueError("Cannot aggregate empty list of confusion matrices")
-
-    first_shape = cms[0].shape
-    for i, cm in enumerate(cms[1:], start=1):
-        if cm.shape != first_shape:
-            raise ValueError(f"Confusion matrix shape mismatch: cms[0].shape={first_shape}, cms[{i}].shape={cm.shape}")
-    return np.sum(cms, axis=0)
 
 
 def _prepare_client_scatter_data(df: pd.DataFrame, metric: str) -> pd.DataFrame:

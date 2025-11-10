@@ -1,0 +1,12 @@
+{
+  "HTTP": 0,
+  "HTTPS": 0,
+  "FTP": 1,
+  "SSH": 1,
+  "DNS": 2,
+  "SMTP": 2,
+  "SNMP": 3,
+  "TELNET": 3,
+  "RDP": 4,
+  "SIP": 4
+}

@@ -17,6 +17,7 @@ from sklearn.metrics import (
     precision_recall_curve,
     average_precision_score,
 )
+from confusion_matrix_utils import compute_confusion_matrix
 
 from data_preprocessing import (
     create_synthetic_classification_loaders,
@@ -24,6 +25,7 @@ from data_preprocessing import (
     load_cic_ids2017,
     prepare_partitions_from_dataframe,
     numpy_to_loaders,
+    infer_class_names_from_series,
 )
 from client_metrics import (
     ClientMetricsLogger,
@@ -261,6 +263,7 @@ class TorchClient(fl.client.NumPyClient):
         fit_timer: ClientFitTimer,
         data_stats: dict,
         runtime_config: dict,
+        class_names: Optional[List[str]] = None,
     ) -> None:
         self.model = model
         self.train_loader = train_loader
@@ -281,6 +284,7 @@ class TorchClient(fl.client.NumPyClient):
         self.dp_accountant = DPAccountant(delta=dp_delta)
         self._dp_enabled_previous = bool(runtime_config.get("dp_enabled", False))
         self.logger = get_logger("client")
+        self.class_names = class_names or []
 
     def get_parameters(self, config):
         return get_parameters(self.model)
@@ -529,6 +533,9 @@ class TorchClient(fl.client.NumPyClient):
         f1_bin_tau = None
         benign_fpr_bin_tau = None
         tau_bin = None
+        confusion_matrix_counts_json = None
+        confusion_matrix_normalized_json = None
+        confusion_matrix_class_names_json = None
         try:
             if len(self.test_loader.dataset) > 0:
                 loss_after, acc_after, probs_after, labels_after = evaluate(self.model, self.test_loader, self.device)
@@ -631,6 +638,13 @@ class TorchClient(fl.client.NumPyClient):
                         from sklearn.metrics import f1_score as _f1_bin
 
                         f1_bin_tau = float(_f1_bin(y_true_bin_full, y_pred_attack_full))
+
+                    cm_counts = compute_confusion_matrix(labels_after, preds_after, num_classes, normalize=False)
+                    cm_normalized = compute_confusion_matrix(labels_after, preds_after, num_classes, normalize=True)
+                    cm_class_names = self.class_names or [f"class_{i}" for i in range(num_classes)]
+                    confusion_matrix_counts_json = _json.dumps(cm_counts.tolist())
+                    confusion_matrix_normalized_json = _json.dumps(cm_normalized.tolist())
+                    confusion_matrix_class_names_json = _json.dumps(cm_class_names)
         except Exception:
             pass
 
@@ -676,6 +690,9 @@ class TorchClient(fl.client.NumPyClient):
             f1_per_class_after_json=f1_per_class_after_json,
             precision_per_class_json=precision_per_class_json,
             recall_per_class_json=recall_per_class_json,
+            confusion_matrix_counts_json=confusion_matrix_counts_json,
+            confusion_matrix_normalized_json=confusion_matrix_normalized_json,
+            confusion_matrix_class_names_json=confusion_matrix_class_names_json,
             fpr_after=fpr_after,
             pr_auc_after=pr_auc_after,
             threshold_tau=threshold_tau,
@@ -908,6 +925,12 @@ def main() -> None:
         help="Protocol column for protocol partitioning",
     )
     parser.add_argument(
+        "--protocol_mapping_path",
+        type=str,
+        default="",
+        help="Optional JSON file mapping protocol names to client IDs for protocol partitioning",
+    )
+    parser.add_argument(
         "--leakage_safe",
         action="store_true",
         help="Fit preprocessor on train-only and drop identifier/time-like columns",
@@ -1023,6 +1046,9 @@ def main() -> None:
         extra={"client_id": args.client_id, "metrics_path": client_metrics_path},
     )
 
+    class_names: list[str] = []
+    protocol_mapping: dict[str, int] | None = None
+
     if args.dataset == "synthetic":
         train_loader, test_loader = create_synthetic_classification_loaders(
             num_samples=args.samples,
@@ -1037,6 +1063,7 @@ def main() -> None:
         data_stats = analyze_data_distribution(synthetic_labels)
         label_hist_json = create_label_histogram_json(synthetic_labels)
         num_classes_global = args.num_classes
+        class_names = ["BENIGN", "ATTACK"] if args.num_classes == 2 else [f"CLASS_{i}" for i in range(args.num_classes)]
     else:
         if not args.data_path:
             raise SystemExit("--data_path is required for dataset unsw/cic")
@@ -1045,6 +1072,27 @@ def main() -> None:
         else:
             df, label_col, proto_col = load_cic_ids2017(args.data_path)
         chosen_proto_col = args.protocol_col or (proto_col or "")
+        class_names = infer_class_names_from_series(df[label_col])
+        if args.protocol_mapping_path:
+            try:
+                with open(args.protocol_mapping_path) as f:
+                    raw_mapping = json.load(f)
+            except OSError as exc:
+                raise SystemExit(f"Failed to read protocol_mapping_path: {exc}") from exc
+            if not isinstance(raw_mapping, dict):
+                raise SystemExit("protocol_mapping_path must contain a JSON object mapping protocol names to client IDs")
+            protocol_mapping = {}
+            for proto_name, client_idx in raw_mapping.items():
+                try:
+                    normalized_proto = str(proto_name).strip().upper()
+                    normalized_idx = int(client_idx)
+                except (TypeError, ValueError):
+                    continue
+                if normalized_idx < 0 or normalized_idx >= args.num_clients:
+                    raise SystemExit(
+                        f"protocol mapping client id {normalized_idx} must be in [0, {args.num_clients})"
+                    )
+                protocol_mapping[normalized_proto] = normalized_idx
         pre, X_parts, y_parts, num_classes_global = prepare_partitions_from_dataframe(
             df=df,
             label_col=label_col,
@@ -1054,6 +1102,7 @@ def main() -> None:
             alpha=args.alpha,
             protocol_col=chosen_proto_col if chosen_proto_col else None,
             leakage_safe=bool(args.leakage_safe),
+            protocol_mapping=protocol_mapping,
         )
         if args.client_id < 0 or args.client_id >= len(X_parts):
             raise SystemExit(f"client_id must be in [0, {len(X_parts)})")
@@ -1150,6 +1199,7 @@ def main() -> None:
             # Personalization
             "personalization_epochs": args.personalization_epochs,
         },
+        class_names=class_names,
     )
 
     fl.client.start_numpy_client(server_address=args.server_address, client=client)

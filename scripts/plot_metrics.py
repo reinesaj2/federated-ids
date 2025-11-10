@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from plot_config import PlotStyle, create_default_config
 from plot_metrics_client import (
@@ -26,6 +28,8 @@ from plot_metrics_server import (
     plot_server_metrics,
 )
 from plot_metrics_utils import first_present, render_mu_scatter
+from summarize_metrics import summarize_clients
+from confusion_matrix_utils import render_confusion_matrix_heatmap
 
 __all__ = [
     "plot_server_metrics",
@@ -47,6 +51,64 @@ __all__ = [
 
 
 _render_mu_scatter = render_mu_scatter
+
+
+def _load_or_build_summary(run_path: Path) -> dict:
+    summary_path = run_path / "summary.json"
+    if summary_path.exists():
+        try:
+            with open(summary_path) as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            pass
+
+    summary = summarize_clients(run_path)
+    with open(summary_path, "w") as f:
+        json.dump(summary, f, indent=2)
+    return summary
+
+
+def _render_confusion_matrices(summary: dict, output_dir: Path, scope: str) -> None:
+    payload = summary.get("confusion_matrix")
+    if not payload:
+        print("No confusion matrix data found in summary.json; skipping confusion matrix plots.")
+        return
+
+    class_names = payload.get("class_names") or []
+    global_counts = np.array(payload.get("global", {}).get("counts", []))
+    global_normalized = np.array(payload.get("global", {}).get("normalized", []))
+
+    if global_counts.size == 0 or global_normalized.size == 0:
+        print("Confusion matrix payload missing global counts/normalized data; skipping.")
+        return
+
+    if not class_names:
+        class_names = [f"CLASS_{i}" for i in range(global_counts.shape[0])]
+
+    confusion_dir = output_dir / "confusion_matrices"
+    confusion_dir.mkdir(parents=True, exist_ok=True)
+
+    counts_path = confusion_dir / "confusion_matrix_global_counts.png"
+    normalized_primary_path = output_dir / "confusion_matrix.png"
+    normalized_backup_path = confusion_dir / "confusion_matrix_global_normalized.png"
+
+    render_confusion_matrix_heatmap(global_counts, class_names, counts_path, normalize=False)
+    render_confusion_matrix_heatmap(global_normalized, class_names, normalized_primary_path, normalize=True)
+    render_confusion_matrix_heatmap(global_normalized, class_names, normalized_backup_path, normalize=True)
+    print(f"Global confusion matrix heatmaps saved to: {normalized_primary_path} and {counts_path}")
+
+    if scope in {"per-client", "both"}:
+        for client_id, data in payload.get("per_client", {}).items():
+            client_counts = np.array(data.get("counts", []))
+            client_normalized = np.array(data.get("normalized", []))
+            if client_counts.size == 0 or client_normalized.size == 0:
+                continue
+            client_names = data.get("class_names") or class_names
+            client_counts_path = confusion_dir / f"confusion_matrix_client_{client_id}_counts.png"
+            client_norm_path = confusion_dir / f"confusion_matrix_client_{client_id}_normalized.png"
+            render_confusion_matrix_heatmap(client_counts, client_names, client_counts_path, normalize=False)
+            render_confusion_matrix_heatmap(client_normalized, client_names, client_norm_path, normalize=True)
+        print(f"Per-client confusion matrix heatmaps saved under: {confusion_dir}")
 
 
 def plot_fedprox_comparison(comparison_dir: str, output_path: str, config: dict | None = None) -> None:
@@ -193,6 +255,18 @@ def main() -> None:
     parser.add_argument("--style", type=str, default="whitegrid")
     parser.add_argument("--dpi", type=int, default=150)
     parser.add_argument("--format", type=str, default="png", choices=["png", "pdf", "svg"])
+    parser.add_argument(
+        "--save_confusion_matrix",
+        action="store_true",
+        help="Aggregate and save confusion matrix heatmaps using client metrics summary data",
+    )
+    parser.add_argument(
+        "--confusion_matrix_scope",
+        type=str,
+        default="global",
+        choices=["global", "per-client", "both"],
+        help="Scope for confusion matrix heatmaps when --save_confusion_matrix is set",
+    )
 
     args = parser.parse_args()
 
@@ -228,6 +302,10 @@ def main() -> None:
         client_plot_path = output_dir / f"client_metrics_plot.{args.format}"
         plot_client_metrics(client_metrics_paths, str(client_plot_path), config)
         print(f"Client metrics plot saved to: {client_plot_path}")
+
+    if args.save_confusion_matrix:
+        summary = _load_or_build_summary(run_path)
+        _render_confusion_matrices(summary, output_dir, args.confusion_matrix_scope)
 
 
 if __name__ == "__main__":

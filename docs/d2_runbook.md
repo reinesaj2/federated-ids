@@ -88,6 +88,22 @@ for i in {0..5}; do
 done
 ```
 
+### Federated Training (Protocol-based Drift)
+```bash
+# Predefine protocol-to-client mapping (cic example provided)
+python server.py --rounds 20 --aggregation fedavg --server_address 127.0.0.1:8098
+
+for i in {0..4}; do
+  python client.py --server_address 127.0.0.1:8098 \
+    --dataset cic --data_path data/cic/cic_ids2017_multiclass.csv \
+    --num_clients 5 --client_id $i \
+    --partition_strategy protocol --protocol_col Protocol \
+    --protocol_mapping_path configs/protocol_groups/cic_protocol_clients.json \
+    --seed 7 &
+done
+```
+`protocol_mapping_path` pins important protocols (HTTP, DNS, SSH, etc.) to specific clients, while any unlisted protocols fall back to balanced round-robin assignments without altering feature schemas.
+
 ### Comparative Analysis (Automated)
 ```bash
 # Run all 5 thesis objectives on UNSW-NB15
@@ -162,6 +178,17 @@ python scripts/summarize_metrics.py \
 ### Output
 - `summary.json` with aggregated metrics
 - Includes: macro_f1_argmax, worst/best client performance, CV, FPR fraction
+- Multi-class runs also emit a `confusion_matrix` block storing global + per-client counts/percentages for thesis visuals.
+
+### Confusion Matrices
+```bash
+python scripts/plot_metrics.py \
+  --run_dir runs/comp_fedavg_alpha0.1_adv0_dp0_pers0_seed42 \
+  --output_dir runs/comp_fedavg_alpha0.1_adv0_dp0_pers0_seed42 \
+  --save_confusion_matrix --confusion_matrix_scope both
+```
+- Saves normalized global heatmap to `runs/.../confusion_matrix.png`
+- Stores per-client count/percentage heatmaps under `runs/.../confusion_matrices/`
 
 ### Validation
 ```bash
