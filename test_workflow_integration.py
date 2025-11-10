@@ -57,7 +57,7 @@ class TestWorkflowConfiguration:
         commit_plots_job = jobs["commit_plots"]
         assert "needs" in commit_plots_job
         assert commit_plots_job["needs"] == ["fedprox_summary"]
-        assert commit_plots_job["if"] == "always() && needs.fedprox_summary.result == 'success'"
+        assert commit_plots_job["if"] == "always() && needs.fedprox_summary.result == 'success' && needs.fedprox_summary.outputs.has_summary == 'true'"
 
     def test_commit_plots_job_uses_correct_script(self):
         """Test that commit_plots job calls the correct Python script."""
