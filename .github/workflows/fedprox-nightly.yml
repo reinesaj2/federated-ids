@@ -434,7 +434,7 @@ jobs:
       - name: Locate baseline summary run
         if: steps.summary_check.outputs.has_summary == 'true'
         id: find_baseline
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const { owner, repo } = context.repo;
