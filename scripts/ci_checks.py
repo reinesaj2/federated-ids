@@ -631,10 +631,17 @@ def main() -> None:
     if not regression_strict:
         print("[INFO] Regression check: warnings only (not blocking)")
 
+    min_seeds_env = os.environ.get("MIN_SEEDS")
+    try:
+        minimum_seeds = int(min_seeds_env) if min_seeds_env is not None else args.min_seeds
+    except ValueError:
+        print(f"[WARNING] Invalid MIN_SEEDS env value '{min_seeds_env}', falling back to {args.min_seeds}")
+        minimum_seeds = args.min_seeds
+
     try:
         runs_dir = Path(args.runs_dir)
         run_directories = find_run_directories(runs_dir)
-        validate_seed_coverage(run_directories, minimum_seeds=args.min_seeds)
+        validate_seed_coverage(run_directories, minimum_seeds=minimum_seeds)
 
         print(f"Found {len(run_directories)} run directories to validate")
 
