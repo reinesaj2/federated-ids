@@ -206,7 +206,7 @@ jobs:
             echo "SUCCESS: Adequate experiment completion rate"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: steps.dimension_filter.outputs.should_run == 'true'
         with:
           name: comparative-analysis-${{ matrix.dimension }}-${{ github.sha }}
@@ -266,7 +266,7 @@ jobs:
           done
 
       - name: Upload consolidated results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: thesis-plots-summary-${{ github.sha }}

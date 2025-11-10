@@ -182,7 +182,7 @@ jobs:
 
       - name: Upload smoke artifacts
         if: startsWith(github.ref, 'refs/heads/feat/')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: smoke-artifacts-${{ github.sha }}
           path: |
@@ -284,7 +284,7 @@ jobs:
             fi
           done
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: d2-quick-artifacts-${{ github.sha }}
           path: runs/**
@@ -434,7 +434,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: d2-full-${{ matrix.alpha }}-${{ matrix.scenario }}-${{ github.sha }}
@@ -557,7 +557,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: manual-test-${{ matrix.scenario }}-${{ github.sha }}
