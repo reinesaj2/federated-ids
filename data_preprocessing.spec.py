@@ -81,7 +81,7 @@ def test_dirichlet_partition_enforces_minimum_samples_per_class():
     # Create dataset large enough to support minimum threshold for all clients
     # With 11 clients and min 50/class, need at least 11 * 50 = 550 per class
     labels = np.array([0] * 600 + [1] * 600)
-    num_clients = 11
+    num_clients = 11  # Matches production configuration (Byzantine-tolerant for Bulyan with f=4)
     alpha = 0.5  # Known to create extreme imbalance
 
     # Use seed that previously caused failures
@@ -128,3 +128,74 @@ def test_preprocessor_yields_same_feature_dim_when_fitted_on_shuffled_rows():
     _, X1, _ = fit_preprocessor_global(df, label_col="label")
     _, X2, _ = fit_preprocessor_global(df_shuffled, label_col="label")
     assert X1.shape[1] == X2.shape[1]
+
+
+def test_dirichlet_partition_handles_extreme_alpha_values():
+    """
+    Test that Dirichlet partitioning enforces minimum sample threshold across
+    various alpha values (heterogeneity levels).
+
+    Edge cases tested:
+    - alpha=0.1: Maximum heterogeneity (each client gets very different class distributions)
+    - alpha=0.5: Known problematic value that previously caused failures
+    - alpha=1.0: Moderate heterogeneity (standard Dirichlet)
+    - alpha=5.0: Low heterogeneity (approaching uniform)
+    - alpha=10.0: Very low heterogeneity (nearly IID)
+    """
+    labels = np.array([0] * 600 + [1] * 600)
+    num_clients = 10
+    alpha_values = [0.1, 0.5, 1.0, 5.0, 10.0]
+
+    for alpha in alpha_values:
+        shards = dirichlet_partition(
+            labels=labels, num_clients=num_clients, alpha=alpha, seed=42, min_samples_per_class=MIN_SAMPLES_PER_CLASS
+        )
+
+        # Verify all clients got data
+        assert len(shards) == num_clients, f"Expected {num_clients} shards for alpha={alpha}"
+        assert all(len(shard) > 0 for shard in shards), f"Empty shard found for alpha={alpha}"
+
+        # Verify minimum samples per class for each client
+        for client_id, shard in enumerate(shards):
+            shard_labels = labels[shard]
+            class_0_count = np.sum(shard_labels == 0)
+            class_1_count = np.sum(shard_labels == 1)
+
+            assert class_0_count >= MIN_SAMPLES_PER_CLASS, (
+                f"Alpha={alpha}, Client {client_id}: only {class_0_count} class 0 samples " f"(minimum: {MIN_SAMPLES_PER_CLASS})"
+            )
+            assert class_1_count >= MIN_SAMPLES_PER_CLASS, (
+                f"Alpha={alpha}, Client {client_id}: only {class_1_count} class 1 samples " f"(minimum: {MIN_SAMPLES_PER_CLASS})"
+            )
+
+        # Verify all indices are covered exactly once
+        all_indices = sorted(idx for shard in shards for idx in shard)
+        assert all_indices == list(range(len(labels))), f"Index coverage failed for alpha={alpha}"
+
+
+def test_dirichlet_partition_boundary_case_exact_minimum_samples():
+    """
+    Test boundary condition where total samples exactly meets minimum requirement.
+
+    With 10 clients, MIN_SAMPLES_PER_CLASS=50, and 2 classes:
+    Minimum total needed = 10 * 50 * 2 = 1000 samples
+    """
+    num_clients = 10
+    samples_per_class = num_clients * MIN_SAMPLES_PER_CLASS
+    labels = np.array([0] * samples_per_class + [1] * samples_per_class)
+
+    shards = dirichlet_partition(labels=labels, num_clients=num_clients, alpha=0.5, seed=42, min_samples_per_class=MIN_SAMPLES_PER_CLASS)
+
+    # Even at exact minimum, all clients should get valid data
+    assert len(shards) == num_clients
+    for client_id, shard in enumerate(shards):
+        shard_labels = labels[shard]
+        class_0_count = np.sum(shard_labels == 0)
+        class_1_count = np.sum(shard_labels == 1)
+
+        assert (
+            class_0_count >= MIN_SAMPLES_PER_CLASS
+        ), f"Client {client_id} has {class_0_count} class 0 samples (minimum: {MIN_SAMPLES_PER_CLASS})"
+        assert (
+            class_1_count >= MIN_SAMPLES_PER_CLASS
+        ), f"Client {client_id} has {class_1_count} class 1 samples (minimum: {MIN_SAMPLES_PER_CLASS})"
