@@ -24,6 +24,7 @@ class ArtifactValidationError(Exception):
 MIN_WEIGHTED_MACRO_F1 = float(os.environ.get("MIN_WEIGHTED_MACRO_F1", "0.70"))
 MIN_WEIGHTED_ACCURACY = float(os.environ.get("MIN_WEIGHTED_ACCURACY", "0.70"))
 MAX_FINAL_L2_DISTANCE = float(os.environ.get("MAX_FINAL_L2_DISTANCE", "1.5"))
+L2_ALPHA_SCALE = float(os.environ.get("L2_ALPHA_SCALE", "3.0"))
 
 
 def _safe_float(value: str | None) -> float | None:
@@ -56,8 +57,7 @@ def _compute_adaptive_l2_threshold(alpha: Optional[float]) -> float:
 
     # Clamp alpha to [0, 1]; lower alpha => stronger heterogeneity
     alpha = max(0.0, min(1.0, alpha))
-    scale = 3.0  # Allow up to +3 for alpha -> 0
-    return MAX_FINAL_L2_DISTANCE + (1.0 - alpha) * scale
+    return MAX_FINAL_L2_DISTANCE + (1.0 - alpha) * L2_ALPHA_SCALE
 
 
 def _load_csv_rows(csv_path: Path) -> List[Dict[str, str]]:
@@ -631,10 +631,17 @@ def main() -> None:
     if not regression_strict:
         print("[INFO] Regression check: warnings only (not blocking)")
 
+    min_seeds_env = os.environ.get("MIN_SEEDS")
+    try:
+        minimum_seeds = int(min_seeds_env) if min_seeds_env is not None else args.min_seeds
+    except ValueError:
+        print(f"[WARNING] Invalid MIN_SEEDS env value '{min_seeds_env}', falling back to {args.min_seeds}")
+        minimum_seeds = args.min_seeds
+
     try:
         runs_dir = Path(args.runs_dir)
         run_directories = find_run_directories(runs_dir)
-        validate_seed_coverage(run_directories, minimum_seeds=args.min_seeds)
+        validate_seed_coverage(run_directories, minimum_seeds=minimum_seeds)
 
         print(f"Found {len(run_directories)} run directories to validate")
 

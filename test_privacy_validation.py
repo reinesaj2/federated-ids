@@ -37,9 +37,11 @@ class TestValidatePrivacyExperiments:
             client_metrics = exp_dir / "client_0_metrics.csv"
             with open(client_metrics, "w") as f:
                 writer = csv.writer(f)
-                writer.writerow(["round", "dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta", "macro_f1"])
-                writer.writerow([0, "True", "0.5", "1.2", "1e-5", "0.85"])
-                writer.writerow([1, "True", "0.5", "1.3", "1e-5", "0.87"])
+                writer.writerow(
+                    ["round", "dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta", "dp_sigma", "dp_clip_norm", "macro_f1"]
+                )
+                writer.writerow([0, "True", "0.5", "1.2", "1e-5", "0.5", "1.0", "0.85"])
+                writer.writerow([1, "True", "0.5", "1.3", "1e-5", "0.5", "1.0", "0.87"])
 
             # Should not raise exception for valid DP parameters
             try:
@@ -65,7 +67,7 @@ class TestValidatePrivacyExperiments:
                 writer.writerow([1, "0.87"])
 
             # Should raise exception for missing DP parameters
-            with pytest.raises(ArtifactValidationError, match="Missing DP parameters"):
+            with pytest.raises(ArtifactValidationError, match="missing required columns"):
                 validate_privacy_experiments(temp_path)
 
     def test_validates_epsilon_values_computed(self):
@@ -81,9 +83,11 @@ class TestValidatePrivacyExperiments:
             client_metrics = exp_dir / "client_0_metrics.csv"
             with open(client_metrics, "w") as f:
                 writer = csv.writer(f)
-                writer.writerow(["round", "dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta", "macro_f1"])
-                writer.writerow([0, "True", "0.5", "1.2", "1e-5", "0.85"])
-                writer.writerow([1, "True", "0.5", "1.3", "1e-5", "0.87"])
+                writer.writerow(
+                    ["round", "dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta", "dp_sigma", "dp_clip_norm", "macro_f1"]
+                )
+                writer.writerow([0, "True", "0.5", "1.2", "1e-5", "0.5", "1.0", "0.85"])
+                writer.writerow([1, "True", "0.5", "1.3", "1e-5", "0.5", "1.0", "0.87"])
 
             # Should not raise exception for valid epsilon values
             try:
@@ -104,12 +108,14 @@ class TestValidatePrivacyExperiments:
             client_metrics = exp_dir / "client_0_metrics.csv"
             with open(client_metrics, "w") as f:
                 writer = csv.writer(f)
-                writer.writerow(["round", "dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta", "macro_f1"])
-                writer.writerow([0, "True", "0.5", "", "1e-5", "0.85"])  # Empty epsilon
-                writer.writerow([1, "True", "0.5", "invalid", "1e-5", "0.87"])  # Invalid epsilon
+                writer.writerow(
+                    ["round", "dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta", "dp_sigma", "dp_clip_norm", "macro_f1"]
+                )
+                writer.writerow([0, "True", "0.5", "", "1e-5", "0.5", "1.0", "0.85"])  # Empty epsilon
+                writer.writerow([1, "True", "0.5", "invalid", "1e-5", "0.5", "1.0", "0.87"])  # Invalid epsilon
 
             # Should raise exception for invalid epsilon values
-            with pytest.raises(ArtifactValidationError, match="No valid epsilon values"):
+            with pytest.raises(ArtifactValidationError, match="Invalid DP values"):
                 validate_privacy_experiments(temp_path)
 
     def test_validates_noise_multiplier_consistency(self):
@@ -125,9 +131,11 @@ class TestValidatePrivacyExperiments:
             client_metrics = exp_dir / "client_0_metrics.csv"
             with open(client_metrics, "w") as f:
                 writer = csv.writer(f)
-                writer.writerow(["round", "dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta", "macro_f1"])
-                writer.writerow([0, "True", "0.5", "1.2", "1e-5", "0.85"])
-                writer.writerow([1, "True", "0.5", "1.3", "1e-5", "0.87"])
+                writer.writerow(
+                    ["round", "dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta", "dp_sigma", "dp_clip_norm", "macro_f1"]
+                )
+                writer.writerow([0, "True", "0.5", "1.2", "1e-5", "0.5", "1.0", "0.85"])
+                writer.writerow([1, "True", "0.5", "1.3", "1e-5", "0.5", "1.0", "0.87"])
 
             # Should not raise exception for consistent noise multiplier
             try:
@@ -148,9 +156,11 @@ class TestValidatePrivacyExperiments:
             client_metrics = exp_dir / "client_0_metrics.csv"
             with open(client_metrics, "w") as f:
                 writer = csv.writer(f)
-                writer.writerow(["round", "dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta", "macro_f1"])
-                writer.writerow([0, "True", "0.5", "1.2", "1e-5", "0.85"])
-                writer.writerow([1, "True", "1.0", "1.3", "1e-5", "0.87"])  # Different noise multiplier
+                writer.writerow(
+                    ["round", "dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta", "dp_sigma", "dp_clip_norm", "macro_f1"]
+                )
+                writer.writerow([0, "True", "0.5", "1.2", "1e-5", "0.5", "1.0", "0.85"])
+                writer.writerow([1, "True", "1.0", "1.3", "1e-5", "0.5", "1.0", "0.87"])  # Different noise multiplier
 
             # Should raise exception for inconsistent noise multiplier
             with pytest.raises(ArtifactValidationError, match="Inconsistent noise multiplier"):
@@ -182,8 +192,10 @@ class TestCheckPrivacyRegressions:
                 client_metrics = exp_dir / "client_0_metrics.csv"
                 with open(client_metrics, "w") as f:
                     writer = csv.writer(f)
-                    writer.writerow(["round", "dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta", "macro_f1"])
-                    writer.writerow([0, "True", "0.5", epsilon_val, "1e-5", "0.85"])
+                    writer.writerow(
+                        ["round", "dp_enabled", "dp_noise_multiplier", "dp_epsilon", "dp_delta", "dp_sigma", "dp_clip_norm", "macro_f1"]
+                    )
+                    writer.writerow([0, "True", "0.5", epsilon_val, "1e-5", "0.5", "1.0", "0.85"])
 
             # Should detect regression in epsilon computation
             with pytest.raises(ArtifactValidationError, match="Privacy regression detected"):
@@ -292,7 +304,7 @@ class TestValidatePrivacyUtilityCurveData:
                 writer.writerow([-1.0, 0.75, 0.50, 1.00, 5, 1.0, 0])  # Epsilon negative
 
             # Should raise exception for epsilon values out of range
-            with pytest.raises(ArtifactValidationError, match="Epsilon values out of range"):
+            with pytest.raises(ArtifactValidationError, match="Invalid epsilon value"):
                 validate_privacy_utility_curve_data(curve_csv)
 
     def test_validates_confidence_intervals(self):
@@ -326,5 +338,5 @@ class TestValidatePrivacyUtilityCurveData:
                 writer.writerow([1.5, 0.79, 1.04, 0.54, 5, 0.7, 0])  # ci_lower > ci_upper
 
             # Should raise exception for invalid confidence intervals
-            with pytest.raises(ArtifactValidationError, match="Invalid confidence intervals"):
+            with pytest.raises(ArtifactValidationError, match="Invalid CI bounds"):
                 validate_privacy_utility_curve_data(curve_csv)

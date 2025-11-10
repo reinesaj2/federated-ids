@@ -519,6 +519,18 @@ def main():
         help="Client process timeout in seconds (default: 900)",
     )
     parser.add_argument(
+        "--num_clients",
+        type=int,
+        default=6,
+        help="Number of clients per experiment (default: 6)",
+    )
+    parser.add_argument(
+        "--num_rounds",
+        type=int,
+        default=20,
+        help="Number of FL rounds per experiment (default: 20)",
+    )
+    parser.add_argument(
         "--dataset",
         type=str,
         choices=["unsw", "cic"],
@@ -592,6 +604,8 @@ def main():
     data_path = args.data_path if args.data_path else dataset_paths[args.dataset]
 
     matrix = ComparisonMatrix(dataset=args.dataset, data_path=data_path)
+    matrix.num_clients = args.num_clients
+    matrix.num_rounds = args.num_rounds
     if args.aggregation_methods:
         matrix.aggregation_methods = [method.strip() for method in args.aggregation_methods.split(",") if method.strip()]
     if args.alpha_values:
@@ -666,7 +680,7 @@ def main():
     print(f"  Total experiments: {len(configs)}")
     print(f"  Successful: {successful_experiments}")
     print(f"  Failed: {failed_experiments}")
-    print(f"  Success rate: {successful_experiments/len(configs)*100:.1f}%")
+    print(f"  Success rate: {successful_experiments / len(configs) * 100:.1f}%")
 
     # Save experiment manifest
     manifest_name = f"experiment_manifest_{args.dimension}"
