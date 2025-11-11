@@ -6,12 +6,20 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from plot_config import PlotStyle, create_default_config
-from plot_metrics_client import (
+
+ROOT = Path(__file__).resolve().parents[1]
+for candidate in (ROOT, ROOT / "scripts"):
+    candidate_str = str(candidate)
+    if candidate_str not in sys.path:
+        sys.path.insert(0, candidate_str)
+
+from plot_config import PlotStyle, create_default_config  # noqa: E402
+from plot_metrics_client import (  # noqa: E402
     _render_client_accuracy,
     _render_client_f1_overlay,
     _render_client_fpr,
@@ -19,17 +27,17 @@ from plot_metrics_client import (
     _render_client_norms,
     _render_client_tau,
     plot_client_metrics,
-)
-from plot_metrics_server import (
+)  # noqa: E402
+from plot_metrics_server import (  # noqa: E402
     _render_server_dispersion,
     _render_server_norms,
     _render_server_robustness,
     _render_server_timing,
     plot_server_metrics,
 )
-from plot_metrics_utils import first_present, render_mu_scatter
-from summarize_metrics import summarize_clients
-from confusion_matrix_utils import render_confusion_matrix_heatmap
+from plot_metrics_utils import first_present, render_mu_scatter  # noqa: E402
+from summarize_metrics import summarize_clients  # noqa: E402
+from confusion_matrix_utils import render_confusion_matrix_heatmap  # noqa: E402
 
 __all__ = [
     "plot_server_metrics",
