@@ -39,10 +39,12 @@ from client_metrics import (
 from privacy_accounting import DPAccountant
 from secure_aggregation import generate_client_mask_sequence, mask_updates
 from logging_utils import configure_logging, get_logger
+from models.per_dataset_encoder import get_default_encoder_config, PerDatasetEncoderNet
 
 
 DEFAULT_CLIENT_LR = 1e-3
 DEFAULT_WEIGHT_DECAY = 1e-4
+ENCODER_DATASETS = {"unsw", "cic"}
 
 
 def create_adamw_optimizer(parameters, lr: float, weight_decay: float = DEFAULT_WEIGHT_DECAY) -> torch.optim.Optimizer:
@@ -68,6 +70,35 @@ class SimpleNet(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)
+
+
+def _resolve_model_arch(dataset_name: str, model_arch: str) -> str:
+    arch = model_arch.lower()
+    if arch == "auto":
+        return "per_dataset_encoder" if dataset_name.lower() in ENCODER_DATASETS else "simple"
+    return arch
+
+
+def create_model(
+    dataset_name: str,
+    num_features: int,
+    num_classes: int,
+    model_arch: str,
+    encoder_latent_dim: int,
+) -> tuple[nn.Module, dict[str, str | int]]:
+    resolved_arch = _resolve_model_arch(dataset_name, model_arch)
+    if resolved_arch == "per_dataset_encoder":
+        latent_override = encoder_latent_dim if encoder_latent_dim > 0 else None
+        config = get_default_encoder_config(dataset_name.lower(), num_features, num_classes, latent_dim=latent_override)
+        model = PerDatasetEncoderNet(config)
+        metadata = {
+            "model_arch": "per_dataset_encoder",
+            "latent_dim": config.latent_dim,
+            "encoder_hidden": "x".join(str(h) for h in config.encoder_hidden) if config.encoder_hidden else "",
+        }
+        return model, metadata
+
+    return SimpleNet(num_features=num_features, num_classes=num_classes), {"model_arch": "simple"}
 
 
 def get_parameters(model: nn.Module) -> List[np.ndarray]:
@@ -1003,6 +1034,19 @@ def main() -> None:
         default="synthetic",
         choices=["synthetic", "unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full"],
     )
+    parser.add_argument(
+        "--model_arch",
+        type=str,
+        default="auto",
+        choices=["auto", "simple", "per_dataset_encoder"],
+        help="Model architecture to use (auto selects per-dataset encoders for CIC/UNSW)",
+    )
+    parser.add_argument(
+        "--encoder_latent_dim",
+        type=int,
+        default=0,
+        help="Override latent dimension for per-dataset encoders (0 keeps dataset default)",
+    )
     parser.add_argument("--data_path", type=str, default="", help="Path to dataset CSV for unsw/cic")
     parser.add_argument(
         "--partition_strategy",
@@ -1143,6 +1187,7 @@ def main() -> None:
 
     class_names: list[str] = []
     protocol_mapping: dict[str, int] | None = None
+    model_metadata: dict[str, str | int] = {}
 
     if args.dataset == "synthetic":
         train_loader, test_loader = create_synthetic_classification_loaders(
@@ -1152,13 +1197,19 @@ def main() -> None:
             seed=args.seed,
             num_classes=args.num_classes,
         )
-        model = SimpleNet(num_features=args.features, num_classes=args.num_classes)
         # Analyze data distribution for synthetic data
         synthetic_labels = np.random.randint(0, args.num_classes, size=args.samples)  # Approximate for metrics
         data_stats = analyze_data_distribution(synthetic_labels)
         label_hist_json = create_label_histogram_json(synthetic_labels)
         num_classes_global = args.num_classes
         class_names = ["BENIGN", "ATTACK"] if args.num_classes == 2 else [f"CLASS_{i}" for i in range(args.num_classes)]
+        model, model_metadata = create_model(
+            dataset_name=args.dataset,
+            num_features=args.features,
+            num_classes=num_classes_global,
+            model_arch=args.model_arch,
+            encoder_latent_dim=args.encoder_latent_dim,
+        )
     else:
         if not args.data_path:
             raise SystemExit("--data_path is required for dataset unsw/cic/edge-iiotset")
@@ -1216,10 +1267,26 @@ def main() -> None:
             )
         train_loader, test_loader = numpy_to_loaders(X_client, y_client, batch_size=args.batch_size, seed=args.seed)
         num_features = X_client.shape[1]
-        model = SimpleNet(num_features=num_features, num_classes=num_classes_global)
+        model, model_metadata = create_model(
+            dataset_name=args.dataset,
+            num_features=num_features,
+            num_classes=num_classes_global,
+            model_arch=args.model_arch,
+            encoder_latent_dim=args.encoder_latent_dim,
+        )
         # Analyze actual data distribution
         data_stats = analyze_data_distribution(y_client)
         label_hist_json = create_label_histogram_json(y_client)
+
+    logger.info(
+        "model_architecture",
+        extra={
+            "client_id": args.client_id,
+            "model_arch": model_metadata.get("model_arch", "unknown"),
+            "latent_dim": model_metadata.get("latent_dim"),
+            "encoder_hidden": model_metadata.get("encoder_hidden"),
+        },
+    )
 
     # Model validation guard: assert output features match global num_classes
     model_output_features = None
