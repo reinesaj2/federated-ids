@@ -55,6 +55,9 @@ class ExperimentConfig:
         dataset_paths = {
             "unsw": "data/unsw/UNSW_NB15_training-set.csv",
             "cic": "data/cic/cic_ids2017_multiclass.csv",
+            "edge-iiotset-quick": "data/edge-iiotset/edge_iiotset_quick.csv",
+            "edge-iiotset-nightly": "data/edge-iiotset/edge_iiotset_nightly.csv",
+            "edge-iiotset-full": "data/edge-iiotset/edge_iiotset_full.csv",
         }
         if dataset not in dataset_paths:
             raise ValueError(f"Unknown dataset: {dataset}. Supported: {list(dataset_paths.keys())}")
