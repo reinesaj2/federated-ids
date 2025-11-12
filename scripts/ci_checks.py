@@ -6,13 +6,14 @@ Validates schemas and basic sanity of generated metrics files.
 
 import argparse
 import csv
+import json
 import math
 import os
 import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 
 class ArtifactValidationError(Exception):
@@ -25,6 +26,7 @@ MIN_WEIGHTED_MACRO_F1 = float(os.environ.get("MIN_WEIGHTED_MACRO_F1", "0.70"))
 MIN_WEIGHTED_ACCURACY = float(os.environ.get("MIN_WEIGHTED_ACCURACY", "0.70"))
 MAX_FINAL_L2_DISTANCE = float(os.environ.get("MAX_FINAL_L2_DISTANCE", "1.5"))
 L2_ALPHA_SCALE = float(os.environ.get("L2_ALPHA_SCALE", "3.0"))
+DEFAULT_REQUIRED_PLOTS: tuple[str, str] = ("client_metrics_plot.png", "server_metrics_plot.png")
 
 
 def _safe_float(value: str | None) -> float | None:
@@ -144,14 +146,124 @@ def check_seed_consistency(rows: List[Dict[str, str]], expected_seeds: int = 5) 
         pass
 
 
-def validate_plot_files(run_dir: Path) -> None:
-    """Validate that required plot files exist."""
-    required_plots = ["client_metrics_plot.png", "server_metrics_plot.png"]
+def validate_plot_files(
+    run_dir: Path,
+    *,
+    required_plots: Sequence[str] | None = None,
+    strict: bool = True,
+) -> Dict[str, List[str]]:
+    """Validate that required plot files exist.
 
-    for plot_file in required_plots:
+    Returns:
+        Dict with ``present`` and ``missing`` plot filenames relative to ``run_dir``.
+    """
+    required = list(required_plots or DEFAULT_REQUIRED_PLOTS)
+    present: List[str] = []
+    missing: List[str] = []
+
+    for plot_file in required:
         plot_path = run_dir / plot_file
-        if not plot_path.exists():
-            raise ArtifactValidationError(f"Required plot file missing: {plot_path}")
+        if plot_path.exists():
+            present.append(plot_file)
+        else:
+            missing.append(plot_file)
+
+    if strict and missing:
+        raise ArtifactValidationError(f"Required plot file(s) missing in {run_dir}: {', '.join(missing)}")
+
+    return {"present": present, "missing": missing}
+
+
+def collect_plot_inventory_targets(root: Path, depth: int = 1, name_filter: Optional[str] = None) -> List[Path]:
+    """Collect directories to inspect for plot coverage.
+
+    Args:
+        root: Starting directory.
+        depth: Directory depth relative to ``root`` to collect. Depth=1 collects immediate children.
+        name_filter: Optional substring filter applied to the final directory name.
+    """
+    if depth < 1:
+        raise ArtifactValidationError("Inventory depth must be >= 1")
+
+    if not root.exists():
+        raise ArtifactValidationError(f"Inventory root directory does not exist: {root}")
+
+    targets: List[Path] = []
+
+    def _walk(current: Path, level: int) -> None:
+        if not current.is_dir():
+            return
+        if level == depth:
+            if name_filter and name_filter not in current.name:
+                return
+            targets.append(current)
+            return
+
+        for child in sorted(p for p in current.iterdir() if p.is_dir() and not p.name.startswith(".")):
+            _walk(child, level + 1)
+
+    _walk(root, 0)
+
+    if not targets:
+        raise ArtifactValidationError(f"No plot directories found at depth {depth} under {root}")
+
+    return targets
+
+
+def summarize_plot_inventory(run_dirs: Sequence[Path], required_plots: Sequence[str] | None = None) -> Dict[str, object]:
+    """Summarize plot availability for the provided directories."""
+    required = list(required_plots or DEFAULT_REQUIRED_PLOTS)
+    total_runs = 0
+    complete_runs = 0
+    missing_entries: List[Dict[str, object]] = []
+
+    for run_dir in sorted(run_dirs, key=lambda path: path.as_posix()):
+        status = validate_plot_files(run_dir, required_plots=required, strict=False)
+        total_runs += 1
+
+        if status["missing"]:
+            missing_entries.append({"run": str(run_dir), "missing": status["missing"], "present": status["present"]})
+        else:
+            complete_runs += 1
+
+    incomplete_runs = total_runs - complete_runs
+    coverage_pct = round((complete_runs / total_runs) * 100, 2) if total_runs else 0.0
+
+    return {
+        "required_plots": required,
+        "total_runs": total_runs,
+        "complete_runs": complete_runs,
+        "incomplete_runs": incomplete_runs,
+        "coverage_pct": coverage_pct,
+        "missing_runs": missing_entries,
+    }
+
+
+def render_plot_inventory(summary: Dict[str, object], fmt: str = "json") -> str:
+    """Render the inventory summary in the requested format."""
+    if fmt == "json":
+        return json.dumps(summary, indent=2)
+
+    if fmt == "markdown":
+        lines = [
+            f"**Plot Coverage:** {summary['complete_runs']}/{summary['total_runs']} "
+            f"({summary['coverage_pct']}%)",
+            "",
+            "| Run Directory | Missing Plots |",
+            "| --- | --- |",
+        ]
+
+        missing_runs = summary.get("missing_runs", [])
+        if not missing_runs:
+            lines.append("| (all) | — |")
+        else:
+            for entry in missing_runs:
+                missing = ", ".join(entry["missing"]) if entry["missing"] else "—"
+                lines.append(f"| {entry['run']} | {missing} |")
+
+        return "\n".join(lines)
+
+    raise ValueError(f"Unsupported inventory format: {fmt}")
 
 
 def validate_fpr_tolerance(
@@ -525,8 +637,6 @@ def validate_no_regression(
         return
 
     try:
-        import json
-
         with open(regression_report_path, "r", encoding="utf-8") as f:
             regression_report = json.load(f)
 
@@ -617,7 +727,49 @@ def main() -> None:
         help="Validate privacy experiment artifacts (DP parameters, epsilon accounting).",
     )
 
+    parser.add_argument(
+        "--plot_inventory",
+        action="store_true",
+        help="Print a required-plot coverage summary and exit.",
+    )
+
+    parser.add_argument(
+        "--inventory_format",
+        choices=("json", "markdown"),
+        default="json",
+        help="Output format for --plot_inventory (default: json).",
+    )
+
+    parser.add_argument(
+        "--inventory_depth",
+        type=int,
+        default=1,
+        help="Directory depth used when collecting plot directories for --plot_inventory (default: 1).",
+    )
+
+    parser.add_argument(
+        "--inventory_filter",
+        type=str,
+        help="Only include directories whose name contains this substring when collecting plot directories.",
+    )
+
     args = parser.parse_args()
+
+    runs_dir = Path(args.runs_dir)
+
+    if args.plot_inventory:
+        try:
+            plot_dirs = collect_plot_inventory_targets(
+                runs_dir,
+                depth=args.inventory_depth,
+                name_filter=args.inventory_filter,
+            )
+            summary = summarize_plot_inventory(plot_dirs)
+            print(render_plot_inventory(summary, fmt=args.inventory_format))
+        except ArtifactValidationError as e:
+            print(f"[ERROR] Inventory failed: {e}", file=sys.stderr)
+            sys.exit(1)
+        return
 
     fpr_strict_env = os.environ.get("FPR_STRICT", "0")
     fpr_strict = args.fpr_strict or (fpr_strict_env == "1")
@@ -639,7 +791,6 @@ def main() -> None:
         minimum_seeds = args.min_seeds
 
     try:
-        runs_dir = Path(args.runs_dir)
         run_directories = find_run_directories(runs_dir)
         validate_seed_coverage(run_directories, minimum_seeds=minimum_seeds)
 
