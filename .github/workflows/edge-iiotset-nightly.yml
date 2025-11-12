@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: "0 2 * * *" # 2 AM UTC daily
   push:
-    branches: ["main"]
+    branches: ["main", "feat/issue-130-modern-datasets"]
   workflow_dispatch:
     inputs:
       dimensions:

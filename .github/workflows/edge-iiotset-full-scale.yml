@@ -3,6 +3,8 @@ name: Edge-IIoTset Full-Scale Weekly
 on:
   schedule:
     - cron: "0 1 * * 0" # 1 AM UTC every Sunday
+  push:
+    branches: ["feat/issue-130-modern-datasets"]
   workflow_dispatch:
     inputs:
       dimension_group:
