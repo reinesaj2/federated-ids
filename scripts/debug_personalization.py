@@ -158,7 +158,12 @@ def run_experiment(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Debug personalization zero-gain")
-    parser.add_argument("--dataset", type=str, default="unsw", choices=["unsw", "cic"])
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="unsw",
+        choices=["unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full"],
+    )
     parser.add_argument(
         "--data_path",
         type=str,

@@ -536,9 +536,9 @@ def main():
     parser.add_argument(
         "--dataset",
         type=str,
-        choices=["unsw", "cic"],
+        choices=["unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full"],
         default="unsw",
-        help="Dataset to use (unsw=UNSW-NB15, cic=CIC-IDS2017)",
+        help="Dataset to use (unsw=UNSW-NB15, cic=CIC-IDS2017, edge-iiotset-quick/nightly/full=Edge-IIoTset 2022)",
     )
     parser.add_argument(
         "--data_path",

@@ -103,7 +103,12 @@ def analyze_client_data_split(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Analyze data splits for personalization")
-    parser.add_argument("--dataset", type=str, default="unsw", choices=["unsw", "cic"])
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="unsw",
+        choices=["unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full"],
+    )
     parser.add_argument(
         "--data_path",
         type=str,

@@ -908,7 +908,12 @@ def main() -> None:
     logger = get_logger("client")
     parser = argparse.ArgumentParser(description="Flower client for Federated IDS demo")
     parser.add_argument("--server_address", type=str, default="127.0.0.1:8080")
-    parser.add_argument("--dataset", type=str, default="synthetic", choices=["synthetic", "unsw", "cic"])
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="synthetic",
+        choices=["synthetic", "unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full"],
+    )
     parser.add_argument("--data_path", type=str, default="", help="Path to dataset CSV for unsw/cic")
     parser.add_argument(
         "--partition_strategy",
