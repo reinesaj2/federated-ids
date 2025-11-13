@@ -14,6 +14,7 @@ Generates reproducible results for thesis validation.
 
 import argparse
 import errno
+import hashlib
 import json
 import socket
 import subprocess
@@ -30,6 +31,14 @@ DEFAULT_ALPHA_NON_IID = 0.5  # Moderate non-IID for multi-dimensional experiment
 DEFAULT_AGGREGATION = "fedavg"  # Baseline aggregation
 # Attack dimension: compare all robust aggregation methods
 ATTACK_AGGREGATIONS = ["fedavg", "krum", "bulyan", "median"]
+
+DATASET_DEFAULT_PATHS = {
+    "unsw": "data/unsw/UNSW_NB15_training-set.csv",
+    "cic": "data/cic/cic_ids2017_multiclass.csv",
+    "edge-iiotset-quick": "data/edge-iiotset/edge_iiotset_quick.csv",
+    "edge-iiotset-nightly": "data/edge-iiotset/edge_iiotset_nightly.csv",
+    "edge-iiotset-full": "data/edge-iiotset/edge_iiotset_full.csv",
+}
 
 
 @dataclass
@@ -52,20 +61,32 @@ class ExperimentConfig:
     @classmethod
     def with_dataset(cls, dataset: str, **kwargs):
         """Create config with dataset-specific defaults."""
-        dataset_paths = {
-            "unsw": "data/unsw/UNSW_NB15_training-set.csv",
-            "cic": "data/cic/cic_ids2017_multiclass.csv",
-            "edge-iiotset-quick": "data/edge-iiotset/edge_iiotset_quick.csv",
-            "edge-iiotset-nightly": "data/edge-iiotset/edge_iiotset_nightly.csv",
-            "edge-iiotset-full": "data/edge-iiotset/edge_iiotset_full.csv",
-        }
-        if dataset not in dataset_paths:
-            raise ValueError(f"Unknown dataset: {dataset}. Supported: {list(dataset_paths.keys())}")
-        return cls(dataset=dataset, data_path=dataset_paths[dataset], **kwargs)
+        if dataset not in DATASET_DEFAULT_PATHS:
+            raise ValueError(f"Unknown dataset: {dataset}. Supported: {list(DATASET_DEFAULT_PATHS.keys())}")
+        return cls(dataset=dataset, data_path=DATASET_DEFAULT_PATHS[dataset], **kwargs)
+
+    def _dataset_component(self) -> str:
+        """Return filesystem-safe dataset token for preset naming."""
+        dataset_label = (self.dataset or "custom").replace("/", "-")
+        component = f"ds{dataset_label}"
+
+        normalized_path = None
+        if self.data_path:
+            normalized_path = str(Path(self.data_path))
+
+        default_path = DATASET_DEFAULT_PATHS.get(self.dataset)
+        default_normalized = str(Path(default_path)) if default_path else None
+
+        if normalized_path and normalized_path != default_normalized:
+            digest = hashlib.sha1(normalized_path.encode("utf-8")).hexdigest()[:8]
+            component = f"{component}_p{digest}"
+
+        return component
 
     def to_preset_name(self) -> str:
         """Generate unique preset name for this configuration."""
         parts = [
+            self._dataset_component(),
             f"comp_{self.aggregation}",
             f"alpha{self.alpha}",
             f"adv{int(self.adversary_fraction * 100)}",
@@ -297,7 +318,7 @@ def is_port_available(port: int, host: str = "localhost") -> bool:
             return False
 
 
-def find_available_port(start_port: int = 8080, max_attempts: int = 100) -> int:
+def find_available_port(start_port: int = 18080, max_attempts: int = 100) -> int:
     """Find an available port starting from start_port."""
     for port in range(start_port, start_port + max_attempts):
         if is_port_available(port):
@@ -333,7 +354,7 @@ def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int =
 
 
 def run_federated_experiment(
-    config: ExperimentConfig, base_dir: Path, port_start: int = 8080, server_timeout: int = 300, client_timeout: int = 900
+    config: ExperimentConfig, base_dir: Path, port_start: int = 18080, server_timeout: int = 300, client_timeout: int = 900
 ) -> Dict:
     """Run a single federated learning experiment with proper error handling.
 

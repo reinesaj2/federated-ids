@@ -35,6 +35,7 @@ def test_experiment_config_preset_name():
     )
 
     preset = config.to_preset_name()
+    assert preset.startswith("dsunsw_")
     assert "fedavg" in preset
     assert "alpha1.0" in preset
     assert "adv0" in preset
@@ -246,6 +247,26 @@ def test_config_to_preset_name_uniqueness():
     assert preset1 != preset2
     assert preset1 != preset3
     assert preset2 != preset3
+
+
+def test_config_to_preset_name_differs_by_dataset():
+    """Different datasets should produce distinct preset names even with same params."""
+    shared_kwargs = dict(
+        aggregation="fedavg",
+        alpha=1.0,
+        adversary_fraction=0.0,
+        dp_enabled=False,
+        dp_noise_multiplier=0.0,
+        personalization_epochs=0,
+        num_clients=6,
+        num_rounds=20,
+        seed=42,
+    )
+
+    config_unsw = ExperimentConfig(dataset="unsw", data_path="data/unsw/UNSW_NB15_training-set.csv", **shared_kwargs)
+    config_cic = ExperimentConfig(dataset="cic", data_path="data/cic/cic_ids2017_multiclass.csv", **shared_kwargs)
+
+    assert config_unsw.to_preset_name() != config_cic.to_preset_name()
 
 
 def test_experiment_config_serialization():
