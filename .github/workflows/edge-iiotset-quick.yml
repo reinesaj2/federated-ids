@@ -28,14 +28,6 @@ jobs:
   quick_validation:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix:
-        preset:
-          - comp_fedavg_alpha1.0_seed42
-          - comp_krum_alpha0.5_seed42
-          - comp_fedprox_alpha1.0_mu0.1_seed42
     steps:
       - uses: actions/checkout@v4
         with:
@@ -67,7 +59,7 @@ jobs:
           ROUNDS=${{ github.event.inputs.num_rounds || '5' }}
 
           echo "Starting Edge-IIoTset quick validation"
-          echo "  Preset: ${{ matrix.preset }}"
+          echo "  Dimension: aggregation (FedAvg, Krum, Bulyan, Median)"
           echo "  Clients: $CLIENTS"
           echo "  Rounds: $ROUNDS"
           echo "  Dataset: edge-iiotset-quick (50k samples)"
@@ -80,9 +72,10 @@ jobs:
 
           python scripts/comparative_analysis.py \
             --dataset edge-iiotset-quick \
-            --preset ${{ matrix.preset }} \
-            --clients "$CLIENTS" \
-            --rounds "$ROUNDS"
+            --dimension aggregation \
+            --output_dir results/edge_iiotset_quick \
+            --num_clients "$CLIENTS" \
+            --num_rounds "$ROUNDS"
 
       - name: Generate run-level plots
         run: |
@@ -127,7 +120,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: edge-iiotset-quick-${{ matrix.preset }}-${{ github.sha }}
+          name: edge-iiotset-quick-aggregation-${{ github.sha }}
           path: |
             runs/comp_**/metrics.csv
             runs/comp_**/client_*_metrics.csv
