@@ -75,6 +75,7 @@ jobs:
         if: steps.group_filter.outputs.should_run == 'true'
         with:
           fetch-depth: 0
+          lfs: true
 
       - uses: actions/setup-python@v5
         if: steps.group_filter.outputs.should_run == 'true'
@@ -264,6 +265,8 @@ jobs:
     if: always()
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - uses: actions/setup-python@v5
         with:
@@ -339,6 +342,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          lfs: true
           ref: main
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
