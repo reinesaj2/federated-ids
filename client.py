@@ -23,6 +23,7 @@ from data_preprocessing import (
     create_synthetic_classification_loaders,
     load_unsw_nb15,
     load_cic_ids2017,
+    load_edge_iiotset,
     prepare_partitions_from_dataframe,
     numpy_to_loaders,
     infer_class_names_from_series,
@@ -907,7 +908,12 @@ def main() -> None:
     logger = get_logger("client")
     parser = argparse.ArgumentParser(description="Flower client for Federated IDS demo")
     parser.add_argument("--server_address", type=str, default="127.0.0.1:8080")
-    parser.add_argument("--dataset", type=str, default="synthetic", choices=["synthetic", "unsw", "cic"])
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="synthetic",
+        choices=["synthetic", "unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full"],
+    )
     parser.add_argument("--data_path", type=str, default="", help="Path to dataset CSV for unsw/cic")
     parser.add_argument(
         "--partition_strategy",
@@ -1066,11 +1072,15 @@ def main() -> None:
         class_names = ["BENIGN", "ATTACK"] if args.num_classes == 2 else [f"CLASS_{i}" for i in range(args.num_classes)]
     else:
         if not args.data_path:
-            raise SystemExit("--data_path is required for dataset unsw/cic")
+            raise SystemExit("--data_path is required for dataset unsw/cic/edge-iiotset")
         if args.dataset == "unsw":
             df, label_col, proto_col = load_unsw_nb15(args.data_path)
-        else:
+        elif args.dataset == "cic":
             df, label_col, proto_col = load_cic_ids2017(args.data_path)
+        elif args.dataset.startswith("edge-iiotset"):
+            df, label_col, proto_col = load_edge_iiotset(args.data_path, use_multiclass=True)
+        else:
+            raise SystemExit(f"Unknown dataset: {args.dataset}")
         chosen_proto_col = args.protocol_col or (proto_col or "")
         class_names = infer_class_names_from_series(df[label_col])
         if args.protocol_mapping_path:
@@ -1089,9 +1099,7 @@ def main() -> None:
                 except (TypeError, ValueError):
                     continue
                 if normalized_idx < 0 or normalized_idx >= args.num_clients:
-                    raise SystemExit(
-                        f"protocol mapping client id {normalized_idx} must be in [0, {args.num_clients})"
-                    )
+                    raise SystemExit(f"protocol mapping client id {normalized_idx} must be in [0, {args.num_clients})")
                 protocol_mapping[normalized_proto] = normalized_idx
         pre, X_parts, y_parts, num_classes_global = prepare_partitions_from_dataframe(
             df=df,

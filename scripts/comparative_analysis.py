@@ -55,6 +55,9 @@ class ExperimentConfig:
         dataset_paths = {
             "unsw": "data/unsw/UNSW_NB15_training-set.csv",
             "cic": "data/cic/cic_ids2017_multiclass.csv",
+            "edge-iiotset-quick": "data/edge-iiotset/edge_iiotset_quick.csv",
+            "edge-iiotset-nightly": "data/edge-iiotset/edge_iiotset_nightly.csv",
+            "edge-iiotset-full": "data/edge-iiotset/edge_iiotset_full.csv",
         }
         if dataset not in dataset_paths:
             raise ValueError(f"Unknown dataset: {dataset}. Supported: {list(dataset_paths.keys())}")
@@ -533,9 +536,9 @@ def main():
     parser.add_argument(
         "--dataset",
         type=str,
-        choices=["unsw", "cic"],
+        choices=["unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full"],
         default="unsw",
-        help="Dataset to use (unsw=UNSW-NB15, cic=CIC-IDS2017)",
+        help="Dataset to use (unsw=UNSW-NB15, cic=CIC-IDS2017, edge-iiotset-quick/nightly/full=Edge-IIoTset 2022)",
     )
     parser.add_argument(
         "--data_path",
@@ -600,6 +603,9 @@ def main():
     dataset_paths = {
         "unsw": "data/unsw/UNSW_NB15_training-set.csv",
         "cic": "data/cic/cic_ids2017_multiclass.csv",
+        "edge-iiotset-quick": "data/edge-iiotset/edge_iiotset_quick.csv",
+        "edge-iiotset-nightly": "data/edge-iiotset/edge_iiotset_nightly.csv",
+        "edge-iiotset-full": "data/edge-iiotset/edge_iiotset_full.csv",
     }
     data_path = args.data_path if args.data_path else dataset_paths[args.dataset]
 

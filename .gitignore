@@ -35,3 +35,5 @@ QPLAN_*.md
 
 # Exception: Keep constraint documentation
 !EXPERIMENT_CONSTRAINTS.md
+datasets/archive.zip
+datasets/edge-iiotset/Edge-IIoTset dataset/

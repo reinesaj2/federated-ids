@@ -1,0 +1,335 @@
+name: Edge-IIoTset Nightly Comprehensive
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # 2 AM UTC daily
+  push:
+    branches: ["main", "feat/issue-130-modern-datasets"]
+  workflow_dispatch:
+    inputs:
+      dimensions:
+        description: "Dimensions to run (comma-separated: aggregation,heterogeneity,attack,privacy,personalization,heterogeneity_fedprox,all)"
+        required: false
+        default: "all"
+        type: string
+      num_clients:
+        description: "Number of clients"
+        required: false
+        default: "6"
+        type: string
+      num_rounds:
+        description: "Number of rounds"
+        required: false
+        default: "20"
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  edge_iiotset_experiments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 480 # 8 hours for comprehensive experiments
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        dimension:
+          [aggregation, heterogeneity, heterogeneity_fedprox, attack, privacy, personalization]
+    steps:
+      - name: Determine dimension filter
+        id: dimension_filter
+        run: |
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          dims="${{ github.event.inputs.dimensions || '' }}"
+          if [ -z "$dims" ] || [ "$dims" = "all" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          should_run=false
+          IFS=',' read -ra DIM_LIST <<< "$dims"
+          for dim in "${DIM_LIST[@]}"; do
+            dim_trim=$(echo "$dim" | xargs)
+            if [ "$dim_trim" = "${{ matrix.dimension }}" ]; then
+              should_run=true
+              break
+            fi
+          done
+
+          echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
+
+      - name: Skip unrequested dimension
+        if: steps.dimension_filter.outputs.should_run != 'true'
+        run: echo "Dimension ${{ matrix.dimension }} not requested; skipping job."
+
+      - uses: actions/checkout@v4
+        if: steps.dimension_filter.outputs.should_run == 'true'
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        if: steps.dimension_filter.outputs.should_run == 'true'
+        with:
+          python-version: "3.11"
+
+      - uses: actions/cache@v4
+        if: steps.dimension_filter.outputs.should_run == 'true'
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      - name: Install dependencies
+        if: steps.dimension_filter.outputs.should_run == 'true'
+        run: |
+          pip install -r requirements.txt
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Prepare Edge-IIoTset samples
+        if: steps.dimension_filter.outputs.should_run == 'true'
+        run: python scripts/setup_real_datasets.py
+
+      - name: Run comparative analysis
+        if: steps.dimension_filter.outputs.should_run == 'true'
+        env:
+          D2_EXTENDED_METRICS: "1"
+        run: |
+          CLIENTS=${{ github.event.inputs.num_clients || '6' }}
+          ROUNDS=${{ github.event.inputs.num_rounds || '20' }}
+
+          echo "Starting Edge-IIoTset nightly analysis"
+          echo "  Dimension: ${{ matrix.dimension }}"
+          echo "  Dataset: edge-iiotset-nightly (500k samples)"
+          echo "  Clients: $CLIENTS"
+          echo "  Rounds: $ROUNDS"
+          echo ""
+          echo "System resources:"
+          echo "  Memory: $(free -h | grep '^Mem:' | awk '{print $2}')"
+          echo "  CPU cores: $(nproc)"
+          echo "  Disk space: $(df -h . | tail -1 | awk '{print $4}')"
+          echo ""
+
+          python scripts/comparative_analysis.py \
+            --dataset edge-iiotset-nightly \
+            --dimension ${{ matrix.dimension }} \
+            --output_dir results/edge_iiotset_nightly \
+            --num_clients "$CLIENTS" \
+            --num_rounds "$ROUNDS"
+
+      - name: Generate run-level plots
+        if: steps.dimension_filter.outputs.should_run == 'true'
+        run: |
+          shopt -s nullglob
+          found=0
+          for dir in runs/comp_*/; do
+            found=1
+            echo "Generating plots for $dir"
+            python scripts/plot_metrics.py \
+              --run_dir "$dir" \
+              --output_dir "$dir"
+          done
+
+          if [ $found -eq 0 ]; then
+            echo "No run directories found for ${{ matrix.dimension }}; skipping plot generation."
+          fi
+
+      - name: Generate thesis plots
+        if: steps.dimension_filter.outputs.should_run == 'true'
+        run: |
+          echo "Generating thesis plots for dimension: ${{ matrix.dimension }}"
+
+          # Check if we have experiment data
+          shopt -s nullglob
+          run_dirs=(runs/comp_*/)
+          if [ ! -d "runs" ] || [ ${#run_dirs[@]} -eq 0 ]; then
+            echo "ERROR: No experiment data found in runs/ directory"
+            echo "Available directories:"
+            ls -la runs/ || echo "runs/ directory does not exist"
+            exit 1
+          fi
+
+          # Generate plots with error handling
+          python scripts/generate_thesis_plots.py \
+            --dimension ${{ matrix.dimension }} \
+            --runs_dir runs \
+            --output_dir results/thesis_plots/edge_iiotset_nightly/${{ matrix.dimension }}
+
+          # Verify plots were generated
+          if [ -d "results/thesis_plots/edge_iiotset_nightly/${{ matrix.dimension }}" ]; then
+            PLOT_COUNT=$(find results/thesis_plots/edge_iiotset_nightly/${{ matrix.dimension }} -name "*.png" -o -name "*.pdf" | wc -l)
+            echo "Generated $PLOT_COUNT plots for ${{ matrix.dimension }}"
+          else
+            echo "ERROR: No plots generated for ${{ matrix.dimension }}"
+            exit 1
+          fi
+
+      - name: Validate results
+        if: steps.dimension_filter.outputs.should_run == 'true'
+        run: |
+          echo "Validating experiment results..."
+          FOUND=0
+          FAILED=0
+          TOTAL=0
+
+          for dir in runs/comp_*/; do
+            TOTAL=$((TOTAL + 1))
+            if [ -f "$dir/metrics.csv" ]; then
+              echo "Found metrics in $(basename $dir)"
+              FOUND=$((FOUND + 1))
+            else
+              echo "Missing metrics in $(basename $dir)"
+              FAILED=$((FAILED + 1))
+            fi
+          done
+
+          echo ""
+          echo "VALIDATION SUMMARY:"
+          echo "  Total experiments: $TOTAL"
+          echo "  Successful: $FOUND"
+          echo "  Failed: $FAILED"
+          echo "  Success rate: $((FOUND * 100 / TOTAL))%"
+
+          # Require at least 50% success rate
+          if [ $FOUND -eq 0 ]; then
+            echo "ERROR: No experiments produced metrics"
+            exit 1
+          elif [ $FOUND -lt $((TOTAL / 2)) ]; then
+            echo "WARNING: Low success rate ($((FOUND * 100 / TOTAL))%), but continuing..."
+          else
+            echo "SUCCESS: Adequate experiment completion rate"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: steps.dimension_filter.outputs.should_run == 'true'
+        with:
+          name: edge-iiotset-nightly-${{ matrix.dimension }}-${{ github.sha }}
+          path: |
+            runs/comp_**/metrics.csv
+            runs/comp_**/client_*_metrics.csv
+            runs/comp_**/config.json
+            runs/comp_**/*.log
+            results/thesis_plots/edge_iiotset_nightly/${{ matrix.dimension }}/**/*.png
+            results/thesis_plots/edge_iiotset_nightly/${{ matrix.dimension }}/**/*.pdf
+          retention-days: 90
+
+  consolidated_summary:
+    needs: edge_iiotset_experiments
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pandas matplotlib seaborn numpy scipy
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: edge-iiotset-artifacts
+
+      - name: Generate consolidated summary
+        run: |
+          mkdir -p edge-iiotset-thesis-summary
+
+          # Collect all thesis plots
+          find edge-iiotset-artifacts -name "*.png" -o -name "*.pdf" | while read file; do
+            cp "$file" edge-iiotset-thesis-summary/
+          done
+
+          # Create markdown index
+          cat > edge-iiotset-thesis-summary/README.md << 'EOF'
+          # Edge-IIoTset Nightly Thesis Plots
+
+          Auto-generated on $(date)
+
+          ## Available Plots
+
+          EOF
+
+          for dim in aggregation heterogeneity attack privacy personalization heterogeneity_fedprox; do
+            echo "### $dim" >> edge-iiotset-thesis-summary/README.md
+            find edge-iiotset-thesis-summary -name "*${dim}*.png" | while read plot; do
+              echo "- ![$(basename $plot)]($(basename $plot))" >> edge-iiotset-thesis-summary/README.md
+            done
+            echo "" >> edge-iiotset-thesis-summary/README.md
+          done
+
+      - name: Upload consolidated results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: edge-iiotset-thesis-plots-summary-${{ github.sha }}
+          path: edge-iiotset-thesis-summary/**
+          retention-days: 90
+
+  commit_thesis_plots:
+    needs: [consolidated_summary]
+    runs-on: ubuntu-latest
+    if: always() && needs.consolidated_summary.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download consolidated results
+        uses: actions/download-artifact@v4
+        with:
+          name: edge-iiotset-thesis-plots-summary-${{ github.sha }}
+          path: edge-iiotset-thesis-summary
+
+      - name: Commit plots to repository
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          mkdir -p plots/thesis
+
+          # Copy Edge-IIoTset nightly plots
+          if [ -d "edge-iiotset-thesis-summary" ]; then
+            python scripts/commit_plots.py \
+              --source_dir edge-iiotset-thesis-summary \
+              --experiment_type edge-iiotset-nightly \
+              --plots_dir plots/thesis
+          fi
+
+      - name: Push plots to repository
+        run: |
+          # Check if there are unpushed commits
+          if git log origin/main..HEAD --oneline | grep -q .; then
+            git push origin main
+          else
+            echo "No commits to push"
+          fi
+
+  notify_failure:
+    needs: edge_iiotset_experiments
+    runs-on: ubuntu-latest
+    if: always() && needs.edge_iiotset_experiments.result == 'failure'
+    steps:
+      - name: Log failure
+        run: |
+          echo "Edge-IIoTset Nightly Failed"
+          echo "Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Failed at: $(date)"

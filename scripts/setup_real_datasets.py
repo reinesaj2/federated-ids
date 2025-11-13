@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import shutil
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,6 +62,58 @@ def extract_dataset(name: str, source: Path, target: Path, required: bool, min_b
     print(f"[{name}] Extracted {source.relative_to(ROOT)} -> {target.relative_to(ROOT)} ({size} bytes)")
 
 
+def prepare_edge_iiotset_samples() -> None:
+    """Generate stratified Edge-IIoTset samples if source dataset exists."""
+    source_dataset = (
+        ROOT / "datasets" / "edge-iiotset" / "Edge-IIoTset dataset" / "Selected dataset for ML and DL" / "DNN-EdgeIIoT-dataset.csv"
+    )
+
+    if not source_dataset.exists():
+        print("[edge-iiotset] Source dataset not found, skipping sample generation")
+        print(f"             Expected: {source_dataset.relative_to(ROOT)}")
+        return
+
+    # Check if samples already exist
+    quick_sample = ROOT / "data" / "edge-iiotset" / "edge_iiotset_quick.csv"
+    nightly_sample = ROOT / "data" / "edge-iiotset" / "edge_iiotset_nightly.csv"
+    full_sample = ROOT / "data" / "edge-iiotset" / "edge_iiotset_full.csv"
+
+    if quick_sample.exists() and nightly_sample.exists() and full_sample.exists():
+        print("[edge-iiotset] All samples already exist, skipping generation")
+        print(f"             Quick: {quick_sample.stat().st_size:,} bytes")
+        print(f"             Nightly: {nightly_sample.stat().st_size:,} bytes")
+        print(f"             Full: {full_sample.stat().st_size:,} bytes")
+        return
+
+    print("[edge-iiotset] Generating stratified samples (this may take several minutes)...")
+
+    try:
+        subprocess.run(
+            [
+                "python",
+                str(ROOT / "scripts" / "prepare_edge_iiotset_samples.py"),
+                "--tier",
+                "all",
+                "--source",
+                str(source_dataset),
+                "--output-dir",
+                str(ROOT / "data" / "edge-iiotset"),
+            ],
+            check=True,
+            cwd=ROOT,
+        )
+        print("[edge-iiotset] Sample generation complete")
+        if quick_sample.exists():
+            print(f"             Quick: {quick_sample.stat().st_size:,} bytes")
+        if nightly_sample.exists():
+            print(f"             Nightly: {nightly_sample.stat().st_size:,} bytes")
+        if full_sample.exists():
+            print(f"             Full: {full_sample.stat().st_size:,} bytes")
+    except subprocess.CalledProcessError as e:
+        print(f"[edge-iiotset] ERROR: Sample generation failed: {e}")
+        print("             Experiments will fail if Edge-IIoTset samples are required")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Materialize IDS datasets for CI")
     parser.add_argument(
@@ -70,10 +123,16 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # Extract legacy datasets (UNSW, CIC)
     for name, paths in DATASETS.items():
         if args.full_only and not paths["required"]:
             continue
         extract_dataset(name, paths["source"], paths["target"], paths["required"], paths.get("min_bytes"))
+
+    # Generate Edge-IIoTset samples
+    print("\n" + "=" * 70)
+    prepare_edge_iiotset_samples()
+    print("=" * 70)
 
 
 if __name__ == "__main__":

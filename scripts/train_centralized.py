@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 from data_preprocessing import (
     fit_preprocessor_global,
     load_cic_ids2017,
+    load_edge_iiotset,
     load_unsw_nb15,
     numpy_to_train_val_test_loaders,
 )
@@ -78,7 +79,12 @@ def evaluate_probs(model: nn.Module, loader: DataLoader, device: torch.device) -
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Centralized baseline training")
-    parser.add_argument("--dataset", type=str, required=True, choices=["unsw", "cic"])
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        required=True,
+        choices=["unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full"],
+    )
     parser.add_argument("--data_path", type=str, required=True)
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch_size", type=int, default=64)
@@ -91,8 +97,12 @@ def main() -> None:
 
     if args.dataset == "unsw":
         df, label_col, _ = load_unsw_nb15(args.data_path)
-    else:
+    elif args.dataset == "cic":
         df, label_col, _ = load_cic_ids2017(args.data_path)
+    elif args.dataset.startswith("edge-iiotset"):
+        df, label_col, _ = load_edge_iiotset(args.data_path, use_multiclass=True)
+    else:
+        raise ValueError(f"Unknown dataset: {args.dataset}")
 
     pre, X_all, y_all = fit_preprocessor_global(df, label_col)
     num_features = X_all.shape[1]
