@@ -246,8 +246,7 @@ def render_plot_inventory(summary: Dict[str, object], fmt: str = "json") -> str:
 
     if fmt == "markdown":
         lines = [
-            f"**Plot Coverage:** {summary['complete_runs']}/{summary['total_runs']} "
-            f"({summary['coverage_pct']}%)",
+            f"**Plot Coverage:** {summary['complete_runs']}/{summary['total_runs']} " f"({summary['coverage_pct']}%)",
             "",
             "| Run Directory | Missing Plots |",
             "| --- | --- |",
