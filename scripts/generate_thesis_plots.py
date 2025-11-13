@@ -35,11 +35,7 @@ for candidate in (ROOT, ROOT / "scripts"):
 from plot_metrics_utils import compute_confidence_interval  # noqa: E402
 from privacy_accounting import compute_epsilon  # noqa: E402
 from metric_validation import MetricValidator  # noqa: E402
-from confusion_matrix_utils import (  # noqa: E402
-    compute_confusion_matrix,
-    render_confusion_matrix_heatmap,
-    aggregate_confusion_matrices,
-)
+from confusion_matrix_utils import compute_confusion_matrix  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
