@@ -35,6 +35,12 @@ DATASETS = {
     },
 }
 
+EDGE_IIOTSET_SAMPLES = (
+    "edge_iiotset_quick.csv",
+    "edge_iiotset_nightly.csv",
+    "edge_iiotset_full.csv",
+)
+
 
 def extract_dataset(name: str, source: Path, target: Path, required: bool, min_bytes: int | None) -> None:
     if target.exists():
@@ -62,11 +68,48 @@ def extract_dataset(name: str, source: Path, target: Path, required: bool, min_b
     print(f"[{name}] Extracted {source.relative_to(ROOT)} -> {target.relative_to(ROOT)} ({size} bytes)")
 
 
+def link_processed_edge_iiotset_samples() -> None:
+    processed_dir = ROOT / "datasets" / "edge-iiotset" / "processed"
+    target_dir = ROOT / "data" / "edge-iiotset"
+
+    if not processed_dir.exists():
+        return
+
+    linked = False
+    for sample_name in EDGE_IIOTSET_SAMPLES:
+        src = processed_dir / sample_name
+        if not src.exists():
+            continue
+
+        dest = target_dir / sample_name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+
+        if dest.exists():
+            continue
+
+        try:
+            dest.symlink_to(src)
+            action = "Linked"
+        except OSError:
+            shutil.copy2(src, dest)
+            action = "Copied"
+
+        print(
+            f"[edge-iiotset] {action} {dest.relative_to(ROOT)} -> {src.relative_to(ROOT)}"
+        )
+        linked = True
+
+    if linked:
+        print("[edge-iiotset] Using processed samples from datasets/edge-iiotset/processed/")
+
+
 def prepare_edge_iiotset_samples() -> None:
     """Generate stratified Edge-IIoTset samples if source dataset exists."""
     source_dataset = (
         ROOT / "datasets" / "edge-iiotset" / "Edge-IIoTset dataset" / "Selected dataset for ML and DL" / "DNN-EdgeIIoT-dataset.csv"
     )
+
+    link_processed_edge_iiotset_samples()
 
     if not source_dataset.exists():
         print("[edge-iiotset] Source dataset not found, skipping sample generation")
