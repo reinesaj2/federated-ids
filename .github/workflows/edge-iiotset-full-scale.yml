@@ -7,8 +7,8 @@ on:
     branches: ["feat/issue-130-modern-datasets"]
   workflow_dispatch:
     inputs:
-      dimension_group:
-        description: "Dimension group to run (group1, group2, group3, all)"
+      dimensions:
+        description: "Dimensions to run (comma-separated: aggregation,heterogeneity,...,all)"
         required: false
         default: "all"
         type: string
@@ -34,79 +34,87 @@ concurrency:
 jobs:
   full_scale_experiments:
     runs-on: ubuntu-latest
-    timeout-minutes: 480 # 8 hours per dimension group
+    timeout-minutes: 480 # 8 hours per dimension
     strategy:
       fail-fast: false
-      max-parallel: 3 # Run 3 groups in parallel for 24-hour total coverage
+      max-parallel: 3 # Run 3 dimensions in parallel (2 waves total)
       matrix:
-        include:
-          - group_name: group1
-            dimensions: "aggregation heterogeneity"
-          - group_name: group2
-            dimensions: "attack privacy"
-          - group_name: group3
-            dimensions: "personalization heterogeneity_fedprox"
+        dimension:
+          [
+            aggregation,
+            heterogeneity,
+            heterogeneity_fedprox,
+            attack,
+            privacy,
+            personalization,
+          ]
     steps:
-      - name: Determine group filter
-        id: group_filter
+      - name: Determine dimension filter
+        id: dimension_filter
         run: |
           if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          requested_group="${{ github.event.inputs.dimension_group || 'all' }}"
-          if [ "$requested_group" = "all" ]; then
+          dims="${{ github.event.inputs.dimensions || '' }}"
+          if [ -z "$dims" ] || [ "$dims" = "all" ]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if [ "$requested_group" = "${{ matrix.group_name }}" ]; then
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_run=false" >> "$GITHUB_OUTPUT"
-          fi
+          should_run=false
+          IFS=',' read -ra DIM_LIST <<< "$dims"
+          for dim in "${DIM_LIST[@]}"; do
+            dim_trim=$(echo "$dim" | xargs)
+            if [ "$dim_trim" = "${{ matrix.dimension }}" ]; then
+              should_run=true
+              break
+            fi
+          done
 
-      - name: Skip unrequested group
-        if: steps.group_filter.outputs.should_run != 'true'
-        run: echo "Group ${{ matrix.group_name }} not requested; skipping job."
+          echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
+
+      - name: Skip unrequested dimension
+        if: steps.dimension_filter.outputs.should_run != 'true'
+        run: echo "Dimension ${{ matrix.dimension }} not requested; skipping job."
 
       - uses: actions/checkout@v4
-        if: steps.group_filter.outputs.should_run == 'true'
+        if: steps.dimension_filter.outputs.should_run == 'true'
         with:
           fetch-depth: 0
           lfs: true
 
       - name: Fetch LFS datasets
-        if: steps.group_filter.outputs.should_run == 'true'
+        if: steps.dimension_filter.outputs.should_run == 'true'
         run: |
           git lfs fetch --all
           git lfs checkout datasets/edge-iiotset/processed/edge_iiotset_full.csv
 
       - uses: actions/setup-python@v5
-        if: steps.group_filter.outputs.should_run == 'true'
+        if: steps.dimension_filter.outputs.should_run == 'true'
         with:
           python-version: "3.11"
 
       - uses: actions/cache@v4
-        if: steps.group_filter.outputs.should_run == 'true'
+        if: steps.dimension_filter.outputs.should_run == 'true'
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: pip-${{ runner.os }}-
 
       - name: Install dependencies
-        if: steps.group_filter.outputs.should_run == 'true'
+        if: steps.dimension_filter.outputs.should_run == 'true'
         run: |
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
       - name: Prepare Edge-IIoTset samples
-        if: steps.group_filter.outputs.should_run == 'true'
+        if: steps.dimension_filter.outputs.should_run == 'true'
         run: python scripts/setup_real_datasets.py
 
       - name: Verify full dataset
-        if: steps.group_filter.outputs.should_run == 'true'
+        if: steps.dimension_filter.outputs.should_run == 'true'
         run: |
           FULL_DATASET="data/edge-iiotset/edge_iiotset_full.csv"
           if [ ! -f "$FULL_DATASET" ]; then
@@ -121,7 +129,7 @@ jobs:
           fi
 
       - name: Run full-scale experiments
-        if: steps.group_filter.outputs.should_run == 'true'
+        if: steps.dimension_filter.outputs.should_run == 'true'
         env:
           D2_EXTENDED_METRICS: "1"
         run: |
@@ -131,8 +139,7 @@ jobs:
           echo "=========================================="
           echo "FULL-SCALE THESIS EXPERIMENTS"
           echo "=========================================="
-          echo "  Group: ${{ matrix.group_name }}"
-          echo "  Dimensions: ${{ matrix.dimensions }}"
+          echo "  Dimension: ${{ matrix.dimension }}"
           echo "  Dataset: edge-iiotset-full (2M samples = 90% of dataset)"
           echo "  Clients: $CLIENTS"
           echo "  Rounds: $ROUNDS"
@@ -144,26 +151,15 @@ jobs:
           echo "=========================================="
           echo ""
 
-          # Run each dimension in the group sequentially
-          for dimension in ${{ matrix.dimensions }}; do
-            echo ""
-            echo ">>> Starting dimension: $dimension"
-            echo ""
-
-            python scripts/comparative_analysis.py \
-              --dataset edge-iiotset-full \
-              --dimension "$dimension" \
-              --output_dir results/edge_iiotset_full \
-              --num_clients "$CLIENTS" \
-              --num_rounds "$ROUNDS"
-
-            echo ""
-            echo ">>> Completed dimension: $dimension"
-            echo ""
-          done
+          python scripts/comparative_analysis.py \
+            --dataset edge-iiotset-full \
+            --dimension ${{ matrix.dimension }} \
+            --output_dir results/edge_iiotset_full \
+            --num_clients "$CLIENTS" \
+            --num_rounds "$ROUNDS"
 
       - name: Generate run-level plots
-        if: steps.group_filter.outputs.should_run == 'true'
+        if: steps.dimension_filter.outputs.should_run == 'true'
         run: |
           shopt -s nullglob
           found=0
@@ -176,11 +172,11 @@ jobs:
           done
 
           if [ $found -eq 0 ]; then
-            echo "No run directories found; skipping plot generation."
+            echo "No run directories found for ${{ matrix.dimension }}; skipping plot generation."
           fi
 
       - name: Generate thesis plots for all dimensions
-        if: steps.group_filter.outputs.should_run == 'true'
+        if: steps.dimension_filter.outputs.should_run == 'true'
         run: |
           echo "Generating thesis plots for all dimensions in runs/"
 
@@ -213,7 +209,7 @@ jobs:
           fi
 
       - name: Validate results
-        if: steps.group_filter.outputs.should_run == 'true'
+        if: steps.dimension_filter.outputs.should_run == 'true'
         run: |
           echo "Validating experiment results..."
           FOUND=0
@@ -234,7 +230,7 @@ jobs:
 
           echo ""
           echo "=========================================="
-          echo "VALIDATION SUMMARY - ${{ matrix.group_name }}"
+          echo "VALIDATION SUMMARY - ${{ matrix.dimension }}"
           echo "=========================================="
           echo "  Total experiments: $TOTAL"
           echo "  Successful: $FOUND"
@@ -253,9 +249,9 @@ jobs:
           fi
 
       - uses: actions/upload-artifact@v4
-        if: steps.group_filter.outputs.should_run == 'true'
+        if: steps.dimension_filter.outputs.should_run == 'true'
         with:
-          name: edge-iiotset-full-${{ matrix.group_name }}-${{ github.sha }}
+          name: edge-iiotset-full-${{ matrix.dimension }}-${{ github.sha }}
           path: |
             runs/comp_**/metrics.csv
             runs/comp_**/client_*_metrics.csv
