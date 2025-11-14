@@ -277,12 +277,19 @@ def main():
         "--dimension",
         type=str,
         default="all",
-        choices=["all", "aggregation", "heterogeneity", "attack", "privacy", "personalization"],
+        choices=["all", "aggregation", "heterogeneity", "heterogeneity_fedprox", "attack", "privacy", "personalization"],
         help="Experiment dimension(s) to run",
     )
     parser.add_argument("--workers", type=int, default=None, help="Number of parallel workers (auto-calculated if not specified)")
     parser.add_argument(
         "--dataset-type", type=str, default="full", choices=["full", "sample", "cic"], help="Dataset type (affects memory calculation)"
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="edge-iiotset-full",
+        choices=["unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full"],
+        help="Dataset to use for experiments",
     )
     parser.add_argument("--skip-completed", action="store_true", default=True, help="Skip already completed experiments")
     parser.add_argument("--max-retries", type=int, default=2, help="Maximum retries for failed experiments")
@@ -300,7 +307,15 @@ def main():
     print(f"{'='*70}")
 
     # Generate configs
-    matrix = ComparisonMatrix()
+    dataset_paths = {
+        "unsw": "data/unsw/UNSW_NB15_training-set.csv",
+        "cic": "data/cic/cic_ids2017_multiclass.csv",
+        "edge-iiotset-quick": "data/edge-iiotset/edge_iiotset_quick.csv",
+        "edge-iiotset-nightly": "data/edge-iiotset/edge_iiotset_nightly.csv",
+        "edge-iiotset-full": "data/edge-iiotset/edge_iiotset_full.csv",
+    }
+    data_path = dataset_paths[args.dataset]
+    matrix = ComparisonMatrix(dataset=args.dataset, data_path=data_path)
 
     if args.dimension == "all":
         dimensions = ["aggregation", "heterogeneity", "attack", "privacy", "personalization"]
@@ -323,7 +338,7 @@ def main():
             print(f"[COMPLETE] {config.to_preset_name()}")
         elif is_experiment_stuck(run_dir):
             stuck_count += 1
-            print(f"⚠️  [STUCK] {config.to_preset_name()} - will retry")
+            print(f"??  [STUCK] {config.to_preset_name()} - will retry")
             # Reset state for retry
             state = load_experiment_state(run_dir)
             if state:
@@ -352,6 +367,7 @@ def main():
     print(f"  Parallel workers: {args.workers}")
     print(f"  Estimated time: {eta_hours:.1f} hours")
     print(f"  Dataset type: {args.dataset_type}")
+    print(f"  Dataset: {args.dataset}")
     print(f"{'='*70}\n")
 
     if pending == 0:
