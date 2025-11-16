@@ -488,6 +488,20 @@ def load_edge_iiotset(
     # Protocol info is embedded in features (tcp.*, udp.*, mqtt.*, etc.)
     proto_col = None
 
+    # Drop high-cardinality columns that cause memory explosion during one-hot encoding
+    # These are identifiers/metadata that don't contribute to generalizable attack patterns
+    drop_cols = [
+        "frame.time",  # Timestamps - not predictive features
+        "ip.src_host",  # Source IPs - would memorize specific IPs instead of learning patterns
+        "ip.dst_host",  # Destination IPs - same issue
+        "tcp.payload",  # Raw packet data - too specific, causes overfitting
+        "tcp.options",  # TCP flags - too granular
+        "tcp.srcport",  # Port as string - duplicate of numeric tcp.dstport
+        "http.request.full_uri",  # Full URLs - application-specific
+        "http.file_data",  # File content - not statistical features
+    ]
+    df = df.drop(columns=[c for c in drop_cols if c in df.columns], errors="ignore")
+
     # Basic cleanup
     df = df.dropna(axis=1, how="all")
     df = df.dropna(axis=0).reset_index(drop=True)
