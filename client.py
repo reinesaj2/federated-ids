@@ -1089,9 +1089,7 @@ def main() -> None:
                 except (TypeError, ValueError):
                     continue
                 if normalized_idx < 0 or normalized_idx >= args.num_clients:
-                    raise SystemExit(
-                        f"protocol mapping client id {normalized_idx} must be in [0, {args.num_clients})"
-                    )
+                    raise SystemExit(f"protocol mapping client id {normalized_idx} must be in [0, {args.num_clients})")
                 protocol_mapping[normalized_proto] = normalized_idx
         pre, X_parts, y_parts, num_classes_global = prepare_partitions_from_dataframe(
             df=df,
