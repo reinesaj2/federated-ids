@@ -29,7 +29,6 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 12. Project structure
 13. Privacy & robustness disclosure (D2 scope)
 14. D2 Runbook (experiment workflow & artifact map)
->>>>>>> viz/issue-65-readme-results
 
 ---
 
