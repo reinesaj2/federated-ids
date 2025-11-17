@@ -4,7 +4,7 @@ torch==2.3.1
 torchvision==0.18.1
 numpy==1.26.4
 pandas==2.2.2
-scikit-learn==1.5.2
+scikit-learn==1.7.2
 
 # Networking / parsing
 scapy==2.5.0
