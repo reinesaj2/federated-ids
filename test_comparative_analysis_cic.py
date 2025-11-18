@@ -136,6 +136,8 @@ def test_experiment_config_to_preset_name_includes_dataset():
     assert "comp_fedavg" in config_cic.to_preset_name()
     assert "seed42" in config_unsw.to_preset_name()
     assert "seed42" in config_cic.to_preset_name()
+    assert "datasetcic" in config_cic.to_preset_name()
+    assert "dataset" not in config_unsw.to_preset_name()
 
 
 if __name__ == "__main__":

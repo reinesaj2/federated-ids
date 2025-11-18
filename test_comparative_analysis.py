@@ -43,6 +43,27 @@ def test_experiment_config_preset_name():
     assert "seed42" in preset
 
 
+def test_experiment_config_preset_name_includes_dataset_for_non_unsw():
+    """Ensure non-UNSW datasets are encoded in preset names to avoid collisions."""
+    config = ExperimentConfig.with_dataset(
+        dataset="cic",
+        aggregation="fedavg",
+        alpha=1.0,
+        adversary_fraction=0.0,
+        dp_enabled=False,
+        dp_noise_multiplier=0.0,
+        personalization_epochs=0,
+        num_clients=6,
+        num_rounds=20,
+        seed=7,
+    )
+
+    preset = config.to_preset_name()
+    assert "comp_fedavg" in preset
+    assert "datasetcic" in preset
+    assert "seed7" in preset
+
+
 def test_comparison_matrix_aggregation_dimension():
     """Test matrix generation for aggregation dimension only."""
     matrix = ComparisonMatrix(
