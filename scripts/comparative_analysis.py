@@ -124,7 +124,7 @@ class ComparisonMatrix:
     fedprox_mu_values: List[float] = field(default_factory=lambda: [0.0, 0.002, 0.005, 0.01, 0.02, 0.05, 0.08, 0.1, 0.2])
     seeds: List[int] = field(default_factory=lambda: [42, 43, 44, 45, 46])
     num_clients: int = 6
-    num_rounds: int = 20
+    num_rounds: int = 15
     dataset: str = "unsw"
     data_path: Optional[str] = None
 

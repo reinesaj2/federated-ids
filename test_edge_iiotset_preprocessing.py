@@ -23,6 +23,7 @@ def mock_edge_iiotset_csv(tmp_path: Path) -> Path:
         "frame.time": ["2022-01-01 00:00:00"] * 100,
         "ip.src_host": ["192.168.1.1"] * 100,
         "ip.dst_host": ["192.168.1.2"] * 100,
+        "tcp.payload": ["payload"] * 100,
         "tcp.seq": np.random.randint(0, 1000, 100),
         "tcp.ack": np.random.randint(0, 1000, 100),
         "udp.port": np.random.randint(0, 65535, 100),
@@ -147,3 +148,22 @@ def test_load_edge_iiotset_whitespace_stripping(tmp_path: Path):
     assert " tcp.seq " not in loaded_df.columns
     assert "BENIGN" in loaded_df[label_col].values
     assert " Normal " not in loaded_df[label_col].values
+
+
+def test_load_edge_iiotset_drops_high_cardinality_columns(mock_edge_iiotset_csv: Path):
+    """Test that high-cardinality identifiers are dropped."""
+    df, _, _ = load_edge_iiotset(mock_edge_iiotset_csv, use_multiclass=True)
+
+    dropped_cols = [
+        "frame.time",
+        "ip.src_host",
+        "ip.dst_host",
+        "tcp.payload"
+    ]
+
+    for col in dropped_cols:
+        assert col not in df.columns, f"Column {col} should have been dropped"
+
+    # Verify kept columns
+    assert "tcp.seq" in df.columns
+    assert "tcp.ack" in df.columns

@@ -73,6 +73,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--preset", type=str, default=None, help="Run a single preset by name")
     parser.add_argument("--client-timeout-sec", type=int, default=None, help="Override per-experiment timeout in seconds")
     parser.add_argument(
+        "--server-proc-timeout-sec",
+        type=int,
+        default=None,
+        help="Override server subprocess wait timeout (defaults to experiment timeout when unset)",
+    )
+    parser.add_argument(
+        "--client-proc-timeout-sec",
+        type=int,
+        default=None,
+        help="Override individual client subprocess wait timeout (defaults to experiment timeout when unset)",
+    )
+    parser.add_argument(
         "--s3-sync-prefix", type=str, default=None, help="S3 prefix to sync run artifacts to (e.g., s3://bucket/edge)"
     )
     return parser
@@ -301,6 +313,8 @@ def run_experiment_with_state(
     dataset_type: str = "full",
     max_retries: int = 2,
     timeout_override: int | None = None,
+    server_proc_timeout: int | None = None,
+    client_proc_timeout: int | None = None,
     s3_sync_prefix: str | None = None,
 ):
     """
@@ -333,6 +347,8 @@ def run_experiment_with_state(
         port_start = 8080 + (port_offset * 200)  # Wider spacing
 
         timeout = determine_timeout_seconds(config, dataset_type, timeout_override)
+        server_timeout_val = server_proc_timeout if server_proc_timeout is not None else timeout
+        client_timeout_val = client_proc_timeout if client_proc_timeout is not None else timeout
 
         # Run the experiment with timeout
         import signal
@@ -356,7 +372,13 @@ def run_experiment_with_state(
         start = time.time()
         try:
             with timeout_context(timeout):
-                result = run_federated_experiment(config, base_dir, port_start=port_start)
+                result = run_federated_experiment(
+                    config,
+                    base_dir,
+                    port_start=port_start,
+                    server_timeout=server_timeout_val,
+                    client_timeout=client_timeout_val,
+                )
         except TimeoutError as err:
             raise TimeoutError(f"Experiment {preset} timed out after {timeout}s") from err
 
@@ -492,6 +514,8 @@ def main(argv: Sequence[str] | None = None):
                 args.dataset_type,
                 args.max_retries,
                 args.client_timeout_sec,
+                args.server_proc_timeout_sec,
+                args.client_proc_timeout_sec,
                 args.s3_sync_prefix,
             ): config
             for idx, config in enumerate(pending_configs)

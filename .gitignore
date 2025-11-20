@@ -14,7 +14,10 @@ __pycache__/
 /data/
 
 # Run artifacts
-/runs/
+# Allow Edge-IIoT experiments to be versioned while keeping other run artifacts out.
+/runs/*
+!/runs/dsedge-iiotset-full_*/
+!/runs/dsedge-iiotset-full_*/**
 /runs_buggy_*/
 /runs_incomplete_*/
 
