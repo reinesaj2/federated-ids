@@ -616,8 +616,8 @@ def load_experiment_results(runs_dir: Path, dataset_filter: Optional[str] = None
     all_data = []
     skipped_count = 0
 
-    # Try both comp_* and d2_* patterns
-    patterns = ["comp_*", "d2_*"]
+    # Try comp_*, d2_*, and ds* patterns (ds* includes dataset-prefixed experiments)
+    patterns = ["comp_*", "d2_*", "ds*"]
 
     for pattern in patterns:
         for run_dir in runs_dir.glob(pattern):
@@ -1859,7 +1859,7 @@ def main():
             f"(dataset: {args.dataset})"
         )
     else:
-        datasets = df['dataset'].unique() if 'dataset' in df.columns else ['unknown']
+        datasets = df["dataset"].unique() if "dataset" in df.columns else ["unknown"]
         print(
             f"Loaded {len(df)} rows from {len(df['run_dir'].unique())} experiments "
             f"across {len(datasets)} datasets: {list(datasets)}"
