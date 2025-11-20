@@ -429,6 +429,20 @@ jobs:
             exit 1
           fi
 
+      - name: Generate thesis plots
+        run: |
+          PRESET="d2_full_${{ matrix.alpha }}_${{ matrix.scenario }}"
+          if [ "${{ matrix.scenario }}" = "adversarial" ]; then
+            PRESET="d2_full_${{ matrix.alpha }}_adv"
+          else
+            PRESET="d2_full_${{ matrix.alpha }}_benign"
+          fi
+          LOGDIR="runs/$PRESET"
+          python scripts/generate_thesis_plots.py \
+            --dimension heterogeneity \
+            --runs_dir "$LOGDIR" \
+            --output_dir "$LOGDIR/thesis_plots" || echo "Thesis plot generation skipped for $LOGDIR"
+
       - name: Validate results
         run: |
           # Basic validation of results
@@ -456,6 +470,41 @@ jobs:
           name: d2-full-${{ matrix.alpha }}-${{ matrix.scenario }}-${{ github.sha }}
           path: runs/**
           retention-days: 30
+
+  publish_plots:
+    needs: nightly_full
+    if: github.ref == 'refs/heads/main' && needs.nightly_full.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download plot artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: plot_artifacts
+      - name: Commit plots
+        run: |
+          if [ ! -d plot_artifacts ]; then
+            echo "No plot artifacts to publish"
+            exit 0
+          fi
+          python scripts/commit_plots.py \
+            --source_dir plot_artifacts \
+            --experiment_type nightly_full \
+            --plots_dir plots
+      - name: Push plots to repository
+        run: |
+          if git log origin/main..HEAD --oneline | grep -q .; then
+            git push origin HEAD
+          else
+            echo "No plot commits to push"
+          fi
 
   nightly_notify:
     needs: nightly_full

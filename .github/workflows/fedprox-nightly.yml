@@ -524,7 +524,7 @@ jobs:
   commit_plots:
     needs: [fedprox_summary]
     runs-on: ubuntu-latest
-    if: always() && needs.fedprox_summary.result == 'success' && needs.fedprox_summary.outputs.has_summary == 'true'
+    if: github.ref == 'refs/heads/main' && needs.fedprox_summary.result == 'success' && needs.fedprox_summary.outputs.has_summary == 'true'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -542,13 +542,11 @@ jobs:
           path: fedprox-summary
       - name: Download manual comparison results
         uses: actions/download-artifact@v4
-        if: github.event_name == 'workflow_dispatch'
         with:
           name: manual-fedprox-comparison-${{ github.sha }}
           path: manual-comparison
         continue-on-error: true
       - name: Commit plots to repository
-        if: github.event_name == 'workflow_dispatch'
         run: |
           # Configure git
           git config user.name "GitHub Actions"
@@ -573,7 +571,6 @@ jobs:
               --plots_dir plots
           fi
       - name: Push plots to repository
-        if: github.event_name == 'workflow_dispatch'
         run: |
           # Check if there are unpushed commits
           if git log origin/main..HEAD --oneline | grep -q .; then
