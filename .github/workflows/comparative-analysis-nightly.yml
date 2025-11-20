@@ -276,7 +276,7 @@ jobs:
   commit_thesis_plots:
     needs: [consolidated_summary]
     runs-on: ubuntu-latest
-    if: always() && needs.consolidated_summary.result == 'success'
+    if: github.ref == 'refs/heads/main' && needs.consolidated_summary.result == 'success'
     steps:
       - uses: actions/checkout@v4
         with:
