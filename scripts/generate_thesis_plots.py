@@ -1386,7 +1386,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
             for frac in df['adversary_fraction'].unique():
                 count = len(df[(df['aggregation'] == agg) & (df['adversary_fraction'] == frac)])
                 if count > 0 and count < min_recommended_samples:
-                    sparse_groups.append(f"{agg}@{int(frac*100)}%(n={count})")
+                    sparse_groups.append(f"{agg}@{int(frac * 100)}%(n={count})")
 
     if sparse_groups:
         logger.warning(

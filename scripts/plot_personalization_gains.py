@@ -340,6 +340,7 @@ def plot_gains_by_epochs(df: pd.DataFrame, ax: plt.Axes) -> None:
 
     if sparse_groups:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.warning(
             f"Sparse data in personalization gains by epochs: {', '.join(sparse_groups)}. "
@@ -380,6 +381,7 @@ def plot_gains_by_dataset(df: pd.DataFrame, ax: plt.Axes) -> None:
 
     if sparse_groups:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.warning(
             f"Sparse data in personalization gains by dataset: {', '.join(sparse_groups)}. "
