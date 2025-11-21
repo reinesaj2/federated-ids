@@ -1139,6 +1139,8 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
         stds = alpha_data['std'].values
 
         ax1.errorbar(mu_values, means, yerr=stds, marker='o', label=f'Alpha={alpha}', linewidth=2, markersize=8)
+        for mu, mean, std, count in zip(mu_values, means, stds, alpha_data['count']):
+            ax1.text(mu, mean + std, f'n={int(count)}', ha='center', fontsize=8)
 
     ax1.set_xlabel('FedProx Mu Value')
     ax1.set_ylabel('Final L2 Distance to Benign Model')
@@ -1158,6 +1160,8 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
         stds = alpha_data['std'].values
 
         ax2.errorbar(mu_values, means, yerr=stds, marker='s', label=f'Alpha={alpha}', linewidth=2, markersize=8)
+        for mu, mean, std, count in zip(mu_values, means, stds, alpha_data['count']):
+            ax2.text(mu, mean + std, f'n={int(count)}', ha='center', fontsize=8)
 
     ax2.set_xlabel('FedProx Mu Value')
     ax2.set_ylabel('Final Cosine Similarity to Benign Model')
@@ -1498,7 +1502,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
         ax = axes[1, 1]
         for idx, agg in enumerate(available_methods):
             agg_data = final_rounds[final_rounds["aggregation"] == agg]
-            summary = agg_data.groupby("adversary_fraction")["cos_to_benign_mean"].agg(["mean", "std"])
+            summary = agg_data.groupby("adversary_fraction")["cos_to_benign_mean"].agg(["mean", "std", "count"])
             ax.errorbar(
                 summary.index * 100,
                 summary["mean"],
@@ -1508,6 +1512,8 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
                 capsize=5,
                 color=colors[idx],
             )
+            for frac, mean, std, count in zip(summary.index, summary["mean"], summary["std"], summary["count"]):
+                ax.text(frac * 100, mean + std, f'n={int(count)}', ha='center', fontsize=7, color=colors[idx])
 
         ax.set_title("Supplementary: Model Alignment (Cosine Similarity)")
         ax.set_xlabel("Adversary Percentage (%)")
@@ -1619,6 +1625,13 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
             sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
             ax.set_title("Model Alignment with DP")
             ax.set_ylim(COSINE_SIMILARITY_Y_LIMITS)
+
+            # Add sample size annotations
+            for i, dp_label in enumerate(["Disabled", "Enabled"]):
+                dp_data = plot_df[plot_df["DP"] == dp_label]["Cosine Similarity"]
+                n = len(dp_data)
+                y_max = dp_data.max() if n > 0 else 1.0
+                ax.text(i, y_max * 1.01, f'n={n}', ha='center', va='bottom', fontsize=8)
 
     plt.tight_layout()
     plt.savefig(output_dir / "privacy_utility.png", dpi=300, bbox_inches="tight")

@@ -337,6 +337,13 @@ def plot_gains_by_epochs(df: pd.DataFrame, ax: plt.Axes) -> None:
     ax.axhline(y=0, color="black", linestyle="-", linewidth=0.5, alpha=0.3)
     ax.grid(axis="y", alpha=0.3)
 
+    # Add sample size annotations
+    for i, epochs in enumerate(sorted(pers_df["pers_epochs"].unique())):
+        epoch_data = pers_df[pers_df["pers_epochs"] == epochs]["personalization_gain"]
+        n = len(epoch_data)
+        y_max = epoch_data.max() if n > 0 else 0
+        ax.text(i, y_max * 1.05, f'n={n}', ha='center', va='bottom', fontsize=8)
+
 
 def plot_gains_by_dataset(df: pd.DataFrame, ax: plt.Axes) -> None:
     """Violin plot: gain distribution by dataset."""
@@ -353,6 +360,13 @@ def plot_gains_by_dataset(df: pd.DataFrame, ax: plt.Axes) -> None:
     ax.set_title("Gain by Dataset")
     ax.axhline(y=0, color="black", linestyle="-", linewidth=0.5, alpha=0.3)
     ax.grid(axis="y", alpha=0.3)
+
+    # Add sample size annotations
+    for i, dataset in enumerate(pers_df["dataset"].unique()):
+        dataset_data = pers_df[pers_df["dataset"] == dataset]["personalization_gain"]
+        n = len(dataset_data)
+        y_max = dataset_data.max() if n > 0 else 0
+        ax.text(i, y_max * 1.05, f'n={n}', ha='center', va='bottom', fontsize=8)
 
 
 def plot_per_client_scatter(df: pd.DataFrame, ax: plt.Axes) -> None:
