@@ -330,6 +330,22 @@ def plot_gains_by_epochs(df: pd.DataFrame, ax: plt.Axes) -> None:
         ax.text(0.5, 0.5, "No personalization data", ha="center", va="center", fontsize=12)
         return
 
+    # Check for sparse data in pers_epochs groups
+    min_recommended_samples = 3
+    sparse_groups = []
+    for epochs in pers_df["pers_epochs"].unique():
+        count = len(pers_df[pers_df["pers_epochs"] == epochs])
+        if count < min_recommended_samples:
+            sparse_groups.append(f"epochs={int(epochs)}(n={count})")
+
+    if sparse_groups:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            f"Sparse data in personalization gains by epochs: {', '.join(sparse_groups)}. "
+            f"Epochs with n<{min_recommended_samples} may show unreliable statistics."
+        )
+
     sns.boxplot(data=pers_df, x="pers_epochs", y="personalization_gain", ax=ax)
     ax.set_xlabel("Personalization Epochs")
     ax.set_ylabel("Personalization Gain")
@@ -353,6 +369,22 @@ def plot_gains_by_dataset(df: pd.DataFrame, ax: plt.Axes) -> None:
     if len(pers_df) == 0:
         ax.text(0.5, 0.5, "No personalization data", ha="center", va="center", fontsize=12)
         return
+
+    # Check for sparse data in dataset groups
+    min_recommended_samples = 3
+    sparse_groups = []
+    for dataset in pers_df["dataset"].unique():
+        count = len(pers_df[pers_df["dataset"] == dataset])
+        if count < min_recommended_samples:
+            sparse_groups.append(f"{dataset}(n={count})")
+
+    if sparse_groups:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            f"Sparse data in personalization gains by dataset: {', '.join(sparse_groups)}. "
+            f"Datasets with n<{min_recommended_samples} may show unreliable statistics."
+        )
 
     sns.violinplot(data=pers_df, x="dataset", y="personalization_gain", ax=ax)
     ax.set_xlabel("Dataset")

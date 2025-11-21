@@ -1125,6 +1125,22 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
         print("Warning: Missing alpha or fedprox_mu columns for FedProx heterogeneity plots")
         return
 
+    # Check for sparse data in alpha/mu combinations
+    min_recommended_samples = 3
+    sparse_groups = []
+    for alpha in df['alpha'].unique():
+        for mu in df['fedprox_mu'].unique():
+            count = len(df[(df['alpha'] == alpha) & (df['fedprox_mu'] == mu)])
+            if count > 0 and count < min_recommended_samples:
+                sparse_groups.append(f"alpha={alpha:.1f},mu={mu:.2f}(n={count})")
+
+    if sparse_groups:
+        logger.warning(
+            f"Sparse data in FedProx heterogeneity analysis: {', '.join(sparse_groups[:5])}. "
+            f"Combinations with n<{min_recommended_samples} may show unreliable statistics. "
+            "Consider running additional experiments with different seeds."
+        )
+
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
     fig.suptitle("FedProx Heterogeneity Matrix Analysis", fontsize=16, fontweight="bold")
 
@@ -1217,6 +1233,21 @@ def plot_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     """Plot IID vs Non-IID performance with 95% CIs."""
     if "alpha" not in df.columns:
         return
+
+    # Check for sparse data in alpha groups
+    min_recommended_samples = 3
+    sparse_groups = []
+    for alpha in df['alpha'].unique():
+        count = len(df[df['alpha'] == alpha])
+        if count < min_recommended_samples:
+            sparse_groups.append(f"alpha={alpha:.2f}(n={count})")
+
+    if sparse_groups:
+        logger.warning(
+            f"Sparse data in heterogeneity comparison: {', '.join(sparse_groups)}. "
+            f"Alpha values with n<{min_recommended_samples} may show unreliable statistics. "
+            "Consider running additional experiments with different seeds."
+        )
 
     fig, axes = plt.subplots(1, 2, figsize=(15, 6))
     fig.suptitle("Data Heterogeneity Impact (IID vs Non-IID)", fontsize=16, fontweight="bold")
@@ -1346,6 +1377,23 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
     num_clients = first_config.get("num_clients", 0)
     alpha = first_config.get("alpha", 0.5)
     num_seeds = len(df["seed"].unique()) if "seed" in df.columns else 1
+
+    # Check for sparse data in adversary_fraction groups
+    min_recommended_samples = 3
+    sparse_groups = []
+    if "aggregation" in df.columns:
+        for agg in df['aggregation'].unique():
+            for frac in df['adversary_fraction'].unique():
+                count = len(df[(df['aggregation'] == agg) & (df['adversary_fraction'] == frac)])
+                if count > 0 and count < min_recommended_samples:
+                    sparse_groups.append(f"{agg}@{int(frac*100)}%(n={count})")
+
+    if sparse_groups:
+        logger.warning(
+            f"Sparse data in attack resilience analysis: {', '.join(sparse_groups[:5])}. "
+            f"Combinations with n<{min_recommended_samples} may show unreliable statistics. "
+            "Consider running additional experiments with different seeds."
+        )
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
     subtitle = f"Dataset: {dataset} | Clients: {num_clients} | α={alpha} (Dirichlet) | " f"Attack: grad_ascent | Seeds: n={num_seeds}"
@@ -1575,6 +1623,28 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
     if "dp_enabled" not in df.columns:
         return
 
+    # Check for sparse data in DP settings
+    min_recommended_samples = 3
+    sparse_groups = []
+    for dp_enabled in df['dp_enabled'].unique():
+        if dp_enabled and 'dp_noise_multiplier' in df.columns:
+            for noise in df[df['dp_enabled']]['dp_noise_multiplier'].unique():
+                count = len(df[(df['dp_enabled'] == dp_enabled) & (df['dp_noise_multiplier'] == noise)])
+                if count < min_recommended_samples:
+                    sparse_groups.append(f"DP_sigma={noise:.2f}(n={count})")
+        else:
+            count = len(df[df['dp_enabled'] == dp_enabled])
+            if count < min_recommended_samples:
+                dp_label = "Enabled" if dp_enabled else "Disabled"
+                sparse_groups.append(f"DP_{dp_label}(n={count})")
+
+    if sparse_groups:
+        logger.warning(
+            f"Sparse data in privacy-utility analysis: {', '.join(sparse_groups)}. "
+            f"DP settings with n<{min_recommended_samples} may show unreliable statistics. "
+            "Consider running additional experiments with different seeds."
+        )
+
     final_rounds = df.groupby(["dp_enabled", "dp_noise_multiplier", "seed"]).tail(1)
 
     fig, axes = plt.subplots(1, 2, figsize=(15, 6))
@@ -1680,6 +1750,21 @@ def plot_personalization_benefit(df: pd.DataFrame, output_dir: Path):
         return
 
     pers_df = pd.DataFrame(personalization_data)
+
+    # Check for sparse data in personalization_epochs groups
+    min_recommended_samples = 3
+    sparse_groups = []
+    for epochs in pers_df['personalization_epochs'].unique():
+        count = len(pers_df[pers_df['personalization_epochs'] == epochs])
+        if count < min_recommended_samples:
+            sparse_groups.append(f"pers_epochs={int(epochs)}(n={count})")
+
+    if sparse_groups:
+        logger.warning(
+            f"Sparse data in personalization benefit analysis: {', '.join(sparse_groups)}. "
+            f"Epochs settings with n<{min_recommended_samples} may show unreliable statistics. "
+            "Consider running additional experiments with different seeds."
+        )
 
     fig, axes = plt.subplots(1, 2, figsize=(15, 6))
     fig.suptitle("Personalization Benefit Analysis", fontsize=16, fontweight="bold")
