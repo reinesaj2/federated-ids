@@ -38,6 +38,9 @@ from metric_validation import MetricValidator  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
+# Plot configuration constants
+COSINE_SIMILARITY_Y_LIMITS = (0.95, 1.0)  # Sensible bounds for cosine similarity (0-1 scale, typically >0.95)
+
 
 def _prepare_client_scatter_data(df: pd.DataFrame, metric: str) -> pd.DataFrame:
     """
@@ -1159,6 +1162,7 @@ def plot_fedprox_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
     ax2.set_xlabel('FedProx Mu Value')
     ax2.set_ylabel('Final Cosine Similarity to Benign Model')
     ax2.set_title('Cosine Similarity vs FedProx Strength by Heterogeneity Level')
+    ax2.set_ylim(COSINE_SIMILARITY_Y_LIMITS)
     ax2.legend()
     ax2.grid(True, alpha=0.3)
     ax2.set_xscale('log')
@@ -1311,6 +1315,7 @@ def plot_heterogeneity_comparison(df: pd.DataFrame, output_dir: Path):
                     fontsize=8,
                 )
 
+            ax.set_ylim(COSINE_SIMILARITY_Y_LIMITS)
             ax.grid(True, alpha=0.3, axis="y")
 
     plt.tight_layout()
@@ -1507,6 +1512,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
         ax.set_title("Supplementary: Model Alignment (Cosine Similarity)")
         ax.set_xlabel("Adversary Percentage (%)")
         ax.set_ylabel("Cosine Similarity")
+        ax.set_ylim(COSINE_SIMILARITY_Y_LIMITS)
         ax.legend()
         ax.grid(True, alpha=0.3)
 
@@ -1612,6 +1618,7 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
             plot_df = pd.DataFrame(rows)
             sns.violinplot(data=plot_df, x="DP", y="Cosine Similarity", ax=ax)
             ax.set_title("Model Alignment with DP")
+            ax.set_ylim(COSINE_SIMILARITY_Y_LIMITS)
 
     plt.tight_layout()
     plt.savefig(output_dir / "privacy_utility.png", dpi=300, bbox_inches="tight")
