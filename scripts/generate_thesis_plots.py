@@ -1063,6 +1063,7 @@ def _render_cosine_plot(ax, final_rounds: pd.DataFrame, available_methods: list)
     ax.set_xlabel("Aggregation Method")
     ax.set_ylabel("Cosine Similarity")
     ax.set_xticklabels([m.upper() for m in available_methods])
+    ax.set_ylim(COSINE_SIMILARITY_Y_LIMITS)
 
     return True
 
