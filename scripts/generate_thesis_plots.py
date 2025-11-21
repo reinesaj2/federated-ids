@@ -1530,6 +1530,28 @@ def plot_attack_resilience(df: pd.DataFrame, output_dir: Path):
             ax.set_ylim([0, 110])
             ax.axhline(y=0, color="black", linestyle="--", alpha=0.5)
             ax.grid(True, alpha=0.3, axis="y")
+        else:
+            # No degradation data available - explain why in the plot
+            logger.warning(
+                "No degradation data for attack resilience plot. "
+                "Requires both benign (adversary_fraction=0) and adversarial (adversary_fraction>0) data. "
+                f"Available adversary fractions: {sorted(final_rounds['adversary_fraction'].unique())}"
+            )
+            ax.text(
+                0.5,
+                0.5,
+                "Degradation Plot Unavailable\n\n"
+                "Requires both benign and adversarial experiments.\n"
+                f"Dataset contains only: {sorted(final_rounds['adversary_fraction'].unique())}",
+                transform=ax.transAxes,
+                ha="center",
+                va="center",
+                fontsize=12,
+                bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.8),
+            )
+            ax.set_title("Performance Degradation Under Attack")
+            ax.set_xlabel("Aggregation Method")
+            ax.set_ylabel("Degradation (%)")
 
     # Plot 3: Supplementary - L2 distance vs adversary fraction
     if "l2_to_benign_mean" in final_rounds.columns:
