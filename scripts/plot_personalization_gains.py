@@ -274,9 +274,9 @@ def plot_gains_by_config(df: pd.DataFrame, ax: plt.Axes) -> None:
     ax.set_ylabel("Mean Personalization Gain (F1)")
     ax.set_title("Personalization Gains by Configuration (95% CI)")
 
-    # Add n annotations
+    # Add sample size annotations above error bars
     for i, row in config_df.iterrows():
-        y_pos = row["mean"] + yerr_upper.iloc[i] + 0.005
+        y_pos = row["mean"] + yerr_upper.iloc[i]
         ax.text(i, y_pos, f"n={row['n']}", ha="center", va="bottom", fontsize=7)
 
     ax.axhline(y=0.01, color="orange", linestyle="--", linewidth=1, label="Threshold")
@@ -354,12 +354,12 @@ def plot_gains_by_epochs(df: pd.DataFrame, ax: plt.Axes) -> None:
     ax.axhline(y=0, color="black", linestyle="-", linewidth=0.5, alpha=0.3)
     ax.grid(axis="y", alpha=0.3)
 
-    # Add sample size annotations
+    # Add sample size annotations above violin plots
     for i, epochs in enumerate(sorted(pers_df["pers_epochs"].unique())):
         epoch_data = pers_df[pers_df["pers_epochs"] == epochs]["personalization_gain"]
         n = len(epoch_data)
         y_max = epoch_data.max() if n > 0 else 0
-        ax.text(i, y_max * 1.05, f'n={n}', ha='center', va='bottom', fontsize=8)
+        ax.text(i, y_max, f'n={n}', ha='center', va='bottom', fontsize=8)
 
 
 def plot_gains_by_dataset(df: pd.DataFrame, ax: plt.Axes) -> None:
@@ -395,12 +395,12 @@ def plot_gains_by_dataset(df: pd.DataFrame, ax: plt.Axes) -> None:
     ax.axhline(y=0, color="black", linestyle="-", linewidth=0.5, alpha=0.3)
     ax.grid(axis="y", alpha=0.3)
 
-    # Add sample size annotations
+    # Add sample size annotations above violin plots
     for i, dataset in enumerate(pers_df["dataset"].unique()):
         dataset_data = pers_df[pers_df["dataset"] == dataset]["personalization_gain"]
         n = len(dataset_data)
         y_max = dataset_data.max() if n > 0 else 0
-        ax.text(i, y_max * 1.05, f'n={n}', ha='center', va='bottom', fontsize=8)
+        ax.text(i, y_max, f'n={n}', ha='center', va='bottom', fontsize=8)
 
 
 def plot_per_client_scatter(df: pd.DataFrame, ax: plt.Axes) -> None:
