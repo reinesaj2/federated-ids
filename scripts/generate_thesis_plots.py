@@ -367,11 +367,41 @@ def _compute_epsilon_fallback(row: Dict, final_row: Optional[pd.Series]) -> Opti
     steps = row.get("round")
     if (steps is None or steps <= 0) and final_row is not None and "round" in final_row:
         steps = final_row.get("round")
+    # If num_rounds is available, prefer that as the total FL rounds
+    num_rounds = row.get("num_rounds")
+    try:
+        num_rounds = int(num_rounds) if num_rounds is not None else None
+    except (TypeError, ValueError):
+        num_rounds = None
+    if num_rounds and num_rounds > 0:
+        steps = num_rounds
+
+    # Scale steps by estimated number of batches if dataset/batch size available
+    est_batches = None
+    batch_size_for_steps = None
+    dataset_size_for_steps = None
+    if final_row is not None:
+        batch_size_for_steps = final_row.get("batch_size")
+        dataset_size_for_steps = final_row.get("dataset_size")
+    if batch_size_for_steps is None:
+        batch_size_for_steps = row.get("batch_size")
+    if dataset_size_for_steps is None:
+        dataset_size_for_steps = row.get("dataset_size")
+    try:
+        batch_size_for_steps = float(batch_size_for_steps)
+        dataset_size_for_steps = float(dataset_size_for_steps)
+        if batch_size_for_steps > 0 and dataset_size_for_steps and dataset_size_for_steps > 0:
+            est_batches = int(math.ceil(dataset_size_for_steps / batch_size_for_steps))
+    except (TypeError, ValueError):
+        est_batches = None
 
     try:
-        steps = int(steps)
+        steps = int(steps) if steps is not None else None
     except (TypeError, ValueError):
         steps = None
+
+    if est_batches and est_batches > 0 and steps and steps > 0:
+        steps = steps * est_batches
 
     if steps is None or steps <= 0:
         return None
@@ -380,6 +410,24 @@ def _compute_epsilon_fallback(row: Dict, final_row: Optional[pd.Series]) -> Opti
     if final_row is not None and "dp_sample_rate" in final_row:
         sample_rate = final_row.get("dp_sample_rate")
         if pd.isna(sample_rate):
+            sample_rate = None
+    if sample_rate is None or (isinstance(sample_rate, (int, float)) and sample_rate >= 1.0):
+        # Derive sample rate from batch size and dataset size when not provided
+        batch_size = None
+        dataset_size = None
+        if final_row is not None:
+            batch_size = final_row.get("batch_size")
+            dataset_size = final_row.get("dataset_size")
+        if batch_size is None:
+            batch_size = row.get("batch_size")
+        if dataset_size is None:
+            dataset_size = row.get("dataset_size")
+        try:
+            batch_size = float(batch_size)
+            dataset_size = float(dataset_size)
+            if batch_size > 0 and dataset_size and dataset_size > 0:
+                sample_rate = min(1.0, batch_size / dataset_size)
+        except (TypeError, ValueError):
             sample_rate = None
     if sample_rate is None:
         sample_rate = row.get("dp_sample_rate", 1.0)
