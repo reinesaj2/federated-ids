@@ -95,6 +95,8 @@ class ExperimentConfig:
             f"mu{self.fedprox_mu}",
             f"seed{self.seed}",
         ]
+        if self.dataset != "unsw":
+            parts.append(f"dataset{self.dataset.lower()}")
         return "_".join(parts)
 
 

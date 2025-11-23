@@ -87,9 +87,9 @@ jobs:
           key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: pip-${{ runner.os }}-
 
-      - name: Prepare real dataset samples
+      - name: Prepare full datasets
         if: steps.dimension_filter.outputs.should_run == 'true'
-        run: python scripts/setup_real_datasets.py
+        run: python scripts/setup_real_datasets.py --full-only
 
       - name: Install dependencies
         if: steps.dimension_filter.outputs.should_run == 'true'

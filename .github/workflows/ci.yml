@@ -329,8 +329,8 @@ jobs:
             python -m pip install -r requirements.txt
             if [ -f requirements-dev.txt ]; then python -m pip install -r requirements-dev.txt; fi
 
-      - name: Prepare real dataset samples
-        run: python scripts/setup_real_datasets.py
+      - name: Prepare full datasets
+        run: python scripts/setup_real_datasets.py --full-only
 
       - name: Full sweep (real-data 5c×20r) - ${{ matrix.scenario }}
         uses: nick-fields/retry@v3
@@ -346,14 +346,14 @@ jobs:
             ALPHA="${{ matrix.alpha }}"
 
             DATASET="unsw"
-            DATA_PATH="data/unsw/unsw_nb15_sample.csv"
+            DATA_PATH="data/unsw/UNSW_NB15_training-set.csv"
             ADV_MODE=""
             if [ "${{ matrix.scenario }}" = "benign" ]; then
               PRESET="d2_full_${ALPHA}_benign"
             else
               PRESET="d2_full_${ALPHA}_adv"
               DATASET="cic"
-              DATA_PATH="data/cic/cic_ids2017_sample.csv"
+              DATA_PATH="data/cic/cic_ids2017_multiclass.csv"
               ADV_MODE="--adversary_mode label_flip"
             fi
 
@@ -422,6 +422,22 @@ jobs:
               echo "Missing metrics.csv in $LOGDIR"
               exit 1
             fi
+
+      - name: Generate plots for full runs
+        run: |
+          PRESET="d2_full_${{ matrix.alpha }}_${{ matrix.scenario }}"
+          if [ "${{ matrix.scenario }}" = "adversarial" ]; then
+            PRESET="d2_full_${{ matrix.alpha }}_adv"
+          else
+            PRESET="d2_full_${{ matrix.alpha }}_benign"
+          fi
+          LOGDIR="runs/$PRESET"
+          if [ -d "$LOGDIR" ]; then
+            python scripts/plot_metrics.py --run_dir "$LOGDIR" --output_dir "$LOGDIR"
+          else
+            echo "Run directory $LOGDIR not found"
+            exit 1
+          fi
 
       - name: Validate results
         run: |
