@@ -22,12 +22,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib.gridspec import GridSpec
-from scipy import stats
 
-# Import our robust data loader
+# Import our robust data loader and utilities
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from load_iiot_data import load_iiot_data  # noqa: E402
+from plot_metrics_utils import compute_confidence_interval  # noqa: E402
 
 # Publication-quality styling
 sns.set_style("whitegrid")
@@ -54,23 +54,36 @@ COLORS = {
 }
 
 
-def compute_confidence_interval(data, confidence=0.95):
-    """Compute mean and confidence interval."""
-    data = np.array([x for x in data if not np.isnan(x)])
-    if len(data) == 0:
-        return np.nan, np.nan, np.nan
+def _validate_dataframe_schema(df: pd.DataFrame, required_columns: list[str]) -> None:
+    """
+    Validate that DataFrame contains required columns.
 
-    mean = np.mean(data)
-    if len(data) < 2:
-        return mean, mean, mean
+    Args:
+        df: DataFrame to validate
+        required_columns: List of required column names
 
-    sem = stats.sem(data)
-    ci = sem * stats.t.ppf((1 + confidence) / 2, len(data) - 1)
-    return mean, mean - ci, mean + ci
+    Raises:
+        ValueError: If any required columns are missing
+    """
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        raise ValueError(f"DataFrame missing required columns: {missing}. " f"Available columns: {df.columns.tolist()}")
 
 
 def plot_objective1_robustness(df: pd.DataFrame, output_dir: Path):
     """Objective 1: Robust Aggregation Under Attack (6-panel figure)."""
+    _validate_dataframe_schema(
+        df,
+        [
+            "aggregation",
+            "alpha",
+            "adv_pct",
+            "round",
+            "l2_to_benign_mean",
+            "macro_f1_global",
+        ],
+    )
+
     fig = plt.figure(figsize=(18, 12))
     gs = GridSpec(3, 3, figure=fig, hspace=0.35, wspace=0.35)
 
@@ -1009,6 +1022,24 @@ def main():
     print(f"  - Aggregators: {sorted(df['aggregation'].unique())}")
     print(f"  - Alpha values: {sorted(df['alpha'].unique())}")
     print(f"  - Attack levels: {sorted(df['adv_pct'].unique())}")
+
+    # Validate schema
+    _validate_dataframe_schema(
+        df,
+        [
+            "aggregation",
+            "alpha",
+            "adv_pct",
+            "pers_epochs",
+            "seed",
+            "round",
+            "l2_to_benign_mean",
+            "l2_dispersion_mean",
+            "t_aggregate_ms",
+            "macro_f1_global",
+            "macro_f1_personalized",
+        ],
+    )
 
     print("\n" + "=" * 80)
     print("GENERATING OBJECTIVE 1: ROBUSTNESS PLOTS")

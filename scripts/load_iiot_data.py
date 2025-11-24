@@ -53,93 +53,125 @@ def parse_run_config(run_dir: Path) -> dict:
     return config
 
 
-def load_iiot_data(runs_dir: Path) -> pd.DataFrame:
+def _load_server_metrics_for_run(run_dir: Path) -> pd.DataFrame | None:
+    """Load server metrics CSV for a single run."""
+    server_csv = run_dir / "metrics.csv"
+    if not server_csv.exists():
+        return None
+
+    try:
+        return pd.read_csv(server_csv)
+    except Exception as e:
+        print(f"Warning: Failed to load {server_csv}: {e}")
+        return None
+
+
+def _load_client_metrics_for_run(run_dir: Path) -> dict[int, list[dict]]:
+    """Load all client metrics CSVs for a run, grouped by round."""
+    client_data_by_round: dict[int, list[dict]] = {}
+
+    for client_csv in run_dir.glob("client_*_metrics.csv"):
+        try:
+            df_client = pd.read_csv(client_csv)
+
+            for _, row in df_client.iterrows():
+                round_num = int(row["round"])
+                if round_num not in client_data_by_round:
+                    client_data_by_round[round_num] = []
+
+                # Use macro_f1_before as primary source (always populated)
+                # Fall back to macro_f1_global for personalization experiments
+                f1_global = row.get("macro_f1_before", np.nan)
+                if pd.isna(f1_global):
+                    f1_global = row.get("macro_f1_global", np.nan)
+
+                f1_pers = row.get("macro_f1_personalized", row.get("macro_f1_after", np.nan))
+
+                client_data_by_round[round_num].append(
+                    {
+                        "macro_f1_global": f1_global,
+                        "macro_f1_personalized": f1_pers,
+                    }
+                )
+        except Exception as e:
+            print(f"Warning: Failed to load {client_csv}: {e}")
+            continue
+
+    return client_data_by_round
+
+
+def _create_merged_records(
+    config: dict,
+    df_server: pd.DataFrame,
+    client_data_by_round: dict[int, list[dict]],
+) -> list[dict]:
+    """Merge server and client metrics by round."""
+    records = []
+
+    for _, row in df_server.iterrows():
+        round_num = int(row["round"])
+
+        record = {**config}
+        record.update(
+            {
+                "round": round_num,
+                "l2_to_benign_mean": row.get("l2_to_benign_mean", np.nan),
+                "l2_dispersion_mean": row.get("l2_dispersion_mean", np.nan),
+                "t_aggregate_ms": row.get("t_aggregate_ms", np.nan),
+            }
+        )
+
+        # Average client F1 scores for this round
+        if round_num in client_data_by_round:
+            client_round_data = client_data_by_round[round_num]
+
+            f1_global_vals = [c["macro_f1_global"] for c in client_round_data if not np.isnan(c["macro_f1_global"])]
+            f1_pers_vals = [c["macro_f1_personalized"] for c in client_round_data if not np.isnan(c["macro_f1_personalized"])]
+
+            record["macro_f1_global"] = np.mean(f1_global_vals) if f1_global_vals else np.nan
+            record["macro_f1_personalized"] = np.mean(f1_pers_vals) if f1_pers_vals else np.nan
+        else:
+            record["macro_f1_global"] = np.nan
+            record["macro_f1_personalized"] = np.nan
+
+        records.append(record)
+
+    return records
+
+
+def load_iiot_data(runs_dir: Path, run_pattern: str = "dsedge-iiotset-nightly*") -> pd.DataFrame:
     """
     Load all IIoT experiments into unified DataFrame.
 
-    Returns DataFrame with columns:
-    - Config: aggregation, alpha, adv_pct, pers_epochs, seed, run_id
-    - Per-round: round
-    - Server metrics: l2_to_benign_mean, l2_dispersion_mean, t_aggregate_ms
-    - Client metrics (averaged): macro_f1_global, macro_f1_personalized
+    Args:
+        runs_dir: Directory containing experiment runs
+        run_pattern: Glob pattern for run directories
+
+    Returns:
+        DataFrame with columns:
+        - Config: aggregation, alpha, adv_pct, pers_epochs, seed, run_id
+        - Per-round: round
+        - Server metrics: l2_to_benign_mean, l2_dispersion_mean, t_aggregate_ms
+        - Client metrics (averaged): macro_f1_global, macro_f1_personalized
     """
     all_records = []
 
-    for run_dir in runs_dir.glob("dsedge-iiotset-nightly*"):
+    for run_dir in runs_dir.glob(run_pattern):
         if not run_dir.is_dir():
             continue
 
         config = parse_run_config(run_dir)
 
-        # Load server metrics
-        server_csv = run_dir / "metrics.csv"
-        if not server_csv.exists():
+        # Load server and client metrics
+        df_server = _load_server_metrics_for_run(run_dir)
+        if df_server is None:
             continue
 
-        try:
-            df_server = pd.read_csv(server_csv)
-        except Exception as e:
-            print(f"Warning: Failed to load {server_csv}: {e}")
-            continue
+        client_data_by_round = _load_client_metrics_for_run(run_dir)
 
-        # Load ALL client metrics for this run
-        client_data_by_round = {}
-        for client_csv in run_dir.glob("client_*_metrics.csv"):
-            try:
-                df_client = pd.read_csv(client_csv)
-
-                # Group by round
-                for _, row in df_client.iterrows():
-                    round_num = row["round"]
-                    if round_num not in client_data_by_round:
-                        client_data_by_round[round_num] = []
-
-                    # Use macro_f1_before as primary source (always populated)
-                    # Fall back to macro_f1_global for personalization experiments
-                    f1_global = row.get("macro_f1_before", np.nan)
-                    if pd.isna(f1_global):
-                        f1_global = row.get("macro_f1_global", np.nan)
-
-                    f1_pers = row.get("macro_f1_personalized", row.get("macro_f1_after", np.nan))
-
-                    client_data_by_round[round_num].append(
-                        {
-                            "macro_f1_global": f1_global,
-                            "macro_f1_personalized": f1_pers,
-                        }
-                    )
-            except Exception as e:
-                print(f"Warning: Failed to load {client_csv}: {e}")
-                continue
-
-        # Merge server and client data by round
-        for _, row in df_server.iterrows():
-            round_num = row["round"]
-
-            record = {**config}
-            record.update(
-                {
-                    "round": round_num,
-                    "l2_to_benign_mean": row.get("l2_to_benign_mean", np.nan),
-                    "l2_dispersion_mean": row.get("l2_dispersion_mean", np.nan),
-                    "t_aggregate_ms": row.get("t_aggregate_ms", np.nan),
-                }
-            )
-
-            # Average client F1 scores for this round
-            if round_num in client_data_by_round:
-                client_round_data = client_data_by_round[round_num]
-
-                f1_global_vals = [c["macro_f1_global"] for c in client_round_data if not np.isnan(c["macro_f1_global"])]
-                f1_pers_vals = [c["macro_f1_personalized"] for c in client_round_data if not np.isnan(c["macro_f1_personalized"])]
-
-                record["macro_f1_global"] = np.mean(f1_global_vals) if f1_global_vals else np.nan
-                record["macro_f1_personalized"] = np.mean(f1_pers_vals) if f1_pers_vals else np.nan
-            else:
-                record["macro_f1_global"] = np.nan
-                record["macro_f1_personalized"] = np.nan
-
-            all_records.append(record)
+        # Merge and collect records
+        records = _create_merged_records(config, df_server, client_data_by_round)
+        all_records.extend(records)
 
     if not all_records:
         return pd.DataFrame()
