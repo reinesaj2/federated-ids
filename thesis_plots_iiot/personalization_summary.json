@@ -1,0 +1,33 @@
+{
+  "overall": {
+    "mean_gain": 0.0639345749145675,
+    "median_gain": 0.06128693535003443,
+    "std_gain": 0.04716952380730017,
+    "max_gain": 0.17214109815642253,
+    "min_gain": -0.03505385143544626,
+    "pct_positive_gains": 85.0,
+    "pct_negative_gains": 5.0
+  },
+  "by_adv_pct": {
+    "0": {
+      "mean_gain": 0.0639345749145675,
+      "n_clients": 60
+    }
+  },
+  "by_alpha": {
+    "0.5": {
+      "mean_gain": 0.0639345749145675,
+      "n_clients": 60
+    }
+  },
+  "by_epochs": {
+    "3": {
+      "mean_gain": 0.048082854690918844,
+      "n_clients": 30
+    },
+    "5": {
+      "mean_gain": 0.07978629513821618,
+      "n_clients": 30
+    }
+  }
+}
