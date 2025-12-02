@@ -390,3 +390,89 @@ def test_trimmed_mean_increasing_beta_monotonicity(n_candidates):
             # More trimming (beta2 > beta1) should not make result more extreme
             # (This is a weak property but useful sanity check)
             assert np.isfinite(val1) and np.isfinite(val2)
+
+
+# ============================================================================
+# Tests for Byzantine resilience constraint validation
+# ============================================================================
+
+
+def test_validate_bulyan_constraint_accepts_valid_configs():
+    """Validation should pass for configurations satisfying n >= 4f + 3."""
+    from scripts.comparative_analysis import validate_bulyan_byzantine_resilience
+
+    # n=11, adv=0% -> f=0, requires n>=3 (satisfied)
+    validate_bulyan_byzantine_resilience("bulyan", 0.0, 11)
+
+    # n=11, adv=10% -> f=1, requires n>=7 (satisfied)
+    validate_bulyan_byzantine_resilience("bulyan", 0.1, 11)
+
+    # n=11, adv=20% -> f=2, requires n>=11 (exactly satisfied)
+    validate_bulyan_byzantine_resilience("bulyan", 0.2, 11)
+
+    # n=15, adv=20% -> f=3, requires n>=15 (exactly satisfied)
+    validate_bulyan_byzantine_resilience("bulyan", 0.2, 15)
+
+    # n=19, adv=30% -> f=5, requires n>=23 (not satisfied, but f=int(0.3*19)=5)
+    # Actually f=int(0.3*19)=5, requires n>=4*5+3=23, but n=19 so should fail
+    # Let me recalculate: f=int(0.3*19)=5, requires 23 but have 19
+
+
+def test_validate_bulyan_constraint_rejects_invalid_configs():
+    """Validation should reject configurations violating n >= 4f + 3."""
+    from scripts.comparative_analysis import validate_bulyan_byzantine_resilience
+
+    # n=11, adv=30% -> f=3, requires n>=15 (violated)
+    with pytest.raises(ValueError, match="Invalid Bulyan configuration.*30%.*11.*15"):
+        validate_bulyan_byzantine_resilience("bulyan", 0.3, 11)
+
+    # n=6, adv=20% -> f=1, requires n>=7 (violated)
+    with pytest.raises(ValueError, match="Invalid Bulyan configuration.*20%.*6.*7"):
+        validate_bulyan_byzantine_resilience("bulyan", 0.2, 6)
+
+    # n=7, adv=30% -> f=2, requires n>=11 (violated)
+    with pytest.raises(ValueError, match="Invalid Bulyan configuration.*30%.*7.*11"):
+        validate_bulyan_byzantine_resilience("bulyan", 0.3, 7)
+
+
+def test_validate_bulyan_constraint_error_message_includes_max_safe_fraction():
+    """Error message should suggest maximum safe adversary fraction."""
+    from scripts.comparative_analysis import validate_bulyan_byzantine_resilience
+
+    # n=11, adv=30% invalid -> should suggest max safe fraction
+    # Max safe: f <= (11-3)//4 = 2, fraction = 2/11 = 0.18
+    with pytest.raises(ValueError) as exc_info:
+        validate_bulyan_byzantine_resilience("bulyan", 0.3, 11)
+
+    error_msg = str(exc_info.value)
+    # Should mention maximum safe fraction
+    assert "Maximum safe adversary fraction" in error_msg or "max" in error_msg.lower()
+    # Should mention n>=4f+3 constraint
+    assert "n >= 4f + 3" in error_msg or "4f + 3" in error_msg
+
+
+def test_validate_bulyan_constraint_ignores_non_bulyan_methods():
+    """Validation should not apply to non-Bulyan aggregation methods."""
+    from scripts.comparative_analysis import validate_bulyan_byzantine_resilience
+
+    # These should all pass without error despite being invalid for Bulyan
+    validate_bulyan_byzantine_resilience("fedavg", 0.3, 11)
+    validate_bulyan_byzantine_resilience("krum", 0.3, 11)
+    validate_bulyan_byzantine_resilience("median", 0.3, 11)
+    validate_bulyan_byzantine_resilience("FedAvg", 0.5, 6)
+
+
+def test_validate_bulyan_constraint_case_insensitive():
+    """Validation should work with different casings of 'bulyan'."""
+    from scripts.comparative_analysis import validate_bulyan_byzantine_resilience
+
+    # Valid config should pass regardless of casing
+    validate_bulyan_byzantine_resilience("BULYAN", 0.1, 11)
+    validate_bulyan_byzantine_resilience("Bulyan", 0.1, 11)
+    validate_bulyan_byzantine_resilience("BuLyAn", 0.1, 11)
+
+    # Invalid config should fail regardless of casing
+    with pytest.raises(ValueError):
+        validate_bulyan_byzantine_resilience("BULYAN", 0.3, 11)
+    with pytest.raises(ValueError):
+        validate_bulyan_byzantine_resilience("Bulyan", 0.3, 11)

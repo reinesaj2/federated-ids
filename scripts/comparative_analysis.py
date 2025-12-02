@@ -100,6 +100,48 @@ class ExperimentConfig:
         return "_".join(parts)
 
 
+def validate_bulyan_byzantine_resilience(aggregation: str, adversary_fraction: float, num_clients: int) -> None:
+    """Validate Bulyan Byzantine resilience constraint n >= 4f + 3.
+
+    Bulyan (El Mhamdi et al. 2018) provides provable Byzantine fault tolerance
+    under the constraint n >= 4f + 3, where:
+    - n = total number of clients
+    - f = maximum number of Byzantine (malicious) clients to tolerate
+
+    This pre-flight validation prevents execution of mathematically invalid
+    configurations that would violate Byzantine resilience guarantees.
+
+    Args:
+        aggregation: Aggregation method name
+        adversary_fraction: Fraction of clients that are adversarial
+        num_clients: Total number of clients in the experiment
+
+    Raises:
+        ValueError: If Bulyan configuration violates n >= 4f + 3 constraint
+
+    References:
+        El Mhamdi et al. "The Hidden Vulnerability of Distributed Learning
+        in Byzantium." ICML 2018. https://arxiv.org/abs/1802.07927
+    """
+    if aggregation.lower() != "bulyan":
+        return
+
+    actual_f = int(adversary_fraction * num_clients)
+    required_n = 4 * actual_f + 3
+
+    if num_clients < required_n:
+        max_safe_fraction = ((num_clients - 3) // 4) / num_clients
+        raise ValueError(
+            f"Invalid Bulyan configuration: {adversary_fraction * 100:.0f}% adversaries "
+            f"with {num_clients} clients violates Byzantine resilience constraint n >= 4f + 3. "
+            f"With f={actual_f} adversaries, requires n >= {required_n} clients, "
+            f"but have {num_clients}. "
+            f"Maximum safe adversary fraction for n={num_clients}: {max_safe_fraction:.2%} "
+            f"(f <= {(num_clients - 3) // 4}). "
+            f"See robust_aggregation.py:220 and El Mhamdi et al. 2018 for details."
+        )
+
+
 @dataclass
 class ComparisonMatrix:
     """Defines the full comparison experiment matrix.
@@ -109,7 +151,7 @@ class ComparisonMatrix:
 
     aggregation_methods: List[str] = field(default_factory=lambda: ["fedavg", "krum", "bulyan", "median"])
     alpha_values: List[float] = field(default_factory=lambda: [0.02, 0.05, 0.1, 0.2, 0.5, 1.0, float('inf')])
-    adversary_fractions: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.3])
+    adversary_fractions: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.2, 0.3])
     dp_configs: List[Dict] = field(
         default_factory=lambda: [
             {"enabled": False, "noise": 0.0},
@@ -124,7 +166,7 @@ class ComparisonMatrix:
     )
     personalization_epochs: List[int] = field(default_factory=lambda: [0, 3, 5])
     fedprox_mu_values: List[float] = field(default_factory=lambda: [0.0, 0.002, 0.005, 0.01, 0.02, 0.05, 0.08, 0.1, 0.2])
-    seeds: List[int] = field(default_factory=lambda: [42, 43, 44, 45, 46])
+    seeds: List[int] = field(default_factory=lambda: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51])
     num_clients: int = 6
     num_rounds: int = 15
     dataset: str = "unsw"
@@ -179,7 +221,14 @@ class ComparisonMatrix:
         for alpha in self.alpha_values:
             for mu in self.fedprox_mu_values:
                 for seed in self.seeds:
-                    configs.append(self._create_config(self._base_config(seed), alpha=alpha, fedprox_mu=mu))
+                    configs.append(
+                        self._create_config(
+                            self._base_config(seed),
+                            aggregation="fedprox",
+                            alpha=alpha,
+                            fedprox_mu=mu,
+                        )
+                    )
         return configs
 
     def _generate_attack_configs(self) -> List[ExperimentConfig]:
@@ -187,8 +236,8 @@ class ComparisonMatrix:
 
         Uses all robust aggregation methods including Bulyan.
         Uses alpha=0.5 for moderate non-IID setting.
-        Uses num_clients=11 to meet Bulyan's n >= 4f + 3 requirement
-        (allows f=2 Byzantine tolerance: 11 >= 4*2 + 3).
+        Uses num_clients=15 to meet Bulyan's n >= 4f + 3 requirement
+        (allows f=3 Byzantine tolerance at 20%: 15 >= 4*3 + 3).
         """
         configs = []
         for agg in ATTACK_AGGREGATIONS:
@@ -200,7 +249,7 @@ class ComparisonMatrix:
                             aggregation=agg,
                             alpha=DEFAULT_ALPHA_NON_IID,
                             adversary_fraction=adv_frac,
-                            num_clients=11,  # Bulyan requires n >= 4f + 3
+                            num_clients=15,  # Bulyan requires n >= 4f + 3 for adv<=20%
                         )
                     )
         return configs
@@ -373,6 +422,9 @@ def run_federated_experiment(
     Raises:
         RuntimeError: If experiment fails to complete
     """
+    # Validate configuration before execution
+    validate_bulyan_byzantine_resilience(config.aggregation, config.adversary_fraction, config.num_clients)
+
     preset = config.to_preset_name()
     run_dir = base_dir / "runs" / preset
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -381,6 +433,9 @@ def run_federated_experiment(
     config_path = run_dir / "config.json"
     with open(config_path, "w") as f:
         json.dump(asdict(config), f, indent=2)
+
+    # Map unsupported aggregation labels to closest server implementation
+    server_aggregation = "fedavg" if config.aggregation == "fedprox" else config.aggregation
 
     # Find available port
     port = find_available_port(port_start)
@@ -396,7 +451,7 @@ def run_federated_experiment(
         "--rounds",
         str(config.num_rounds),
         "--aggregation",
-        config.aggregation,
+        server_aggregation,
         "--server_address",
         f"localhost:{port}",
         "--logdir",
@@ -410,6 +465,10 @@ def run_federated_experiment(
         "--fedprox_mu",
         str(config.fedprox_mu),
     ]
+
+    # Add explicit byzantine_f for attack experiments to prevent auto-guessing
+    if config.adversary_fraction > 0:
+        server_cmd.extend(["--byzantine_f", str(num_adversaries)])
 
     client_procs = []
     try:
