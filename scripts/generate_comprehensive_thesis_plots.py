@@ -54,6 +54,41 @@ COLORS = {
 }
 
 
+def get_max_attack_level_for_aggregator(agg: str) -> int:
+    """
+    Get maximum attack level for aggregator based on Byzantine resilience constraints.
+
+    Bulyan requires n >= 4f + 3 (El Mhamdi et al. 2018).
+    With n=11 clients, max f=2, so max adversary fraction = 2/11 = 18.2% ≈ 20%.
+    Other methods lack formal Byzantine guarantees and can test up to 30%.
+
+    Args:
+        agg: Aggregation method name
+
+    Returns:
+        Maximum attack percentage (0-100)
+    """
+    if agg.lower() == "bulyan":
+        return 20  # Theoretical maximum for n=11 (satisfies n >= 4(2) + 3 = 11)
+    return 30  # Other methods tested to higher attack levels
+
+
+def get_attack_levels_for_aggregator(agg: str) -> list[int]:
+    """
+    Get attack levels to evaluate for aggregator.
+
+    Args:
+        agg: Aggregation method name
+
+    Returns:
+        List of attack percentages
+    """
+    max_level = get_max_attack_level_for_aggregator(agg)
+    if max_level == 20:
+        return [0, 10, 20]
+    return [0, 10, 30]
+
+
 def _validate_dataframe_schema(df: pd.DataFrame, required_columns: list[str]) -> None:
     """
     Validate that DataFrame contains required columns.
@@ -197,11 +232,10 @@ def plot_utility_vs_attack(df: pd.DataFrame, ax: plt.Axes):
 
 
 def plot_convergence_trajectories(df: pd.DataFrame, ax: plt.Axes):
-    """F1 convergence over rounds for each aggregator (Adv=30%)."""
-    attack_df = df[df["adv_pct"] == 30]
-
+    """F1 convergence over rounds for each aggregator at max attack level."""
     for agg in ["fedavg", "krum", "bulyan", "median"]:
-        agg_data = attack_df[attack_df["aggregation"] == agg]
+        max_adv = get_max_attack_level_for_aggregator(agg)
+        agg_data = df[(df["aggregation"] == agg) & (df["adv_pct"] == max_adv)]
 
         if len(agg_data) == 0:
             continue
@@ -211,42 +245,84 @@ def plot_convergence_trajectories(df: pd.DataFrame, ax: plt.Axes):
         round_stats.columns = ["mean", "ci_low", "ci_up"]
 
         rounds = round_stats.index
-        ax.plot(rounds, round_stats["mean"], label=agg.capitalize(), color=COLORS.get(agg, "gray"), linewidth=2)
+        label = f"{agg.capitalize()} ({max_adv}%)"
+        ax.plot(rounds, round_stats["mean"], label=label, color=COLORS.get(agg, "gray"), linewidth=2)
         ax.fill_between(rounds, round_stats["ci_low"], round_stats["ci_up"], color=COLORS.get(agg, "gray"), alpha=0.15)
 
     ax.set_xlabel("Communication Round", fontsize=10)
     ax.set_ylabel("Macro F1 Score", fontsize=10)
-    ax.set_title("Convergence (30% Attack)", fontsize=11, fontweight="bold")
+    ax.set_title("Convergence Under Max Attack", fontsize=11, fontweight="bold")
     ax.legend(loc="best", fontsize=8)
     ax.grid(True, alpha=0.3)
+    ax.text(
+        0.98,
+        0.02,
+        "Bulyan: 20% max (n≥4f+3 constraint)",
+        transform=ax.transAxes,
+        fontsize=7,
+        ha="right",
+        va="bottom",
+        style="italic",
+        color="gray",
+    )
 
 
 def plot_attack_resilience_heatmap(df: pd.DataFrame, ax: plt.Axes):
     """Heatmap: Aggregator × Attack Level → Final F1."""
-    # Prepare data for heatmap
+    # Prepare data for heatmap with hybrid attack levels
     pivot_data = []
 
     for agg in ["fedavg", "krum", "bulyan", "median"]:
         row_data = []
-        for adv in [0, 10, 30]:
-            data = df[
-                (df["aggregation"] == agg)
-                & (df["adv_pct"] == adv)
-                & (df["round"] == df.groupby(["aggregation", "adv_pct", "seed"])["round"].transform("max"))
-            ]["macro_f1_global"].dropna()
+        attack_levels = get_attack_levels_for_aggregator(agg)
 
-            if len(data) > 0:
-                row_data.append(data.mean())
-            else:
+        for adv in [0, 10, 20, 30]:
+            if adv not in attack_levels:
                 row_data.append(np.nan)
+            else:
+                data = df[
+                    (df["aggregation"] == agg)
+                    & (df["adv_pct"] == adv)
+                    & (df["round"] == df.groupby(["aggregation", "adv_pct", "seed"])["round"].transform("max"))
+                ]["macro_f1_global"].dropna()
+
+                if len(data) > 0:
+                    row_data.append(data.mean())
+                else:
+                    row_data.append(np.nan)
         pivot_data.append(row_data)
 
-    pivot_df = pd.DataFrame(pivot_data, index=["FedAvg", "Krum", "Bulyan", "Median"], columns=["0%", "10%", "30%"])
+    pivot_df = pd.DataFrame(
+        pivot_data,
+        index=["FedAvg", "Krum", "Bulyan", "Median"],
+        columns=["0%", "10%", "20%", "30%"],
+    )
 
-    sns.heatmap(pivot_df, annot=True, fmt=".3f", cmap="RdYlGn", vmin=0, vmax=1.0, ax=ax, cbar_kws={"label": "Final F1 Score"})
+    sns.heatmap(
+        pivot_df,
+        annot=True,
+        fmt=".3f",
+        cmap="RdYlGn",
+        vmin=0,
+        vmax=1.0,
+        ax=ax,
+        cbar_kws={"label": "Final F1 Score"},
+        mask=pivot_df.isna(),
+    )
     ax.set_xlabel("Adversary Level", fontsize=10)
     ax.set_ylabel("Aggregator", fontsize=10)
     ax.set_title("Attack Resilience Matrix", fontsize=11, fontweight="bold")
+    ax.text(
+        0.98,
+        -0.15,
+        "Bulyan limited to 20% by Byzantine constraint (n≥4f+3)",
+        transform=ax.transAxes,
+        fontsize=7,
+        ha="right",
+        va="top",
+        style="italic",
+        color="gray",
+    )
 
 
 def plot_robustness_utility_tradeoff(df: pd.DataFrame, ax: plt.Axes):
@@ -289,12 +365,21 @@ def plot_aggregator_performance_bars(df: pd.DataFrame, ax: plt.Axes):
 
     stats_data = []
     for agg in ["fedavg", "krum", "bulyan", "median"]:
-        for adv in [0, 10, 30]:
-            data = final_df[(final_df["aggregation"] == agg) & (final_df["adv_pct"] == adv)]["macro_f1_global"].dropna()
+        attack_levels = get_attack_levels_for_aggregator(agg)
+        for adv in attack_levels:
+            agg_mask = (final_df["aggregation"] == agg) & (final_df["adv_pct"] == adv)
+            data = final_df[agg_mask]["macro_f1_global"].dropna()
             if len(data) > 0:
                 mean, ci_low, ci_up = compute_confidence_interval(data)
                 stats_data.append(
-                    {"aggregator": agg.capitalize(), "adv_pct": f"{adv}%", "mean": mean, "ci_low": ci_low, "ci_up": ci_up, "n": len(data)}
+                    {
+                        "aggregator": agg.capitalize(),
+                        "adv_pct": f"{adv}%",
+                        "mean": mean,
+                        "ci_low": ci_low,
+                        "ci_up": ci_up,
+                        "n": len(data),
+                    }
                 )
 
     stats_df = pd.DataFrame(stats_data)
@@ -305,9 +390,12 @@ def plot_aggregator_performance_bars(df: pd.DataFrame, ax: plt.Axes):
         return
 
     x = np.arange(4)  # 4 aggregators
-    width = 0.25
+    width = 0.22
 
-    for i, adv in enumerate(["0%", "10%", "30%"]):
+    # Use all attack levels that appear in data
+    all_attack_levels = sorted(stats_df["adv_pct"].unique(), key=lambda x: int(x.rstrip("%")))
+
+    for i, adv in enumerate(all_attack_levels):
         subset = stats_df[stats_df["adv_pct"] == adv].copy()
 
         means = []
@@ -324,20 +412,39 @@ def plot_aggregator_performance_bars(df: pd.DataFrame, ax: plt.Axes):
                 err_lower.append(mean_val - ci_low_val)
                 err_upper.append(ci_up_val - mean_val)
             else:
-                means.append(0)
+                means.append(np.nan)
                 err_lower.append(0)
                 err_upper.append(0)
 
-        ax.bar(x + i * width, means, width, label=f"Adv={adv}", yerr=[err_lower, err_upper], capsize=4, alpha=0.8)
+        ax.bar(
+            x + i * width,
+            means,
+            width,
+            label=f"Adv={adv}",
+            yerr=[err_lower, err_upper],
+            capsize=4,
+            alpha=0.8,
+        )
 
     ax.set_xlabel("Aggregation Strategy", fontsize=11)
     ax.set_ylabel("Final Macro F1 Score", fontsize=11)
     ax.set_title("Performance Comparison Across Attack Intensities (95% CI)", fontsize=12, fontweight="bold")
-    ax.set_xticks(x + width)
+    ax.set_xticks(x + width * (len(all_attack_levels) - 1) / 2)
     ax.set_xticklabels(["FedAvg", "Krum", "Bulyan", "Median"])
     ax.legend(loc="best")
     ax.grid(axis="y", alpha=0.3)
     ax.set_ylim([0, 1.0])
+    ax.text(
+        0.98,
+        0.02,
+        "Bulyan max: 20% (n≥4f+3)",
+        transform=ax.transAxes,
+        fontsize=7,
+        ha="right",
+        va="bottom",
+        style="italic",
+        color="gray",
+    )
 
 
 def plot_objective2_heterogeneity(df: pd.DataFrame, output_dir: Path):
@@ -913,15 +1020,15 @@ def plot_time_vs_alpha(df: pd.DataFrame, ax: plt.Axes):
 
 def plot_cost_benefit(df: pd.DataFrame, ax: plt.Axes):
     """Scatter: aggregation time vs F1 score under attack."""
-    attack_df = df[df["adv_pct"] == 30]
-
     for agg in ["fedavg", "krum", "bulyan", "median"]:
-        agg_data = attack_df[attack_df["aggregation"] == agg]
+        max_adv = get_max_attack_level_for_aggregator(agg)
+        agg_data = df[(df["aggregation"] == agg) & (df["adv_pct"] == max_adv)]
 
+        label = f"{agg.capitalize()} ({max_adv}%)"
         ax.scatter(
             agg_data["t_aggregate_ms"],
             agg_data["macro_f1_global"],
-            label=agg.capitalize(),
+            label=label,
             color=COLORS.get(agg, "gray"),
             alpha=0.6,
             s=100,
@@ -930,11 +1037,22 @@ def plot_cost_benefit(df: pd.DataFrame, ax: plt.Axes):
         )
 
     ax.set_xlabel("Aggregation Time (ms, log scale)", fontsize=11)
-    ax.set_ylabel("F1 Score Under 30% Attack", fontsize=11)
+    ax.set_ylabel("F1 Score Under Max Attack", fontsize=11)
     ax.set_title("Cost-Benefit Tradeoff: Computational Cost vs Security", fontsize=12, fontweight="bold")
     ax.set_xscale("log")
     ax.legend(loc="best")
     ax.grid(True, alpha=0.3)
+    ax.text(
+        0.02,
+        0.98,
+        "Bulyan: 20% max (n≥4f+3 constraint)",
+        transform=ax.transAxes,
+        fontsize=7,
+        ha="left",
+        va="top",
+        style="italic",
+        color="gray",
+    )
 
 
 def plot_overhead_comparison(df: pd.DataFrame, ax: plt.Axes):
