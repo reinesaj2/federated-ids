@@ -54,6 +54,13 @@ The unified DataFrame from `load_iiot_data.py` contains:
 - `macro_f1_personalized`: Averaged client F1 after personalization (if pers_epochs > 0)
 - `personalization_gain`: Computed as `macro_f1_personalized - macro_f1_global`
 
+### Evaluation Enhancements (to address low macro F1 clarity)
+- Add a **global evaluation pass on a public/common holdout** (no private data centralization) and log `macro_f1_global_holdout`, `micro_f1_global_holdout`, and per-class F1 to `metrics.csv` for headline reporting.
+- Keep per-client `macro_f1_after` for personalization analysis, but emphasize the global holdout metrics in plots and tables.
+- Log DP settings (`dp_noise_multiplier`, `dp_clip_norm`) and rounds per config in the unified DataFrame to support privacy–utility curves.
+- For long-run probes (25/50 rounds on select configs), tag runs with `rounds_planned` so convergence panels can separate short vs long trajectories without new entrypoints.
+- Export confusion-matrix summaries (per-class recall/precision) for the holdout to a small JSON alongside plots to ground narrative on minority-class behavior.
+
 ## Objective 1: Robust Aggregation Strategies for Byzantine-Resilient IIoT IDS
 
 **Research Question:** How do robust aggregation methods (Krum, Bulyan, Median) compare to FedAvg under Byzantine gradient ascent attacks?

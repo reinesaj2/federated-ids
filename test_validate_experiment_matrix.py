@@ -96,31 +96,25 @@ class TestExperimentMatrixValidator:
 
     def test_validator_counts_viable_and_impossible(self):
         """Validator should count viable and impossible configs correctly."""
-        validator = ExperimentMatrixValidator(n_clients=6)
+        validator = ExperimentMatrixValidator(n_clients=15)
         viable, impossible, impossible_configs = validator.validate_all()
 
-        # With 6 clients:
-        # - fedavg: 3 configs all viable
-        # - krum: 3 configs all viable (30%: f=1, need n>=5 ✓)
-        # - bulyan: 2 viable + 1 impossible (30%: f=1, need n>=7 ✗)
-        # - median: 3 configs all viable
-        # Total: 11 viable, 1 impossible
-        assert viable == 11
-        assert impossible == 1
-        assert len(impossible_configs) == 1
+        # With 15 clients and adversary fractions {0,0.1,0.2}, all combos are feasible.
+        assert viable == 12
+        assert impossible == 0
+        assert len(impossible_configs) == 0
 
     def test_impossible_configs_listed(self):
         """Impossible configurations should be listed."""
-        validator = ExperimentMatrixValidator(n_clients=6)
+        validator = ExperimentMatrixValidator(n_clients=15)
         _, _, impossible_configs = validator.validate_all()
 
-        # Should contain Bulyan+30% and Krum+30%
-        config_str = " ".join(impossible_configs)
-        assert "adv30" in config_str
+        # No impossible configs expected at these settings
+        assert impossible_configs == []
 
     def test_print_summary_no_crash(self, capsys):
         """print_summary should not crash."""
-        validator = ExperimentMatrixValidator(n_clients=6)
+        validator = ExperimentMatrixValidator(n_clients=15)
         validator.print_summary()
 
         captured = capsys.readouterr()
