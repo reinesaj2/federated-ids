@@ -25,7 +25,9 @@ DEFAULT_DROP_COLS: list[str] = [
 
 # Minimum samples per class required for meaningful model training
 # Dirichlet partitioning will resample until all clients meet this threshold
-MIN_SAMPLES_PER_CLASS: int = 50
+# NOTE: Set to 5 (not 50) to allow true heterogeneity at low alpha values.
+# Higher values cause repeated resampling failures, preventing extreme heterogeneity.
+MIN_SAMPLES_PER_CLASS: int = 5
 
 # Maximum resampling attempts for Dirichlet partitioning before falling back to even distribution
 # Empirically chosen to balance distribution quality with computational cost
@@ -103,27 +105,58 @@ def create_synthetic_classification_loaders(
     return train_loader, test_loader
 
 
-def dirichlet_partition(
-    labels: Sequence[int],
+def _validate_partition_constraints(
+    client_indices: list[list[int]],
+    labels: np.ndarray,
+    min_samples_per_class: int,
+) -> tuple[bool, str]:
+    """Check if partition meets min_samples_per_class constraint for all clients.
+
+    Args:
+        client_indices: List of index lists per client
+        labels: Array of labels for all samples
+        min_samples_per_class: Minimum required samples per class per client
+
+    Returns:
+        (is_valid, diagnostic_message)
+    """
+    num_classes = int(labels.max()) + 1
+    violations = []
+
+    for client_id, shard in enumerate(client_indices):
+        if len(shard) == 0:
+            violations.append(f"Client {client_id}: empty shard")
+            continue
+
+        shard_labels = labels[shard]
+        for class_idx in range(num_classes):
+            count = np.sum(shard_labels == class_idx)
+            if count < min_samples_per_class:
+                violations.append(f"Client {client_id}: class {class_idx} has {count} samples (need {min_samples_per_class})")
+
+    if violations:
+        return False, "; ".join(violations[:5])  # Limit to first 5 violations
+    return True, "OK"
+
+
+def _attempt_dirichlet_partition_single(
+    labels: np.ndarray,
     num_clients: int,
     alpha: float,
-    seed: int = 42,
-    min_samples_per_class: int = MIN_SAMPLES_PER_CLASS,
+    rng: np.random.Generator,
 ) -> list[list[int]]:
-    """
-    Partition indices into num_clients shards using a Dirichlet distribution over label proportions.
-    Returns a list of index lists per client.
+    """Single attempt at Dirichlet partitioning (pure function).
 
-    Resamples up to MAX_PARTITION_ATTEMPTS times to ensure each client receives at least
-    min_samples_per_class samples from each class, preventing pathological data imbalance
-    that would cause training failures (issue: alpha=0.5 creating clients with only 3-5
-    attack samples).
+    Args:
+        labels: Array of labels
+        num_clients: Number of clients
+        alpha: Dirichlet concentration parameter
+        rng: Random number generator
+
+    Returns:
+        List of index lists per client
     """
-    rng = np.random.default_rng(seed)
-    labels = np.asarray(labels)
     num_classes = int(labels.max()) + 1
-
-    # For each class, sample proportions for clients
     class_indices = [np.where(labels == c)[0] for c in range(num_classes)]
     client_indices: list[list[int]] = [[] for _ in range(num_clients)]
 
@@ -132,34 +165,84 @@ def dirichlet_partition(
             continue
         rng.shuffle(idxs)
 
-        # Resample until all shards meet minimum sample threshold
-        shards = None
-        for attempt in range(MAX_PARTITION_ATTEMPTS):
-            proportions = rng.dirichlet(alpha=[alpha] * num_clients)
-            splits = (np.cumsum(proportions) * len(idxs)).astype(int)[:-1]
-            shards = np.split(idxs, splits)
+        proportions = rng.dirichlet(alpha=[alpha] * num_clients)
+        splits = (np.cumsum(proportions) * len(idxs)).astype(int)[:-1]
+        shards = np.split(idxs, splits)
 
-            # Check if all shards meet minimum sample requirement
-            if all(len(shard) >= min_samples_per_class for shard in shards):
-                # Good distribution, use it
-                for i, shard in enumerate(shards):
-                    client_indices[i].extend(shard.astype(np.int64).tolist())
-                break
+        for i, shard in enumerate(shards):
+            client_indices[i].extend(shard.astype(np.int64).tolist())
 
-            # If we're on the last attempt, redistribute manually
-            if attempt == MAX_PARTITION_ATTEMPTS - 1:
-                # Fallback: distribute samples evenly to meet minimum threshold
-                samples_per_client = len(idxs) // num_clients
-                for i in range(num_clients):
-                    start_idx = i * samples_per_client
-                    end_idx = start_idx + samples_per_client if i < num_clients - 1 else len(idxs)
-                    client_indices[i].extend(idxs[start_idx:end_idx].astype(np.int64).tolist())
-                break
-
+    # Shuffle each client's indices
     for shard in client_indices:
         rng.shuffle(shard)
 
     return client_indices
+
+
+def dirichlet_partition(
+    labels: Sequence[int],
+    num_clients: int,
+    alpha: float,
+    seed: int = 42,
+    min_samples_per_class: int = MIN_SAMPLES_PER_CLASS,
+) -> list[list[int]]:
+    """Partition indices using Dirichlet distribution with min samples per class constraint.
+
+    Resamples up to MAX_PARTITION_ATTEMPTS times to ensure each client receives at least
+    min_samples_per_class samples from EVERY class. This prevents pathological imbalance
+    where clients miss entire classes, which breaks stratified splitting and metrics.
+
+    Args:
+        labels: Sequence of integer labels
+        num_clients: Number of clients to partition data across
+        alpha: Dirichlet concentration parameter (lower = more heterogeneous)
+               Special case: alpha=inf delegates to iid_partition()
+        seed: Random seed for reproducibility
+        min_samples_per_class: Minimum samples per class per client (default: MIN_SAMPLES_PER_CLASS)
+
+    Returns:
+        List of index lists, one per client
+
+    Raises:
+        ValueError: If unable to satisfy min_samples_per_class constraint after MAX_PARTITION_ATTEMPTS
+
+    References:
+        - Dirichlet distribution for non-IID partitioning: Hsu et al. (2019)
+        - MIN_SAMPLES_PER_CLASS rationale: See data_preprocessing.py:26-29
+    """
+    # Special case: alpha=infinity means IID (uniform distribution)
+    if np.isinf(alpha):
+        return iid_partition(len(labels), num_clients, seed)
+
+    rng = np.random.default_rng(seed)
+    labels = np.asarray(labels)
+
+    # Attempt partitioning with resampling
+    for attempt in range(MAX_PARTITION_ATTEMPTS):
+        client_indices = _attempt_dirichlet_partition_single(labels, num_clients, alpha, rng)
+
+        # Validate constraints
+        is_valid, diagnostic = _validate_partition_constraints(client_indices, labels, min_samples_per_class)
+
+        if is_valid:
+            return client_indices
+
+        # Log warning on later attempts
+        if attempt > MAX_PARTITION_ATTEMPTS // 2:
+            import logging
+
+            logging.warning(f"Dirichlet partition attempt {attempt + 1}/{MAX_PARTITION_ATTEMPTS} " f"failed constraint: {diagnostic}")
+
+    # Failed after all attempts
+    num_classes = int(labels.max()) + 1
+    raise ValueError(
+        f"Failed to create valid Dirichlet partition after {MAX_PARTITION_ATTEMPTS} attempts. "
+        f"Constraints: {num_clients} clients, {len(labels)} samples, {num_classes} classes, "
+        f"alpha={alpha:.4f}, min_samples_per_class={min_samples_per_class}. "
+        f"Last attempt violation: {diagnostic}. "
+        f"Suggestions: (1) Increase dataset size, (2) Decrease num_clients, "
+        f"(3) Increase alpha (less heterogeneous), (4) Decrease min_samples_per_class"
+    )
 
 
 def iid_partition(num_samples: int, num_clients: int, seed: int = 42) -> list[list[int]]:
