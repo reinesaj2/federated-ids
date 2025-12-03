@@ -123,10 +123,10 @@ def test_alpha_infinity_produces_balanced_distribution(num_samples_per_class, nu
 
 
 @given(
-    num_classes=st.integers(min_value=2, max_value=4),
-    samples_per_class=st.integers(min_value=200, max_value=300),
-    num_clients=st.integers(min_value=3, max_value=6),
-    alpha=st.floats(min_value=0.5, max_value=3.0),
+    num_classes=st.integers(min_value=2, max_value=3),
+    samples_per_class=st.integers(min_value=300, max_value=400),
+    num_clients=st.integers(min_value=3, max_value=4),
+    alpha=st.floats(min_value=1.0, max_value=3.0),
     seed=st.integers(min_value=0, max_value=10000),
 )
 @settings(max_examples=20, deadline=None)

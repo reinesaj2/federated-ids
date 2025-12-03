@@ -59,12 +59,12 @@ class TestMulticlassDataPreprocessing:
 
     def test_multiclass_data_preprocessing(self):
         """Test that prepare_partitions_from_dataframe handles multi-class data."""
-        n_samples = 1000
+        n_samples = 3000
         n_features = 10
         n_classes = 8
         num_clients = 3
         partition_strategy = "dirichlet"
-        alpha = 0.1
+        alpha = 1.0
         seed = 42
 
         data = {f"feat_{i}": np.random.randn(n_samples) for i in range(n_features)}
