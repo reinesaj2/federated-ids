@@ -1,0 +1,2 @@
+dimension,strategy,seed,dataset_tier,started_at,finished_at,runtime_min,metrics_rows,status,notes,pid,log_file
+aggregation,fedavg,42,quick,2025-11-17 14:48,2025-11-17 14:49,0.4,21,SUCCESS,Test run for documentation validation - 20 rounds completed in 24 seconds,7238,/tmp/laptop_test_quick_fedavg_seed42.log

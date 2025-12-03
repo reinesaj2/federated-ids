@@ -649,12 +649,23 @@ def compute_server_macro_f1_from_clients(run_dir: Path, round_num: int) -> Optio
     return float(np.mean(client_f1_scores))
 
 
-def load_experiment_results(runs_dir: Path) -> pd.DataFrame:
-    """Load all experiment results for a given dimension."""
-    all_data = []
+def load_experiment_results(runs_dir: Path, dataset_filter: Optional[str] = None) -> pd.DataFrame:
+    """Load all experiment results for a given dimension.
 
-    # Try both comp_* and d2_* patterns
-    patterns = ["comp_*", "d2_*"]
+    Args:
+        runs_dir: Directory containing experiment runs
+        dataset_filter: Optional dataset name to filter by (e.g., 'edge-iiotset-full').
+                       If provided, only loads experiments matching this dataset.
+                       If None, loads all experiments (may mix datasets).
+
+    Returns:
+        DataFrame with experiment results, filtered by dataset if specified.
+    """
+    all_data = []
+    skipped_count = 0
+
+    # Try comp_*, d2_*, and ds* patterns (ds* includes dataset-prefixed experiments)
+    patterns = ["comp_*", "d2_*", "ds*"]
 
     for pattern in patterns:
         for run_dir in runs_dir.glob(pattern):
@@ -664,6 +675,13 @@ def load_experiment_results(runs_dir: Path) -> pd.DataFrame:
             if config_file.exists():
                 with open(config_file) as f:
                     config = json.load(f)
+
+            # Filter by dataset if specified
+            if dataset_filter is not None:
+                run_dataset = config.get("dataset")
+                if run_dataset != dataset_filter:
+                    skipped_count += 1
+                    continue
 
             # Load server metrics
             metrics_file = run_dir / "metrics.csv"
@@ -695,7 +713,18 @@ def load_experiment_results(runs_dir: Path) -> pd.DataFrame:
             all_data.append(df)
 
     if not all_data:
+        if dataset_filter and skipped_count > 0:
+            logger.info(
+                f"No experiments found matching dataset '{dataset_filter}' "
+                f"({skipped_count} experiments skipped)"
+            )
         return pd.DataFrame()
+
+    if dataset_filter and skipped_count > 0:
+        logger.info(
+            f"Dataset filtering: loaded {len(all_data)} experiments, "
+            f"skipped {skipped_count} non-matching experiments"
+        )
 
     combined_df = pd.concat(all_data, ignore_index=True)
 
@@ -1840,6 +1869,15 @@ def main():
     )
     parser.add_argument("--runs_dir", type=str, default="runs", help="Directory with experiment runs")
     parser.add_argument(
+        "--dataset",
+        type=str,
+        default=None,
+        help=(
+            "Filter experiments by dataset name (e.g., 'edge-iiotset-full', 'cic-ids2017', 'unsw-nb15'). "
+            "If not specified, loads all datasets (may mix results)."
+        ),
+    )
+    parser.add_argument(
         "--output_dir",
         type=str,
         default="results/comparative_analysis",
@@ -1853,14 +1891,27 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Load all data
-    print("Loading experiment results...")
-    df = load_experiment_results(runs_dir)
+    if args.dataset:
+        print(f"Loading experiment results (filtered by dataset: {args.dataset})...")
+    else:
+        print("Loading experiment results (all datasets - may mix results)...")
+    df = load_experiment_results(runs_dir, dataset_filter=args.dataset)
 
     if df.empty:
         print("No experiment data found!")
         return
 
-    print(f"Loaded {len(df)} rows from {len(df['run_dir'].unique())} experiments")
+    if args.dataset:
+        print(
+            f"Loaded {len(df)} rows from {len(df['run_dir'].unique())} experiments "
+            f"(dataset: {args.dataset})"
+        )
+    else:
+        datasets = df["dataset"].unique() if "dataset" in df.columns else ["unknown"]
+        print(
+            f"Loaded {len(df)} rows from {len(df['run_dir'].unique())} experiments "
+            f"across {len(datasets)} datasets: {list(datasets)}"
+        )
 
     # Generate plots based on dimension
     if args.dimension in ["aggregation", "all"]:

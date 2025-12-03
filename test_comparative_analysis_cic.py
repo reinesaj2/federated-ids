@@ -131,13 +131,14 @@ def test_experiment_config_to_preset_name_includes_dataset():
         seed=42,
     )
 
-    # Both should generate valid preset names
-    assert "comp_fedavg" in config_unsw.to_preset_name()
-    assert "comp_fedavg" in config_cic.to_preset_name()
-    assert "seed42" in config_unsw.to_preset_name()
-    assert "seed42" in config_cic.to_preset_name()
-    assert "datasetcic" in config_cic.to_preset_name()
-    assert "dataset" not in config_unsw.to_preset_name()
+    preset_unsw = config_unsw.to_preset_name()
+    preset_cic = config_cic.to_preset_name()
+
+    assert preset_unsw.startswith("dsunsw_")
+    assert preset_cic.startswith("dscic_")
+    assert "comp_fedavg" in preset_unsw
+    assert "comp_fedavg" in preset_cic
+    assert preset_unsw != preset_cic
 
 
 if __name__ == "__main__":

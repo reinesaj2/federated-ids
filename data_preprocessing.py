@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -443,6 +444,69 @@ def load_cic_ids2017(csv_path: str) -> tuple[pd.DataFrame, str, str | None]:
     proto_col = next((c for c in proto_col_candidates if c in df.columns), None)
     df = df.dropna(axis=1, how="all")
     df = df.dropna(axis=0).reset_index(drop=True)
+    return df, label_col, proto_col
+
+
+def load_edge_iiotset(
+    csv_path: str | Path,
+    use_multiclass: bool = True,
+    max_samples: int | None = None,
+) -> tuple[pd.DataFrame, str, str | None]:
+    """
+    Load Edge-IIoTset CSV and return (dataframe, label_col, protocol_col).
+
+    Args:
+        csv_path: Path to Edge-IIoTset CSV (DNN-EdgeIIoT-dataset.csv or ML-EdgeIIoT-dataset.csv)
+        use_multiclass: If True, use Attack_type (15 classes); if False, use Attack_label (binary)
+        max_samples: Optional limit on number of samples to load (for tiered testing)
+
+    Returns:
+        Tuple of (dataframe, label_column_name, protocol_column_name)
+
+    Note:
+        Dataset citation: Ferrag et al., "Edge-IIoTset: A New Comprehensive Realistic
+        Cyber Security Dataset of IoT and IIoT Applications for Centralized and
+        Federated Learning", IEEE Access, 2022.
+    """
+    df = pd.read_csv(str(csv_path), low_memory=False, nrows=max_samples)
+    df.columns = [col.strip() if isinstance(col, str) else col for col in df.columns]
+    df = df.replace([np.inf, -np.inf], np.nan)
+
+    # Choose label column based on classification type
+    label_col = "Attack_type" if use_multiclass else "Attack_label"
+    if label_col not in df.columns:
+        raise ValueError(
+            f"Expected label column '{label_col}' not found in Edge-IIoTset dataset. " f"Available columns: {list(df.columns)}"
+        )
+
+    # Normalize "Normal" to "BENIGN" for consistency with other datasets
+    if use_multiclass and "Attack_type" in df.columns:
+        df[label_col] = df[label_col].astype(str).str.strip()
+        df[label_col] = df[label_col].replace({"Normal": "BENIGN"})
+
+    # Edge-IIoTset doesn't have a traditional protocol column like UNSW/CIC
+    # Protocol info is embedded in features (tcp.*, udp.*, mqtt.*, etc.)
+    proto_col = None
+
+    # Drop high-cardinality columns that cause memory explosion during one-hot encoding
+    # These are identifiers/metadata that don't contribute to generalizable attack patterns
+    drop_cols = [
+        "frame.time",  # Timestamps - not predictive features
+        "ip.src_host",  # Source IPs - would memorize specific IPs instead of learning patterns
+        "ip.dst_host",  # Destination IPs - same issue
+        "tcp.payload",  # Raw packet data - too specific, causes overfitting
+        "tcp.options",  # TCP flags - too granular
+        "tcp.srcport",  # Port as string - duplicate of numeric tcp.dstport
+        "http.request.full_uri",  # Full URLs - application-specific
+        "http.file_data",  # File content - not statistical features
+    ]
+    df = df.drop(columns=[c for c in drop_cols if c in df.columns], errors="ignore")
+
+    # Basic cleanup
+    df = df.dropna(axis=1, how="all")
+    df = df.dropna(axis=0).reset_index(drop=True)
+    df = df.drop_duplicates().reset_index(drop=True)
+
     return df, label_col, proto_col
 
 
