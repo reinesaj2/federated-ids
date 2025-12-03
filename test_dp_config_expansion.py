@@ -44,8 +44,8 @@ class TestDPConfigExpansion:
         privacy_configs = cm.generate_configs("privacy")
 
         # Should have 7 DP configs + 1 baseline = 8 total configs
-        # With 5 seeds each = 40 total experiments
-        expected_total = 8 * 5  # 8 configs * 5 seeds
+        # With 10 seeds each = 80 total experiments
+        expected_total = 8 * 10  # 8 configs * 10 seeds
         assert len(privacy_configs) == expected_total
 
     def test_privacy_experiments_have_sufficient_seeds(self):

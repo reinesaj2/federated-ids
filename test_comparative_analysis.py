@@ -135,8 +135,8 @@ def test_comparison_matrix_attack_dimension():
     # Check alpha is fixed to moderate non-IID
     assert all(c.alpha == 0.5 for c in configs)
 
-    # Check all attack configs use n=11 clients for Bulyan requirement
-    assert all(c.num_clients == 11 for c in configs)
+    # Check all attack configs use n=15 clients for Bulyan requirement (n >= 4f + 3)
+    assert all(c.num_clients == 15 for c in configs)
 
 
 def test_comparison_matrix_privacy_dimension():
@@ -455,8 +455,8 @@ def test_comparison_matrix_default_values():
     assert 1.0 in matrix.alpha_values  # IID
     assert 0.0 in matrix.adversary_fractions  # Benign
     assert matrix.num_clients == 6
-    assert matrix.num_rounds == 20
-    assert len(matrix.seeds) == 5  # Multiple seeds for statistical validity
+    assert matrix.num_rounds == 15
+    assert len(matrix.seeds) == 10  # Multiple seeds for statistical validity
 
 
 def test_comparison_matrix_attack_uses_subset():
@@ -474,8 +474,8 @@ def test_comparison_matrix_attack_uses_subset():
     assert aggregations == set(ATTACK_AGGREGATIONS)
     assert "bulyan" in aggregations  # Included after algorithm fix
 
-    # All attack configs should use n=11 clients for Bulyan requirement (n >= 4f + 3)
-    assert all(c.num_clients == 11 for c in configs)
+    # All attack configs should use n=15 clients for Bulyan requirement (n >= 4f + 3)
+    assert all(c.num_clients == 15 for c in configs)
 
 
 def test_experiment_config_fedprox_mu_field():
@@ -562,8 +562,8 @@ def test_comparison_matrix_heterogeneity_fedprox_dimension():
     # Exact expected count: 3 alpha × 2 mu × 2 seeds = 12 configs
     assert len(configs) == 12
 
-    # Check all use fedavg baseline
-    assert all(c.aggregation == "fedavg" for c in configs)
+    # Check all use fedprox aggregation
+    assert all(c.aggregation == "fedprox" for c in configs)
 
     # Check alpha values are varied
     alphas = {c.alpha for c in configs}
@@ -602,7 +602,7 @@ def test_comparison_matrix_heterogeneity_fedprox_preset_names():
 
     # Should include expected components
     for preset in preset_names:
-        assert "comp_fedavg" in preset
+        assert "comp_fedprox" in preset
         assert "mu0.01" in preset or "mu0.1" in preset
         assert "alpha0.5" in preset or "alpha0.1" in preset
         assert "seed42" in preset
