@@ -70,7 +70,7 @@ jobs:
         if: steps.dimension_filter.outputs.should_run != 'true'
         run: echo "Dimension ${{ matrix.dimension }} not requested; skipping job."
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         if: steps.dimension_filter.outputs.should_run == 'true'
         with:
           fetch-depth: 0
@@ -224,7 +224,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-python@v5
         with:
@@ -278,7 +278,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always() && needs.consolidated_summary.result == 'success'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: main
           fetch-depth: 0
