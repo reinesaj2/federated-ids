@@ -1,0 +1,10 @@
+{
+  "preset": "comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed44_datasetcic",
+  "status": "completed",
+  "start_time": 1763761482.1370702,
+  "end_time": 1763761573.169282,
+  "error": null,
+  "duration_sec": 91.03194785118103,
+  "retry_count": 0,
+  "worker_id": 2
+}

@@ -1,0 +1,10 @@
+{
+  "preset": "comp_fedavg_alpha0.5_adv0_dp1_dpnoise0.5_pers0_mu0.0_seed42",
+  "status": "completed",
+  "start_time": 1763763722.938696,
+  "end_time": 1763763799.206701,
+  "error": null,
+  "duration_sec": 76.26775193214417,
+  "retry_count": 0,
+  "worker_id": 2
+}

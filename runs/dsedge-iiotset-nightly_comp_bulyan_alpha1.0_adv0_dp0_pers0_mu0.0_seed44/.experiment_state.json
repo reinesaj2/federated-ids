@@ -1,0 +1,10 @@
+{
+  "preset": "dsedge-iiotset-nightly_comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0.0_seed44",
+  "status": "completed",
+  "start_time": 1763849507.893397,
+  "end_time": 1763853908.772383,
+  "error": null,
+  "duration_sec": 4400.87833404541,
+  "retry_count": 0,
+  "worker_id": 0
+}

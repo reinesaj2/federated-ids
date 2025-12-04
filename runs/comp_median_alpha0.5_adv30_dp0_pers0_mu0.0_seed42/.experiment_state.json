@@ -1,0 +1,10 @@
+{
+  "preset": "comp_median_alpha0.5_adv30_dp0_pers0_mu0.0_seed42",
+  "status": "completed",
+  "start_time": 1763760500.606485,
+  "end_time": 1763760562.578186,
+  "error": null,
+  "duration_sec": 61.97115778923035,
+  "retry_count": 0,
+  "worker_id": 3
+}

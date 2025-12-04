@@ -1,0 +1,10 @@
+{
+  "preset": "dsedge-iiotset-nightly_comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed46",
+  "status": "completed",
+  "start_time": 1763849024.118725,
+  "end_time": 1763849287.590815,
+  "error": null,
+  "duration_sec": 263.47180914878845,
+  "retry_count": 0,
+  "worker_id": 1
+}

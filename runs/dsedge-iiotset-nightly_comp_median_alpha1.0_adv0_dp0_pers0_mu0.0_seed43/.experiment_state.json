@@ -1,0 +1,10 @@
+{
+  "preset": "dsedge-iiotset-nightly_comp_median_alpha1.0_adv0_dp0_pers0_mu0.0_seed43",
+  "status": "completed",
+  "start_time": 1763850103.738917,
+  "end_time": 1763850282.722126,
+  "error": null,
+  "duration_sec": 178.98272109031677,
+  "retry_count": 0,
+  "worker_id": 0
+}

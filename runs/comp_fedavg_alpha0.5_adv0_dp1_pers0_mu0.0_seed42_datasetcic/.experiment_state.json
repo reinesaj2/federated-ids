@@ -1,0 +1,10 @@
+{
+  "preset": "comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42_datasetcic",
+  "status": "failed",
+  "start_time": 1763762292.544584,
+  "end_time": 1763763327.735254,
+  "error": "Experiment comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42_datasetcic timed out after 735s",
+  "duration_sec": null,
+  "retry_count": 1,
+  "worker_id": 2
+}

@@ -1,0 +1,10 @@
+{
+  "preset": "dsedge-iiotset-nightly_comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed44",
+  "status": "completed",
+  "start_time": 1763848048.1496131,
+  "end_time": 1763848315.6455412,
+  "error": null,
+  "duration_sec": 267.49550914764404,
+  "retry_count": 0,
+  "worker_id": 0
+}

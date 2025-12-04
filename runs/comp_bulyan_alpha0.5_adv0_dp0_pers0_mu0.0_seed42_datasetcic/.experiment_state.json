@@ -1,0 +1,10 @@
+{
+  "preset": "comp_bulyan_alpha0.5_adv0_dp0_pers0_mu0.0_seed42_datasetcic",
+  "status": "completed",
+  "start_time": 1763761964.33526,
+  "end_time": 1763761980.9287412,
+  "error": null,
+  "duration_sec": 16.59320592880249,
+  "retry_count": 0,
+  "worker_id": 3
+}

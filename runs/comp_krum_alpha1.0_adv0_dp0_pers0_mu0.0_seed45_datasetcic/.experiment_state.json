@@ -1,0 +1,10 @@
+{
+  "preset": "comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed45_datasetcic",
+  "status": "completed",
+  "start_time": 1763761385.374828,
+  "end_time": 1763761482.135861,
+  "error": null,
+  "duration_sec": 96.76073908805847,
+  "retry_count": 0,
+  "worker_id": 0
+}

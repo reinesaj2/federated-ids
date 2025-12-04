@@ -1,0 +1,10 @@
+{
+  "preset": "comp_krum_alpha0.5_adv10_dp0_pers0_mu0.0_seed46_datasetcic",
+  "status": "failed",
+  "start_time": 1763761871.279124,
+  "end_time": 1763762943.727057,
+  "error": "Experiment comp_krum_alpha0.5_adv10_dp0_pers0_mu0.0_seed46_datasetcic timed out after 772s",
+  "duration_sec": null,
+  "retry_count": 1,
+  "worker_id": 1
+}
