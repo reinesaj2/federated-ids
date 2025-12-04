@@ -128,7 +128,7 @@ matrix:
   dimension: [aggregation, heterogeneity, heterogeneity_fedprox, attack, privacy, personalization]
 ```
 
-**Result:** ❌ **Still failed with exit code 143**
+**Result:** [FAIL] **Still failed with exit code 143**
 
 **Why it failed:** The problem was not sequential accumulation but **single dimension memory exceeding 7GB**. Running 1 dimension instead of 2 did not reduce the peak memory of processing 1.7M rows.
 
@@ -150,7 +150,7 @@ matrix:
 - GitHub Team plan ($4/user/month) or Enterprise
 - Per-minute billing (no included minutes for larger runners)
 
-**Verdict:** ❌ **Rejected - Exceeds $0 budget constraint**
+**Verdict:** [FAIL] **Rejected - Exceeds $0 budget constraint**
 
 ---
 
@@ -172,7 +172,7 @@ matrix:
 3. Configure workflow to use `runs-on: self-hosted`
 4. Implement checkpointing for spot interruption resilience
 
-**Verdict:** ❌ **Rejected - AWS requires credit card, violates $0 budget**
+**Verdict:** [FAIL] **Rejected - AWS requires credit card, violates $0 budget**
 
 **Note:** AWS Educate offers $100 free credits for students, but setup time and complexity were barriers.
 
@@ -189,7 +189,7 @@ matrix:
 
 **Cost:** Same as AWS spot (~$14 for full run)
 
-**Verdict:** ❌ **Rejected - Still requires cloud account billing**
+**Verdict:** [FAIL] **Rejected - Still requires cloud account billing**
 
 ---
 
@@ -207,11 +207,11 @@ df_sample, _ = train_test_split(
 ```
 
 **Impact:**
-- Memory: 8-10 GB → 4-5 GB ✅
-- Runtime: 8 hours → 4 hours ✅
-- Statistical validity: Maintained via stratification ✅
+- Memory: 8-10 GB → 4-5 GB [OK]
+- Runtime: 8 hours → 4 hours [OK]
+- Statistical validity: Maintained via stratification [OK]
 
-**Verdict:** ✅ **Viable, but reduces dataset size**
+**Verdict:** [OK] **Viable, but reduces dataset size**
 
 **Trade-off:** Thesis claims full-scale validation (90% of 2.2M samples). Reducing to 45% undermines "full-scale" narrative.
 
@@ -231,7 +231,7 @@ df_sample, _ = train_test_split(
 
 **Timeline:** 6 days for full thesis results
 
-**Verdict:** ✅ **SELECTED - Meets all constraints**
+**Verdict:** [OK] **SELECTED - Meets all constraints**
 
 ---
 
@@ -405,7 +405,7 @@ jobs:
           for dir in runs/comp_*/; do
             if [ -f "$dir/metrics.csv" ]; then
               ROWS=$(wc -l < "$dir/metrics.csv")
-              echo "✓ $(basename $dir): $ROWS rows"
+              echo "[OK] $(basename $dir): $ROWS rows"
               FOUND=$((FOUND + 1))
             fi
           done
@@ -504,7 +504,7 @@ jobs:
 ### GitHub Actions Free Tier
 
 **Public Repository:**
-- Minutes: Unlimited ✅
+- Minutes: Unlimited [OK]
 - Storage: 500 MB
 - Artifact storage: 1 GB total across artifacts
 - Concurrent jobs: 20
@@ -514,7 +514,7 @@ jobs:
 - Concurrent jobs: 1 (sequential execution)
 - Artifact storage: ~6 artifacts × 100 MB each = 600 MB (under 1 GB limit)
 
-**Compliance:** ✅ Fully within free tier limits
+**Compliance:** [OK] Fully within free tier limits
 
 ---
 
@@ -658,11 +658,11 @@ df_sample, _ = train_test_split(df, train_size=0.7, stratify=df['Attack_type'])
 
 The temporal distribution architecture solves the compute constraint problem by:
 
-1. ✅ **Eliminating memory contention** - Only 1 dimension runs at a time
-2. ✅ **Staying within $0 budget** - Uses GitHub free tier
-3. ✅ **Preserving full dataset** - 1.7M rows maintained
-4. ✅ **Providing fault tolerance** - Independent workflows reduce risk
-5. ✅ **Enabling incremental progress** - Results available daily
+1. [OK] **Eliminating memory contention** - Only 1 dimension runs at a time
+2. [OK] **Staying within $0 budget** - Uses GitHub free tier
+3. [OK] **Preserving full dataset** - 1.7M rows maintained
+4. [OK] **Providing fault tolerance** - Independent workflows reduce risk
+5. [OK] **Enabling incremental progress** - Results available daily
 
 **Trade-offs accepted:**
 - 6 days for full results (vs 8 hours)

@@ -284,9 +284,9 @@ jobs:
           # Check that metrics files were created
           for dir in runs/*/; do
             if [ -f "$dir/metrics.csv" ]; then
-              echo "✓ Found metrics.csv in $dir"
+              echo "[OK] Found metrics.csv in $dir"
             else
-              echo "✗ Missing metrics.csv in $dir"
+              echo "[FAIL] Missing metrics.csv in $dir"
               exit 1
             fi
           done
@@ -449,14 +449,14 @@ jobs:
             PRESET="d2_full_${{ matrix.alpha }}_benign"
           fi
           LOGDIR="runs/$PRESET"
-          
+
           if [ -f "$LOGDIR/metrics.csv" ]; then
-            echo "✓ Found metrics.csv"
+            echo "[OK] Found metrics.csv"
             # Check that we have expected number of rounds
             LINES=$(wc -l < "$LOGDIR/metrics.csv")
             echo "  Metrics has $LINES lines"
           else
-            echo "✗ Missing metrics.csv"
+            echo "[FAIL] Missing metrics.csv"
             exit 1
           fi
 
@@ -474,7 +474,7 @@ jobs:
     steps:
       - name: Log nightly failure (issues disabled)
         run: |
-          echo "🚨 Nightly CI Pipeline Failed"
+          echo "ALERT: Nightly CI Pipeline Failed"
           echo "Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           echo "Branch: ${{ github.ref }}"
           echo "Commit: ${{ github.sha }}"
@@ -563,7 +563,7 @@ jobs:
             if [ ! -f "$LOGDIR/metrics.csv" ]; then
               echo "Warning: Missing metrics.csv in $LOGDIR"
             else
-              echo "✓ Completed $PRESET"
+              echo "[OK] Completed $PRESET"
             fi
           done
 
@@ -573,7 +573,7 @@ jobs:
           FOUND=0
           for dir in runs/*/; do
             if [ -f "$dir/metrics.csv" ]; then
-              echo "✓ Found metrics in $(basename $dir)"
+              echo "[OK] Found metrics in $(basename $dir)"
               FOUND=$((FOUND + 1))
             fi
           done

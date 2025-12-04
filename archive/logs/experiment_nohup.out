@@ -1,0 +1,434 @@
+[2025-12-02 23:34:37] ======================================================================
+[2025-12-02 23:34:37] FULL EXPERIMENT QUEUE: Objectives 2-5
+[2025-12-02 23:34:37] ======================================================================
+[2025-12-02 23:34:37] Total: 209 | Starting from: 0 | Remaining: 209
+[2025-12-02 23:34:37] ======================================================================
+[2025-12-02 23:34:37] 
+[2025-12-02 23:34:37] [1/209] Obj2: FedAvg alpha=0.005 seed=42
+[2025-12-02 23:34:37]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.005_adv0_dp0_pers0_mu0.0_seed42
+[2025-12-02 23:34:37]   Port: 8080, Adversaries: 0
+[2025-12-02 23:37:35]   SUCCESS
+[2025-12-02 23:37:40] 
+[2025-12-02 23:37:40] [2/209] Obj2: FedAvg alpha=0.005 seed=43
+[2025-12-02 23:37:40]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.005_adv0_dp0_pers0_mu0.0_seed43
+[2025-12-02 23:37:40]   Port: 8080, Adversaries: 0
+[2025-12-02 23:40:27]   SUCCESS
+[2025-12-02 23:40:32] 
+[2025-12-02 23:40:32] [3/209] Obj2: FedAvg alpha=0.005 seed=44
+[2025-12-02 23:40:32]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.005_adv0_dp0_pers0_mu0.0_seed44
+[2025-12-02 23:40:32]   Port: 8080, Adversaries: 0
+[2025-12-02 23:44:12]   SUCCESS
+[2025-12-02 23:44:17] 
+[2025-12-02 23:44:17] [4/209] Obj2: FedAvg alpha=0.005 seed=45
+[2025-12-02 23:44:17]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.005_adv0_dp0_pers0_mu0.0_seed45
+[2025-12-02 23:44:17]   Port: 8080, Adversaries: 0
+[2025-12-02 23:47:03]   SUCCESS
+[2025-12-02 23:47:08] 
+[2025-12-02 23:47:08] [5/209] Obj2: FedAvg alpha=0.005 seed=46
+[2025-12-02 23:47:08]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.005_adv0_dp0_pers0_mu0.0_seed46
+[2025-12-02 23:47:08]   Port: 8080, Adversaries: 0
+[2025-12-02 23:50:03]   SUCCESS
+[2025-12-02 23:50:08] 
+[2025-12-02 23:50:08] [6/209] Obj2: FedAvg alpha=0.01 seed=42
+[2025-12-02 23:50:08]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.01_adv0_dp0_pers0_mu0.0_seed42
+[2025-12-02 23:50:08]   Port: 8080, Adversaries: 0
+[2025-12-02 23:53:07]   SUCCESS
+[2025-12-02 23:53:12] 
+[2025-12-02 23:53:12] [7/209] Obj2: FedAvg alpha=0.01 seed=43
+[2025-12-02 23:53:12]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.01_adv0_dp0_pers0_mu0.0_seed43
+[2025-12-02 23:53:12]   Port: 8080, Adversaries: 0
+[2025-12-02 23:56:56]   SUCCESS
+[2025-12-02 23:57:01] 
+[2025-12-02 23:57:01] [8/209] Obj2: FedAvg alpha=0.01 seed=44
+[2025-12-02 23:57:01]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.01_adv0_dp0_pers0_mu0.0_seed44
+[2025-12-02 23:57:01]   Port: 8080, Adversaries: 0
+[2025-12-02 23:59:45]   SUCCESS
+[2025-12-02 23:59:50] 
+[2025-12-02 23:59:50] [9/209] Obj2: FedAvg alpha=0.01 seed=45
+[2025-12-02 23:59:50]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.01_adv0_dp0_pers0_mu0.0_seed45
+[2025-12-02 23:59:50]   Port: 8080, Adversaries: 0
+[2025-12-03 00:02:31]   SUCCESS
+[2025-12-03 00:02:36] 
+[2025-12-03 00:02:36] [10/209] Obj2: FedAvg alpha=0.01 seed=46
+[2025-12-03 00:02:36]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.01_adv0_dp0_pers0_mu0.0_seed46
+[2025-12-03 00:02:36]   Port: 8080, Adversaries: 0
+[2025-12-03 00:05:31]   SUCCESS
+[2025-12-03 00:05:36] 
+[2025-12-03 00:05:36] [11/209] Obj2: FedAvg alpha=0.02 seed=42
+[2025-12-03 00:05:36]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed42
+[2025-12-03 00:05:36]   Port: 8080, Adversaries: 0
+[2025-12-03 00:08:37]   SUCCESS
+[2025-12-03 00:08:42] 
+[2025-12-03 00:08:42] [12/209] Obj2: FedAvg alpha=0.02 seed=43
+[2025-12-03 00:08:42]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed43
+[2025-12-03 00:08:42]   Port: 8080, Adversaries: 0
+[2025-12-03 00:11:24]   SUCCESS
+[2025-12-03 00:11:29] 
+[2025-12-03 00:11:29] [13/209] Obj2: FedAvg alpha=0.02 seed=44
+[2025-12-03 00:11:29]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed44
+[2025-12-03 00:11:29]   Port: 8080, Adversaries: 0
+[2025-12-03 00:41:38]   TIMEOUT
+[2025-12-03 00:41:43] 
+[2025-12-03 00:41:43] [14/209] Obj2: FedAvg alpha=0.02 seed=45
+[2025-12-03 00:41:43]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed45
+[2025-12-03 00:41:43]   Port: 8080, Adversaries: 0
+[2025-12-03 00:44:20]   SUCCESS
+[2025-12-03 00:44:25] 
+[2025-12-03 00:44:25] [15/209] Obj2: FedAvg alpha=0.02 seed=46
+[2025-12-03 00:44:25]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed46
+[2025-12-03 00:44:25]   Port: 8080, Adversaries: 0
+[2025-12-03 00:47:25]   SUCCESS
+[2025-12-03 00:47:30] 
+[2025-12-03 00:47:30] [16/209] Obj2: FedProx alpha=0.005 mu=0.01 seed=42
+[2025-12-03 00:47:30]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.01_seed42
+[2025-12-03 00:47:30]   Port: 8080, Adversaries: 0
+[2025-12-03 00:50:26]   SUCCESS
+[2025-12-03 00:50:31] 
+[2025-12-03 00:50:31] [17/209] Obj2: FedProx alpha=0.005 mu=0.01 seed=43
+[2025-12-03 00:50:31]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.01_seed43
+[2025-12-03 00:50:31]   Port: 8080, Adversaries: 0
+[2025-12-03 00:53:12]   SUCCESS
+[2025-12-03 00:53:17] 
+[2025-12-03 00:53:17] [18/209] Obj2: FedProx alpha=0.005 mu=0.01 seed=44
+[2025-12-03 00:53:17]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.01_seed44
+[2025-12-03 00:53:17]   Port: 8080, Adversaries: 0
+[2025-12-03 00:55:59]   SUCCESS
+[2025-12-03 00:56:04] 
+[2025-12-03 00:56:04] [19/209] Obj2: FedProx alpha=0.005 mu=0.01 seed=45
+[2025-12-03 00:56:04]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.01_seed45
+[2025-12-03 00:56:04]   Port: 8080, Adversaries: 0
+[2025-12-03 00:59:50]   SUCCESS
+[2025-12-03 00:59:55] 
+[2025-12-03 00:59:55] [20/209] Obj2: FedProx alpha=0.005 mu=0.01 seed=46
+[2025-12-03 00:59:55]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.01_seed46
+[2025-12-03 00:59:55]   Port: 8080, Adversaries: 0
+[2025-12-03 01:04:19]   SUCCESS
+[2025-12-03 01:04:24] 
+[2025-12-03 01:04:24] [21/209] Obj2: FedProx alpha=0.005 mu=0.05 seed=42
+[2025-12-03 01:04:24]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.05_seed42
+[2025-12-03 01:04:24]   Port: 8080, Adversaries: 0
+[2025-12-03 01:07:21]   SUCCESS
+[2025-12-03 01:07:26] 
+[2025-12-03 01:07:26] [22/209] Obj2: FedProx alpha=0.005 mu=0.05 seed=43
+[2025-12-03 01:07:26]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.05_seed43
+[2025-12-03 01:07:26]   Port: 8080, Adversaries: 0
+[2025-12-03 01:10:06]   SUCCESS
+[2025-12-03 01:10:11] 
+[2025-12-03 01:10:11] [23/209] Obj2: FedProx alpha=0.005 mu=0.05 seed=44
+[2025-12-03 01:10:11]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.05_seed44
+[2025-12-03 01:10:11]   Port: 8080, Adversaries: 0
+[2025-12-03 01:12:52]   SUCCESS
+[2025-12-03 01:12:57] 
+[2025-12-03 01:12:57] [24/209] Obj2: FedProx alpha=0.005 mu=0.05 seed=45
+[2025-12-03 01:12:57]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.05_seed45
+[2025-12-03 01:12:57]   Port: 8080, Adversaries: 0
+[2025-12-03 01:15:43]   SUCCESS
+[2025-12-03 01:15:48] 
+[2025-12-03 01:15:48] [25/209] Obj2: FedProx alpha=0.005 mu=0.05 seed=46
+[2025-12-03 01:15:48]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.05_seed46
+[2025-12-03 01:15:48]   Port: 8080, Adversaries: 0
+[2025-12-03 01:18:41]   SUCCESS
+[2025-12-03 01:18:46] 
+[2025-12-03 01:18:46] [26/209] Obj2: FedProx alpha=0.005 mu=0.1 seed=42
+[2025-12-03 01:18:46]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.1_seed42
+[2025-12-03 01:18:46]   Port: 8080, Adversaries: 0
+[2025-12-03 01:22:44]   SUCCESS
+[2025-12-03 01:22:49] 
+[2025-12-03 01:22:49] [27/209] Obj2: FedProx alpha=0.005 mu=0.1 seed=43
+[2025-12-03 01:22:49]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.1_seed43
+[2025-12-03 01:22:49]   Port: 8080, Adversaries: 0
+[2025-12-03 01:25:30]   SUCCESS
+[2025-12-03 01:25:35] 
+[2025-12-03 01:25:35] [28/209] Obj2: FedProx alpha=0.005 mu=0.1 seed=44
+[2025-12-03 01:25:35]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.1_seed44
+[2025-12-03 01:25:35]   Port: 8080, Adversaries: 0
+[2025-12-03 01:29:17]   SUCCESS
+[2025-12-03 01:29:22] 
+[2025-12-03 01:29:22] [29/209] Obj2: FedProx alpha=0.005 mu=0.1 seed=45
+[2025-12-03 01:29:22]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.1_seed45
+[2025-12-03 01:29:22]   Port: 8080, Adversaries: 0
+[2025-12-03 01:32:04]   SUCCESS
+[2025-12-03 01:32:09] 
+[2025-12-03 01:32:09] [30/209] Obj2: FedProx alpha=0.005 mu=0.1 seed=46
+[2025-12-03 01:32:09]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.005_adv0_dp0_pers0_mu0.1_seed46
+[2025-12-03 01:32:09]   Port: 8080, Adversaries: 0
+[2025-12-03 01:36:02]   SUCCESS
+[2025-12-03 01:36:07] 
+[2025-12-03 01:36:07] [31/209] Obj2: FedProx alpha=0.01 mu=0.01 seed=42
+[2025-12-03 01:36:07]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.01_seed42
+[2025-12-03 01:36:07]   Port: 8080, Adversaries: 0
+[2025-12-03 01:39:04]   SUCCESS
+[2025-12-03 01:39:09] 
+[2025-12-03 01:39:09] [32/209] Obj2: FedProx alpha=0.01 mu=0.01 seed=43
+[2025-12-03 01:39:09]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.01_seed43
+[2025-12-03 01:39:09]   Port: 8080, Adversaries: 0
+[2025-12-03 01:41:50]   SUCCESS
+[2025-12-03 01:41:55] 
+[2025-12-03 01:41:55] [33/209] Obj2: FedProx alpha=0.01 mu=0.01 seed=44
+[2025-12-03 01:41:55]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.01_seed44
+[2025-12-03 01:41:55]   Port: 8080, Adversaries: 0
+[2025-12-03 01:44:37]   SUCCESS
+[2025-12-03 01:44:42] 
+[2025-12-03 01:44:42] [34/209] Obj2: FedProx alpha=0.01 mu=0.01 seed=45
+[2025-12-03 01:44:42]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.01_seed45
+[2025-12-03 01:44:42]   Port: 8080, Adversaries: 0
+[2025-12-03 01:47:28]   SUCCESS
+[2025-12-03 01:47:33] 
+[2025-12-03 01:47:33] [35/209] Obj2: FedProx alpha=0.01 mu=0.01 seed=46
+[2025-12-03 01:47:33]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.01_seed46
+[2025-12-03 01:47:33]   Port: 8080, Adversaries: 0
+[2025-12-03 02:17:42]   TIMEOUT
+[2025-12-03 02:17:47] 
+[2025-12-03 02:17:47] [36/209] Obj2: FedProx alpha=0.01 mu=0.05 seed=42
+[2025-12-03 02:17:47]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.05_seed42
+[2025-12-03 02:17:47]   Port: 8080, Adversaries: 0
+[2025-12-03 02:20:52]   SUCCESS
+[2025-12-03 02:20:57] 
+[2025-12-03 02:20:57] [37/209] Obj2: FedProx alpha=0.01 mu=0.05 seed=43
+[2025-12-03 02:20:57]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.05_seed43
+[2025-12-03 02:20:57]   Port: 8080, Adversaries: 0
+[2025-12-03 02:23:47]   SUCCESS
+[2025-12-03 02:23:52] 
+[2025-12-03 02:23:52] [38/209] Obj2: FedProx alpha=0.01 mu=0.05 seed=44
+[2025-12-03 02:23:52]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.05_seed44
+[2025-12-03 02:23:52]   Port: 8080, Adversaries: 0
+[2025-12-03 02:27:46]   SUCCESS
+[2025-12-03 02:27:51] 
+[2025-12-03 02:27:51] [39/209] Obj2: FedProx alpha=0.01 mu=0.05 seed=45
+[2025-12-03 02:27:51]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.05_seed45
+[2025-12-03 02:27:51]   Port: 8080, Adversaries: 0
+[2025-12-03 02:30:43]   SUCCESS
+[2025-12-03 02:30:48] 
+[2025-12-03 02:30:48] [40/209] Obj2: FedProx alpha=0.01 mu=0.05 seed=46
+[2025-12-03 02:30:48]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.05_seed46
+[2025-12-03 02:30:48]   Port: 8080, Adversaries: 0
+[2025-12-03 02:33:52]   SUCCESS
+[2025-12-03 02:33:57] 
+[2025-12-03 02:33:57] [41/209] Obj2: FedProx alpha=0.01 mu=0.1 seed=42
+[2025-12-03 02:33:57]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.1_seed42
+[2025-12-03 02:33:57]   Port: 8080, Adversaries: 0
+[2025-12-03 02:37:03]   SUCCESS
+[2025-12-03 02:37:08] 
+[2025-12-03 02:37:08] [42/209] Obj2: FedProx alpha=0.01 mu=0.1 seed=43
+[2025-12-03 02:37:08]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.1_seed43
+[2025-12-03 02:37:08]   Port: 8080, Adversaries: 0
+[2025-12-03 02:39:58]   SUCCESS
+[2025-12-03 02:40:03] 
+[2025-12-03 02:40:03] [43/209] Obj2: FedProx alpha=0.01 mu=0.1 seed=44
+[2025-12-03 02:40:03]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.1_seed44
+[2025-12-03 02:40:03]   Port: 8080, Adversaries: 0
+[2025-12-03 02:42:54]   SUCCESS
+[2025-12-03 02:42:59] 
+[2025-12-03 02:42:59] [44/209] Obj2: FedProx alpha=0.01 mu=0.1 seed=45
+[2025-12-03 02:42:59]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.1_seed45
+[2025-12-03 02:42:59]   Port: 8080, Adversaries: 0
+[2025-12-03 02:45:53]   SUCCESS
+[2025-12-03 02:45:58] 
+[2025-12-03 02:45:58] [45/209] Obj2: FedProx alpha=0.01 mu=0.1 seed=46
+[2025-12-03 02:45:58]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.01_adv0_dp0_pers0_mu0.1_seed46
+[2025-12-03 02:45:58]   Port: 8080, Adversaries: 0
+[2025-12-03 03:16:07]   TIMEOUT
+[2025-12-03 03:16:12] 
+[2025-12-03 03:16:12] [46/209] Obj2: FedProx alpha=0.02 mu=0.01 seed=42
+[2025-12-03 03:16:12]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.01_seed42
+[2025-12-03 03:16:12]   Port: 8080, Adversaries: 0
+[2025-12-03 03:19:22]   SUCCESS
+[2025-12-03 03:19:27] 
+[2025-12-03 03:19:27] [47/209] Obj2: FedProx alpha=0.02 mu=0.01 seed=43
+[2025-12-03 03:19:27]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.01_seed43
+[2025-12-03 03:19:27]   Port: 8080, Adversaries: 0
+[2025-12-03 03:22:21]   SUCCESS
+[2025-12-03 03:22:26] 
+[2025-12-03 03:22:26] [48/209] Obj2: FedProx alpha=0.02 mu=0.01 seed=44
+[2025-12-03 03:22:26]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.01_seed44
+[2025-12-03 03:22:26]   Port: 8080, Adversaries: 0
+[2025-12-03 03:25:18]   SUCCESS
+[2025-12-03 03:25:23] 
+[2025-12-03 03:25:23] [49/209] Obj2: FedProx alpha=0.02 mu=0.01 seed=45
+[2025-12-03 03:25:23]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.01_seed45
+[2025-12-03 03:25:23]   Port: 8080, Adversaries: 0
+[2025-12-03 03:55:33]   TIMEOUT
+[2025-12-03 03:55:38] 
+[2025-12-03 03:55:38] [50/209] Obj2: FedProx alpha=0.02 mu=0.01 seed=46
+[2025-12-03 03:55:38]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.01_seed46
+[2025-12-03 03:55:38]   Port: 8080, Adversaries: 0
+[2025-12-03 03:58:42]   SUCCESS
+[2025-12-03 03:58:47] 
+[2025-12-03 03:58:47] [51/209] Obj2: FedProx alpha=0.02 mu=0.05 seed=42
+[2025-12-03 03:58:47]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.05_seed42
+[2025-12-03 03:58:47]   Port: 8080, Adversaries: 0
+[2025-12-03 04:01:59]   SUCCESS
+[2025-12-03 04:02:04] 
+[2025-12-03 04:02:04] [52/209] Obj2: FedProx alpha=0.02 mu=0.05 seed=43
+[2025-12-03 04:02:04]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.05_seed43
+[2025-12-03 04:02:04]   Port: 8080, Adversaries: 0
+[2025-12-03 04:04:53]   SUCCESS
+[2025-12-03 04:04:58] 
+[2025-12-03 04:04:58] [53/209] Obj2: FedProx alpha=0.02 mu=0.05 seed=44
+[2025-12-03 04:04:58]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.05_seed44
+[2025-12-03 04:04:58]   Port: 8080, Adversaries: 0
+[2025-12-03 04:08:51]   SUCCESS
+[2025-12-03 04:08:56] 
+[2025-12-03 04:08:56] [54/209] Obj2: FedProx alpha=0.02 mu=0.05 seed=45
+[2025-12-03 04:08:56]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.05_seed45
+[2025-12-03 04:08:56]   Port: 8080, Adversaries: 0
+[2025-12-03 04:11:52]   SUCCESS
+[2025-12-03 04:11:57] 
+[2025-12-03 04:11:57] [55/209] Obj2: FedProx alpha=0.02 mu=0.05 seed=46
+[2025-12-03 04:11:57]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.05_seed46
+[2025-12-03 04:11:57]   Port: 8080, Adversaries: 0
+[2025-12-03 04:42:06]   TIMEOUT
+[2025-12-03 04:42:11] 
+[2025-12-03 04:42:11] [56/209] Obj2: FedProx alpha=0.02 mu=0.1 seed=42
+[2025-12-03 04:42:11]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.1_seed42
+[2025-12-03 04:42:11]   Port: 8080, Adversaries: 0
+[2025-12-03 04:45:22]   SUCCESS
+[2025-12-03 04:45:27] 
+[2025-12-03 04:45:27] [57/209] Obj2: FedProx alpha=0.02 mu=0.1 seed=43
+[2025-12-03 04:45:27]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.1_seed43
+[2025-12-03 04:45:27]   Port: 8080, Adversaries: 0
+[2025-12-03 05:15:36]   TIMEOUT
+[2025-12-03 05:15:41] 
+[2025-12-03 05:15:41] [58/209] Obj2: FedProx alpha=0.02 mu=0.1 seed=44
+[2025-12-03 05:15:41]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.1_seed44
+[2025-12-03 05:15:41]   Port: 8080, Adversaries: 0
+[2025-12-03 05:18:36]   SUCCESS
+[2025-12-03 05:18:41] 
+[2025-12-03 05:18:41] [59/209] Obj2: FedProx alpha=0.02 mu=0.1 seed=45
+[2025-12-03 05:18:41]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.1_seed45
+[2025-12-03 05:18:41]   Port: 8080, Adversaries: 0
+[2025-12-03 05:21:33]   SUCCESS
+[2025-12-03 05:21:38] 
+[2025-12-03 05:21:38] [60/209] Obj2: FedProx alpha=0.02 mu=0.1 seed=46
+[2025-12-03 05:21:38]   Run dir: dsedge-iiotset-nightly_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.1_seed46
+[2025-12-03 05:21:38]   Port: 8080, Adversaries: 0
+[2025-12-03 05:24:44]   SUCCESS
+[2025-12-03 05:24:49] 
+[2025-12-03 05:24:49] [61/209] Obj3: pers=1 alpha=0.1 seed=42
+[2025-12-03 05:24:49]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.1_adv0_dp0_pers1_mu0.0_seed42
+[2025-12-03 05:24:49]   Port: 8080, Adversaries: 0
+[2025-12-03 05:33:45]   SUCCESS
+[2025-12-03 05:33:50] 
+[2025-12-03 05:33:50] [62/209] Obj3: pers=1 alpha=0.1 seed=43
+[2025-12-03 05:33:50]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.1_adv0_dp0_pers1_mu0.0_seed43
+[2025-12-03 05:33:50]   Port: 8080, Adversaries: 0
+[2025-12-03 05:42:27]   SUCCESS
+[2025-12-03 05:42:32] 
+[2025-12-03 05:42:32] [63/209] Obj3: pers=1 alpha=0.1 seed=44
+[2025-12-03 05:42:32]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.1_adv0_dp0_pers1_mu0.0_seed44
+[2025-12-03 05:42:32]   Port: 8080, Adversaries: 0
+[2025-12-03 06:12:41]   TIMEOUT
+[2025-12-03 06:12:46] 
+[2025-12-03 06:12:46] [64/209] Obj3: pers=1 alpha=0.1 seed=45
+[2025-12-03 06:12:46]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.1_adv0_dp0_pers1_mu0.0_seed45
+[2025-12-03 06:12:46]   Port: 8080, Adversaries: 0
+[2025-12-03 06:22:34]   SUCCESS
+[2025-12-03 06:22:39] 
+[2025-12-03 06:22:39] [65/209] Obj3: pers=1 alpha=0.1 seed=46
+[2025-12-03 06:22:39]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.1_adv0_dp0_pers1_mu0.0_seed46
+[2025-12-03 06:22:39]   Port: 8080, Adversaries: 0
+[2025-12-03 06:32:15]   SUCCESS
+[2025-12-03 06:32:20] 
+[2025-12-03 06:32:20] [66/209] Obj3: pers=1 alpha=0.5 seed=42
+[2025-12-03 06:32:20]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.5_adv0_dp0_pers1_mu0.0_seed42
+[2025-12-03 06:32:20]   Port: 8080, Adversaries: 0
+[2025-12-03 06:39:27]   SUCCESS
+[2025-12-03 06:39:32] 
+[2025-12-03 06:39:32] [67/209] Obj3: pers=1 alpha=0.5 seed=43
+[2025-12-03 06:39:32]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.5_adv0_dp0_pers1_mu0.0_seed43
+[2025-12-03 06:39:32]   Port: 8080, Adversaries: 0
+[2025-12-03 06:46:31]   SUCCESS
+[2025-12-03 06:46:36] 
+[2025-12-03 06:46:36] [68/209] Obj3: pers=1 alpha=0.5 seed=44
+[2025-12-03 06:46:36]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.5_adv0_dp0_pers1_mu0.0_seed44
+[2025-12-03 06:46:36]   Port: 8080, Adversaries: 0
+[2025-12-03 06:53:49]   SUCCESS
+[2025-12-03 06:53:54] 
+[2025-12-03 06:53:54] [69/209] Obj3: pers=1 alpha=0.5 seed=45
+[2025-12-03 06:53:54]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.5_adv0_dp0_pers1_mu0.0_seed45
+[2025-12-03 06:53:54]   Port: 8080, Adversaries: 0
+[2025-12-03 07:01:44]   SUCCESS
+[2025-12-03 07:01:49] 
+[2025-12-03 07:01:49] [70/209] Obj3: pers=1 alpha=0.5 seed=46
+[2025-12-03 07:01:49]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.5_adv0_dp0_pers1_mu0.0_seed46
+[2025-12-03 07:01:49]   Port: 8080, Adversaries: 0
+[2025-12-03 07:09:19]   SUCCESS
+[2025-12-03 07:09:24] 
+[2025-12-03 07:09:24] [71/209] Obj3: pers=1 alpha=1.0 seed=42
+[2025-12-03 07:09:24]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha1.0_adv0_dp0_pers1_mu0.0_seed42
+[2025-12-03 07:09:24]   Port: 8080, Adversaries: 0
+[2025-12-03 07:14:45]   SUCCESS
+[2025-12-03 07:14:50] 
+[2025-12-03 07:14:50] [72/209] Obj3: pers=1 alpha=1.0 seed=43
+[2025-12-03 07:14:50]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha1.0_adv0_dp0_pers1_mu0.0_seed43
+[2025-12-03 07:14:50]   Port: 8080, Adversaries: 0
+[2025-12-03 07:20:17]   SUCCESS
+[2025-12-03 07:20:22] 
+[2025-12-03 07:20:22] [73/209] Obj3: pers=1 alpha=1.0 seed=44
+[2025-12-03 07:20:22]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha1.0_adv0_dp0_pers1_mu0.0_seed44
+[2025-12-03 07:20:22]   Port: 8080, Adversaries: 0
+[2025-12-03 07:24:43]   SUCCESS
+[2025-12-03 07:24:48] 
+[2025-12-03 07:24:48] [74/209] Obj3: pers=1 alpha=1.0 seed=45
+[2025-12-03 07:24:48]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha1.0_adv0_dp0_pers1_mu0.0_seed45
+[2025-12-03 07:24:48]   Port: 8080, Adversaries: 0
+[2025-12-03 07:29:09]   SUCCESS
+[2025-12-03 07:29:14] 
+[2025-12-03 07:29:14] [75/209] Obj3: pers=1 alpha=1.0 seed=46
+[2025-12-03 07:29:14]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha1.0_adv0_dp0_pers1_mu0.0_seed46
+[2025-12-03 07:29:14]   Port: 8080, Adversaries: 0
+[2025-12-03 07:34:35]   SUCCESS
+[2025-12-03 07:34:40] 
+[2025-12-03 07:34:40] [76/209] Obj3: pers=3 alpha=0.1 seed=42
+[2025-12-03 07:34:40]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.1_adv0_dp0_pers3_mu0.0_seed42
+[2025-12-03 07:34:40]   Port: 8080, Adversaries: 0
+[2025-12-03 07:47:34]   SUCCESS
+[2025-12-03 07:47:39] 
+[2025-12-03 07:47:39] [77/209] Obj3: pers=3 alpha=0.1 seed=43
+[2025-12-03 07:47:39]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.1_adv0_dp0_pers3_mu0.0_seed43
+[2025-12-03 07:47:39]   Port: 8080, Adversaries: 0
+[2025-12-03 08:00:07]   SUCCESS
+[2025-12-03 08:00:12] 
+[2025-12-03 08:00:12] [78/209] Obj3: pers=3 alpha=0.1 seed=44
+[2025-12-03 08:00:12]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.1_adv0_dp0_pers3_mu0.0_seed44
+[2025-12-03 08:00:12]   Port: 8080, Adversaries: 0
+[2025-12-03 08:20:57]   SUCCESS
+[2025-12-03 08:21:02] 
+[2025-12-03 08:21:02] [79/209] Obj3: pers=3 alpha=0.1 seed=45
+[2025-12-03 08:21:02]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.1_adv0_dp0_pers3_mu0.0_seed45
+[2025-12-03 08:21:02]   Port: 8080, Adversaries: 0
+[2025-12-03 08:35:06]   SUCCESS
+[2025-12-03 08:35:11] 
+[2025-12-03 08:35:11] [80/209] Obj3: pers=3 alpha=0.1 seed=46
+[2025-12-03 08:35:11]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.1_adv0_dp0_pers3_mu0.0_seed46
+[2025-12-03 08:35:11]   Port: 8080, Adversaries: 0
+[2025-12-03 08:49:27]   SUCCESS
+[2025-12-03 08:49:32] 
+[2025-12-03 08:49:32] [81/209] Obj3: pers=3 alpha=1.0 seed=42
+[2025-12-03 08:49:32]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha1.0_adv0_dp0_pers3_mu0.0_seed42
+[2025-12-03 08:49:32]   Port: 8080, Adversaries: 0
+[2025-12-03 09:19:41]   TIMEOUT
+[2025-12-03 09:19:46] 
+[2025-12-03 09:19:46] [82/209] Obj3: pers=3 alpha=1.0 seed=43
+[2025-12-03 09:19:46]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha1.0_adv0_dp0_pers3_mu0.0_seed43
+[2025-12-03 09:19:46]   Port: 8080, Adversaries: 0
+[2025-12-03 09:26:12]   SUCCESS
+[2025-12-03 09:26:17] 
+[2025-12-03 09:26:17] [83/209] Obj3: pers=3 alpha=1.0 seed=44
+[2025-12-03 09:26:17]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha1.0_adv0_dp0_pers3_mu0.0_seed44
+[2025-12-03 09:26:17]   Port: 8080, Adversaries: 0
+[2025-12-03 09:31:42]   SUCCESS
+[2025-12-03 09:31:47] 
+[2025-12-03 09:31:47] [84/209] Obj3: pers=3 alpha=1.0 seed=45
+[2025-12-03 09:31:47]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha1.0_adv0_dp0_pers3_mu0.0_seed45
+[2025-12-03 09:31:47]   Port: 8080, Adversaries: 0
+[2025-12-03 09:37:12]   SUCCESS
+[2025-12-03 09:37:17] 
+[2025-12-03 09:37:17] [85/209] Obj3: pers=3 alpha=1.0 seed=46
+[2025-12-03 09:37:17]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha1.0_adv0_dp0_pers3_mu0.0_seed46
+[2025-12-03 09:37:17]   Port: 8080, Adversaries: 0
+[2025-12-03 09:42:55]   SUCCESS
+[2025-12-03 09:43:00] 
+[2025-12-03 09:43:00] [86/209] Obj3: pers=5 alpha=0.1 seed=42
+[2025-12-03 09:43:00]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.1_adv0_dp0_pers5_mu0.0_seed42
+[2025-12-03 09:43:00]   Port: 8080, Adversaries: 0

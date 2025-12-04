@@ -728,6 +728,17 @@ def load_experiment_results(runs_dir: Path, dataset_filter: Optional[str] = None
 
     combined_df = pd.concat(all_data, ignore_index=True)
 
+    # Coerce alpha to numeric (treat string 'inf' as np.inf) to avoid mixed-type sorting
+    if "alpha" in combined_df.columns:
+        def _coerce_alpha(val):
+            if isinstance(val, str) and val.lower() == "inf":
+                return np.inf
+            try:
+                return float(val)
+            except Exception:
+                return val
+        combined_df["alpha"] = combined_df["alpha"].apply(_coerce_alpha)
+
     # Validate metrics before returning
     validator = MetricValidator()
     warnings = validator.validate_plot_metrics(combined_df, "experiment_data")

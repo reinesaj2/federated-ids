@@ -204,10 +204,10 @@ main() {
       if run_algorithm "$algorithm" "$port" "$mu" "$alpha"; then
         local exp_name="${algorithm}_alpha${alpha}_mu${mu}"
         completed_experiments+=("$exp_name")
-        info "✓ Completed: $exp_name"
+        info "[OK] Completed: $exp_name"
       else
         failed_experiments=$((failed_experiments + 1))
-        info "✗ Failed: ${algorithm}_alpha${alpha}_mu${mu}"
+        info "[FAIL] Failed: ${algorithm}_alpha${alpha}_mu${mu}"
       fi
 
       # Small delay between experiments to avoid port conflicts

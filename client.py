@@ -366,9 +366,11 @@ class TorchClient(fl.client.NumPyClient):
         # Time the training
         with self.fit_timer.time_fit():
             epochs_completed = 0
+            attack_mode = str(self.runtime_config.get("adversary_mode", "none"))
+            topk_fraction = float(self.runtime_config.get("adversary_topk_fraction", 0.1))
+            target_class = int(self.runtime_config.get("adversary_target_class", 0))
             for epoch in range(epochs):
-                mode = str(self.runtime_config.get("adversary_mode", "none"))
-                if mode == "grad_ascent":
+                if attack_mode == "grad_ascent":
                     # Perform gradient ascent by negating the loss
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
@@ -397,13 +399,13 @@ class TorchClient(fl.client.NumPyClient):
                         loss.backward()
 
                         # Apply gradient clipping ONLY to adversarial clients
-                        if mode in ["grad_ascent", "label_flip"]:
+                        if attack_mode in ["grad_ascent", "label_flip", "sign_flip_topk"]:
                             clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
                             if clip_factor > 0:
                                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=clip_factor, norm_type=2.0)
 
                         optimizer.step()
-                elif mode == "label_flip":
+                elif attack_mode == "label_flip":
                     # Train on intentionally wrong labels: rotate class index by +1
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
@@ -435,10 +437,75 @@ class TorchClient(fl.client.NumPyClient):
                         loss.backward()
 
                         # Apply gradient clipping ONLY to adversarial clients
-                        if mode in ["grad_ascent", "label_flip"]:
+                        if attack_mode in ["grad_ascent", "label_flip", "sign_flip_topk"]:
                             clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
                             if clip_factor > 0:
                                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=clip_factor, norm_type=2.0)
+
+                        optimizer.step()
+                elif attack_mode == "sign_flip_topk":
+                    self.model.train()
+                    criterion = torch.nn.CrossEntropyLoss()
+                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+                    fedprox_mu = float(config.get("fedprox_mu", self.runtime_config.get("fedprox_mu", 0.0)))
+                    global_tensors = None
+                    if fedprox_mu > 0.0:
+                        global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
+
+                    for xb, yb in self.train_loader:
+                        xb = xb.to(self.device)
+                        yb = yb.to(self.device)
+                        optimizer.zero_grad()
+                        preds = self.model(xb)
+                        loss = criterion(preds, yb)
+
+                        if fedprox_mu > 0.0 and global_tensors is not None:
+                            prox_term = 0.0
+                            for param, global_param in zip(self.model.parameters(), global_tensors):
+                                prox_term += torch.sum((param - global_param) ** 2)
+                            loss = loss + (fedprox_mu / 2.0) * prox_term
+
+                        loss.backward()
+
+                        grads = [p.grad.detach().flatten() for p in self.model.parameters() if p.grad is not None]
+                        if grads:
+                            flat = torch.cat(grads)
+                            k = max(1, int(topk_fraction * flat.numel()))
+                            _, idx = torch.topk(flat.abs(), k)
+                            flat[idx] = -flat[idx]
+                            start = 0
+                            for p in self.model.parameters():
+                                if p.grad is None:
+                                    continue
+                                grad_len = p.grad.numel()
+                                reshaped = flat[start : start + grad_len].reshape_as(p.grad)
+                                p.grad.copy_(reshaped)
+                                start += grad_len
+
+                        clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
+                        if clip_factor > 0:
+                            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=clip_factor, norm_type=2.0)
+
+                        optimizer.step()
+                elif attack_mode == "targeted_label":
+                    self.model.train()
+                    criterion = torch.nn.CrossEntropyLoss()
+                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+                    n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
+
+                    for xb, yb in self.train_loader:
+                        xb = xb.to(self.device)
+                        yb = yb.to(self.device)
+                        optimizer.zero_grad()
+                        target = torch.full_like(yb, fill_value=target_class % n_classes)
+                        preds = self.model(xb)
+                        loss = criterion(preds, target)
+
+                        loss.backward()
+
+                        clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
+                        if clip_factor > 0:
+                            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=clip_factor, norm_type=2.0)
 
                         optimizer.step()
                 else:
@@ -523,9 +590,11 @@ class TorchClient(fl.client.NumPyClient):
         # Evaluate after training (optional)
         loss_after, acc_after = None, None
         macro_f1_after = None
+        micro_f1_after = None
         macro_f1_argmax = None
         benign_fpr_argmax = None
         f1_per_class_after_json = None
+        f1_per_class_holdout_json = None
         precision_per_class_json = None
         recall_per_class_json = None
         fpr_after = None
@@ -537,12 +606,18 @@ class TorchClient(fl.client.NumPyClient):
         confusion_matrix_counts_json = None
         confusion_matrix_normalized_json = None
         confusion_matrix_class_names_json = None
+        confusion_matrix_counts_holdout_json = None
+        confusion_matrix_normalized_holdout_json = None
+        confusion_matrix_class_names_holdout_json = None
+        macro_f1_global_holdout = None
+        micro_f1_global_holdout = None
         try:
             if len(self.test_loader.dataset) > 0:
                 loss_after, acc_after, probs_after, labels_after = evaluate(self.model, self.test_loader, self.device)
                 if probs_after.size > 0:
                     preds_after = np.argmax(probs_after, axis=1)
                     macro_f1_after = float(f1_score(labels_after, preds_after, average="macro"))
+                    micro_f1_after = float(f1_score(labels_after, preds_after, average="micro"))
                     # Argmax metrics
                     macro_f1_argmax = macro_f1_after
                     benign_idx = 0
@@ -569,6 +644,7 @@ class TorchClient(fl.client.NumPyClient):
                     import json as _json
 
                     f1_per_class_after_json = _json.dumps({str(i): f for i, f in enumerate(f1s)})
+                    f1_per_class_holdout_json = f1_per_class_after_json
                     # Per-class Precision
                     precisions = []
                     for c in range(num_classes):
@@ -646,6 +722,11 @@ class TorchClient(fl.client.NumPyClient):
                     confusion_matrix_counts_json = _json.dumps(cm_counts.tolist())
                     confusion_matrix_normalized_json = _json.dumps(cm_normalized.tolist())
                     confusion_matrix_class_names_json = _json.dumps(cm_class_names)
+                    confusion_matrix_counts_holdout_json = confusion_matrix_counts_json
+                    confusion_matrix_normalized_holdout_json = confusion_matrix_normalized_json
+                    confusion_matrix_class_names_holdout_json = confusion_matrix_class_names_json
+                    macro_f1_global_holdout = macro_f1_after
+                    micro_f1_global_holdout = micro_f1_after
         except Exception:
             pass
 
@@ -716,6 +797,13 @@ class TorchClient(fl.client.NumPyClient):
             dp_sample_rate=dp_sample_rate,
             dp_total_steps=dp_total_steps,
             dp_enabled_flag=dp_enabled,
+            attack_mode=attack_mode,
+            macro_f1_global_holdout=macro_f1_global_holdout,
+            micro_f1_global_holdout=micro_f1_global_holdout,
+            f1_per_class_holdout_json=f1_per_class_holdout_json,
+            confusion_matrix_counts_holdout_json=confusion_matrix_counts_holdout_json,
+            confusion_matrix_normalized_holdout_json=confusion_matrix_normalized_holdout_json,
+            confusion_matrix_class_names_holdout_json=confusion_matrix_class_names_holdout_json,
             secure_aggregation_flag=secure_flag,
             secure_aggregation_seed=secure_seed if isinstance(secure_seed, (int, float)) else None,
             secure_aggregation_mask_checksum=(float(secure_mask_checksum) if isinstance(secure_mask_checksum, (int, float)) else None),
@@ -735,6 +823,7 @@ class TorchClient(fl.client.NumPyClient):
             )
         else:
             metrics_payload["dp_enabled"] = False
+        metrics_payload["attack_mode"] = attack_mode
 
         # Personalization: post-FL local fine-tuning (if enabled)
         personalization_epochs = int(self.runtime_config.get("personalization_epochs", 0))

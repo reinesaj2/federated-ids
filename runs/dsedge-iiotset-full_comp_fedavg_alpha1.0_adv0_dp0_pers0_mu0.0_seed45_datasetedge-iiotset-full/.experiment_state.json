@@ -1,0 +1,10 @@
+{
+  "preset": "dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed45_datasetedge-iiotset-full",
+  "status": "completed",
+  "start_time": 1764536568.677824,
+  "end_time": 1764536640.5368068,
+  "error": null,
+  "duration_sec": 71.85800790786743,
+  "retry_count": 0,
+  "worker_id": 0
+}

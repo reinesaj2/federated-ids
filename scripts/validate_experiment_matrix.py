@@ -59,7 +59,7 @@ class ExperimentConstraints:
 class ExperimentMatrixValidator:
     """Validates all experiments in the comparison matrix for feasibility."""
 
-    def __init__(self, n_clients: int = 6):
+    def __init__(self, n_clients: int = 15):
         """Initialize validator with matrix parameters.
 
         Args:
@@ -67,7 +67,7 @@ class ExperimentMatrixValidator:
         """
         self.n_clients = n_clients
         self.aggregations = ["fedavg", "krum", "bulyan", "median"]
-        self.adversary_fractions = [0.0, 0.1, 0.3]
+        self.adversary_fractions = [0.0, 0.1, 0.2]
 
     def validate_all(self) -> Tuple[int, int, List[str]]:
         """Validate all experiments in matrix.
@@ -132,7 +132,7 @@ class ExperimentMatrixValidator:
 
 def main() -> int:
     """Main entry point."""
-    validator = ExperimentMatrixValidator(n_clients=6)
+    validator = ExperimentMatrixValidator(n_clients=15)
     validator.print_summary()
 
     # Return success (we don't fail; we just inform)

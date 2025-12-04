@@ -1,6 +1,6 @@
 # Edge-IIoTset Experiment Plan
 
-⚠️ **DEPRECATED - November 14, 2025**
+[WARNING] **DEPRECATED - November 14, 2025**
 
 This document describes the original full-scale experiment strategy which **failed due to memory constraints** (exit code 143).
 

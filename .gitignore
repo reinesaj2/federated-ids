@@ -43,3 +43,5 @@ QPLAN_*.md
 !EXPERIMENT_CONSTRAINTS.md
 datasets/archive.zip
 datasets/edge-iiotset/Edge-IIoTset dataset/
+Moved credential files to .credentials/ echo .credentials/
+.credentials/

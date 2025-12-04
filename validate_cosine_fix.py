@@ -101,7 +101,7 @@ def main():
         results = validate_cosine_in_csv(csv_path)
 
         if "error" in results:
-            print(f"⚠️  {csv_path.parent.name}: ERROR - {results['error']}")
+            print(f"[WARNING]  {csv_path.parent.name}: ERROR - {results['error']}")
             continue
 
         if not results["valid"]:
@@ -115,7 +115,7 @@ def main():
             print(f"   Values: {results['fp_precision_errors'][:3]}")  # Show first 3
         elif results["suspicious_cosine"]:
             suspicious_files.append(csv_path)
-            print(f"⚠️  {csv_path.parent.name}: Suspicious cosine < 0.5")
+            print(f"[WARNING]  {csv_path.parent.name}: Suspicious cosine < 0.5")
             print(f"   Values: {results['suspicious_cosine']}")
         else:
             status = "[PASS]" if results["cosine_values"] else "[FAIL]"
@@ -146,12 +146,12 @@ def main():
             print(f"   - {f.parent.name}")
 
     if suspicious_files:
-        print(f"\n⚠️  Found {len(suspicious_files)} files with suspicious cosine < 0.5")
+        print(f"\n[WARNING]  Found {len(suspicious_files)} files with suspicious cosine < 0.5")
         for f in suspicious_files:
             print(f"   - {f}")
 
     if l2_zero_files:
-        print(f"\n⚠️  Found {len(l2_zero_files)} files with L2 = 0.0 (benign_mean issue)")
+        print(f"\n[WARNING]  Found {len(l2_zero_files)} files with L2 = 0.0 (benign_mean issue)")
         for f, count in l2_zero_files:
             print(f"   - {f.parent.name}: {count} rows")
 

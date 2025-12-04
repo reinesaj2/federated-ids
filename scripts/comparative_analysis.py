@@ -506,7 +506,7 @@ def run_federated_experiment(
                     "--data_path",
                     config.data_path,
                     "--partition_strategy",
-                    "dirichlet" if config.alpha < 1.0 else "iid",
+                    "dirichlet",  # Always use Dirichlet; alpha controls heterogeneity
                     "--alpha",
                     str(config.alpha),
                     "--num_clients",

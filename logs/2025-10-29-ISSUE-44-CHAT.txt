@@ -744,7 +744,7 @@
 ⏺ Bash(black scripts/generate_latex_tables.py)
   ⎿  reformatted scripts/generate_latex_tables.py
 
-     All done! ✨ 🍰 ✨
+     All done!   
      1 file reformatted.
 
 ⏺ Bash(flake8 scripts/generate_latex_tables.py --max-line-length=88)
@@ -1054,7 +1054,7 @@
   Test Adequacy:
   -  [PASS] For utility scripts generating static output, integration tests are appropriate
   -  [PASS] Output validated: proper LaTeX syntax, correct calculations
-  - ⚠️ Note: No unit tests written (acceptable for this type of script per project conventions)
+  - [WARNING] Note: No unit tests written (acceptable for this type of script per project conventions)
 
   3. Implementation Best Practices
 
