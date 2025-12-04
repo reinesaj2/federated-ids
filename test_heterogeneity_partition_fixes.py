@@ -97,9 +97,9 @@ def test_partition_fails_when_infeasible():
 
     # Verify error message is actionable
     error_msg = str(exc_info.value)
-    assert "Failed to create valid Dirichlet partition" in error_msg
-    assert "Suggestions:" in error_msg
-    assert str(num_clients) in error_msg
+    assert "infeasible" in error_msg
+    assert "have fewer than" in error_msg
+    assert "per client" in error_msg
 
 
 def test_all_experiment_alpha_values():
@@ -108,7 +108,7 @@ def test_all_experiment_alpha_values():
     Tests feasible alphas with sufficient data: [0.2, 0.5, 1.0, inf]
     Note: alpha < 0.2 with typical experiment setups often cannot satisfy min_samples_per_class constraint.
     """
-    alpha_values = [0.5, 1.0, float("inf")]
+    alpha_values = [0.2, 0.5, 1.0, float("inf")]
     labels = np.array([0] * 1500 + [1] * 1500 + [2] * 1500)  # 3 classes, large dataset
     num_clients = 6
 
@@ -187,3 +187,32 @@ def test_high_alpha_produces_near_iid():
     # High alpha should produce low variation (CV < 0.35 indicates near-IID)
     # Note: Even at high alpha, some variation is expected due to random sampling
     assert cv < 0.35, f"High alpha={alpha} did not produce near-IID distribution. " f"CV={cv:.3f}, counts={class_0_counts}"
+
+
+def test_long_tail_feasible_with_minimums():
+    """Ensure long-tail class distributions satisfy min_samples_per_class after fix.
+
+    Mimics Edge-IIoTset class counts (smallest class ~226 samples) with 6 clients and
+    min_samples_per_class=5. The deterministic seeding should make alpha=0.1 feasible.
+    """
+    counts = [364014, 27390, 26234, 11536, 11300, 11290, 11279, 11245, 8479, 5602, 5084, 3586, 2461, 274, 226]
+    labels = np.concatenate([np.full(c, i, dtype=int) for i, c in enumerate(counts)])
+    num_clients = 6
+    alpha = 0.1
+
+    shards = dirichlet_partition(
+        labels=labels,
+        num_clients=num_clients,
+        alpha=alpha,
+        seed=42,
+        min_samples_per_class=MIN_SAMPLES_PER_CLASS,
+    )
+
+    # Verify all clients meet the floor for every class
+    for client_id, shard in enumerate(shards):
+        shard_labels = labels[shard]
+        for class_idx in range(len(counts)):
+            count = np.sum(shard_labels == class_idx)
+            assert count >= MIN_SAMPLES_PER_CLASS, (
+                f"Client {client_id} class {class_idx} has {count} < {MIN_SAMPLES_PER_CLASS}"
+            )

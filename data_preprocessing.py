@@ -188,9 +188,11 @@ def dirichlet_partition(
 ) -> list[list[int]]:
     """Partition indices using Dirichlet distribution with min samples per class constraint.
 
-    Resamples up to MAX_PARTITION_ATTEMPTS times to ensure each client receives at least
-    min_samples_per_class samples from EVERY class. This prevents pathological imbalance
-    where clients miss entire classes, which breaks stratified splitting and metrics.
+    Deterministic constraint handling:
+    - Seed each client with `min_samples_per_class` examples from every class (round-robin).
+    - Distribute remaining examples per class using Dirichlet proportions.
+    This guarantees the minimum per-class coverage while preserving heterogeneity on the
+    remaining samples.
 
     Args:
         labels: Sequence of integer labels
@@ -216,33 +218,65 @@ def dirichlet_partition(
 
     rng = np.random.default_rng(seed)
     labels = np.asarray(labels)
-
-    # Attempt partitioning with resampling
-    for attempt in range(MAX_PARTITION_ATTEMPTS):
-        client_indices = _attempt_dirichlet_partition_single(labels, num_clients, alpha, rng)
-
-        # Validate constraints
-        is_valid, diagnostic = _validate_partition_constraints(client_indices, labels, min_samples_per_class)
-
-        if is_valid:
-            return client_indices
-
-        # Log warning on later attempts
-        if attempt > MAX_PARTITION_ATTEMPTS // 2:
-            import logging
-
-            logging.warning(f"Dirichlet partition attempt {attempt + 1}/{MAX_PARTITION_ATTEMPTS} " f"failed constraint: {diagnostic}")
-
-    # Failed after all attempts
     num_classes = int(labels.max()) + 1
-    raise ValueError(
-        f"Failed to create valid Dirichlet partition after {MAX_PARTITION_ATTEMPTS} attempts. "
-        f"Constraints: {num_clients} clients, {len(labels)} samples, {num_classes} classes, "
-        f"alpha={alpha:.4f}, min_samples_per_class={min_samples_per_class}. "
-        f"Last attempt violation: {diagnostic}. "
-        f"Suggestions: (1) Increase dataset size, (2) Decrease num_clients, "
-        f"(3) Increase alpha (less heterogeneous), (4) Decrease min_samples_per_class"
-    )
+
+    # Feasibility check: each class must have enough samples to meet the floor.
+    class_counts = np.bincount(labels, minlength=num_classes)
+    required_per_class = num_clients * min_samples_per_class
+    infeasible = [i for i, count in enumerate(class_counts) if count < required_per_class]
+    if infeasible:
+        raise ValueError(
+            f"Dirichlet partition infeasible: classes {infeasible} have fewer than "
+            f"{required_per_class} samples required to allocate {min_samples_per_class} "
+            f"per client (counts={class_counts.tolist()})"
+        )
+
+    # Prepare per-class indices
+    class_indices = [np.where(labels == c)[0].tolist() for c in range(num_classes)]
+
+    # Initialize client shards
+    client_indices: list[list[int]] = [[] for _ in range(num_clients)]
+
+    # Step 1: seed each client with the minimum per class (round-robin)
+    for class_id, idxs in enumerate(class_indices):
+        rng.shuffle(idxs)
+        needed = required_per_class
+        seed_chunk, remainder = idxs[:needed], idxs[needed:]
+
+        for client_id in range(num_clients):
+            start = client_id * min_samples_per_class
+            end = start + min_samples_per_class
+            client_indices[client_id].extend(seed_chunk[start:end])
+
+        # Store remaining indices for Dirichlet-based distribution
+        class_indices[class_id] = remainder
+
+    # Step 2: distribute remaining indices per class using Dirichlet proportions
+    for idxs in class_indices:
+        if not idxs:
+            continue
+        rng.shuffle(idxs)
+        proportions = rng.dirichlet(alpha=[alpha] * num_clients)
+        splits = (np.cumsum(proportions) * len(idxs)).astype(int)[:-1]
+        shards = np.split(np.array(idxs, dtype=np.int64), splits)
+        for client_id, shard in enumerate(shards):
+            if shard.size:
+                client_indices[client_id].extend(shard.tolist())
+
+    # Final shuffle per client for randomness
+    for shard in client_indices:
+        rng.shuffle(shard)
+
+    # Validate constraints post-construction
+    is_valid, diagnostic = _validate_partition_constraints(client_indices, labels, min_samples_per_class)
+    if not is_valid:
+        raise ValueError(
+            f"Dirichlet partition failed post-validation: {diagnostic}. "
+            f"Constraints: {num_clients} clients, {len(labels)} samples, {num_classes} classes, "
+            f"alpha={alpha:.4f}, min_samples_per_class={min_samples_per_class}."
+        )
+
+    return client_indices
 
 
 def iid_partition(num_samples: int, num_clients: int, seed: int = 42) -> list[list[int]]:
