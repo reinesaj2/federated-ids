@@ -325,7 +325,7 @@ jobs:
     steps:
       - name: Log comparative analysis failure
         run: |
-          echo "🚨 Comparative Analysis Nightly Failed"
+          echo "ALERT: Comparative Analysis Nightly Failed"
           echo "Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           echo "Branch: ${{ github.ref }}"
           echo "Commit: ${{ github.sha }}"

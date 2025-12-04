@@ -198,10 +198,10 @@ jobs:
             TOTAL=$((TOTAL + 1))
             if [ -f "$dir/metrics.csv" ]; then
               ROWS=$(wc -l < "$dir/metrics.csv")
-              echo "✓ $(basename $dir): $ROWS rows"
+              echo "[OK] $(basename $dir): $ROWS rows"
               FOUND=$((FOUND + 1))
             else
-              echo "✗ $(basename $dir): NO METRICS"
+              echo "[FAIL] $(basename $dir): NO METRICS"
               FAILED=$((FAILED + 1))
             fi
           done

@@ -588,7 +588,7 @@ jobs:
     steps:
       - name: Log FedProx nightly failure
         run: |
-          echo "🚨 FedProx Nightly Comparison Failed"
+          echo "ALERT: FedProx Nightly Comparison Failed"
           echo "Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           echo "Branch: ${{ github.ref }}"
           echo "Commit: ${{ github.sha }}"
@@ -710,7 +710,7 @@ jobs:
           FOUND=0
           for dir in runs/*/; do
             if [ -f "$dir/metrics.csv" ]; then
-              echo "✓ Found metrics in $(basename $dir)"
+              echo "[OK] Found metrics in $(basename $dir)"
               FOUND=$((FOUND + 1))
             fi
           done

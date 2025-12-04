@@ -1,0 +1,14 @@
+{
+  "aggregation": "fedavg",
+  "alpha": 0.05,
+  "adversary_fraction": 0.0,
+  "dp_enabled": false,
+  "dp_noise_multiplier": 0.0,
+  "personalization_epochs": 0,
+  "num_clients": 6,
+  "num_rounds": 15,
+  "seed": 42,
+  "dataset": "edge-iiotset-full",
+  "data_path": "datasets/edge-iiotset/processed/edge_iiotset_500k_curated.csv",
+  "fedprox_mu": 0.0
+}

@@ -119,10 +119,10 @@ def main():
 
         if success:
             total_validated += 1
-            print(f"✓ {metrics_file.relative_to(runs_dir)}")
+            print(f"[OK] {metrics_file.relative_to(runs_dir)}")
         else:
             total_failed += 1
-            print(f"✗ {metrics_file.relative_to(runs_dir)}")
+            print(f"[FAIL] {metrics_file.relative_to(runs_dir)}")
             for error in errors:
                 print(f"  - {error}")
                 all_errors.append(f"{metrics_file.name}: {error}")

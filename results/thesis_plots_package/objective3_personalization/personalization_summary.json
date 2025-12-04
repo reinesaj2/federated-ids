@@ -1,0 +1,52 @@
+{
+  "overall": {
+    "mean_gain": 0.03497819256166079,
+    "median_gain": 0.0,
+    "std_gain": 0.06968640433852794,
+    "max_gain": 0.22607052105311565,
+    "min_gain": -0.0626919385796545,
+    "pct_positive_gains": 33.33333333333333
+  },
+  "by_dataset": {
+    "cic": {
+      "mean_gain": 0.060032521980603056,
+      "n_clients": 12
+    },
+    "unsw": {
+      "mean_gain": 0.018275306282365948,
+      "n_clients": 18
+    }
+  },
+  "by_alpha": {
+    "0.05": {
+      "mean_gain": 0.01512300108582961,
+      "n_clients": 3
+    },
+    "0.1": {
+      "mean_gain": 0.04745216050120208,
+      "n_clients": 21
+    },
+    "1.0": {
+      "mean_gain": 0.0012469005111818698,
+      "n_clients": 6
+    }
+  },
+  "by_epochs": {
+    "0": {
+      "mean_gain": 0.0,
+      "n_clients": 6
+    },
+    "3": {
+      "mean_gain": 0.04131859700261501,
+      "n_clients": 6
+    },
+    "5": {
+      "mean_gain": 0.05040434610510965,
+      "n_clients": 15
+    },
+    "10": {
+      "mean_gain": 0.01512300108582961,
+      "n_clients": 3
+    }
+  }
+}

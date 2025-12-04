@@ -1,0 +1,10 @@
+{
+  "preset": "dsedge-iiotset-full_comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed43",
+  "status": "failed",
+  "start_time": 1763500478.267626,
+  "end_time": 1763501681.1562061,
+  "error": "Client process timed out",
+  "duration_sec": null,
+  "retry_count": 1,
+  "worker_id": 0
+}

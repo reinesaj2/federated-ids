@@ -1,0 +1,90 @@
+{
+  "dimension": "attack",
+  "total_experiments": 4,
+  "results": [
+    {
+      "preset": "dsedge-iiotset-nightly_p0b1bacd1_comp_fedavg_alpha0.5_adv20_dp0_pers0_mu0.0_seed45_datasetedge-iiotset-nightly",
+      "config": {
+        "aggregation": "fedavg",
+        "alpha": 0.5,
+        "adversary_fraction": 0.2,
+        "dp_enabled": false,
+        "dp_noise_multiplier": 0.0,
+        "personalization_epochs": 0,
+        "num_clients": 11,
+        "num_rounds": 20,
+        "seed": 45,
+        "fedprox_mu": 0.0,
+        "dataset": "edge-iiotset-nightly",
+        "data_path": "data/edge-iiotset/edge_iiotset_500k_curated.csv"
+      },
+      "run_dir": "/Users/abrahamreines/Documents/Thesis/worktrees/iiot-experiments/runs/dsedge-iiotset-nightly_p0b1bacd1_comp_fedavg_alpha0.5_adv20_dp0_pers0_mu0.0_seed45_datasetedge-iiotset-nightly",
+      "metrics_exist": true,
+      "server_exit_code": null,
+      "port": 18080
+    },
+    {
+      "preset": "dsedge-iiotset-nightly_p0b1bacd1_comp_krum_alpha0.5_adv20_dp0_pers0_mu0.0_seed45_datasetedge-iiotset-nightly",
+      "config": {
+        "aggregation": "krum",
+        "alpha": 0.5,
+        "adversary_fraction": 0.2,
+        "dp_enabled": false,
+        "dp_noise_multiplier": 0.0,
+        "personalization_epochs": 0,
+        "num_clients": 11,
+        "num_rounds": 20,
+        "seed": 45,
+        "fedprox_mu": 0.0,
+        "dataset": "edge-iiotset-nightly",
+        "data_path": "data/edge-iiotset/edge_iiotset_500k_curated.csv"
+      },
+      "run_dir": "/Users/abrahamreines/Documents/Thesis/worktrees/iiot-experiments/runs/dsedge-iiotset-nightly_p0b1bacd1_comp_krum_alpha0.5_adv20_dp0_pers0_mu0.0_seed45_datasetedge-iiotset-nightly",
+      "metrics_exist": true,
+      "server_exit_code": null,
+      "port": 18080
+    },
+    {
+      "preset": "dsedge-iiotset-nightly_p0b1bacd1_comp_bulyan_alpha0.5_adv20_dp0_pers0_mu0.0_seed45_datasetedge-iiotset-nightly",
+      "config": {
+        "aggregation": "bulyan",
+        "alpha": 0.5,
+        "adversary_fraction": 0.2,
+        "dp_enabled": false,
+        "dp_noise_multiplier": 0.0,
+        "personalization_epochs": 0,
+        "num_clients": 11,
+        "num_rounds": 20,
+        "seed": 45,
+        "fedprox_mu": 0.0,
+        "dataset": "edge-iiotset-nightly",
+        "data_path": "data/edge-iiotset/edge_iiotset_500k_curated.csv"
+      },
+      "run_dir": "/Users/abrahamreines/Documents/Thesis/worktrees/iiot-experiments/runs/dsedge-iiotset-nightly_p0b1bacd1_comp_bulyan_alpha0.5_adv20_dp0_pers0_mu0.0_seed45_datasetedge-iiotset-nightly",
+      "metrics_exist": true,
+      "server_exit_code": null,
+      "port": 18080
+    },
+    {
+      "preset": "dsedge-iiotset-nightly_p0b1bacd1_comp_median_alpha0.5_adv20_dp0_pers0_mu0.0_seed45_datasetedge-iiotset-nightly",
+      "config": {
+        "aggregation": "median",
+        "alpha": 0.5,
+        "adversary_fraction": 0.2,
+        "dp_enabled": false,
+        "dp_noise_multiplier": 0.0,
+        "personalization_epochs": 0,
+        "num_clients": 11,
+        "num_rounds": 20,
+        "seed": 45,
+        "fedprox_mu": 0.0,
+        "dataset": "edge-iiotset-nightly",
+        "data_path": "data/edge-iiotset/edge_iiotset_500k_curated.csv"
+      },
+      "run_dir": "/Users/abrahamreines/Documents/Thesis/worktrees/iiot-experiments/runs/dsedge-iiotset-nightly_p0b1bacd1_comp_median_alpha0.5_adv20_dp0_pers0_mu0.0_seed45_datasetedge-iiotset-nightly",
+      "metrics_exist": true,
+      "server_exit_code": null,
+      "port": 18080
+    }
+  ]
+}

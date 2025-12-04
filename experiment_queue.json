@@ -1,0 +1,314 @@
+[
+  {
+    "aggregation": "bulyan",
+    "alpha": 0.5,
+    "adv_pct": 20,
+    "seed": 46
+  },
+  {
+    "aggregation": "bulyan",
+    "alpha": 0.5,
+    "adv_pct": 20,
+    "seed": 49
+  },
+  {
+    "aggregation": "bulyan",
+    "alpha": 0.5,
+    "adv_pct": 20,
+    "seed": 50
+  },
+  {
+    "aggregation": "bulyan",
+    "alpha": 0.5,
+    "adv_pct": 20,
+    "seed": 51
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 20,
+    "seed": 46
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 20,
+    "seed": 48
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 20,
+    "seed": 49
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 20,
+    "seed": 50
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 20,
+    "seed": 51
+  },
+  {
+    "aggregation": "fedavg",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 46
+  },
+  {
+    "aggregation": "fedavg",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 47
+  },
+  {
+    "aggregation": "fedavg",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 48
+  },
+  {
+    "aggregation": "fedavg",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 49
+  },
+  {
+    "aggregation": "fedavg",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 50
+  },
+  {
+    "aggregation": "fedavg",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 51
+  },
+  {
+    "aggregation": "krum",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 42
+  },
+  {
+    "aggregation": "krum",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 43
+  },
+  {
+    "aggregation": "krum",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 44
+  },
+  {
+    "aggregation": "krum",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 45
+  },
+  {
+    "aggregation": "krum",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 46
+  },
+  {
+    "aggregation": "krum",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 47
+  },
+  {
+    "aggregation": "krum",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 48
+  },
+  {
+    "aggregation": "krum",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 49
+  },
+  {
+    "aggregation": "krum",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 50
+  },
+  {
+    "aggregation": "krum",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 51
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 42
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 43
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 44
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 45
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 46
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 47
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 48
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 49
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 50
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 30,
+    "seed": 51
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 0,
+    "seed": 45
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 0,
+    "seed": 46
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 0,
+    "seed": 49
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 0,
+    "seed": 50
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 0,
+    "seed": 51
+  },
+  {
+    "aggregation": "bulyan",
+    "alpha": 0.5,
+    "adv_pct": 10,
+    "seed": 49
+  },
+  {
+    "aggregation": "bulyan",
+    "alpha": 0.5,
+    "adv_pct": 10,
+    "seed": 50
+  },
+  {
+    "aggregation": "bulyan",
+    "alpha": 0.5,
+    "adv_pct": 10,
+    "seed": 51
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 10,
+    "seed": 42
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 10,
+    "seed": 43
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 10,
+    "seed": 44
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 10,
+    "seed": 45
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 10,
+    "seed": 46
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 10,
+    "seed": 48
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 10,
+    "seed": 49
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 10,
+    "seed": 50
+  },
+  {
+    "aggregation": "median",
+    "alpha": 0.5,
+    "adv_pct": 10,
+    "seed": 51
+  }
+]

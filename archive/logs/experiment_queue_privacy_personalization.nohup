@@ -1,0 +1,19 @@
+[2025-12-04 09:54:41] ======================================================================
+[2025-12-04 09:54:41] FULL EXPERIMENT QUEUE: Objectives 2-5
+[2025-12-04 09:54:41] ======================================================================
+[2025-12-04 09:54:41] Total: 60 | Starting from: 0 | Remaining: 60
+[2025-12-04 09:54:41] ======================================================================
+[2025-12-04 09:54:41] 
+[2025-12-04 09:54:41] [1/60] Obj3 pers DPoff: alpha=0.5 pers=3 seed=47
+[2025-12-04 09:54:41]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed47
+[2025-12-04 09:54:41]   Port: 8080, Adversaries: 0
+[2025-12-04 10:08:59]   SUCCESS
+[2025-12-04 10:09:04] 
+[2025-12-04 10:09:04] [2/60] Obj3 pers DPoff: alpha=0.5 pers=3 seed=48
+[2025-12-04 10:09:04]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed48
+[2025-12-04 10:09:04]   Port: 8080, Adversaries: 0
+[2025-12-04 10:18:40]   SUCCESS
+[2025-12-04 10:18:45] 
+[2025-12-04 10:18:45] [3/60] Obj3 pers DPoff: alpha=0.5 pers=3 seed=49
+[2025-12-04 10:18:45]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed49
+[2025-12-04 10:18:45]   Port: 8080, Adversaries: 0

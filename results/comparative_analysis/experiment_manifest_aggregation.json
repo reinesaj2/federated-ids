@@ -1,0 +1,27 @@
+{
+  "dimension": "aggregation",
+  "total_experiments": 1,
+  "results": [
+    {
+      "preset": "dsedge-iiotset-nightly_comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed45_datasetedge-iiotset-nightly",
+      "config": {
+        "aggregation": "krum",
+        "alpha": 1.0,
+        "adversary_fraction": 0.0,
+        "dp_enabled": false,
+        "dp_noise_multiplier": 0.0,
+        "personalization_epochs": 0,
+        "num_clients": 6,
+        "num_rounds": 20,
+        "seed": 45,
+        "fedprox_mu": 0.0,
+        "dataset": "edge-iiotset-nightly",
+        "data_path": "data/edge-iiotset/edge_iiotset_nightly.csv"
+      },
+      "run_dir": "/Users/abrahamreines/Documents/Thesis/worktrees/iiot-experiments/runs/dsedge-iiotset-nightly_comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed45_datasetedge-iiotset-nightly",
+      "metrics_exist": true,
+      "server_exit_code": null,
+      "port": 18080
+    }
+  ]
+}

@@ -131,7 +131,7 @@ SUCCESS: Preprocessing completed
 
 ## Testing Status
 
-### ✅ Completed Tests
+### [OK] Completed Tests
 
 1. **Local 10k Sample Test** (worktree)
    - Command: `python -c "import pandas as pd; from data_preprocessing import load_edge_iiotset; ..."`
@@ -147,7 +147,7 @@ SUCCESS: Preprocessing completed
    - `black data_preprocessing.py`: PASSED
    - `flake8 data_preprocessing.py`: Pre-existing warnings only (not from our changes)
 
-### ❌ NOT YET TESTED
+### [FAIL] NOT YET TESTED
 
 **Full 1.7M Dataset Experiments:**
 - We attempted to run full experiments on EC2 r6i.metal
@@ -215,7 +215,7 @@ fix(preprocessing): drop high-cardinality Edge-IIoTset columns to prevent OOM
 
 **Branch:** exp/iiot-experiments
 **Remote Status:** Pushed to origin
-**Conventional Commits Format:** ✅ Yes (fix type)
+**Conventional Commits Format:** [OK] Yes (fix type)
 
 ## References
 

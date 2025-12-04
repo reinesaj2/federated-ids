@@ -485,12 +485,12 @@ ps aux | grep run_experiments_optimized | grep -v grep
 
 With all 28 experiments complete, you will have:
 
-✅ **Novel**: First comprehensive robust FL evaluation on Edge-IIoT dataset
-✅ **Complete**: All 5 thesis objectives fully addressed with experimental evidence
-✅ **Rigorous**: Attack resilience (0%, 10%, 20%, 30% adversaries) with smooth degradation curves
-✅ **Privacy**: Both Secure Aggregation AND Differential Privacy tested (separately + combined)
-✅ **Non-IID**: FedProx vs FedAvg comparison across heterogeneity spectrum (α=0.02 to 1.0)
-✅ **Personalization**: Local fine-tuning gains quantified (0, 3, 5 epochs)
+[OK] **Novel**: First comprehensive robust FL evaluation on Edge-IIoT dataset
+[OK] **Complete**: All 5 thesis objectives fully addressed with experimental evidence
+[OK] **Rigorous**: Attack resilience (0%, 10%, 20%, 30% adversaries) with smooth degradation curves
+[OK] **Privacy**: Both Secure Aggregation AND Differential Privacy tested (separately + combined)
+[OK] **Non-IID**: FedProx vs FedAvg comparison across heterogeneity spectrum (α=0.02 to 1.0)
+[OK] **Personalization**: Local fine-tuning gains quantified (0, 3, 5 epochs)
 
 ---
 

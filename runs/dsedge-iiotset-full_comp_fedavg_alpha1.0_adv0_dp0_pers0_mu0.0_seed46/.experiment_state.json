@@ -1,0 +1,10 @@
+{
+  "preset": "dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed46",
+  "status": "failed",
+  "start_time": 1763498073.41091,
+  "end_time": 1763499275.425751,
+  "error": "Client process timed out",
+  "duration_sec": null,
+  "retry_count": 1,
+  "worker_id": 0
+}
