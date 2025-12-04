@@ -18,7 +18,7 @@ class TestExperimentConstraints:
 
     def test_bulyan_feasible_with_sufficient_clients(self):
         """Bulyan should pass with n >= 4f + 3."""
-        # n=11, f=2 (20% adversaries): 11 >= 4*2+3=11 ✓
+        # n=11, f=2 (20% adversaries): 11 >= 4*2+3=11 [PASS]
         config = ExperimentConstraints(aggregation="bulyan", n_clients=11, adversary_fraction=0.2)
         is_valid, reason = config.validate()
         assert is_valid is True
@@ -26,7 +26,7 @@ class TestExperimentConstraints:
 
     def test_bulyan_infeasible_with_insufficient_clients(self):
         """Bulyan should fail with n < 4f + 3."""
-        # n=6, f=2 (30% adversaries): 6 < 4*2+3=11 ✗
+        # n=6, f=2 (30% adversaries): 6 < 4*2+3=11 [FAIL]
         config = ExperimentConstraints(aggregation="bulyan", n_clients=6, adversary_fraction=0.3)
         is_valid, reason = config.validate()
         assert is_valid is False
@@ -34,7 +34,7 @@ class TestExperimentConstraints:
 
     def test_krum_feasible_with_sufficient_clients(self):
         """Krum should pass with n >= 2f + 3."""
-        # n=6, f=1 (15% adversaries): 6 >= 2*1+3=5 ✓
+        # n=6, f=1 (15% adversaries): 6 >= 2*1+3=5 [PASS]
         config = ExperimentConstraints(aggregation="krum", n_clients=6, adversary_fraction=0.15)
         is_valid, reason = config.validate()
         assert is_valid is True
@@ -46,7 +46,7 @@ class TestExperimentConstraints:
         # Required: n >= 2*1+3 = 5
         # Since 6 >= 5, this is actually FEASIBLE
         # Let's test with more clients having more adversaries
-        # n=4, f=2 (50% adversaries): 4 < 2*2+3=7 ✗
+        # n=4, f=2 (50% adversaries): 4 < 2*2+3=7 [FAIL]
         config = ExperimentConstraints(aggregation="krum", n_clients=4, adversary_fraction=0.5)
         is_valid, reason = config.validate()
         assert is_valid is False
@@ -54,9 +54,9 @@ class TestExperimentConstraints:
 
     def test_median_feasible_with_sufficient_clients(self):
         """Median should pass with n >= 2f + 1."""
-        # n=6, f=2 (30% adversaries): 6 >= 2*2+1=5 ✓
+        # n=6, f=2 (30% adversaries): 6 >= 2*2+1=5 [PASS]
         # Wait, f=int(6*0.3)=1, not 2
-        # Let me use n=6, f=int(6*0.3)=1, need n >= 2*1+1=3 ✓
+        # Let me use n=6, f=int(6*0.3)=1, need n >= 2*1+1=3 [PASS]
         config = ExperimentConstraints(aggregation="median", n_clients=6, adversary_fraction=0.3)
         is_valid, reason = config.validate()
         assert is_valid is True
@@ -64,7 +64,7 @@ class TestExperimentConstraints:
 
     def test_median_infeasible_boundary(self):
         """Median should fail at boundary."""
-        # n=4, f=2 (50% adversaries): 4 < 2*2+1=5 ✗
+        # n=4, f=2 (50% adversaries): 4 < 2*2+1=5 [FAIL]
         config = ExperimentConstraints(aggregation="median", n_clients=4, adversary_fraction=0.5)
         is_valid, reason = config.validate()
         assert is_valid is False
