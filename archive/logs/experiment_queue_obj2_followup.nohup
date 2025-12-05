@@ -1,0 +1,23 @@
+[2025-12-04 20:43:53] ======================================================================
+[2025-12-04 20:43:53] FULL EXPERIMENT QUEUE: Objectives 2-5
+[2025-12-04 20:43:53] ======================================================================
+[2025-12-04 20:43:53] Total: 319 | Starting from: 0 | Remaining: 319
+[2025-12-04 20:43:53] ======================================================================
+[2025-12-04 20:43:53] 
+[2025-12-04 20:43:53] [1/319] Obj2 mu sweep: fedavg alpha=0.05 mu=0.0 seed=42
+Traceback (most recent call last):
+  File "/Users/abrahamreines/Documents/Thesis/worktrees/iiot-experiments/scripts/run_full_queue_direct.py", line 324, in <m[2025-12-04 20:46:01]   SUCCESS
+[2025-12-04 20:46:06] 
+[2025-12-04 20:46:06] [2/319] Obj2 mu sweep: fedavg alpha=0.05 mu=0.0 seed=43
+[2025-12-04 20:46:06]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed43
+[2025-12-04 20:46:06]   Port: 49996, Adversaries: 0
+[2025-12-04 20:51:36]   SUCCESS
+[2025-12-04 20:51:41] 
+[2025-12-04 20:51:41] [3/319] Obj2 mu sweep: fedavg alpha=0.05 mu=0.0 seed=44
+[2025-12-04 20:51:41]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed44
+[2025-12-04 20:51:41]   Port: 50062, Adversaries: 0
+[2025-12-04 20:53:05]   SUCCESS
+[2025-12-04 20:53:10] 
+[2025-12-04 20:53:10] [4/319] Obj2 mu sweep: fedavg alpha=0.05 mu=0.0 seed=45
+[2025-12-04 20:53:10]   Run dir: dsedge-iiotset-nightly_comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed45
+[2025-12-04 20:53:10]   Port: 50096, Adversaries: 0

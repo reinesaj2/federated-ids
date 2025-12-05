@@ -9,6 +9,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+import math
 
 QUEUE_FILE = Path("experiment_queue_alpha_fix.json")
 PROGRESS_FILE = Path("experiment_progress_alpha_fix.json")
@@ -54,15 +55,31 @@ def save_progress(progress):
         json.dump(progress, f, indent=2)
 
 
-def find_free_port(start=8080):
+def find_free_port(start: int = 8080) -> int:
+    """Return an available localhost port.
+
+    Prefer OS-assigned ephemeral port to avoid exhaustion; fall back to
+    sequential probing if that fails.
+    """
     import socket
-    for port in range(start, start + 1000):
+
+    # Try OS-assigned ephemeral port first
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("localhost", 0))
+            return s.getsockname()[1]
+    except OSError:
+        pass
+
+    # Fallback to sequential probe
+    for port in range(start, start + 2000):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.bind(("localhost", port))
                 return port
         except OSError:
             continue
+
     raise RuntimeError("No free port found")
 
 
@@ -80,13 +97,32 @@ def run_experiment(exp: dict, index: int) -> bool:
     dp_enabled = exp.get("dp_enabled", False)
     dp_noise = exp.get("dp_noise_multiplier", 1.0)
     fedprox_mu = exp.get("fedprox_mu", 0.0)
+    num_clients = exp.get("num_clients", 12)
+    num_rounds = exp.get("num_rounds", 15)
+    local_epochs = exp.get("local_epochs", 1)
+    client_fraction = float(exp.get("client_fraction", 1.0))
+    fraction_eval = float(exp.get("fraction_eval", client_fraction))
+    min_fit_clients = max(1, math.ceil(num_clients * client_fraction))
+    min_eval_clients = max(1, math.ceil(num_clients * fraction_eval))
     
     # Build preset name
     alpha_str = str(alpha) if alpha != float("inf") else "inf"
     adv_pct = int(adv_frac * 100)
     dp_flag = 1 if dp_enabled else 0
-    
-    preset_name = f"ds{dataset}_comp_{agg}_alpha{alpha_str}_adv{adv_pct}_dp{dp_flag}_pers{pers_epochs}_mu{fedprox_mu}_seed{seed}"
+    sigma_str = str(dp_noise) if dp_enabled else "0.0"
+    preset_name = (
+        f"ds{dataset}_comp_{agg}"
+        f"_alpha{alpha_str}"
+        f"_adv{adv_pct}"
+        f"_dp{dp_flag}"
+        f"_sigma{sigma_str}"
+        f"_pers{pers_epochs}"
+        f"_mu{fedprox_mu}"
+        f"_cf{client_fraction}"
+        f"_le{local_epochs}"
+        f"_idx{index}"
+        f"_seed{seed}"
+    )
     run_dir = BASE_DIR / "runs" / preset_name
     run_dir.mkdir(parents=True, exist_ok=True)
     
@@ -98,20 +134,21 @@ def run_experiment(exp: dict, index: int) -> bool:
         "dp_enabled": dp_enabled,
         "dp_noise_multiplier": dp_noise if dp_enabled else 0.0,
         "personalization_epochs": pers_epochs,
-        "num_clients": exp.get("num_clients", 12),
-        "num_rounds": 15,
+        "num_clients": num_clients,
+        "num_rounds": num_rounds,
         "seed": seed,
         "dataset": dataset,
         "data_path": data_path,
         "fedprox_mu": fedprox_mu,
+        "client_fraction": client_fraction,
+        "fraction_eval": fraction_eval,
+        "local_epochs": local_epochs,
     }
     
     with open(run_dir / "config.json", "w") as f:
         json.dump(config, f, indent=2)
     
     port = find_free_port()
-    num_clients = exp.get("num_clients", 12)
-    num_rounds = 15
     num_adversaries = int(adv_frac * num_clients)
     
     log_message(f"  Run dir: {preset_name}")
@@ -127,11 +164,11 @@ def run_experiment(exp: dict, index: int) -> bool:
         "--aggregation", server_agg,
         "--server_address", f"localhost:{port}",
         "--logdir", str(run_dir),
-        "--min_fit_clients", str(num_clients),
-        "--min_eval_clients", str(num_clients),
+        "--min_fit_clients", str(min_fit_clients),
+        "--min_eval_clients", str(min_eval_clients),
         "--min_available_clients", str(num_clients),
-        "--fraction_fit", "1.0",
-        "--fraction_eval", "1.0",
+        "--fraction_fit", str(client_fraction),
+        "--fraction_eval", str(fraction_eval),
     ]
     
     server_log = open(run_dir / "server.log", "w")
@@ -169,6 +206,7 @@ def run_experiment(exp: dict, index: int) -> bool:
             "--adversary_mode", adv_mode,
             "--personalization_epochs", str(pers_epochs),
             "--logdir", str(run_dir),
+            "--local_epochs", str(local_epochs),
         ]
         
         # Add FedProx mu if applicable

@@ -18,9 +18,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.lines import Line2D
 
 RUNS_DIR = Path("runs")
 OUTPUT_DIR = Path("results/comparative_analysis")
+THESIS_OUTPUT_DIR = Path("results/thesis_plots_package/objective2_heterogeneity")
 
 
 def parse_run_config(run_name: str) -> dict:
@@ -311,8 +313,102 @@ def plot_fedprox_degradation(df: pd.DataFrame):
     print(f"Saved: {OUTPUT_DIR / 'obj2_fedprox_degradation_analysis.pdf'}")
 
 
+def plot_seed_spread(df: pd.DataFrame, output_dir: Path) -> None:
+    """Plot per-seed macro-F1 across alpha/mu to show variance explicitly."""
+    sns.set_theme(style="whitegrid", context="paper", font_scale=1.0)
+    plt.rcParams["font.family"] = "serif"
+
+    per_seed = (
+        df.groupby(["alpha", "mu", "aggregation", "seed"])
+        .agg(f1_mean=("f1", "mean"))
+        .reset_index()
+    )
+
+    alpha_values = sorted([a for a in per_seed["alpha"].unique() if np.isfinite(a)])
+    mu_values = sorted(per_seed["mu"].unique())
+
+    colors_mu = {
+        0.0: "#1f77b4",
+        0.01: "#2ca02c",
+        0.05: "#ff7f0e",
+        0.1: "#d62728",
+    }
+
+    fig, axes = plt.subplots(
+        1, len(alpha_values), figsize=(3.4 * len(alpha_values), 5), sharey=True
+    )
+    if len(alpha_values) == 1:
+        axes = [axes]
+
+    for ax, alpha in zip(axes, alpha_values):
+        alpha_mask = np.isclose(per_seed["alpha"], alpha, rtol=1e-4, atol=1e-6)
+        alpha_data = per_seed[alpha_mask]
+        if alpha_data.empty:
+            continue
+
+        sns.stripplot(
+            data=alpha_data,
+            hue="mu",
+            x="mu",
+            y="f1_mean",
+            order=mu_values,
+            palette=colors_mu,
+            jitter=0.15,
+            size=6,
+            alpha=0.65,
+            ax=ax,
+            dodge=False,
+            legend=False,
+        )
+
+        summary = (
+            alpha_data.groupby("mu")["f1_mean"]
+            .agg(["mean", "sem"])
+            .reindex(mu_values)
+            .reset_index()
+        )
+        ax.errorbar(
+            x=np.arange(len(mu_values)),
+            y=summary["mean"],
+            yerr=1.96 * summary["sem"],
+            fmt="o",
+            color="black",
+            ecolor="black",
+            elinewidth=1.0,
+            capsize=3,
+            markersize=6,
+        )
+
+        ax.set_title(f"α = {alpha}", fontsize=12, fontweight="bold")
+        ax.set_xlabel("FedProx μ")
+        ax.set_xticks(np.arange(len(mu_values)))
+        ax.set_xticklabels([str(mu) for mu in mu_values])
+        ax.grid(alpha=0.3)
+
+    axes[0].set_ylabel("Final Macro-F1")
+    fig.suptitle("Seed-level Macro-F1 by α and μ", fontsize=16, fontweight="bold", y=1.02)
+
+    handles = [
+        Line2D([], [], marker="o", color=colors_mu.get(mu, "#333"), linestyle="", markersize=8, label=f"μ={mu}")
+        for mu in mu_values
+    ]
+    fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 1.08), ncol=len(mu_values), frameon=False)
+
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    seed_path = output_dir / "obj2_fedprox_seed_spread.png"
+    fig.savefig(seed_path, dpi=300, bbox_inches="tight")
+    fig.savefig(seed_path.with_suffix(".pdf"), bbox_inches="tight")
+    plt.close(fig)
+
+    print(f"Saved: {seed_path}")
+    print(f"Saved: {seed_path.with_suffix('.pdf')}")
+
+
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    THESIS_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print("Collecting FedAvg and FedProx data...")
     df = collect_fedprox_data()
@@ -333,6 +429,7 @@ def main():
 
     print("\nGenerating FedProx degradation analysis plots...")
     plot_fedprox_degradation(df)
+    plot_seed_spread(df, THESIS_OUTPUT_DIR)
 
     print("\nDone!")
 

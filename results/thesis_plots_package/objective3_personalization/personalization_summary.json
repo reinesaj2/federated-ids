@@ -1,52 +1,28 @@
 {
-  "overall": {
-    "mean_gain": 0.03497819256166079,
-    "median_gain": 0.0,
-    "std_gain": 0.06968640433852794,
-    "max_gain": 0.22607052105311565,
-    "min_gain": -0.0626919385796545,
-    "pct_positive_gains": 33.33333333333333
+  "0.5": {
+    "runs": 20,
+    "global_mean": 0.6516367709290141,
+    "global_std": 0.023002025078991396,
+    "personal_mean": 0.7050525591528393,
+    "personal_std": 0.030920873852543378,
+    "gain_mean": 0.05341578822382524,
+    "gain_std": 0.028090334964717356,
+    "pers_epochs_unique": [
+      3,
+      5
+    ]
   },
-  "by_dataset": {
-    "cic": {
-      "mean_gain": 0.060032521980603056,
-      "n_clients": 12
-    },
-    "unsw": {
-      "mean_gain": 0.018275306282365948,
-      "n_clients": 18
-    }
-  },
-  "by_alpha": {
-    "0.05": {
-      "mean_gain": 0.01512300108582961,
-      "n_clients": 3
-    },
-    "0.1": {
-      "mean_gain": 0.04745216050120208,
-      "n_clients": 21
-    },
-    "1.0": {
-      "mean_gain": 0.0012469005111818698,
-      "n_clients": 6
-    }
-  },
-  "by_epochs": {
-    "0": {
-      "mean_gain": 0.0,
-      "n_clients": 6
-    },
-    "3": {
-      "mean_gain": 0.04131859700261501,
-      "n_clients": 6
-    },
-    "5": {
-      "mean_gain": 0.05040434610510965,
-      "n_clients": 15
-    },
-    "10": {
-      "mean_gain": 0.01512300108582961,
-      "n_clients": 3
-    }
+  "1.0": {
+    "runs": 10,
+    "global_mean": 0.6703222604179226,
+    "global_std": 0.03602567339177778,
+    "personal_mean": 0.6876833483224947,
+    "personal_std": 0.019750528459501596,
+    "gain_mean": 0.01736108790457211,
+    "gain_std": 0.04379785701029478,
+    "pers_epochs_unique": [
+      1,
+      3
+    ]
   }
 }
