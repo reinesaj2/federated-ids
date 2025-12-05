@@ -1,0 +1,10 @@
+{
+  "preset": "comp_krum_alpha0.5_adv0_dp0_pers0_seed42",
+  "status": "completed",
+  "start_time": 1760927416.721992,
+  "end_time": 1760927471.7876632,
+  "error": null,
+  "duration_sec": 55.065330028533936,
+  "retry_count": 0,
+  "worker_id": 0
+}

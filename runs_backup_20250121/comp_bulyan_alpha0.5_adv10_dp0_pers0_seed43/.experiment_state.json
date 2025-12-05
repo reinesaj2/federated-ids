@@ -1,0 +1,10 @@
+{
+  "preset": "comp_bulyan_alpha0.5_adv10_dp0_pers0_seed43",
+  "status": "completed",
+  "start_time": 1760927750.860914,
+  "end_time": 1760927781.8502898,
+  "error": null,
+  "duration_sec": 30.98906970024109,
+  "retry_count": 0,
+  "worker_id": 1
+}

@@ -1,0 +1,2 @@
+client_id,round,dataset_size,n_classes,loss_before,acc_before,loss_after,acc_after,weight_norm_before,weight_norm_after,weight_update_norm,grad_norm_l2,t_fit_ms,epochs_completed,lr,batch_size
+1,1,1296,2,0.6573650002479553,0.7692307692307693,0.03828651085495949,0.9846153846153847,5.742242290842013,7.1731884242990835,3.9654461994300845,396.5446350835242,1333.7744160089642,1,0.01,64

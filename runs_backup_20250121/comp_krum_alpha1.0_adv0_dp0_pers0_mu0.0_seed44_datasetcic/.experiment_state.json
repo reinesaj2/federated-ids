@@ -1,0 +1,10 @@
+{
+  "preset": "comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed44_datasetcic",
+  "status": "failed",
+  "start_time": 1763757818.205927,
+  "end_time": 1763757823.2293718,
+  "error": "Server failed to bind to port 9480 after 5.0s",
+  "duration_sec": null,
+  "retry_count": 1,
+  "worker_id": 1
+}
