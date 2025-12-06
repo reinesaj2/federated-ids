@@ -1,0 +1,17 @@
+{
+  "aggregation": "fedprox",
+  "alpha": 0.2,
+  "adversary_fraction": 0.0,
+  "dp_enabled": false,
+  "dp_noise_multiplier": 0.0,
+  "personalization_epochs": 0,
+  "num_clients": 6,
+  "num_rounds": 15,
+  "seed": 47,
+  "dataset": "edge-iiotset-nightly",
+  "data_path": "data/edge-iiotset/edge_iiotset_nightly.csv",
+  "fedprox_mu": 0.1,
+  "client_fraction": 1.0,
+  "fraction_eval": 1.0,
+  "local_epochs": 1
+}
