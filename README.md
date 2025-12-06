@@ -392,6 +392,27 @@ python client.py \
 # num_classes automatically set to 9 (8 attacks + BENIGN)
 ```
 
+### Per-dataset encoder architecture
+
+To better handle CIC and UNSW feature spaces we added a per-dataset encoder that maps raw features into a shared latent space before the global classifier. Enable it explicitly with `--model_arch per_dataset_encoder` or simply rely on the default `auto` mode (which activates the encoder for CIC/UNSW and keeps `SimpleNet` for synthetic clients).
+
+```bash
+python client.py \
+  --dataset cic \
+  --data_path data/cic/cic_ids2017_multiclass.csv \
+  --num_clients 5 --client_id 0 \
+  --partition_strategy dirichlet --alpha 0.1 \
+  --model_arch per_dataset_encoder \
+  --encoder_latent_dim 256
+```
+
+Dataset-specific defaults:
+
+- **CIC-IDS2017**: encoder hidden layers 768→384→192, latent 256, shared head 192→96→logits, dropout 0.25.
+- **UNSW-NB15**: encoder hidden layers 512→256, latent 192, shared head 128→64→logits, dropout 0.2.
+
+Use `--encoder_latent_dim` to override the latent size for ablations; passing `0` (default) keeps the dataset heuristic.
+
 ---
 
 ## 7) Real datasets (UNSW‑NB15, CIC‑IDS2017)

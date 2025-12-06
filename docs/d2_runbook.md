@@ -104,6 +104,19 @@ done
 ```
 `protocol_mapping_path` pins important protocols (HTTP, DNS, SSH, etc.) to specific clients, while any unlisted protocols fall back to balanced round-robin assignments without altering feature schemas.
 
+### Per-dataset encoder toggle
+
+```bash
+# Launch CIC client with dataset-specific encoder
+python client.py --server_address 127.0.0.1:8099 \
+  --dataset cic --data_path data/cic/cic_ids2017_multiclass.csv \
+  --num_clients 5 --client_id 0 \
+  --partition_strategy dirichlet --alpha 0.1 \
+  --model_arch per_dataset_encoder --encoder_latent_dim 256
+```
+
+`--model_arch auto` (default) automatically selects the encoder for CIC/UNSW clients while synthetic and ad-hoc datasets continue to use the lightweight `SimpleNet`.
+
 ### Comparative Analysis (Automated)
 ```bash
 # Run all 5 thesis objectives on UNSW-NB15
