@@ -204,14 +204,32 @@ def compute_stats(per_seed: pd.DataFrame) -> pd.DataFrame:
             rows.append(
                 {
                     "alpha": alpha,
+                    "comparison": f"FedProx_mu_{mu}",
+                    "agg_variant": "FedProx",
                     "mu": mu,
-                    "agg": "FedProx",
                     "n_baseline": baseline.size,
                     "n_variant": prox_vals.size,
                     "p_value": p,
                     "cohens_d": d,
                     "mean_baseline": baseline.mean(),
                     "mean_variant": prox_vals.mean(),
+                }
+            )
+        bulyan_vals = alpha_df[alpha_df["aggregation"] == "Bulyan"]["f1_mean"].to_numpy()
+        if bulyan_vals.size > 0:
+            p, d = welch_and_cohens_d(bulyan_vals, baseline)
+            rows.append(
+                {
+                    "alpha": alpha,
+                    "comparison": "Bulyan_vs_FedAvg",
+                    "agg_variant": "Bulyan",
+                    "mu": 0.0,
+                    "n_baseline": baseline.size,
+                    "n_variant": bulyan_vals.size,
+                    "p_value": p,
+                    "cohens_d": d,
+                    "mean_baseline": baseline.mean(),
+                    "mean_variant": bulyan_vals.mean(),
                 }
             )
     return pd.DataFrame(rows)
@@ -302,6 +320,81 @@ def plot_seed_significance(per_seed: pd.DataFrame) -> None:
     plt.close(fig)
 
 
+def plot_bulyan_vs_fedavg(per_seed: pd.DataFrame) -> None:
+    sns.set_theme(style="whitegrid", context="paper", font_scale=1.0)
+    plt.rcParams["font.family"] = "serif"
+
+    focus_alphas = [0.05, 0.1, 0.2]
+    color_map = {
+        "FedAvg": "#1f77b4",
+        "Bulyan": "#9467bd",
+    }
+
+    plot_rows: List[Dict] = []
+    for _, row in per_seed.iterrows():
+        if row["aggregation"] not in ("FedAvg", "Bulyan"):
+            continue
+        plot_rows.append(
+            {"alpha": row["alpha"], "algo": row["aggregation"], "f1": row["f1_mean"]}
+        )
+    plot_df = pd.DataFrame(plot_rows)
+    plot_df = plot_df[plot_df["alpha"].isin(focus_alphas)]
+
+    fig, axes = plt.subplots(1, len(focus_alphas), figsize=(3.6 * len(focus_alphas), 4.5), sharey=True)
+    if len(focus_alphas) == 1:
+        axes = [axes]
+
+    for ax, alpha in zip(axes, focus_alphas):
+        sub = plot_df[plot_df["alpha"] == alpha]
+        sns.stripplot(
+            data=sub,
+            x="algo",
+            y="f1",
+            order=["FedAvg", "Bulyan"],
+            palette=color_map,
+            jitter=0.15,
+            alpha=0.65,
+            size=6,
+            ax=ax,
+        )
+        summary = (
+            sub.groupby("algo")["f1"]
+            .agg(["mean", "sem"])
+            .reindex(["FedAvg", "Bulyan"])
+            .reset_index()
+        )
+        ax.errorbar(
+            x=np.arange(2),
+            y=summary["mean"],
+            yerr=1.96 * summary["sem"],
+            fmt="o",
+            color="black",
+            ecolor="black",
+            elinewidth=1.0,
+            capsize=3,
+            markersize=6,
+        )
+        ax.set_title(f"α = {alpha}", fontweight="bold", fontsize=12)
+        ax.set_xlabel("")
+        ax.grid(alpha=0.3)
+
+    axes[0].set_ylabel("Final Macro-F1")
+    fig.suptitle("Bulyan vs FedAvg (Seed-level Macro-F1)", fontsize=15, fontweight="bold", y=1.04)
+
+    handles = [
+        Line2D([], [], marker="o", color=color_map[a], linestyle="", markersize=8, label=a)
+        for a in ["FedAvg", "Bulyan"]
+    ]
+    fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 1.08), ncol=2, frameon=False)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = OUTPUT_DIR / "obj2_bulyan_vs_fedavg.png"
+    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    fig.savefig(out_path.with_suffix(".pdf"), bbox_inches="tight")
+    plt.close(fig)
+
+
 def plot_per_class_heatmap(per_seed: pd.DataFrame) -> None:
     sns.set_theme(style="whitegrid", context="paper", font_scale=1.0)
     plt.rcParams["font.family"] = "serif"
@@ -380,6 +473,9 @@ def main() -> None:
 
     print("Plotting seed significance...")
     plot_seed_significance(per_seed)
+
+    print("Plotting Bulyan vs FedAvg...")
+    plot_bulyan_vs_fedavg(per_seed)
 
     print("Plotting per-class heatmap...")
     plot_per_class_heatmap(per_seed)
