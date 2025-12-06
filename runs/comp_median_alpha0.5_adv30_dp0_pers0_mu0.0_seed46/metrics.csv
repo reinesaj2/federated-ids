@@ -1,0 +1,2 @@
+round,agg_method,n_clients,byzantine_f,l2_to_benign_mean,cos_to_benign_mean,coord_median_agree_pct,update_norm_mean,update_norm_std,t_aggregate_ms,t_round_ms,pairwise_cosine_mean,pairwise_cosine_std,l2_dispersion_mean,l2_dispersion_std
+1,median,10,,12.45386614178458,0.535625696182251,100.0,23.133410692214966,27.668866980706888,6.8353749957168475,1096946.777582998,0.49732322523163425,0.371237756725184,24.86331443786621,21.626937612243854

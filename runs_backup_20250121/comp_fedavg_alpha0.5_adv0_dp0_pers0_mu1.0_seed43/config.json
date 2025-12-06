@@ -1,0 +1,14 @@
+{
+  "aggregation": "fedavg",
+  "alpha": 0.5,
+  "adversary_fraction": 0.0,
+  "dp_enabled": false,
+  "dp_noise_multiplier": 0.0,
+  "personalization_epochs": 0,
+  "num_clients": 6,
+  "num_rounds": 20,
+  "seed": 43,
+  "fedprox_mu": 1.0,
+  "dataset": "unsw",
+  "data_path": "data/unsw/unsw_nb15_sample.csv"
+}

@@ -1,0 +1,14 @@
+{
+  "aggregation": "fedavg",
+  "alpha": 0.5,
+  "adversary_fraction": 0.0,
+  "dp_enabled": false,
+  "dp_noise_multiplier": 0.0,
+  "personalization_epochs": 0,
+  "num_clients": 6,
+  "num_rounds": 20,
+  "seed": 45,
+  "fedprox_mu": 0.05,
+  "dataset": "unsw",
+  "data_path": "data/unsw/UNSW_NB15_training-set.csv"
+}

@@ -1,0 +1,10 @@
+{
+  "preset": "comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed42_datasetcic",
+  "status": "failed",
+  "start_time": 1763761609.860034,
+  "end_time": 1763761915.0163908,
+  "error": "Server failed to bind to port 11280 after 5.0s",
+  "duration_sec": null,
+  "retry_count": 1,
+  "worker_id": 0
+}

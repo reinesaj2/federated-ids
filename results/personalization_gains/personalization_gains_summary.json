@@ -1,0 +1,36 @@
+{
+  "overall": {
+    "mean_gain": 0.00021733902294208466,
+    "median_gain": 0.0,
+    "std_gain": 0.02422031992518843,
+    "max_gain": 0.0919468109941457,
+    "min_gain": -0.1474391608920356,
+    "pct_positive_gains": 17.5
+  },
+  "by_dataset": {
+    "cic": {
+      "mean_gain": 0.002014120606350754,
+      "n_clients": 60
+    },
+    "unsw": {
+      "mean_gain": -0.0015794425604665852,
+      "n_clients": 60
+    }
+  },
+  "by_alpha": {
+    "0.5": {
+      "mean_gain": 0.00021733902294208466,
+      "n_clients": 120
+    }
+  },
+  "by_epochs": {
+    "3": {
+      "mean_gain": -0.0015975846721776542,
+      "n_clients": 60
+    },
+    "5": {
+      "mean_gain": 0.0020322627180618235,
+      "n_clients": 60
+    }
+  }
+}

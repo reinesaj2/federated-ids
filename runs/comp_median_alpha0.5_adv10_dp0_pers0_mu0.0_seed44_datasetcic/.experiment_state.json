@@ -1,0 +1,10 @@
+{
+  "preset": "comp_median_alpha0.5_adv10_dp0_pers0_mu0.0_seed44_datasetcic",
+  "status": "completed",
+  "start_time": 1763762215.125101,
+  "end_time": 1763762234.331438,
+  "error": null,
+  "duration_sec": 19.20607304573059,
+  "retry_count": 0,
+  "worker_id": 1
+}

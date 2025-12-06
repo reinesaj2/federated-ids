@@ -1,0 +1,10 @@
+{
+  "preset": "comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed43_datasetcic",
+  "status": "failed",
+  "start_time": 1763762163.6805608,
+  "end_time": 1763762468.817997,
+  "error": "Server failed to bind to port 8280 after 5.0s",
+  "duration_sec": null,
+  "retry_count": 1,
+  "worker_id": 1
+}

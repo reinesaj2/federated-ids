@@ -1,0 +1,10 @@
+{
+  "preset": "comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed44_datasetcic",
+  "status": "failed",
+  "start_time": 1763762172.707864,
+  "end_time": 1763763244.991824,
+  "error": "Experiment comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed44_datasetcic timed out after 772s",
+  "duration_sec": null,
+  "retry_count": 1,
+  "worker_id": 0
+}

@@ -1,0 +1,2 @@
+round,agg_method,n_clients,byzantine_f,l2_to_benign_mean,cos_to_benign_mean,coord_median_agree_pct,update_norm_mean,update_norm_std,t_aggregate_ms,t_round_ms,pairwise_cosine_mean,pairwise_cosine_std,l2_dispersion_mean,l2_dispersion_std
+1,fedavg,5,,0.00014936677044400092,1.0,1.55234178054929,6.813486862182617,0.12994137014366447,0.11312498827464879,8243.259791997843,0.9302939057350159,0.014488895772098201,1.6031919956207275,0.21608710794163902

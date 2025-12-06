@@ -1,0 +1,14 @@
+{
+  "aggregation": "fedavg",
+  "alpha": 0.5,
+  "adversary_fraction": 0.0,
+  "dp_enabled": false,
+  "dp_noise_multiplier": 0.0,
+  "personalization_epochs": 0,
+  "num_clients": 6,
+  "num_rounds": 20,
+  "seed": 44,
+  "fedprox_mu": 0.002,
+  "dataset": "cic",
+  "data_path": "data/cic/cic_ids2017_multiclass.csv"
+}

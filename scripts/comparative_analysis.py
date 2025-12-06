@@ -91,10 +91,17 @@ class ExperimentConfig:
             f"alpha{self.alpha}",
             f"adv{int(self.adversary_fraction * 100)}",
             f"dp{int(self.dp_enabled)}",
-            f"pers{self.personalization_epochs}",
-            f"mu{self.fedprox_mu}",
-            f"seed{self.seed}",
         ]
+        if self.dp_enabled:
+            # Include noise multiplier so distinct DP settings do not collide
+            parts.append(f"dpnoise{self.dp_noise_multiplier}")
+        parts.extend(
+            [
+                f"pers{self.personalization_epochs}",
+                f"mu{self.fedprox_mu}",
+                f"seed{self.seed}",
+            ]
+        )
         if self.dataset != "unsw":
             parts.append(f"dataset{self.dataset.lower()}")
         return "_".join(parts)
