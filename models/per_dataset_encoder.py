@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, List
 
 import torch
 from torch import nn
@@ -12,9 +12,9 @@ class PerDatasetEncoderConfig:
     dataset_name: str
     input_dim: int
     num_classes: int
-    encoder_hidden: List[int]
+    encoder_hidden: list[int]
     latent_dim: int
-    shared_hidden: List[int]
+    shared_hidden: list[int]
     dropout: float = 0.0
 
 
@@ -23,7 +23,7 @@ def _build_mlp(
     hidden_layers: Iterable[int],
     dropout: float,
 ) -> nn.Sequential:
-    layers: List[nn.Module] = []
+    layers: list[nn.Module] = []
     prev_dim = input_dim
     for hidden in hidden_layers:
         layers.append(nn.Linear(prev_dim, hidden))
@@ -49,7 +49,7 @@ class PerDatasetEncoderNet(nn.Module):
             nn.ReLU(),
         )
 
-        shared_layers: List[nn.Module] = []
+        shared_layers: list[nn.Module] = []
         prev = config.latent_dim
         for hidden in config.shared_hidden:
             shared_layers.append(nn.Linear(prev, hidden))
@@ -61,8 +61,7 @@ class PerDatasetEncoderNet(nn.Module):
         self.shared_head = nn.Sequential(*shared_layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if self.encoder:
-            x = self.encoder(x)
+        x = self.encoder(x)
         z = self.latent_projection(x)
         return self.shared_head(z)
 
