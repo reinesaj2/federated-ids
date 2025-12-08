@@ -79,6 +79,12 @@ DEFAULT_ENCODER_LAYOUTS = {
         "shared_hidden": [192, 96],
         "dropout": 0.25,
     },
+    "edge": {
+        "encoder_hidden": [512, 384, 256],
+        "latent_dim": 192,
+        "shared_hidden": [128, 64],
+        "dropout": 0.3,
+    },
 }
 
 FALLBACK_LAYOUT = {

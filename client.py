@@ -40,11 +40,12 @@ from privacy_accounting import DPAccountant
 from secure_aggregation import generate_client_mask_sequence, mask_updates
 from logging_utils import configure_logging, get_logger
 from models.per_dataset_encoder import get_default_encoder_config, PerDatasetEncoderNet
+from models.focal_loss import FocalLoss, compute_class_weights
 
 
 DEFAULT_CLIENT_LR = 1e-3
 DEFAULT_WEIGHT_DECAY = 1e-4
-ENCODER_DATASETS = {"unsw", "cic"}
+ENCODER_DATASETS = {"unsw", "cic", "edge"}
 
 
 def create_adamw_optimizer(parameters, lr: float, weight_decay: float = DEFAULT_WEIGHT_DECAY) -> torch.optim.Optimizer:
@@ -121,9 +122,10 @@ def train_epoch(
     global_params: Optional[List[np.ndarray]] = None,
     fedprox_mu: float = 0.0,
     weight_decay: float = DEFAULT_WEIGHT_DECAY,
+    loss_fn: Optional[nn.Module] = None,
 ) -> float:
     model.train()
-    criterion = nn.CrossEntropyLoss()
+    criterion = loss_fn if loss_fn is not None else nn.CrossEntropyLoss()
     optimizer = create_adamw_optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
     total_loss = 0.0
     num_batches = 0
@@ -317,6 +319,25 @@ class TorchClient(fl.client.NumPyClient):
         self._dp_enabled_previous = bool(runtime_config.get("dp_enabled", False))
         self.logger = get_logger("client")
         self.class_names = class_names or []
+        self.loss_fn = self._create_loss_function()
+
+    def _create_loss_function(self) -> nn.Module:
+        use_focal_loss = bool(self.runtime_config.get("use_focal_loss", False))
+        if not use_focal_loss:
+            return nn.CrossEntropyLoss()
+
+        focal_gamma = float(self.runtime_config.get("focal_gamma", 2.0))
+        n_classes = int(self.data_stats.get("n_classes", 2))
+
+        all_labels = []
+        for _, yb in self.train_loader:
+            all_labels.append(yb)
+        all_labels_tensor = torch.cat(all_labels)
+
+        class_weights = compute_class_weights(all_labels_tensor, n_classes)
+        class_weights = class_weights.to(self.device)
+
+        return FocalLoss(alpha=class_weights, gamma=focal_gamma)
 
     def get_parameters(self, config):
         return get_parameters(self.model)
@@ -549,6 +570,7 @@ class TorchClient(fl.client.NumPyClient):
                         global_params=parameters if fedprox_mu > 0.0 else None,
                         fedprox_mu=fedprox_mu,
                         weight_decay=weight_decay,
+                        loss_fn=self.loss_fn,
                     )
                 epochs_completed += 1
 
@@ -907,6 +929,7 @@ class TorchClient(fl.client.NumPyClient):
                 lr,
                 global_params=None,
                 fedprox_mu=0.0,
+                loss_fn=self.loss_fn,
             )
             if debug_enabled and epoch_idx == 0:
                 # Check if weights changed after first epoch
@@ -1099,6 +1122,8 @@ def main() -> None:
         default=DEFAULT_WEIGHT_DECAY,
         help="AdamW weight decay for local optimizer",
     )
+    parser.add_argument("--use_focal_loss", action="store_true", help="Use FocalLoss instead of CrossEntropyLoss")
+    parser.add_argument("--focal_gamma", type=float, default=2.0, help="FocalLoss gamma parameter (focus on hard examples)")
     parser.add_argument(
         "--fedprox_mu",
         type=float,
@@ -1362,6 +1387,9 @@ def main() -> None:
             "target_fpr": args.target_fpr,
             # Personalization
             "personalization_epochs": args.personalization_epochs,
+            # FocalLoss
+            "use_focal_loss": args.use_focal_loss,
+            "focal_gamma": args.focal_gamma,
         },
         class_names=class_names,
     )
