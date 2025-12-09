@@ -35,9 +35,9 @@ ATTACK_AGGREGATIONS = ["fedavg", "krum", "bulyan", "median"]
 DATASET_DEFAULT_PATHS = {
     "unsw": "data/unsw/UNSW_NB15_training-set.csv",
     "cic": "data/cic/cic_ids2017_multiclass.csv",
-    "edge-iiotset-quick": "data/edge-iiotset/edge_iiotset_quick.csv",
-    "edge-iiotset-nightly": "data/edge-iiotset/edge_iiotset_nightly.csv",
-    "edge-iiotset-full": "data/edge-iiotset/edge_iiotset_full.csv",
+    "edge-iiotset-quick": "datasets/edge-iiotset/processed/edge_iiotset_500k_curated.csv",
+    "edge-iiotset-nightly": "datasets/edge-iiotset/processed/edge_iiotset_500k_curated.csv",
+    "edge-iiotset-full": "datasets/edge-iiotset/processed/edge_iiotset_500k_curated.csv",
 }
 
 
@@ -689,14 +689,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate experiment matrix with dataset configuration
-    dataset_paths = {
-        "unsw": "data/unsw/UNSW_NB15_training-set.csv",
-        "cic": "data/cic/cic_ids2017_multiclass.csv",
-        "edge-iiotset-quick": "data/edge-iiotset/edge_iiotset_quick.csv",
-        "edge-iiotset-nightly": "data/edge-iiotset/edge_iiotset_nightly.csv",
-        "edge-iiotset-full": "data/edge-iiotset/edge_iiotset_full.csv",
-    }
-    data_path = args.data_path if args.data_path else dataset_paths[args.dataset]
+    data_path = args.data_path if args.data_path else DATASET_DEFAULT_PATHS[args.dataset]
 
     matrix = ComparisonMatrix(dataset=args.dataset, data_path=data_path)
     matrix.num_clients = args.num_clients
