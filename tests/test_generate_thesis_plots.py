@@ -2,6 +2,9 @@
 """Unit tests for generate_thesis_plots.py"""
 
 import json
+import math
+import os
+import tempfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -9,15 +12,23 @@ import numpy as np
 import pandas as pd
 import pytest
 
+MPLCONFIGDIR = Path(tempfile.gettempdir()) / "matplotlib-config"
+MPLCONFIGDIR.mkdir(exist_ok=True)
+os.environ["MPLCONFIGDIR"] = str(MPLCONFIGDIR)
+os.environ.setdefault("MPLBACKEND", "Agg")
+
 from scripts.generate_thesis_plots import (
     _render_cosine_plot,
     _render_l2_plot,
     _render_macro_f1_plot,
     _render_timing_plot,
+    _render_privacy_curve,
+    collect_personalization_deltas,
     compute_confidence_interval,
     compute_server_macro_f1_from_clients,
     perform_statistical_tests,
     plot_privacy_utility,
+    summarize_personalization_deltas,
 )
 
 
@@ -350,6 +361,103 @@ def test_privacy_utility_curve_outputs(tmp_path, dp_noise):
     assert pd.isna(baseline_row["epsilon"])
     assert baseline_row["n"] == 1
     assert pytest.approx(baseline_row["macro_f1_mean"], rel=1e-3) == 0.89
+
+
+def test_privacy_curve_includes_dataset_and_infinite_baseline(tmp_path):
+    dp_df = pd.DataFrame(
+        {
+            "epsilon": [1.0, 2.0],
+            "macro_f1": [0.8, 0.82],
+            "dp_noise_multiplier": [0.5, 0.7],
+            "dataset": ["unsw", "cic"],
+            "seed": [42, 43],
+        }
+    )
+    baseline_df = pd.DataFrame(
+        {
+            "macro_f1": [0.9, 0.88],
+            "dp_noise_multiplier": [0.0, 0.0],
+            "dataset": ["unsw", "cic"],
+            "seed": [44, 45],
+        }
+    )
+
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+
+    _render_privacy_curve(dp_df, baseline_df, output_dir)
+
+    summary_df = pd.read_csv(output_dir / "privacy_utility_curve.csv")
+
+    assert "dataset" in summary_df.columns
+    assert set(summary_df["dataset"].dropna()) == {"unsw", "cic"}
+
+    baseline_rows = summary_df[summary_df["is_baseline"] == 1]
+    assert not baseline_rows.empty
+    assert baseline_rows["epsilon"].apply(math.isinf).all()
+
+    assert (summary_df["ci_lower"] >= 0.0).all()
+    assert (summary_df["ci_upper"] <= 1.0).all()
+
+
+def _write_personalization_run(run_dir: Path, dataset: str, personalization_epochs: int, seed: int, deltas: list[float]) -> None:
+    run_dir.mkdir(parents=True)
+    config = {
+        "aggregation": "fedavg",
+        "alpha": 0.5,
+        "adversary_fraction": 0.0,
+        "dp_enabled": False,
+        "dp_noise_multiplier": 0.0,
+        "personalization_epochs": personalization_epochs,
+        "num_clients": len(deltas),
+        "num_rounds": 1,
+        "seed": seed,
+        "dataset": dataset,
+    }
+    (run_dir / "config.json").write_text(json.dumps(config))
+
+    metrics_df = pd.DataFrame([{"round": 1, "aggregation": "fedavg", "personalization_epochs": personalization_epochs, "seed": seed}])
+    metrics_df.to_csv(run_dir / "metrics.csv", index=False)
+
+    for idx, delta in enumerate(deltas):
+        client_df = pd.DataFrame(
+            [
+                {
+                    "round": 1,
+                    "macro_f1_global": 0.6,
+                    "macro_f1_personalized": 0.6 + delta,
+                    "macro_f1_after": 0.6,
+                    "client_id": idx,
+                }
+            ]
+        )
+        client_df.to_csv(run_dir / f"client_{idx}_metrics.csv", index=False)
+
+
+def test_personalization_summary_per_dataset(tmp_path):
+    runs_dir = tmp_path / "runs"
+    runs_dir.mkdir()
+
+    _write_personalization_run(runs_dir / "unsw_pers3_seed42", "unsw", personalization_epochs=3, seed=42, deltas=[0.1, 0.05])
+    _write_personalization_run(runs_dir / "unsw_pers3_seed43", "unsw", personalization_epochs=3, seed=43, deltas=[0.08])
+    _write_personalization_run(runs_dir / "cic_pers3_seed42", "cic", personalization_epochs=3, seed=42, deltas=[0.02, 0.03])
+
+    delta_df = collect_personalization_deltas(runs_dir)
+    summary_df = summarize_personalization_deltas(delta_df)
+
+    assert set(summary_df["dataset"]) == {"unsw", "cic"}
+
+    unsw_row = summary_df[(summary_df["dataset"] == "unsw") & (summary_df["personalization_epochs"] == 3)].iloc[0]
+    cic_row = summary_df[(summary_df["dataset"] == "cic") & (summary_df["personalization_epochs"] == 3)].iloc[0]
+
+    assert pytest.approx(unsw_row["gain_mean"], rel=1e-3) == 0.07666666666666666
+    assert unsw_row["n_clients"] == 3
+
+    assert pytest.approx(cic_row["gain_mean"], rel=1e-3) == 0.025
+    assert cic_row["n_clients"] == 2
+
+    assert (summary_df["ci_lower"] <= summary_df["gain_mean"]).all()
+    assert (summary_df["ci_upper"] >= summary_df["gain_mean"]).all()
 
 
 def test_compute_f1_degradation_bounded():

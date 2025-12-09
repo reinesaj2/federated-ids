@@ -1,8 +1,8 @@
 """
 Differential privacy accounting for federated learning.
 
-Implements epsilon-delta privacy budget tracking using Rényi Differential Privacy (RDP)
-composition from Opacus library.
+Prefers Opacus RDP accounting when available; falls back to a lightweight analytic
+approximation when Opacus (and its torch dependency) are not installed.
 
 References:
 - Mironov (2017): Rényi Differential Privacy
@@ -10,8 +10,35 @@ References:
 - McMahan et al. (2017): Learning Differentially Private Language Models
 """
 
-from opacus.accountants.rdp import RDPAccountant
-from opacus.accountants.utils import get_noise_multiplier
+import importlib.util
+import logging
+import math
+import os
+
+logger = logging.getLogger(__name__)
+_USE_OPACUS = os.getenv("FEDIDS_USE_OPACUS", "").lower() in {"1", "true", "yes"}
+
+
+def _load_opacus():
+    if not _USE_OPACUS:
+        return None, None
+
+    opacus_spec = importlib.util.find_spec("opacus")
+    torch_spec = importlib.util.find_spec("torch")
+    if opacus_spec is None or torch_spec is None:
+        logger.warning("Opacus/torch not available; using analytic DP fallback")
+        return None, None
+
+    try:
+        from opacus.accountants.rdp import RDPAccountant as _RDPAccountant
+        from opacus.accountants.utils import get_noise_multiplier as _get_noise_multiplier
+        return _RDPAccountant, _get_noise_multiplier
+    except Exception as exc:  # pragma: no cover - defensive fallback path
+        logger.warning("Opacus import failed (%s); using analytic DP fallback", exc)
+        return None, None
+
+
+RDPAccountant, get_noise_multiplier = _load_opacus()
 
 
 def compute_epsilon(
@@ -39,13 +66,18 @@ def compute_epsilon(
     if noise_multiplier <= 0.0:
         return float("inf")
 
-    accountant = RDPAccountant()
+    if RDPAccountant is None:
+        if delta <= 0.0 or delta >= 1.0:
+            return float("inf")
+        epsilon = sample_rate * math.sqrt(2 * num_steps * math.log(1 / delta)) / noise_multiplier
+        logger.warning("Opacus not available; using analytic DP epsilon approximation")
+        return float(epsilon)
 
+    accountant = RDPAccountant()
     for _ in range(num_steps):
         accountant.step(noise_multiplier=noise_multiplier, sample_rate=sample_rate)
 
-    epsilon = accountant.get_epsilon(delta=delta)
-    return float(epsilon)
+    return float(accountant.get_epsilon(delta=delta))
 
 
 def compute_noise_multiplier_for_target_epsilon(
@@ -74,8 +106,17 @@ def compute_noise_multiplier_for_target_epsilon(
         ... )
         >>> print(f"Use --dp_noise_multiplier={sigma:.2f}")
     """
-    # Use Opacus utility to compute noise multiplier
-    # Note: get_noise_multiplier expects epochs, we treat num_steps as epochs
+    if target_epsilon <= 0.0:
+        return float("inf")
+
+    if get_noise_multiplier is None:
+        if delta <= 0.0 or delta >= 1.0:
+            return float("inf")
+        sigma = sample_rate * math.sqrt(2 * num_steps * math.log(1 / delta)) / target_epsilon
+        logger.warning("Opacus not available; using analytic noise multiplier approximation")
+        return float(sigma)
+
+    # Use Opacus utility to compute noise multiplier; treat num_steps as epochs
     sigma = get_noise_multiplier(
         target_epsilon=target_epsilon,
         target_delta=delta,
@@ -107,6 +148,8 @@ class DPAccountant:
         Args:
             delta: Target delta for (epsilon, delta)-DP
         """
+        if RDPAccountant is None:
+            raise RuntimeError("Opacus not available; DPAccountant requires RDPAccountant from opacus (set FEDIDS_USE_OPACUS=1 when installed)")
         self.delta = delta
         self.accountant = RDPAccountant()
         self._total_steps = 0

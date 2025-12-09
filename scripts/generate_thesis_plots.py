@@ -500,10 +500,12 @@ def _prepare_privacy_curve_data(final_rounds: pd.DataFrame, runs_root: Path) -> 
             continue
 
         macro_mean = float(np.mean(macro_values))
+        dataset = row.get("dataset") or "unknown"
         base_record = {
             "macro_f1": macro_mean,
             "seed": row.get("seed"),
             "dp_noise_multiplier": row.get("dp_noise_multiplier"),
+            "dataset": dataset,
         }
 
         if row.get("dp_enabled"):
@@ -518,28 +520,40 @@ def _prepare_privacy_curve_data(final_rounds: pd.DataFrame, runs_root: Path) -> 
 
 
 def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output_dir: Path) -> None:
-    if dp_df.empty:
+    if dp_df.empty and baseline_df.empty:
         return
 
     summary_rows: List[Dict] = []
 
-    for epsilon, subset in dp_df.groupby("epsilon"):
+    group_cols = ["epsilon"]
+    if "dataset" in dp_df.columns:
+        group_cols.insert(0, "dataset")
+
+    for keys, subset in dp_df.groupby(group_cols):
+        if not isinstance(keys, tuple):
+            dataset = "unknown"
+            epsilon = keys
+        else:
+            dataset, epsilon = keys if len(keys) == 2 else ("unknown", keys[0])
+
         macros = subset["macro_f1"].dropna()
         if macros.empty:
             continue
 
         n = len(macros)
         mean = float(macros.mean())
-        ci_lower = mean
-        ci_upper = mean
         if n >= 2:
-            se = stats.sem(macros)
-            margin = se * stats.t.ppf(0.975, n - 1)
-            ci_lower = mean - margin
-            ci_upper = mean + margin
+            mean, ci_lower, ci_upper = compute_confidence_interval(macros.to_numpy())
+        else:
+            ci_lower = mean
+            ci_upper = mean
+
+        ci_lower = float(np.clip(ci_lower, 0.0, 1.0))
+        ci_upper = float(np.clip(ci_upper, 0.0, 1.0))
 
         summary_rows.append(
             {
+                "dataset": dataset,
                 "epsilon": float(epsilon),
                 "macro_f1_mean": mean,
                 "ci_lower": ci_lower,
@@ -552,19 +566,25 @@ def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output
 
     baseline_row: Optional[Dict] = None
     if not baseline_df.empty:
-        baseline_macros = baseline_df["macro_f1"].dropna()
-        if not baseline_macros.empty:
+        dataset_col = baseline_df["dataset"] if "dataset" in baseline_df.columns else pd.Series(["unknown"] * len(baseline_df))
+        for dataset, subset in baseline_df.assign(dataset=dataset_col).groupby("dataset"):
+            baseline_macros = subset["macro_f1"].dropna()
+            if baseline_macros.empty:
+                continue
             n = len(baseline_macros)
             mean = float(baseline_macros.mean())
-            ci_lower = mean
-            ci_upper = mean
             if n >= 2:
-                se = stats.sem(baseline_macros)
-                margin = se * stats.t.ppf(0.975, n - 1)
-                ci_lower = mean - margin
-                ci_upper = mean + margin
+                mean, ci_lower, ci_upper = compute_confidence_interval(baseline_macros.to_numpy())
+            else:
+                ci_lower = mean
+                ci_upper = mean
+
+            ci_lower = float(np.clip(ci_lower, 0.0, 1.0))
+            ci_upper = float(np.clip(ci_upper, 0.0, 1.0))
+
             baseline_row = {
-                "epsilon": float("nan"),
+                "dataset": dataset,
+                "epsilon": float("inf"),
                 "macro_f1_mean": mean,
                 "ci_lower": ci_lower,
                 "ci_upper": ci_upper,
@@ -578,7 +598,8 @@ def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output
         return
 
     summary_df = pd.DataFrame(summary_rows)
-    summary_df = summary_df.sort_values(by=["is_baseline", "epsilon"], na_position="last")
+    sort_cols = ["dataset", "is_baseline", "epsilon"] if "dataset" in summary_df.columns else ["is_baseline", "epsilon"]
+    summary_df = summary_df.sort_values(by=sort_cols, na_position="last")
     summary_path = output_dir / "privacy_utility_curve.csv"
     summary_df.to_csv(summary_path, index=False)
 
@@ -588,26 +609,41 @@ def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output
 
     fig, ax = plt.subplots(figsize=(8, 6))
 
-    lower_errors = np.maximum(0.0, dp_summary["macro_f1_mean"] - dp_summary["ci_lower"])
-    upper_errors = np.maximum(0.0, dp_summary["ci_upper"] - dp_summary["macro_f1_mean"])
-    yerr = np.vstack([lower_errors.to_numpy(), upper_errors.to_numpy()])
+    datasets = sorted(dp_summary["dataset"].dropna().unique()) if "dataset" in dp_summary.columns else ["all"]
+    baseline_map = {}
+    if baseline_row is not None:
+        baseline_map = {row["dataset"]: row for row in summary_rows if row.get("is_baseline") == 1}
 
-    ax.errorbar(
-        dp_summary["epsilon"],
-        dp_summary["macro_f1_mean"],
-        yerr=yerr,
-        fmt="o-",
-        capsize=5,
-        label="DP Enabled",
-    )
+    palette = sns.color_palette("tab10", len(datasets))
+    for idx, dataset in enumerate(datasets):
+        subset = dp_summary[dp_summary["dataset"] == dataset] if "dataset" in dp_summary.columns else dp_summary
+        if subset.empty:
+            continue
+        subset = subset.sort_values("epsilon")
+        lower_errors = np.maximum(0.0, subset["macro_f1_mean"] - subset["ci_lower"])
+        upper_errors = np.maximum(0.0, subset["ci_upper"] - subset["macro_f1_mean"])
+        yerr = np.vstack([lower_errors.to_numpy(), upper_errors.to_numpy()])
 
-    if baseline_row is not None and baseline_row["n"] > 0:
-        ax.axhline(
-            baseline_row["macro_f1_mean"],
-            color="gray",
-            linestyle="--",
-            label=f"No DP baseline (n={baseline_row['n']})",
+        label_suffix = f" ({dataset})" if dataset != "all" else ""
+        ax.errorbar(
+            subset["epsilon"],
+            subset["macro_f1_mean"],
+            yerr=yerr,
+            fmt="o-",
+            capsize=5,
+            label=f"DP Enabled{label_suffix}",
+            color=palette[idx],
         )
+
+        baseline_data = baseline_map.get(dataset)
+        if baseline_data is not None and baseline_data.get("n", 0) > 0:
+            ax.axhline(
+                baseline_data["macro_f1_mean"],
+                color=palette[idx],
+                linestyle="--",
+                alpha=0.6,
+                label=f"No DP baseline ({dataset}, n={baseline_data['n']})",
+            )
 
     ax.set_xlabel("ε (DP accountant)")
     ax.set_ylabel("Macro-F1")
@@ -1710,6 +1746,146 @@ def plot_privacy_utility(df: pd.DataFrame, output_dir: Path, runs_dir: Optional[
     _render_privacy_curve(dp_df, baseline_df, output_dir)
 
 
+def collect_personalization_deltas(runs_dir: Path, dataset_filter: Optional[str] = None) -> pd.DataFrame:
+    """Collect per-client personalization deltas from run artifacts."""
+    records: List[Dict[str, object]] = []
+
+    if not runs_dir.exists():
+        return pd.DataFrame(records)
+
+    for run_dir in runs_dir.iterdir():
+        if not run_dir.is_dir():
+            continue
+
+        config: Dict[str, object] = {}
+        config_file = run_dir / "config.json"
+        if config_file.exists():
+            try:
+                config = json.loads(config_file.read_text())
+            except Exception:
+                config = {}
+
+        dataset = config.get("dataset", "unknown")
+        if dataset_filter is not None and dataset != dataset_filter:
+            continue
+
+        personalization_epochs = int(config.get("personalization_epochs", 0) or 0)
+        alpha = config.get("alpha", 0.0)
+        seed = config.get("seed", 0)
+
+        for client_metrics in run_dir.glob("client_*_metrics.csv"):
+            try:
+                client_df = pd.read_csv(client_metrics)
+            except Exception:
+                continue
+
+            if client_df.empty:
+                continue
+
+            final_row = client_df.iloc[-1]
+            f1_global = final_row.get("macro_f1_global")
+            f1_personalized = final_row.get("macro_f1_personalized")
+
+            if pd.isna(f1_global) or pd.isna(f1_personalized):
+                continue
+
+            delta = float(f1_personalized) - float(f1_global)
+
+            records.append(
+                {
+                    "dataset": dataset,
+                    "alpha": alpha,
+                    "personalization_epochs": personalization_epochs,
+                    "seed": seed,
+                    "client_id": final_row.get("client_id"),
+                    "f1_global": float(f1_global),
+                    "f1_personalized": float(f1_personalized),
+                    "delta_f1": delta,
+                }
+            )
+
+    return pd.DataFrame(records)
+
+
+def summarize_personalization_deltas(delta_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate personalization deltas by dataset and personalization epochs."""
+    columns = ["dataset", "personalization_epochs", "gain_mean", "ci_lower", "ci_upper", "n_clients", "pct_positive"]
+    if delta_df.empty or "delta_f1" not in delta_df.columns:
+        return pd.DataFrame(columns=columns)
+
+    stats_rows: List[Dict[str, object]] = []
+    for (dataset, epochs), subset in delta_df.groupby(["dataset", "personalization_epochs"]):
+        gains = subset["delta_f1"].dropna()
+        if gains.empty:
+            continue
+
+        n_clients = len(gains)
+        mean_gain = float(gains.mean())
+        if n_clients >= 2:
+            _, ci_lower, ci_upper = compute_confidence_interval(gains.to_numpy())
+        else:
+            ci_lower = mean_gain
+            ci_upper = mean_gain
+
+        pct_positive = float((gains > 0).sum() / n_clients * 100.0)
+
+        stats_rows.append(
+            {
+                "dataset": dataset,
+                "personalization_epochs": int(epochs),
+                "gain_mean": mean_gain,
+                "ci_lower": ci_lower,
+                "ci_upper": ci_upper,
+                "n_clients": n_clients,
+                "pct_positive": pct_positive,
+            }
+        )
+
+    if not stats_rows:
+        return pd.DataFrame(columns=columns)
+
+    summary_df = pd.DataFrame(stats_rows)
+    return summary_df.sort_values(by=["dataset", "personalization_epochs"])
+
+
+def _render_personalization_rigorous(summary_df: pd.DataFrame, output_dir: Path) -> None:
+    """Render dataset-aware personalization gains with confidence intervals."""
+    if summary_df.empty:
+        return
+
+    summary_df = summary_df.copy()
+    summary_df["personalization_epochs"] = summary_df["personalization_epochs"].astype(int)
+    summary_df = summary_df.sort_values(by=["personalization_epochs", "dataset"])
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bar_plot = sns.barplot(
+        data=summary_df,
+        x="personalization_epochs",
+        y="gain_mean",
+        hue="dataset",
+        ax=ax,
+        errorbar=None,
+    )
+
+    for patch, (_, row) in zip(bar_plot.patches, summary_df.iterrows()):
+        center = patch.get_x() + patch.get_width() / 2
+        lower_err = max(0.0, row["gain_mean"] - row["ci_lower"])
+        upper_err = max(0.0, row["ci_upper"] - row["gain_mean"])
+        ax.errorbar(center, row["gain_mean"], yerr=[[lower_err], [upper_err]], fmt="none", ecolor="black", capsize=4)
+        ax.text(center, row["gain_mean"], f"n={int(row['n_clients'])}", ha="center", va="bottom", fontsize=8)
+
+    ax.axhline(0.0, color="red", linestyle="--", alpha=0.5, label="No gain")
+    ax.set_xlabel("Personalization Epochs")
+    ax.set_ylabel("Δ Macro-F1 (personalized - global)")
+    ax.set_title("Personalization Gains by Dataset (95% CI)")
+    ax.grid(True, alpha=0.3, axis="y")
+    ax.legend()
+
+    fig.tight_layout()
+    fig.savefig(output_dir / "personalization_rigorous.png", dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
 def plot_personalization_benefit(df: pd.DataFrame, output_dir: Path):
     """Plot personalization benefit."""
     if "personalization_epochs" not in df.columns:
@@ -1718,6 +1894,12 @@ def plot_personalization_benefit(df: pd.DataFrame, output_dir: Path):
     # Load client metrics for personalization data
     # This requires reading client metrics CSVs
     runs_dir = Path("runs")
+    delta_df = collect_personalization_deltas(runs_dir)
+    summary_df = summarize_personalization_deltas(delta_df)
+    if not summary_df.empty:
+        summary_df.to_csv(output_dir / "personalization_rigorous_summary.csv", index=False)
+        _render_personalization_rigorous(summary_df, output_dir)
+
     personalization_data = []
 
     for run_dir in runs_dir.glob("comp_*pers*"):
