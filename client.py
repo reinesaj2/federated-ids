@@ -46,10 +46,18 @@ from models.focal_loss import FocalLoss, compute_class_weights
 DEFAULT_CLIENT_LR = 1e-3
 DEFAULT_WEIGHT_DECAY = 1e-4
 ENCODER_DATASETS = {"unsw", "cic", "edge"}
+FEDPROX_MOMENTUM = 0.0
 
 
 def create_adamw_optimizer(parameters, lr: float, weight_decay: float = DEFAULT_WEIGHT_DECAY) -> torch.optim.Optimizer:
     return torch.optim.AdamW(parameters, lr=lr, weight_decay=weight_decay)
+
+
+def _create_optimizer(parameters, lr: float, weight_decay: float, fedprox_mu: float) -> torch.optim.Optimizer:
+    if fedprox_mu > 0.0:
+        # FedProx uses SGD per Li et al. (MLSys 2020); no weight decay
+        return torch.optim.SGD(parameters, lr=lr, momentum=FEDPROX_MOMENTUM, weight_decay=0.0)
+    return create_adamw_optimizer(parameters, lr=lr, weight_decay=weight_decay)
 
 
 def set_global_seed(seed: int) -> None:
@@ -126,7 +134,6 @@ def train_epoch(
 ) -> float:
     model.train()
     criterion = loss_fn if loss_fn is not None else nn.CrossEntropyLoss()
-    optimizer = create_adamw_optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
     total_loss = 0.0
     num_batches = 0
 
@@ -135,10 +142,12 @@ def train_epoch(
     if fedprox_mu > 0.0 and global_params is not None:
         global_tensors = [torch.tensor(param, dtype=torch.float32).to(device) for param in global_params]
 
+    optimizer = _create_optimizer(model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu)
+
     for xb, yb in loader:
         xb = xb.to(device)
         yb = yb.to(device)
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
         preds = model(xb)
         loss = criterion(preds, yb)
 
@@ -426,13 +435,14 @@ class TorchClient(fl.client.NumPyClient):
                     # Perform gradient ascent by negating the loss
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
-
                     # Get FedProx parameters (server config takes precedence)
                     fedprox_mu = float(config.get("fedprox_mu", self.runtime_config.get("fedprox_mu", 0.0)))
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
+                    optimizer = _create_optimizer(
+                        self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu
+                    )
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -461,7 +471,6 @@ class TorchClient(fl.client.NumPyClient):
                     # Train on intentionally wrong labels: rotate class index by +1
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
                     n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
 
                     # Get FedProx parameters (server config takes precedence)
@@ -469,6 +478,9 @@ class TorchClient(fl.client.NumPyClient):
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
+                    optimizer = _create_optimizer(
+                        self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu
+                    )
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -498,11 +510,13 @@ class TorchClient(fl.client.NumPyClient):
                 elif attack_mode == "sign_flip_topk":
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
                     fedprox_mu = float(config.get("fedprox_mu", self.runtime_config.get("fedprox_mu", 0.0)))
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
+                    optimizer = _create_optimizer(
+                        self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu
+                    )
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -542,7 +556,10 @@ class TorchClient(fl.client.NumPyClient):
                 elif attack_mode == "targeted_label":
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+                    fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
+                    optimizer = _create_optimizer(
+                        self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu
+                    )
                     n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
 
                     for xb, yb in self.train_loader:
