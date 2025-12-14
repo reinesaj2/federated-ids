@@ -35,7 +35,7 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 ## 1) Prerequisites
 
 - macOS or Linux (Windows works via WSL2).
-- Python 3.10–3.12 recommended (CPU‑only is fine). Check with:
+- Python 3.13 recommended (CPU‑only is fine). Check with:
   ```bash
   python3 --version
   ```

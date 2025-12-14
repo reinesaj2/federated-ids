@@ -16,6 +16,7 @@ __pycache__/
 # Run artifacts (track by default; exclude clearly broken dumps)
 /runs_buggy_*/
 /runs_incomplete_*/
+/runs/
 
 # Include plots directory for repository storage
 !/plots/
