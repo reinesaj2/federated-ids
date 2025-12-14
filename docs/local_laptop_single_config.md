@@ -50,7 +50,7 @@ This runbook enables running **single Flower configurations** on a laptop with c
 
 ### Software Dependencies
 
-- Python 3.10+
+- Python 3.13 (recommended)
 - `virtualenv` or `venv`
 - AWS CLI (if syncing datasets from S3)
 

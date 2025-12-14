@@ -13,15 +13,6 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 5. Reproducibility & logging (seeds, logs, plots)
 6. Algorithm comparison (FedAvg vs FedProx)
 7. Real datasets (UNSW‑NB15, CIC‑IDS2017)
-<<<<<<< HEAD
-8. **Experimental Results & Performance Analysis**
-9. **Visualization Gallery & Plot References**
-10. **Quick Links to Analysis & Results**
-11. D2 Runbook (experiment workflow & artifact map)
-12. Troubleshooting (common errors and fixes)
-13. Project structure
-14. Notes on privacy/robustness scaffolding
-=======
 8. Experimental Results & Performance Analysis
 9. Visualization Gallery & Plot References
 10. Quick Links to Analysis & Results
@@ -29,8 +20,6 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 12. Project structure
 13. Privacy & robustness disclosure (D2 scope)
 14. D2 Runbook (experiment workflow & artifact map)
-
----
 
 ## 1) Prerequisites
 
