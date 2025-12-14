@@ -440,9 +440,7 @@ class TorchClient(fl.client.NumPyClient):
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
-                    optimizer = _create_optimizer(
-                        self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu
-                    )
+                    optimizer = _create_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu)
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -478,9 +476,7 @@ class TorchClient(fl.client.NumPyClient):
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
-                    optimizer = _create_optimizer(
-                        self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu
-                    )
+                    optimizer = _create_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu)
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -514,9 +510,7 @@ class TorchClient(fl.client.NumPyClient):
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
-                    optimizer = _create_optimizer(
-                        self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu
-                    )
+                    optimizer = _create_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu)
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -557,9 +551,7 @@ class TorchClient(fl.client.NumPyClient):
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
                     fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
-                    optimizer = _create_optimizer(
-                        self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu
-                    )
+                    optimizer = _create_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu)
                     n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
 
                     for xb, yb in self.train_loader:
