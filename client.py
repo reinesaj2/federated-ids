@@ -147,7 +147,7 @@ def train_epoch(
     for xb, yb in loader:
         xb = xb.to(device)
         yb = yb.to(device)
-        optimizer.zero_grad(set_to_none=True)
+        optimizer.zero_grad()
         preds = model(xb)
         loss = criterion(preds, yb)
 
