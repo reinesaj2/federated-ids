@@ -404,7 +404,7 @@ Use `--encoder_latent_dim` to override the latent size for ablations; passing `0
 
 ---
 
-## 7) Real datasets (UNSW‑NB15, CIC‑IDS2017)
+## 7) Real datasets (UNSW‑NB15, CIC‑IDS2017, Edge‑IIoTset)
 
 Important rule: all clients connected to the same server must use the same dataset and preprocessing settings.
 Do not mix synthetic with UNSW/CIC (or different feature configs) on the same server run, or you will get a
@@ -435,6 +435,35 @@ python scripts/prepare_unsw_sample.py \
   --output data/unsw/UNSW_NB15_training-set.sample.csv \
   --frac 0.10 --seed 42
 ```
+
+### 7.3 Edge‑IIoTset (IoT/IIoT; 14 attack types, 15 classes)
+
+Edge‑IIoTset (2022) is integrated with three tiers and dedicated preprocessing fixes to keep memory in check.
+
+Tiers (materialized by `scripts/setup_real_datasets.py` if present, or by the sample prep script below):
+- `edge-iiotset-quick` (~50k rows, CI smoke)
+- `edge-iiotset-nightly` (~500k rows, scheduled runs)
+- `edge-iiotset-full` (~1.7M rows, full thesis runs)
+
+Prepare or regenerate tiers from the raw Kaggle/IEEE drop (place CSVs under `datasets/edge-iiotset/Edge-IIoTset dataset/`):
+
+```bash
+python scripts/prepare_edge_iiotset_samples.py --tier all \
+  --source "datasets/edge-iiotset/Edge-IIoTset dataset/Selected dataset for ML and DL/DNN-EdgeIIoT-dataset.csv" \
+  --output-dir data/edge-iiotset --seed 42
+```
+
+Run comparative experiments on the quick tier (works on laptop):
+
+```bash
+python scripts/comparative_analysis.py --dataset edge-iiotset-quick --num_clients 5 --rounds 5 \
+  --dimension aggregation --aggregation_methods fedavg,median,krum,bulyan
+python scripts/plot_metrics.py --run_dir runs --output_dir runs/plots_edge_quick
+```
+
+Notes:
+- Preprocessing drops high-cardinality identifier columns to avoid OOM (see `docs/EDGE_IIOTSET_PREPROCESSING_FIX.md`).
+- For full-scale runs, use chunked loader via `scripts/setup_real_datasets.py` or the prep script above; ensure enough RAM/disk.
 
 ---
 
