@@ -1,12 +1,12 @@
 [tool.black]
 line-length = 140
-target-version = ["py311"]
+target-version = ["py313"]
 skip-string-normalization = true
 extend-exclude = "(\\.venv|__pycache__|runs|logs|datasets|data|plots|analysis|docs)"
 
 [tool.ruff]
 line-length = 140
-target-version = "py311"
+target-version = "py313"
 exclude = [
   ".venv",
   "__pycache__",
@@ -26,7 +26,7 @@ select = ["E", "F"]
 ignore = ["E501", "E203"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 ignore_missing_imports = true
 follow_imports = "skip"
 warn_unused_ignores = false

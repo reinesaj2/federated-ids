@@ -1,29 +1,29 @@
 # Core
-flwr==1.21.0
-torch==2.3.1
-torchvision==0.18.1
-numpy==1.26.4
-pandas==2.2.2
-scikit-learn==1.5.2
+flwr==1.24.0
+torch==2.9.1
+torchvision==0.24.1
+numpy==2.3.5
+pandas==2.3.3
+scikit-learn==1.8.0
 
 # Networking / parsing
-scapy==2.5.0
+scapy==2.6.1
 
 # Crypto (for future robust/privacy features)
-pycryptodome==3.20.0
+pycryptodome==3.23.0
 
 # Privacy accounting
-opacus==1.5.0
+opacus==1.5.4
 
 # Testing
-pytest==8.3.3
-hypothesis==6.104.3
+pytest==9.0.2
+hypothesis==6.148.7
 
 # Additional dependencies for metrics
-scipy==1.13.1
-pyyaml==6.0.2
-matplotlib==3.9.0
+scipy==1.16.3
+pyyaml==6.0.3
+matplotlib==3.10.8
 seaborn==0.13.2
 
 # System monitoring
-psutil==5.9.8
+psutil==7.1.3

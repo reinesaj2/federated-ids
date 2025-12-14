@@ -49,7 +49,7 @@ jobs:
       - name: Python setup
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -203,7 +203,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -310,7 +310,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -494,7 +494,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
