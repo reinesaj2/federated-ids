@@ -4,9 +4,10 @@ Test FedProx implementation to ensure proximal regularization is working correct
 """
 
 
+import pytest
 import torch
 
-from client import SimpleNet, get_parameters, set_parameters, train_epoch
+from client import DEFAULT_WEIGHT_DECAY, SimpleNet, get_parameters, set_parameters, train_epoch
 
 
 def _build_loader(num_samples: int, num_features: int, num_classes: int, batch_size: int = 16):
@@ -112,31 +113,29 @@ def test_fedprox_different_mu_values():
     assert all(loss >= 0.0 for loss in losses.values())
 
 
-def test_fedprox_mu_positive_uses_sgd_without_weight_decay(monkeypatch):
-    """Ensure fedprox mu>0 path uses SGD (no weight decay) instead of AdamW."""
+def test_fedprox_uses_adamw_regardless_of_mu(monkeypatch):
+    """Ensure FedProx uses AdamW for all mu values (both 0 and >0)."""
 
     loader = _build_loader(num_samples=20, num_features=4, num_classes=2, batch_size=8)
     model = SimpleNet(num_features=4, num_classes=2)
     device = torch.device("cpu")
     global_params = get_parameters(model)
 
-    calls = {"sgd": 0, "adamw": 0, "weight_decay": None, "momentum": None}
+    calls = {"adamw": 0, "sgd": 0, "weight_decay": None}
 
-    orig_sgd = torch.optim.SGD
     from client import create_adamw_optimizer as orig_create_adamw
-
-    def wrapped_sgd(params, *args, **kwargs):
-        calls["sgd"] += 1
-        calls["weight_decay"] = kwargs.get("weight_decay", 0.0)
-        calls["momentum"] = kwargs.get("momentum", 0.0)
-        return orig_sgd(params, *args, **kwargs)
 
     def wrapped_create_adamw(params, *args, **kwargs):
         calls["adamw"] += 1
+        calls["weight_decay"] = kwargs.get("weight_decay", DEFAULT_WEIGHT_DECAY)
         return orig_create_adamw(params, *args, **kwargs)
 
-    monkeypatch.setattr(torch.optim, "SGD", wrapped_sgd)
+    def fail_sgd(*args, **kwargs):
+        calls["sgd"] += 1
+        raise AssertionError("SGD should not be used - AdamW should be used for all cases")
+
     monkeypatch.setattr("client.create_adamw_optimizer", wrapped_create_adamw)
+    monkeypatch.setattr(torch.optim, "SGD", fail_sgd)
 
     train_epoch(
         model=model,
@@ -147,7 +146,6 @@ def test_fedprox_mu_positive_uses_sgd_without_weight_decay(monkeypatch):
         fedprox_mu=0.05,
     )
 
-    assert calls["sgd"] >= 1
-    assert calls["adamw"] == 0
-    assert calls["weight_decay"] == 0.0
-    assert calls["momentum"] == 0.0
+    assert calls["adamw"] >= 1, "AdamW should be used"
+    assert calls["sgd"] == 0, "SGD should never be called"
+    assert calls["weight_decay"] == pytest.approx(DEFAULT_WEIGHT_DECAY), f"Weight decay should be {DEFAULT_WEIGHT_DECAY}"

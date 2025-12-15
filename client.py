@@ -46,7 +46,6 @@ from models.focal_loss import FocalLoss, compute_class_weights
 DEFAULT_CLIENT_LR = 1e-3
 DEFAULT_WEIGHT_DECAY = 1e-4
 ENCODER_DATASETS = {"unsw", "cic", "edge"}
-FEDPROX_MOMENTUM = 0.0
 
 
 def create_adamw_optimizer(parameters, lr: float, weight_decay: float = DEFAULT_WEIGHT_DECAY) -> torch.optim.Optimizer:
@@ -54,9 +53,9 @@ def create_adamw_optimizer(parameters, lr: float, weight_decay: float = DEFAULT_
 
 
 def _create_optimizer(parameters, lr: float, weight_decay: float, fedprox_mu: float) -> torch.optim.Optimizer:
-    if fedprox_mu > 0.0:
-        # FedProx uses SGD per Li et al. (MLSys 2020); no weight decay
-        return torch.optim.SGD(parameters, lr=lr, momentum=FEDPROX_MOMENTUM, weight_decay=0.0)
+    # Use AdamW for all cases (both FedAvg and FedProx)
+    # The proximal term is optimizer-agnostic per research in docs/FEDPROX_OPTIMIZER_RESEARCH.md
+    # Research shows no reference implementation switches optimizers based on mu value
     return create_adamw_optimizer(parameters, lr=lr, weight_decay=weight_decay)
 
 
