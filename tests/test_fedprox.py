@@ -113,7 +113,8 @@ def test_fedprox_different_mu_values():
     assert all(loss >= 0.0 for loss in losses.values())
 
 
-def test_fedprox_uses_adamw_regardless_of_mu(monkeypatch):
+@pytest.mark.parametrize("mu", [0.0, 0.01, 0.05, 0.1, 1.0])
+def test_fedprox_uses_adamw_regardless_of_mu(monkeypatch, mu):
     """Ensure FedProx uses AdamW for all mu values (both 0 and >0)."""
 
     loader = _build_loader(num_samples=20, num_features=4, num_classes=2, batch_size=8)
@@ -143,9 +144,9 @@ def test_fedprox_uses_adamw_regardless_of_mu(monkeypatch):
         device=device,
         lr=0.01,
         global_params=global_params,
-        fedprox_mu=0.05,
+        fedprox_mu=mu,
     )
 
-    assert calls["adamw"] >= 1, "AdamW should be used"
-    assert calls["sgd"] == 0, "SGD should never be called"
-    assert calls["weight_decay"] == pytest.approx(DEFAULT_WEIGHT_DECAY), f"Weight decay should be {DEFAULT_WEIGHT_DECAY}"
+    assert calls["adamw"] >= 1, f"AdamW should be used for mu={mu}"
+    assert calls["sgd"] == 0, f"SGD should never be called for mu={mu}"
+    assert calls["weight_decay"] == pytest.approx(DEFAULT_WEIGHT_DECAY), f"Weight decay should be {DEFAULT_WEIGHT_DECAY} for mu={mu}"

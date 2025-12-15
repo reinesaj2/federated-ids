@@ -52,13 +52,6 @@ def create_adamw_optimizer(parameters, lr: float, weight_decay: float = DEFAULT_
     return torch.optim.AdamW(parameters, lr=lr, weight_decay=weight_decay)
 
 
-def _create_optimizer(parameters, lr: float, weight_decay: float, fedprox_mu: float) -> torch.optim.Optimizer:
-    # Use AdamW for all cases (both FedAvg and FedProx)
-    # The proximal term is optimizer-agnostic per research in docs/FEDPROX_OPTIMIZER_RESEARCH.md
-    # Research shows no reference implementation switches optimizers based on mu value
-    return create_adamw_optimizer(parameters, lr=lr, weight_decay=weight_decay)
-
-
 def set_global_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -141,7 +134,9 @@ def train_epoch(
     if fedprox_mu > 0.0 and global_params is not None:
         global_tensors = [torch.tensor(param, dtype=torch.float32).to(device) for param in global_params]
 
-    optimizer = _create_optimizer(model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu)
+    # Use AdamW for all cases - proximal term is optimizer-agnostic
+    # per research in docs/FEDPROX_OPTIMIZER_RESEARCH.md
+    optimizer = create_adamw_optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     for xb, yb in loader:
         xb = xb.to(device)
@@ -439,7 +434,7 @@ class TorchClient(fl.client.NumPyClient):
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
-                    optimizer = _create_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu)
+                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -475,7 +470,7 @@ class TorchClient(fl.client.NumPyClient):
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
-                    optimizer = _create_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu)
+                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -509,7 +504,7 @@ class TorchClient(fl.client.NumPyClient):
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
-                    optimizer = _create_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu)
+                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -550,7 +545,7 @@ class TorchClient(fl.client.NumPyClient):
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
                     fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
-                    optimizer = _create_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay, fedprox_mu=fedprox_mu)
+                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
                     n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
 
                     for xb, yb in self.train_loader:
