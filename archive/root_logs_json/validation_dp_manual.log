@@ -1,0 +1,7 @@
+Running validation DP experiment: comp_fedavg_alpha0.5_adv0_dp1_pers0_seed99
+DP noise multiplier: 0.5
+Expected: cosine < 1.0 (NOT exactly 1.000000)
+
+
+Experiment completed: None
+Run directory: runs/comp_fedavg_alpha0.5_adv0_dp1_pers0_seed99

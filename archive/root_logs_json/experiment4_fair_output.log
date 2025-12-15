@@ -1,0 +1,46 @@
+================================================================================
+EXPERIMENT 4: PerDatasetEncoderNet (Fair Comparison to Baseline)
+================================================================================
+Run directory: /Users/abrahamreines/Documents/Thesis/federated-ids/runs/exp4_fair_perdataset_alpha1.0_r20_20251209_125312
+Configuration: α=1.0 (IID), rounds=20, NO FocalLoss
+This is a FAIR comparison to SimpleNet baseline (same α, same rounds)
+
+Starting server...
+Server started (PID: 44487)
+Client 0 started (PID: 44625) with CrossEntropyLoss (default)
+Client 1 started (PID: 44664) with CrossEntropyLoss (default)
+Client 2 started (PID: 44667) with CrossEntropyLoss (default)
+Client 3 started (PID: 44681) with CrossEntropyLoss (default)
+Client 4 started (PID: 44695) with CrossEntropyLoss (default)
+Client 5 started (PID: 44714) with CrossEntropyLoss (default)
+
+All clients started. Waiting for experiment to complete...
+Expected duration: ~40 minutes
+
+Waiting for client 0...
+Waiting for client 1...
+Waiting for client 2...
+Waiting for client 3...
+Waiting for client 4...
+Waiting for client 5...
+Waiting for server...
+
+================================================================================
+EXPERIMENT 4 COMPLETED!
+================================================================================
+Results saved to: /Users/abrahamreines/Documents/Thesis/federated-ids/runs/exp4_fair_perdataset_alpha1.0_r20_20251209_125312
+
+FINAL RESULTS:
+--------------------------------------------------------------------------------
+Round 20:
+  Macro-F1: 71.96%
+  Accuracy: 97.10%
+
+COMPARISON TO BASELINE:
+  Baseline (SimpleNet):           72.60%
+  Experiment 4 (PerDatasetEncoder): 71.96%
+  Improvement:                      -0.64%
+
+Zero-F1 classes: Baseline=1, Exp4=1
+
+➖ PerDatasetEncoderNet MATCHES SimpleNet (no significant difference)

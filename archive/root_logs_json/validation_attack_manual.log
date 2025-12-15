@@ -1,0 +1,6 @@
+Running validation attack experiment: comp_fedavg_alpha0.5_adv30_dp0_pers0_seed99
+Expected byzantine_f: 3
+
+
+Experiment completed: None
+Run directory: runs/comp_fedavg_alpha0.5_adv30_dp0_pers0_seed99

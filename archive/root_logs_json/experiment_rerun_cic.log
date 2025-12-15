@@ -1,0 +1,249 @@
+[cic] Fri Nov 21 21:42:25 UTC 2025 starting full-dataset experiments
+
+======================================================================
+OPTIMIZED EXPERIMENT RUNNER FOR FULL DATASETS
+======================================================================
+
+EXPERIMENT SUMMARY:
+  Total configurations: 170
+  Already completed: 0
+  Stuck/retry: 0
+  Pending: 170
+  Parallel workers: 4
+  Estimated time: 7.1 hours
+  Dataset type: cic
+======================================================================
+
+[1/170] (0.6%) [COMPLETE] comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed45_datasetcic [0.3m on worker 3] ETA: 58m
+[2/170] (1.2%) [COMPLETE] comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed43_datasetcic [0.3m on worker 1] ETA: 29m
+[3/170] (1.8%) [COMPLETE] comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed42_datasetcic [0.3m on worker 0] ETA: 19m
+[4/170] (2.4%) [COMPLETE] comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed43_datasetcic [0.3m on worker 2] ETA: 27m
+
+Resources: CPU 85.4% | RAM 50.0% (16.0GB free)
+[5/170] (2.9%) [COMPLETE] comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed42_datasetcic [0.3m on worker 1] ETA: 22m
+[6/170] (3.5%) [COMPLETE] comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed44_datasetcic [0.4m on worker 3] ETA: 28m
+[SKIP] comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[11/170] (6.5%) [COMPLETE] comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed44_datasetcic [1.4m on worker 2] ETA: 20m
+
+Resources: CPU 98.9% | RAM 62.5% (12.0GB free)
+[SKIP] comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_median_alpha1.0_adv0_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[14/170] (8.2%) [COMPLETE] comp_median_alpha1.0_adv0_dp0_pers0_mu0.0_seed43_datasetcic [0.2m on worker 0] ETA: 17m
+[SKIP] comp_median_alpha1.0_adv0_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[16/170] (9.4%) [COMPLETE] comp_median_alpha1.0_adv0_dp0_pers0_mu0.0_seed45_datasetcic [0.2m on worker 2] ETA: 17m
+[SKIP] comp_median_alpha1.0_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[18/170] (10.6%) [COMPLETE] comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed45_datasetcic [1.6m on worker 0] ETA: 19m
+
+Resources: CPU 100.0% | RAM 68.7% (10.0GB free)
+[SKIP] comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[20/170] (11.8%) [COMPLETE] comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed42_datasetcic [0.6m on worker 0] ETA: 18m
+[SKIP] comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[23/170] (13.5%) [COMPLETE] comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed42_datasetcic [0.3m on worker 1] ETA: 17m
+[SKIP] comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[25/170] (14.7%) [COMPLETE] comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed44_datasetcic [0.2m on worker 3] ETA: 16m
+
+Resources: CPU 85.1% | RAM 48.2% (16.6GB free)
+[26/170] (15.3%) [COMPLETE] comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed45_datasetcic [0.2m on worker 0] ETA: 17m
+[SKIP] comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.1_adv0_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.1_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.1_adv0_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[31/170] (18.2%) [COMPLETE] comp_fedavg_alpha0.1_adv0_dp0_pers0_mu0.0_seed45_datasetcic [0.2m on worker 1] ETA: 14m
+[32/170] (18.8%) [COMPLETE] comp_fedavg_alpha0.1_adv0_dp0_pers0_mu0.0_seed46_datasetcic [0.4m on worker 2] ETA: 15m
+
+Resources: CPU 99.7% | RAM 68.7% (10.0GB free)
+[SKIP] comp_fedavg_alpha0.2_adv0_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.2_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[35/170] (20.6%) [COMPLETE] comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed44_datasetcic [1.5m on worker 2] ETA: 15m
+[SKIP] comp_fedavg_alpha0.2_adv0_dp0_pers0_mu0.0_seed45_datasetcic: Already completed
+[37/170] (21.8%) [COMPLETE] comp_fedavg_alpha0.2_adv0_dp0_pers0_mu0.0_seed44_datasetcic [0.5m on worker 1] ETA: 15m
+
+Resources: CPU 97.9% | RAM 57.6% (13.6GB free)
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[40/170] (23.5%) [COMPLETE] comp_fedavg_alpha0.2_adv0_dp0_pers0_mu0.0_seed46_datasetcic [0.4m on worker 3] ETA: 14m
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed45_datasetcic: Already completed
+[42/170] (24.7%) [COMPLETE] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed44_datasetcic [0.4m on worker 2] ETA: 14m
+[SKIP] comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[50/170] (29.4%) [COMPLETE] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed46_datasetcic [0.5m on worker 0] ETA: 11m
+
+Resources: CPU 100.0% | RAM 61.0% (12.5GB free)
+[51/170] (30.0%) [COMPLETE] comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed44_datasetcic [0.4m on worker 0] ETA: 12m
+[SKIP] comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv10_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[59/170] (34.7%) [COMPLETE] comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed45_datasetcic [0.4m on worker 1] ETA: 10m
+[60/170] (35.3%) [COMPLETE] comp_fedavg_alpha0.5_adv10_dp0_pers0_mu0.0_seed43_datasetcic [0.6m on worker 1] ETA: 10m
+
+Resources: CPU 100.0% | RAM 60.7% (12.6GB free)
+[SKIP] comp_fedavg_alpha0.5_adv10_dp0_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv10_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[63/170] (37.1%) [COMPLETE] comp_fedavg_alpha0.5_adv10_dp0_pers0_mu0.0_seed44_datasetcic [0.6m on worker 2] ETA: 10m
+[64/170] (37.6%) [COMPLETE] comp_fedavg_alpha0.5_adv30_dp0_pers0_mu0.0_seed42_datasetcic [0.5m on worker 1] ETA: 10m
+[SKIP] comp_fedavg_alpha0.5_adv30_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[66/170] (38.8%) [COMPLETE] comp_fedavg_alpha0.5_adv30_dp0_pers0_mu0.0_seed43_datasetcic [0.4m on worker 2] ETA: 10m
+[67/170] (39.4%) [COMPLETE] comp_fedavg_alpha0.5_adv30_dp0_pers0_mu0.0_seed45_datasetcic [1.4m on worker 0] ETA: 11m
+
+Resources: CPU 97.1% | RAM 50.5% (15.8GB free)
+[SKIP] comp_krum_alpha0.5_adv0_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_krum_alpha0.5_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_krum_alpha0.5_adv0_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[71/170] (41.8%) [COMPLETE] comp_krum_alpha0.5_adv0_dp0_pers0_mu0.0_seed45_datasetcic [0.4m on worker 1] ETA: 11m
+[SKIP] comp_krum_alpha0.5_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[73/170] (42.9%) [COMPLETE] comp_krum_alpha0.5_adv10_dp0_pers0_mu0.0_seed42_datasetcic [0.3m on worker 3] ETA: 11m
+
+Resources: CPU 81.1% | RAM 47.1% (16.9GB free)
+[74/170] (43.5%) [COMPLETE] comp_krum_alpha0.5_adv10_dp0_pers0_mu0.0_seed43_datasetcic [0.3m on worker 0] ETA: 11m
+[75/170] (44.1%) [COMPLETE] comp_krum_alpha0.5_adv10_dp0_pers0_mu0.0_seed44_datasetcic [1.5m on worker 1] ETA: 12m
+
+Resources: CPU 96.3% | RAM 51.5% (15.5GB free)
+[SKIP] comp_krum_alpha0.5_adv10_dp0_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_krum_alpha0.5_adv10_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_krum_alpha0.5_adv30_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_krum_alpha0.5_adv30_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_krum_alpha0.5_adv30_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[81/170] (47.6%) FAILED comp_fedavg_alpha0.5_adv30_dp0_pers0_mu0.0_seed46_datasetcic: Server failed to bind to port 11880 after 5.0s... [retry 1/2]
+
+Resources: CPU 99.0% | RAM 69.8% (9.7GB free)
+[SKIP] comp_krum_alpha0.5_adv30_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_bulyan_alpha0.5_adv0_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_bulyan_alpha0.5_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_bulyan_alpha0.5_adv0_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[86/170] (50.6%) [COMPLETE] comp_krum_alpha0.5_adv30_dp0_pers0_mu0.0_seed45_datasetcic [1.7m on worker 3] ETA: 11m
+[SKIP] comp_bulyan_alpha0.5_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[88/170] (51.8%) [COMPLETE] comp_bulyan_alpha0.5_adv0_dp0_pers0_mu0.0_seed45_datasetcic [0.7m on worker 0] ETA: 11m
+
+Resources: CPU 98.4% | RAM 64.4% (11.4GB free)
+[SKIP] comp_bulyan_alpha0.5_adv10_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[90/170] (52.9%) [COMPLETE] comp_bulyan_alpha0.5_adv10_dp0_pers0_mu0.0_seed42_datasetcic [0.7m on worker 2] ETA: 11m
+[SKIP] comp_bulyan_alpha0.5_adv10_dp0_pers0_mu0.0_seed45_datasetcic: Already completed
+[92/170] (54.1%) [COMPLETE] comp_bulyan_alpha0.5_adv10_dp0_pers0_mu0.0_seed44_datasetcic [0.6m on worker 0] ETA: 11m
+
+Resources: CPU 100.0% | RAM 59.0% (13.1GB free)
+[93/170] (54.7%) [COMPLETE] comp_bulyan_alpha0.5_adv10_dp0_pers0_mu0.0_seed46_datasetcic [0.6m on worker 2] ETA: 11m
+[SKIP] comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[95/170] (55.9%) [COMPLETE] comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed42_datasetcic [0.6m on worker 3] ETA: 10m
+
+Resources: CPU 100.0% | RAM 59.7% (12.9GB free)
+[96/170] (56.5%) [COMPLETE] comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed44_datasetcic [0.6m on worker 1] ETA: 10m
+[SKIP] comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[98/170] (57.6%) [COMPLETE] comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed45_datasetcic [0.6m on worker 2] ETA: 10m
+
+Resources: CPU 98.1% | RAM 61.7% (12.3GB free)
+[99/170] (58.2%) [COMPLETE] comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed42_datasetcic [0.5m on worker 0] ETA: 10m
+[SKIP] comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[101/170] (59.4%) [COMPLETE] comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed45_datasetcic [0.4m on worker 3] ETA: 10m
+
+Resources: CPU 93.1% | RAM 59.5% (13.0GB free)
+[SKIP] comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_median_alpha0.5_adv10_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[104/170] (61.2%) [COMPLETE] comp_median_alpha0.5_adv10_dp0_pers0_mu0.0_seed43_datasetcic [0.3m on worker 2] ETA: 9m
+[SKIP] comp_median_alpha0.5_adv10_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[106/170] (62.4%) [COMPLETE] comp_median_alpha0.5_adv10_dp0_pers0_mu0.0_seed45_datasetcic [0.3m on worker 0] ETA: 9m
+
+Resources: CPU 100.0% | RAM 57.7% (13.5GB free)
+[SKIP] comp_median_alpha0.5_adv10_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[108/170] (63.5%) [COMPLETE] comp_median_alpha0.5_adv30_dp0_pers0_mu0.0_seed42_datasetcic [0.3m on worker 2] ETA: 9m
+[SKIP] comp_median_alpha0.5_adv30_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[110/170] (64.7%) [COMPLETE] comp_median_alpha0.5_adv30_dp0_pers0_mu0.0_seed44_datasetcic [0.3m on worker 0] ETA: 8m
+
+Resources: CPU 100.0% | RAM 58.8% (13.2GB free)
+[SKIP] comp_median_alpha0.5_adv30_dp0_pers0_mu0.0_seed45_datasetcic: Already completed
+[112/170] (65.9%) [COMPLETE] comp_median_alpha0.5_adv30_dp0_pers0_mu0.0_seed46_datasetcic [0.3m on worker 2] ETA: 8m
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42_datasetcic: Already completed
+[119/170] (70.0%) FAILED comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Experiment comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0... [retry 1/2]
+
+Resources: CPU 97.1% | RAM 58.3% (13.4GB free)
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed44_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed46_datasetcic: Already completed
+[158/170] (92.9%) [COMPLETE] comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed42_datasetcic [0.5m on worker 0] ETA: 1m
+
+Resources: CPU 81.4% | RAM 54.9% (14.4GB free)
+[159/170] (93.5%) FAILED comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0.0_seed45_datasetcic: Experiment comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0... [retry 1/2]
+[160/170] (94.1%) [COMPLETE] comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed43_datasetcic [0.4m on worker 1] ETA: 1m
+[161/170] (94.7%) [COMPLETE] comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed44_datasetcic [0.4m on worker 2] ETA: 1m
+[162/170] (95.3%) FAILED comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed43_datasetcic: Server failed to bind to port 8280 after 5.0s... [retry 1/2]
+
+Resources: CPU 80.3% | RAM 62.8% (11.9GB free)
+[163/170] (95.9%) [COMPLETE] comp_fedavg_alpha0.5_adv0_dp0_pers5_mu0.0_seed42_datasetcic [0.5m on worker 1] ETA: 1m
+
+Resources: CPU 100.0% | RAM 62.6% (12.0GB free)
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers5_mu0.0_seed43_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers5_mu0.0_seed44_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers5_mu0.0_seed45_datasetcic: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers5_mu0.0_seed46_datasetcic: Already completed
+[168/170] (98.8%) [COMPLETE] comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed45_datasetcic [1.7m on worker 3] ETA: 0m
+
+Resources: CPU 56.5% | RAM 51.3% (15.6GB free)
+[169/170] (99.4%) [COMPLETE] comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed46_datasetcic [1.6m on worker 0] ETA: 0m
+[170/170] (100.0%) FAILED comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43_datasetcic: Experiment comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0... [retry 1/2]
+
+Resources: CPU 13.7% | RAM 31.0% (22.1GB free)
+
+======================================================================
+FINAL SUMMARY
+======================================================================
+Completed: 170
+Failed: 5
+Total time: 0.6 hours
+Avg time per experiment: 0.2 minutes
+Total now complete: 170/170
+
+5 experiments failed. Run again to retry.
+======================================================================
+

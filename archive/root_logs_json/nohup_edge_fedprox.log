@@ -1,0 +1,28 @@
+
+======================================================================
+OPTIMIZED EXPERIMENT RUNNER FOR FULL DATASETS
+======================================================================
+
+EXPERIMENT SUMMARY:
+  Total configurations: 630
+  Already completed: 0
+  Stuck/retry: 0
+  Pending: 630
+  Parallel workers: 1
+  Estimated time: 630.0 hours
+  Dataset type: full
+  Dataset: edge-iiotset-nightly
+======================================================================
+
+Traceback (most recent call last):
+  File "/Users/abrahamreines/Documents/Thesis/federated-ids/scripts/run_experiments_optimized.py", line 582, in <module>
+    main()
+  File "/Users/abrahamreines/Documents/Thesis/federated-ids/scripts/run_experiments_optimized.py", line 526, in main
+    result = future.result()
+             ^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+concurrent.futures.process.BrokenProcessPool: A process in the process pool was terminated abruptly while the future was running or pending.

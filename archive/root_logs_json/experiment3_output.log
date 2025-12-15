@@ -1,0 +1,198 @@
+Server started (PID: 20167)
+usage: server.py [-h] [--rounds ROUNDS]
+                 [--aggregation {fedavg,median,krum,bulyan}]
+                 [--byzantine_f BYZANTINE_F] [--server_address SERVER_ADDRESS]
+                 [--logdir LOGDIR] [--secure_aggregation]
+                 [--min_fit_clients MIN_FIT_CLIENTS]
+                 [--min_eval_clients MIN_EVAL_CLIENTS]
+                 [--min_available_clients MIN_AVAILABLE_CLIENTS]
+                 [--fraction_fit FRACTION_FIT] [--fraction_eval FRACTION_EVAL]
+                 [--fedprox_mu FEDPROX_MU]
+server.py: error: unrecognized arguments: --dataset edge-iiotset-nightly --model_arch auto --aggregation_method fedavg --num_clients 6 --alpha 1.0 --num_rounds 20 --local_epochs 2 --lr 0.001 --seed 42 --run_id exp3_focal_alpha1.0_r20_20251208_155758
+Client 0 started with FocalLoss
+Client 1 started with FocalLoss
+12/08/2025 15:58:05:INFO:metrics_init
+Client 2 started with FocalLoss
+12/08/2025 15:58:06:INFO:metrics_init
+Client 3 started with FocalLoss
+12/08/2025 15:58:07:INFO:metrics_init
+Client 4 started with FocalLoss
+12/08/2025 15:58:08:INFO:metrics_init
+Client 5 started with FocalLoss
+12/08/2025 15:58:09:INFO:metrics_init
+Experiment 3 completed!
+12/08/2025 15:58:10:INFO:metrics_init
+client_id must be in [0, 2)
+client_id must be in [0, 2)
+client_id must be in [0, 2)
+12/08/2025 15:58:55:INFO:model_architecture
+12/08/2025 15:58:55:INFO:model_validation
+12/08/2025 15:58:55:INFO:label_histogram
+client_id must be in [0, 2)
+12/08/2025 15:58:56:INFO:model_architecture
+12/08/2025 15:58:56:INFO:model_validation
+12/08/2025 15:58:56:INFO:label_histogram
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_numpy_client() is deprecated. 
+	Instead, use `flwr.client.start_client()` by ensuring you first call the `.to_client()` method as shown below: 
+	flwr.client.start_client(
+		server_address='<IP>:<PORT>',
+		client=FlowerClient().to_client(), # <-- where FlowerClient is of type flwr.client.NumPyClient object
+	)
+	Using `start_numpy_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+12/08/2025 15:58:56:WARNING:DEPRECATED FEATURE: flwr.client.start_numpy_client() is deprecated. 
+	Instead, use `flwr.client.start_client()` by ensuring you first call the `.to_client()` method as shown below: 
+	flwr.client.start_client(
+		server_address='<IP>:<PORT>',
+		client=FlowerClient().to_client(), # <-- where FlowerClient is of type flwr.client.NumPyClient object
+	)
+	Using `start_numpy_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+12/08/2025 15:58:56:WARNING:DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+12/08/2025 15:58:56:DEBUG:Opened insecure gRPC connection (no certificates were passed)
+12/08/2025 15:58:56:DEBUG:ChannelConnectivity.IDLE
+12/08/2025 15:58:56:DEBUG:ChannelConnectivity.TRANSIENT_FAILURE
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1765238336.434036  376712 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1765238336.446183  376712 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+12/08/2025 15:58:56:DEBUG:gRPC channel closed
+Traceback (most recent call last):
+  File "/Users/abrahamreines/Documents/Thesis/federated-ids/client.py", line 1401, in <module>
+    main()
+  File "/Users/abrahamreines/Documents/Thesis/federated-ids/client.py", line 1397, in main
+    fl.client.start_numpy_client(server_address=args.server_address, client=client)
+  File "/Users/abrahamreines/.pyenv/versions/fedids-3.12.3/lib/python3.12/site-packages/flwr/compat/client/app.py", line 624, in start_numpy_client
+    start_client(
+  File "/Users/abrahamreines/.pyenv/versions/fedids-3.12.3/lib/python3.12/site-packages/flwr/compat/client/app.py", line 183, in start_client
+    start_client_internal(
+  File "/Users/abrahamreines/.pyenv/versions/fedids-3.12.3/lib/python3.12/site-packages/flwr/compat/client/app.py", line 394, in start_client_internal
+    message = receive()
+              ^^^^^^^^^
+  File "/Users/abrahamreines/.pyenv/versions/fedids-3.12.3/lib/python3.12/site-packages/flwr/compat/client/grpc_client/connection.py", line 142, in receive
+    proto = next(server_message_iterator)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abrahamreines/.pyenv/versions/fedids-3.12.3/lib/python3.12/site-packages/grpc/_channel.py", line 543, in __next__
+    return self._next()
+           ^^^^^^^^^^^^
+  File "/Users/abrahamreines/.pyenv/versions/fedids-3.12.3/lib/python3.12/site-packages/grpc/_channel.py", line 972, in _next
+    raise self
+grpc._channel._MultiThreadedRendezvous: <_MultiThreadedRendezvous of RPC that terminated with:
+	status = StatusCode.UNAVAILABLE
+	details = "failed to connect to all addresses; last error: UNKNOWN: ipv4:127.0.0.1:8080: Failed to connect to remote host: connect: Connection refused (61)"
+	debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:14, grpc_message:"failed to connect to all addresses; last error: UNKNOWN: ipv4:127.0.0.1:8080: Failed to connect to remote host: connect: Connection refused (61)"}"
+>
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_numpy_client() is deprecated. 
+	Instead, use `flwr.client.start_client()` by ensuring you first call the `.to_client()` method as shown below: 
+	flwr.client.start_client(
+		server_address='<IP>:<PORT>',
+		client=FlowerClient().to_client(), # <-- where FlowerClient is of type flwr.client.NumPyClient object
+	)
+	Using `start_numpy_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+12/08/2025 15:58:56:WARNING:DEPRECATED FEATURE: flwr.client.start_numpy_client() is deprecated. 
+	Instead, use `flwr.client.start_client()` by ensuring you first call the `.to_client()` method as shown below: 
+	flwr.client.start_client(
+		server_address='<IP>:<PORT>',
+		client=FlowerClient().to_client(), # <-- where FlowerClient is of type flwr.client.NumPyClient object
+	)
+	Using `start_numpy_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+12/08/2025 15:58:56:WARNING:DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+12/08/2025 15:58:56:DEBUG:Opened insecure gRPC connection (no certificates were passed)
+12/08/2025 15:58:56:DEBUG:ChannelConnectivity.IDLE
+12/08/2025 15:58:56:DEBUG:ChannelConnectivity.TRANSIENT_FAILURE
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1765238336.731818  376850 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+I0000 00:00:1765238336.741390  376850 fork_posix.cc:71] Other threads are currently calling into gRPC, skipping fork() handlers
+12/08/2025 15:58:56:DEBUG:gRPC channel closed
+Traceback (most recent call last):
+  File "/Users/abrahamreines/Documents/Thesis/federated-ids/client.py", line 1401, in <module>
+    main()
+  File "/Users/abrahamreines/Documents/Thesis/federated-ids/client.py", line 1397, in main
+    fl.client.start_numpy_client(server_address=args.server_address, client=client)
+  File "/Users/abrahamreines/.pyenv/versions/fedids-3.12.3/lib/python3.12/site-packages/flwr/compat/client/app.py", line 624, in start_numpy_client
+    start_client(
+  File "/Users/abrahamreines/.pyenv/versions/fedids-3.12.3/lib/python3.12/site-packages/flwr/compat/client/app.py", line 183, in start_client
+    start_client_internal(
+  File "/Users/abrahamreines/.pyenv/versions/fedids-3.12.3/lib/python3.12/site-packages/flwr/compat/client/app.py", line 394, in start_client_internal
+    message = receive()
+              ^^^^^^^^^
+  File "/Users/abrahamreines/.pyenv/versions/fedids-3.12.3/lib/python3.12/site-packages/flwr/compat/client/grpc_client/connection.py", line 142, in receive
+    proto = next(server_message_iterator)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abrahamreines/.pyenv/versions/fedids-3.12.3/lib/python3.12/site-packages/grpc/_channel.py", line 543, in __next__
+    return self._next()
+           ^^^^^^^^^^^^
+  File "/Users/abrahamreines/.pyenv/versions/fedids-3.12.3/lib/python3.12/site-packages/grpc/_channel.py", line 972, in _next
+    raise self
+grpc._channel._MultiThreadedRendezvous: <_MultiThreadedRendezvous of RPC that terminated with:
+	status = StatusCode.UNAVAILABLE
+	details = "failed to connect to all addresses; last error: UNKNOWN: ipv4:127.0.0.1:8080: Failed to connect to remote host: connect: Connection refused (61)"
+	debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:14, grpc_message:"failed to connect to all addresses; last error: UNKNOWN: ipv4:127.0.0.1:8080: Failed to connect to remote host: connect: Connection refused (61)"}"
+>
