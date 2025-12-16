@@ -1,0 +1,45 @@
+#!/bin/bash
+#SBATCH --job-name=fedids-smoke
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=20
+#SBATCH --mem=48G
+#SBATCH --time=02:00:00
+#SBATCH --output=/scratch/%u/results/smoke_test_%j.out
+#SBATCH --error=/scratch/%u/results/smoke_test_%j.err
+
+set -euo pipefail
+
+echo "=== FedIDS Cluster Smoke Test ==="
+echo "Job ID: $SLURM_JOB_ID"
+echo "Node: $(hostname)"
+echo "CPUs: $SLURM_CPUS_PER_TASK"
+echo "Started: $(date)"
+echo ""
+
+# Environment setup
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+source /scratch/$USER/venvs/fedids/bin/activate
+
+echo "Python: $(python --version)"
+echo "Working dir: $(pwd)"
+echo ""
+
+# Run smoke test: FedProx with 20 clients, 30 rounds on Edge-IIoTset full
+cd /scratch/$USER/federated-ids
+
+python scripts/comparative_analysis.py \
+  --dimension heterogeneity_fedprox \
+  --dataset edge-iiotset-full \
+  --data_path /scratch/$USER/datasets/edge-iiotset/edge_iiotset_full.csv \
+  --output_dir /scratch/$USER/results/smoke_test \
+  --num_clients 20 \
+  --num_rounds 30 \
+  --fedprox-mu-values "0.01" \
+  --alpha-values "0.5" \
+  --seeds "42"
+
+echo ""
+echo "Completed: $(date)"
+echo "=== Smoke Test Finished ==="
