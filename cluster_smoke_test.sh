@@ -16,16 +16,19 @@ echo "CPUs: $SLURM_CPUS_PER_TASK"
 echo "Started: $(date)"
 echo ""
 
-# Use Python 3.12 directly from venv (bypass all PATH issues)
-PYTHON_BIN="/scratch/$USER/venvs/fedids/bin/python"
+# Use system Python 3.12 with venv site-packages
+export VIRTUAL_ENV="/scratch/$USER/venvs/fedids"
+export PATH="$VIRTUAL_ENV/bin:$PATH"
+export PYTHONPATH="$VIRTUAL_ENV/lib/python3.12/site-packages:$PYTHONPATH"
 
-echo "Python: $($PYTHON_BIN --version)"
-echo "Python path: $PYTHON_BIN"
+echo "Python: $(/usr/bin/python3.12 --version)"
+echo "Python path: /usr/bin/python3.12"
+echo "VIRTUAL_ENV: $VIRTUAL_ENV"
 echo ""
 
 cd /scratch/$USER/federated-ids
 
-$PYTHON_BIN scripts/comparative_analysis.py \
+/usr/bin/python3.12 scripts/comparative_analysis.py \
   --dimension heterogeneity_fedprox \
   --dataset edge-iiotset-full \
   --data_path /scratch/$USER/datasets/edge-iiotset/edge_iiotset_full.csv \
