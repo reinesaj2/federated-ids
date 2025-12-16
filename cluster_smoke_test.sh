@@ -1,9 +1,9 @@
-#!/bin/bash
+#\!/bin/bash
 #SBATCH --job-name=fedids-smoke
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-# Memory: using node default  
+# Memory: using node default
 #SBATCH --time=02:00:00
 #SBATCH --output=/scratch/%u/results/smoke_test_%j.out
 #SBATCH --error=/scratch/%u/results/smoke_test_%j.err
@@ -17,15 +17,21 @@ echo "CPUs: $SLURM_CPUS_PER_TASK"
 echo "Started: $(date)"
 echo ""
 
-# Environment setup - use Python 3.12 venv
+# CRITICAL: Deactivate pyenv first, then activate Python 3.12 venv
+export PATH=$(echo "$PATH" | tr : n | grep -v pyenv | tr n : | sed s/:$//)
+unset PYENV_ROOT
+unset PYENV_VERSION
+
+# Activate Python 3.12 venv
 source /scratch/$USER/venvs/fedids/bin/activate
 
 echo "Python: $(python --version)"
 echo "Python path: $(which python)"
-echo "Working dir: $(pwd)"
+echo "Pip list (first 5):"
+pip list | head -5
 echo ""
 
-# Run smoke test: FedProx with 20 clients, 30 rounds on Edge-IIoTset full
+# Run smoke test
 cd /scratch/$USER/federated-ids
 
 python scripts/comparative_analysis.py \
