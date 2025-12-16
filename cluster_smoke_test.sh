@@ -7,7 +7,7 @@
 #SBATCH --output=/scratch/%u/results/smoke_test_%j.out
 #SBATCH --error=/scratch/%u/results/smoke_test_%j.err
 
-set -euo pipefail
+set -eo pipefail
 
 echo "=== FedIDS Cluster Smoke Test ==="
 echo "Job ID: $SLURM_JOB_ID"
@@ -19,10 +19,9 @@ echo ""
 # Use system Python 3.12 with venv site-packages
 export VIRTUAL_ENV="/scratch/$USER/venvs/fedids"
 export PATH="$VIRTUAL_ENV/bin:$PATH"
-export PYTHONPATH="$VIRTUAL_ENV/lib/python3.12/site-packages:$PYTHONPATH"
+export PYTHONPATH="$VIRTUAL_ENV/lib/python3.12/site-packages"
 
 echo "Python: $(/usr/bin/python3.12 --version)"
-echo "Python path: /usr/bin/python3.12"
 echo "VIRTUAL_ENV: $VIRTUAL_ENV"
 echo ""
 
