@@ -2,8 +2,8 @@
 #SBATCH --job-name=fedids-smoke
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=20
-#SBATCH --mem=48G
+#SBATCH --cpus-per-task=16
+# Memory: using node default  
 #SBATCH --time=02:00:00
 #SBATCH --output=/scratch/%u/results/smoke_test_%j.out
 #SBATCH --error=/scratch/%u/results/smoke_test_%j.err
@@ -17,12 +17,11 @@ echo "CPUs: $SLURM_CPUS_PER_TASK"
 echo "Started: $(date)"
 echo ""
 
-# Environment setup
-export PYENV_ROOT="$HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
+# Environment setup - use Python 3.12 venv
 source /scratch/$USER/venvs/fedids/bin/activate
 
 echo "Python: $(python --version)"
+echo "Python path: $(which python)"
 echo "Working dir: $(pwd)"
 echo ""
 
