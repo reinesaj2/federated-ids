@@ -11,11 +11,11 @@
 
 set -euo pipefail
 
-source ~/federated-ids/venv/bin/activate
-cd ~/federated-ids
+source /scratch/reinesaj/venvs/fedids-py311/bin/activate
+cd /scratch/reinesaj/federated-ids
 
 export FEDIDS_USE_OPACUS=1
-export MPLCONFIGDIR="${HOME}/tmp/mplconfig"
+export MPLCONFIGDIR="/scratch/reinesaj/tmp/mplconfig"
 export OHE_SPARSE=1
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
