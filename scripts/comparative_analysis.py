@@ -57,6 +57,7 @@ class ExperimentConfig:
     fedprox_mu: float = 0.0
     dataset: str = "unsw"
     data_path: str = "data/unsw/UNSW_NB15_training-set.csv"
+    temporal_validation: bool = False
 
     @classmethod
     def with_dataset(cls, dataset: str, **kwargs):
@@ -525,6 +526,9 @@ def run_federated_experiment(
                     str(run_dir),
                 ]
 
+                if config.temporal_validation:
+                    client_cmd.append("--temporal_validation")
+
                 if config.dp_enabled:
                     client_cmd.extend(
                         [
@@ -681,6 +685,11 @@ def main():
         default=1,
         help="Total number of splits when dividing experiment configs across jobs.",
     )
+    parser.add_argument(
+        "--temporal_validation",
+        action="store_true",
+        help="Enable temporal validation protocol (70/15/15 train/val/test split).",
+    )
 
     args = parser.parse_args()
 
@@ -729,6 +738,11 @@ def main():
         raise ValueError("--split-index must satisfy 0 <= split_index < split_total")
 
     configs = matrix.generate_configs(filter_dimension=None if args.dimension == "full" else args.dimension)
+
+    if args.temporal_validation:
+        for config in configs:
+            config.temporal_validation = True
+
     if args.split_total > 1:
         configs = configs[args.split_index :: args.split_total]
 
