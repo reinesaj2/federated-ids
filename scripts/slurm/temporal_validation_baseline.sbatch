@@ -25,7 +25,9 @@ mkdir -p "$MPLCONFIGDIR"
 TUNING_SEEDS="42,43,44"
 ALPHA_VALUES="0.02,0.05,0.1,0.2,0.5,1.0,inf"
 
-python scripts/comparative_analysis.py \
+SPLIT_TOTAL=21
+
+python -u scripts/comparative_analysis.py \
     --dimension heterogeneity \
     --dataset edge-iiotset-full \
     --num_clients 10 \
@@ -35,7 +37,7 @@ python scripts/comparative_analysis.py \
     --server_timeout 21600 \
     --client_timeout 21600 \
     --temporal_validation \
-    --split-total "${SLURM_ARRAY_TASK_COUNT:-21}" \
+    --split-total "$SPLIT_TOTAL" \
     --split-index "${SLURM_ARRAY_TASK_ID:-0}"
 
 echo "Task ${SLURM_ARRAY_TASK_ID:-0} completed at $(date)"
