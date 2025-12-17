@@ -215,27 +215,10 @@ def main() -> None:
             except Exception:
                 pass
 
-            # Log metrics
-            metrics_logger.log_round_metrics(
-                round_num=rnd,
-                agg_method=agg_method,
-                n_clients=len(client_weights),
-                byzantine_f=f_arg,
-                l2_to_benign_mean=robustness_metrics["l2_to_benign_mean"],
-                cos_to_benign_mean=robustness_metrics["cos_to_benign_mean"],
-                coord_median_agree_pct=robustness_metrics["coord_median_agree_pct"],
-                update_norm_mean=robustness_metrics["update_norm_mean"],
-                update_norm_std=robustness_metrics["update_norm_std"],
-                t_aggregate_ms=t_aggregate_ms,
-                t_round_ms=t_round_ms,
-                pairwise_cosine_mean=(float(sum(pairwise_cos) / len(pairwise_cos)) if pairwise_cos else None),
-                pairwise_cosine_std=(float(_np.array(pairwise_cos).std()) if pairwise_cos else None),
-                l2_dispersion_mean=(float(sum(l2_disp) / len(l2_disp)) if l2_disp else None),
-                l2_dispersion_std=(float(_np.array(l2_disp).std()) if l2_disp else None),
-            )
-
             global_macro_f1_val = None
             global_macro_f1_test = None
+            n_val_total = None
+            n_test_total = None
             try:
                 val_f1s = []
                 val_ns = []
@@ -254,11 +237,11 @@ def main() -> None:
                         test_ns.append(int(n_test))
 
                 if val_f1s and val_ns:
-                    total_val = sum(val_ns)
-                    global_macro_f1_val = sum(f * n for f, n in zip(val_f1s, val_ns)) / max(total_val, 1)
+                    n_val_total = sum(val_ns)
+                    global_macro_f1_val = sum(f * n for f, n in zip(val_f1s, val_ns)) / max(n_val_total, 1)
                 if test_f1s and test_ns:
-                    total_test = sum(test_ns)
-                    global_macro_f1_test = sum(f * n for f, n in zip(test_f1s, test_ns)) / max(total_test, 1)
+                    n_test_total = sum(test_ns)
+                    global_macro_f1_test = sum(f * n for f, n in zip(test_f1s, test_ns)) / max(n_test_total, 1)
 
                 if global_macro_f1_val is not None or global_macro_f1_test is not None:
                     logger.info(
@@ -267,12 +250,35 @@ def main() -> None:
                             "round": rnd,
                             "global_macro_f1_val": global_macro_f1_val,
                             "global_macro_f1_test": global_macro_f1_test,
-                            "n_val_total": sum(val_ns) if val_ns else None,
-                            "n_test_total": sum(test_ns) if test_ns else None,
+                            "n_val_total": n_val_total,
+                            "n_test_total": n_test_total,
                         },
                     )
             except Exception:
                 pass
+
+            # Log metrics (including global temporal validation metrics)
+            metrics_logger.log_round_metrics(
+                round_num=rnd,
+                agg_method=agg_method,
+                n_clients=len(client_weights),
+                byzantine_f=f_arg,
+                l2_to_benign_mean=robustness_metrics["l2_to_benign_mean"],
+                cos_to_benign_mean=robustness_metrics["cos_to_benign_mean"],
+                coord_median_agree_pct=robustness_metrics["coord_median_agree_pct"],
+                update_norm_mean=robustness_metrics["update_norm_mean"],
+                update_norm_std=robustness_metrics["update_norm_std"],
+                t_aggregate_ms=t_aggregate_ms,
+                t_round_ms=t_round_ms,
+                pairwise_cosine_mean=(float(sum(pairwise_cos) / len(pairwise_cos)) if pairwise_cos else None),
+                pairwise_cosine_std=(float(_np.array(pairwise_cos).std()) if pairwise_cos else None),
+                l2_dispersion_mean=(float(sum(l2_disp) / len(l2_disp)) if l2_disp else None),
+                l2_dispersion_std=(float(_np.array(l2_disp).std()) if l2_disp else None),
+                global_macro_f1_val=global_macro_f1_val,
+                global_macro_f1_test=global_macro_f1_test,
+                n_val_total=n_val_total,
+                n_test_total=n_test_total,
+            )
 
             parameters = ndarrays_to_parameters(aggregated)
             metrics = {
