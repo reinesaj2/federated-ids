@@ -11,7 +11,12 @@ import torch
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, Dataset, TensorDataset
+
+try:
+    import scipy.sparse as sp  # type: ignore
+except Exception:  # pragma: no cover
+    sp = None
 
 # Drop silently if missing; helps avoid leakage/time proxies in IDS datasets
 DEFAULT_DROP_COLS: list[str] = [
@@ -428,13 +433,54 @@ def numpy_to_loaders(
     test_size: float = 0.2,
 ) -> tuple[DataLoader, DataLoader]:
     # Defensive guard: handle empty shards gracefully
-    if len(X) == 0 or len(y) == 0:
+    if X.shape[0] == 0 or y.size == 0:
         # Return dummy loaders with minimal tensors
         dummy_X = torch.zeros((1, X.shape[1] if X.size > 0 else 1), dtype=torch.float32)
         dummy_y = torch.zeros((1,), dtype=torch.long)
         dummy_ds = TensorDataset(dummy_X, dummy_y)
         dummy_loader = DataLoader(dummy_ds, batch_size=batch_size, shuffle=False)
         return dummy_loader, dummy_loader
+
+    if sp is not None and sp.issparse(X):
+        row_indices = np.arange(X.shape[0], dtype=np.int64)
+
+        try:
+            train_rows, test_rows = train_test_split(row_indices, test_size=test_size, random_state=seed, stratify=y)
+        except ValueError as e:
+            if "least populated class" in str(e) or "minimum number of groups" in str(e):
+                train_rows, test_rows = train_test_split(row_indices, test_size=test_size, random_state=seed, stratify=None)
+            else:
+                raise e
+
+        class _RowIndexDataset(Dataset):
+            def __init__(self, rows: np.ndarray) -> None:
+                self.rows = rows.astype(np.int64, copy=False)
+
+            def __len__(self) -> int:
+                return int(self.rows.shape[0])
+
+            def __getitem__(self, idx: int) -> int:
+                return int(self.rows[idx])
+
+        def _collate_sparse_rows(batch: list[int]) -> tuple[torch.Tensor, torch.Tensor]:
+            rows = np.fromiter(batch, dtype=np.int64, count=len(batch))
+            xb = X[rows].toarray().astype(np.float32, copy=False)
+            yb = y[rows]
+            return torch.from_numpy(xb), torch.from_numpy(yb)
+
+        train_loader = DataLoader(
+            _RowIndexDataset(train_rows),
+            batch_size=batch_size,
+            shuffle=True,
+            collate_fn=_collate_sparse_rows,
+        )
+        test_loader = DataLoader(
+            _RowIndexDataset(test_rows),
+            batch_size=batch_size,
+            shuffle=False,
+            collate_fn=_collate_sparse_rows,
+        )
+        return train_loader, test_loader
 
     # Try stratified split first, fall back to simple split if stratification fails
     try:

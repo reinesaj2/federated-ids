@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import scipy.sparse as sp
+import torch
 
 from data_preprocessing import (
     dirichlet_partition,
     fit_preprocessor_global,
     load_cic_ids2017,
+    numpy_to_loaders,
     prepare_partitions_from_dataframe,
     protocol_partition,
     transform_with_preprocessor,
@@ -142,3 +145,73 @@ def test_load_cic_ids2017_drops_infinite_rows(tmp_path):
     assert len(loaded_df) == 1
     assert np.isfinite(loaded_df["Flow Bytes/s"].values).all()
     assert label_col == "Label"
+
+
+def test_numpy_to_loaders_supports_sparse_feature_matrix(monkeypatch):
+    monkeypatch.setenv("OHE_SPARSE", "1")
+
+    rng = np.random.default_rng(123)
+    n = 200
+    df = pd.DataFrame(
+        {
+            "num1": rng.normal(0, 1, size=n),
+            "num2": rng.normal(5, 2, size=n),
+            "cat_high": [f"C{int(i)}" for i in rng.integers(0, 100, size=n)],
+            "label": rng.integers(0, 2, size=n),
+        }
+    )
+
+    _pre, X_all, y_all = fit_preprocessor_global(df, label_col="label")
+    assert sp.issparse(X_all)
+
+    train_loader, _test_loader = numpy_to_loaders(X_all, y_all, batch_size=32, seed=42)
+    xb, yb = next(iter(train_loader))
+
+    assert xb.shape == (32, X_all.shape[1])
+    assert xb.dtype == torch.float32
+    assert yb.dtype == torch.long
+
+
+def test_sparse_and_dense_paths_produce_identical_splits():
+    rng = np.random.default_rng(777)
+    n = 500
+    n_features = 20
+    X_dense = rng.normal(size=(n, n_features)).astype(np.float32)
+    y = rng.integers(0, 3, size=n).astype(np.int64)
+
+    X_sparse = sp.csr_matrix(X_dense)
+
+    seed = 42
+    batch_size = 64
+
+    train_dense, test_dense = numpy_to_loaders(X_dense, y, batch_size=batch_size, seed=seed)
+    train_sparse, test_sparse = numpy_to_loaders(X_sparse, y, batch_size=batch_size, seed=seed)
+
+    assert len(train_dense.dataset) == len(train_sparse.dataset)
+    assert len(test_dense.dataset) == len(test_sparse.dataset)
+
+    def collect_all_batches(loader):
+        all_x, all_y = [], []
+        for xb, yb in loader:
+            all_x.append(xb)
+            all_y.append(yb)
+        return torch.cat(all_x, dim=0), torch.cat(all_y, dim=0)
+
+    train_x_dense, train_y_dense = collect_all_batches(train_dense)
+    train_x_sparse, train_y_sparse = collect_all_batches(train_sparse)
+
+    train_dense_sorted = torch.argsort(train_y_dense * 1000000 + torch.arange(len(train_y_dense)))
+    train_sparse_sorted = torch.argsort(train_y_sparse * 1000000 + torch.arange(len(train_y_sparse)))
+
+    assert torch.equal(train_y_dense[train_dense_sorted], train_y_sparse[train_sparse_sorted])
+
+    test_x_dense, test_y_dense = collect_all_batches(test_dense)
+    test_x_sparse, test_y_sparse = collect_all_batches(test_sparse)
+
+    dense_train_set = set(tuple(row.tolist()) for row in train_x_dense)
+    sparse_train_set = set(tuple(row.tolist()) for row in train_x_sparse)
+    assert dense_train_set == sparse_train_set
+
+    dense_test_set = set(tuple(row.tolist()) for row in test_x_dense)
+    sparse_test_set = set(tuple(row.tolist()) for row in test_x_sparse)
+    assert dense_test_set == sparse_test_set
