@@ -5,8 +5,8 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --time=02:00:00
-#SBATCH --output=/scratch/%u/results/temporal_validation/%x-%A_%a.out
-#SBATCH --error=/scratch/%u/results/temporal_validation/%x-%A_%a.err
+#SBATCH --output=%x-%A_%a.out
+#SBATCH --error=%x-%A_%a.err
 #SBATCH --exclusive
 
 set -euo pipefail
@@ -15,12 +15,12 @@ source ~/federated-ids/venv/bin/activate
 cd ~/federated-ids
 
 export FEDIDS_USE_OPACUS=1
-export MPLCONFIGDIR="/scratch/${USER}/tmp/mplconfig"
+export MPLCONFIGDIR="${HOME}/tmp/mplconfig"
 export OHE_SPARSE=1
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 
-mkdir -p "$MPLCONFIGDIR" /scratch/$USER/results/temporal_validation
+mkdir -p "$MPLCONFIGDIR"
 
 TUNING_SEEDS="42,43,44"
 ALPHA_VALUES="0.02,0.05,0.1,0.2,0.5,1.0,inf"
