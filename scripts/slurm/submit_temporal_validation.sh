@@ -8,8 +8,6 @@ echo "Max concurrent jobs: $MAX_CONCURRENT"
 echo "Timestamp: $(date)"
 echo ""
 
-mkdir -p /scratch/$USER/results/temporal_validation
-
 echo "Phase 1: Tuning (seeds 42-44)"
 echo "================================"
 echo ""
