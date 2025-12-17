@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-REMOTE_HOST="${REMOTE_HOST:-stu}"
-REMOTE_RUNS_DIR="${REMOTE_RUNS_DIR:-~/federated-ids/runs}"
+REMOTE_HOST="${REMOTE_HOST:-cluster}"
+REMOTE_RUNS_DIR="${REMOTE_RUNS_DIR:-/scratch/reinesaj/federated-ids/runs}"
 LOCAL_DIR="${LOCAL_DIR:-../cluster-experiments/cluster-runs}"
 INTERVAL="${INTERVAL:-60}"
 
