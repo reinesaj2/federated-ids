@@ -648,8 +648,10 @@ def numpy_to_temporal_train_val_test_loaders(
     - Val: next 15% (middle samples)
     - Test: final 15% (latest samples)
 
+    Supports both dense numpy arrays and sparse scipy matrices.
+
     Args:
-        X: Feature matrix (n_samples, n_features)
+        X: Feature matrix (n_samples, n_features), dense or sparse
         y: Label vector (n_samples,)
         batch_size: Batch size for DataLoaders
         sort_indices: Optional pre-computed temporal sort indices. If None,
@@ -670,13 +672,53 @@ def numpy_to_temporal_train_val_test_loaders(
     n_samples = X.shape[0]
     train_idx, val_idx, test_idx = temporal_train_val_test_split_indices(n_samples, train_frac, val_frac, test_frac)
 
+    if sp is not None and sp.issparse(X):
+
+        class _RowIndexDataset(Dataset):
+            def __init__(self, rows: np.ndarray) -> None:
+                self.rows = rows.astype(np.int64, copy=False)
+
+            def __len__(self) -> int:
+                return int(self.rows.shape[0])
+
+            def __getitem__(self, idx: int) -> int:
+                return int(self.rows[idx])
+
+        def _make_collate(X_ref, y_ref):
+            def _collate_sparse_rows(batch: list[int]) -> tuple[torch.Tensor, torch.Tensor]:
+                rows = np.fromiter(batch, dtype=np.int64, count=len(batch))
+                xb = X_ref[rows].toarray().astype(np.float32, copy=False)
+                yb = y_ref[rows]
+                return torch.from_numpy(xb), torch.from_numpy(yb.astype(np.int64, copy=False))
+
+            return _collate_sparse_rows
+
+        train_ds = _RowIndexDataset(train_idx)
+        val_ds = _RowIndexDataset(val_idx)
+        test_ds = _RowIndexDataset(test_idx)
+
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, collate_fn=_make_collate(X, y))
+        val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, collate_fn=_make_collate(X, y))
+        test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, collate_fn=_make_collate(X, y))
+
+        return train_loader, val_loader, test_loader
+
     X_train, y_train = X[train_idx], y[train_idx]
     X_val, y_val = X[val_idx], y[val_idx]
     X_test, y_test = X[test_idx], y[test_idx]
 
-    train_ds = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train))
-    val_ds = TensorDataset(torch.from_numpy(X_val), torch.from_numpy(y_val))
-    test_ds = TensorDataset(torch.from_numpy(X_test), torch.from_numpy(y_test))
+    train_ds = TensorDataset(
+        torch.from_numpy(X_train.astype(np.float32, copy=False)),
+        torch.from_numpy(y_train.astype(np.int64, copy=False)),
+    )
+    val_ds = TensorDataset(
+        torch.from_numpy(X_val.astype(np.float32, copy=False)),
+        torch.from_numpy(y_val.astype(np.int64, copy=False)),
+    )
+    test_ds = TensorDataset(
+        torch.from_numpy(X_test.astype(np.float32, copy=False)),
+        torch.from_numpy(y_test.astype(np.int64, copy=False)),
+    )
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
