@@ -26,6 +26,7 @@ from data_preprocessing import (
     load_edge_iiotset,
     prepare_partitions_from_dataframe,
     numpy_to_loaders,
+    numpy_to_temporal_train_val_test_loaders,
     infer_class_names_from_series,
 )
 from client_metrics import (
@@ -298,10 +299,12 @@ class TorchClient(fl.client.NumPyClient):
         data_stats: dict,
         runtime_config: dict,
         class_names: Optional[List[str]] = None,
+        val_loader: Optional[DataLoader] = None,
     ) -> None:
         self.model = model
         self.train_loader = train_loader
         self.test_loader = test_loader
+        self.val_loader = val_loader
         self.device = device
         self.metrics_logger = metrics_logger
         self.fit_timer = fit_timer
@@ -664,6 +667,9 @@ class TorchClient(fl.client.NumPyClient):
         confusion_matrix_class_names_holdout_json = None
         macro_f1_global_holdout = None
         micro_f1_global_holdout = None
+        macro_f1_val = None
+        n_val_samples = None
+        n_test_samples = None
         try:
             if len(self.test_loader.dataset) > 0:
                 loss_after, acc_after, probs_after, labels_after = evaluate(self.model, self.test_loader, self.device)
@@ -780,6 +786,17 @@ class TorchClient(fl.client.NumPyClient):
                     confusion_matrix_class_names_holdout_json = confusion_matrix_class_names_json
                     macro_f1_global_holdout = macro_f1_after
                     micro_f1_global_holdout = micro_f1_after
+                    n_test_samples = len(self.test_loader.dataset)
+        except Exception:
+            pass
+
+        try:
+            if self.val_loader is not None and len(self.val_loader.dataset) > 0:
+                _, _, probs_val, labels_val = evaluate(self.model, self.val_loader, self.device)
+                if probs_val.size > 0:
+                    preds_val = np.argmax(probs_val, axis=1)
+                    macro_f1_val = float(f1_score(labels_val, preds_val, average="macro"))
+                    n_val_samples = len(self.val_loader.dataset)
         except Exception:
             pass
 
@@ -877,6 +894,10 @@ class TorchClient(fl.client.NumPyClient):
         else:
             metrics_payload["dp_enabled"] = False
         metrics_payload["attack_mode"] = attack_mode
+        metrics_payload["macro_f1_val"] = macro_f1_val
+        metrics_payload["macro_f1_test"] = macro_f1_global_holdout
+        metrics_payload["n_val_samples"] = n_val_samples
+        metrics_payload["n_test_samples"] = n_test_samples
 
         # Personalization: post-FL local fine-tuning (if enabled)
         personalization_epochs = int(self.runtime_config.get("personalization_epochs", 0))
@@ -1190,6 +1211,11 @@ def main() -> None:
         help="Number of local fine-tuning epochs after FL rounds for personalization (0=disabled)",
     )
     parser.add_argument(
+        "--temporal_validation",
+        action="store_true",
+        help="Enable temporal validation protocol with 70/15/15 train/val/test split",
+    )
+    parser.add_argument(
         "--logdir",
         type=str,
         default="./logs",
@@ -1214,6 +1240,7 @@ def main() -> None:
     protocol_mapping: dict[str, int] | None = None
     model_metadata: dict[str, str | int] = {}
 
+    val_loader = None
     if args.dataset == "synthetic":
         train_loader, test_loader = create_synthetic_classification_loaders(
             num_samples=args.samples,
@@ -1222,8 +1249,7 @@ def main() -> None:
             seed=args.seed,
             num_classes=args.num_classes,
         )
-        # Analyze data distribution for synthetic data
-        synthetic_labels = np.random.randint(0, args.num_classes, size=args.samples)  # Approximate for metrics
+        synthetic_labels = np.random.randint(0, args.num_classes, size=args.samples)
         data_stats = analyze_data_distribution(synthetic_labels)
         label_hist_json = create_label_histogram_json(synthetic_labels)
         num_classes_global = args.num_classes
@@ -1290,7 +1316,20 @@ def main() -> None:
                     "num_classes_global": num_classes_global,
                 },
             )
-        train_loader, test_loader = numpy_to_loaders(X_client, y_client, batch_size=args.batch_size, seed=args.seed)
+        val_loader = None
+        if args.temporal_validation:
+            train_loader, val_loader, test_loader = numpy_to_temporal_train_val_test_loaders(X_client, y_client, batch_size=args.batch_size)
+            logger.info(
+                "temporal_validation_enabled",
+                extra={
+                    "client_id": args.client_id,
+                    "train_size": len(train_loader.dataset),
+                    "val_size": len(val_loader.dataset),
+                    "test_size": len(test_loader.dataset),
+                },
+            )
+        else:
+            train_loader, test_loader = numpy_to_loaders(X_client, y_client, batch_size=args.batch_size, seed=args.seed)
         num_features = X_client.shape[1]
         model, model_metadata = create_model(
             dataset_name=args.dataset,
@@ -1299,7 +1338,6 @@ def main() -> None:
             model_arch=args.model_arch,
             encoder_latent_dim=args.encoder_latent_dim,
         )
-        # Analyze actual data distribution
         data_stats = analyze_data_distribution(y_client)
         label_hist_json = create_label_histogram_json(y_client)
 
@@ -1368,7 +1406,6 @@ def main() -> None:
             "lr": args.lr,
             "weight_decay": float(os.environ.get("D2_WEIGHT_DECAY", str(args.weight_decay))),
             "fedprox_mu": float(os.environ.get("D2_FEDPROX_MU", str(args.fedprox_mu))),
-            # Privacy/robustness toggles
             "secure_aggregation": bool(
                 args.secure_aggregation or os.environ.get("D2_SECURE_AGG", "0").lower() not in ("0", "false", "no", "")
             ),
@@ -1380,18 +1417,15 @@ def main() -> None:
             "dp_seed": int(os.environ.get("D2_DP_SEED", str(args.dp_seed))),
             "dp_delta": float(os.environ.get("D2_DP_DELTA", str(args.dp_delta))),
             "dp_sample_rate": float(os.environ.get("D2_DP_SAMPLE_RATE", str(args.dp_sample_rate))),
-            # Adversarial gradient clipping
             "adversary_clip_factor": float(os.environ.get("D2_ADVERSARY_CLIP_FACTOR", "2.0")),
-            # Threshold selection
             "tau_mode": args.tau_mode,
             "target_fpr": args.target_fpr,
-            # Personalization
             "personalization_epochs": args.personalization_epochs,
-            # FocalLoss
             "use_focal_loss": args.use_focal_loss,
             "focal_gamma": args.focal_gamma,
         },
         class_names=class_names,
+        val_loader=val_loader,
     )
 
     fl.client.start_numpy_client(server_address=args.server_address, client=client)
