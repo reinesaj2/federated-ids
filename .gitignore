@@ -17,6 +17,11 @@ __pycache__/
 /runs/
 /runs_buggy_*/
 /runs_incomplete_*/
+/results/
+mu_star_selection.json
+nohup.out
+*.out
+*.err
 
 # Include plots directory for repository storage
 !/plots/
