@@ -38,6 +38,7 @@ DATASET_DEFAULT_PATHS = {
     "edge-iiotset-quick": "data/edge-iiotset/edge_iiotset_quick.csv",
     "edge-iiotset-nightly": "data/edge-iiotset/edge_iiotset_nightly.csv",
     "edge-iiotset-full": "data/edge-iiotset/edge_iiotset_full.csv",
+    "hybrid": "data/hybrid/hybrid_ids_dataset_full.csv.gz",
 }
 
 
@@ -299,6 +300,37 @@ class ComparisonMatrix:
                 )
         return configs
 
+    def _generate_hybrid_configs(self) -> List[ExperimentConfig]:
+        """Generate configs for hybrid cross-source federated learning.
+
+        Tests FedProx vs FedAvg when heterogeneity comes from domain shift
+        (different source datasets per client) rather than just label skew.
+
+        Uses source_aware partitioning: 3 clients per source dataset (9 total).
+        Within each source, Dirichlet partitioning creates label heterogeneity.
+
+        Note: Uses 5 seeds (vs 10 in other dimensions) to limit total configs
+        to 40, enabling efficient 17-node cluster parallelism (40 jobs / 17 nodes
+        = ~2.4 waves). This provides sufficient statistical power while fitting
+        within reasonable compute time (~1 hour total).
+        """
+        configs = []
+        fedprox_mus = [0.0, 0.01, 0.05, 0.1]
+        alpha_values = [0.5, 1.0]
+
+        for seed in self.seeds[:5]:
+            for alpha in alpha_values:
+                for mu in fedprox_mus:
+                    base = self._base_config(seed)
+                    base["alpha"] = alpha
+                    base["fedprox_mu"] = mu
+                    if mu > 0:
+                        base["aggregation"] = "fedprox"
+                    else:
+                        base["aggregation"] = "fedavg"
+                    configs.append(ExperimentConfig(**base))
+        return configs
+
     def _generate_full_factorial_configs(self) -> List[ExperimentConfig]:
         """Generate full factorial experiment matrix (WARNING: very large)."""
         configs = []
@@ -346,6 +378,7 @@ class ComparisonMatrix:
             "attack": self._generate_attack_configs,
             "privacy": self._generate_privacy_configs,
             "personalization": self._generate_personalization_configs,
+            "hybrid": self._generate_hybrid_configs,
         }
 
         if filter_dimension is None:
@@ -586,6 +619,7 @@ def main():
             "attack",
             "privacy",
             "personalization",
+            "hybrid",
             "full",
         ],
         default="aggregation",
@@ -629,9 +663,9 @@ def main():
     parser.add_argument(
         "--dataset",
         type=str,
-        choices=["unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full"],
+        choices=["unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full", "hybrid"],
         default="unsw",
-        help="Dataset to use (unsw=UNSW-NB15, cic=CIC-IDS2017, edge-iiotset-quick/nightly/full=Edge-IIoTset 2022)",
+        help="Dataset to use (unsw=UNSW-NB15, cic=CIC-IDS2017, edge-iiotset-*=Edge-IIoTset 2022, hybrid=fused dataset)",
     )
     parser.add_argument(
         "--data_path",
@@ -704,6 +738,7 @@ def main():
         "edge-iiotset-quick": "data/edge-iiotset/edge_iiotset_quick.csv",
         "edge-iiotset-nightly": "data/edge-iiotset/edge_iiotset_nightly.csv",
         "edge-iiotset-full": "data/edge-iiotset/edge_iiotset_full.csv",
+        "hybrid": "data/hybrid/hybrid_ids_dataset_full.csv.gz",
     }
     data_path = args.data_path if args.data_path else dataset_paths[args.dataset]
 

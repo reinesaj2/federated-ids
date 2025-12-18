@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -939,6 +940,115 @@ def load_edge_iiotset_with_temporal_order(
     sort_indices = np.array(new_sort_indices, dtype=np.int64)
 
     return df, label_col, proto_col, sort_indices, n_unparsable
+
+
+def load_hybrid_dataset(
+    csv_path: str | Path,
+    max_samples: int | None = None,
+) -> tuple[pd.DataFrame, str, str | None, str]:
+    """Load hybrid IDS dataset with source provenance preserved.
+
+    The hybrid dataset combines CIC-IDS2017, UNSW-NB15, and Edge-IIoTset
+    with unified 7-class attack taxonomy and source_dataset column.
+
+    Args:
+        csv_path: Path to hybrid dataset CSV (may be gzipped)
+        max_samples: Optional limit on number of samples to load
+
+    Returns:
+        Tuple of (dataframe, label_col, protocol_col, source_col) where:
+        - dataframe: Cleaned DataFrame with features and metadata
+        - label_col: "attack_class" (unified 7-class taxonomy)
+        - protocol_col: None (not applicable to hybrid)
+        - source_col: "source_dataset" (values: cic, unsw, iiot)
+    """
+    path = Path(csv_path)
+    compression = "gzip" if path.suffix == ".gz" else None
+    df = pd.read_csv(str(path), low_memory=False, nrows=max_samples, compression=compression)
+    df.columns = [col.strip() if isinstance(col, str) else col for col in df.columns]
+    df = df.replace([np.inf, -np.inf], np.nan)
+
+    label_col = "attack_class"
+    source_col = "source_dataset"
+
+    if label_col not in df.columns:
+        raise ValueError(f"Expected label column '{label_col}' not found. Available: {list(df.columns)}")
+    if source_col not in df.columns:
+        raise ValueError(f"Expected source column '{source_col}' not found. Available: {list(df.columns)}")
+
+    metadata_cols = [source_col, label_col, "attack_label_original"]
+    feature_cols = [c for c in df.columns if c not in metadata_cols]
+    df[feature_cols] = df[feature_cols].fillna(0).astype(np.float32)
+    df = df.dropna(subset=[label_col]).reset_index(drop=True)
+
+    return df, label_col, None, source_col
+
+
+def source_aware_partition(
+    source_labels: Sequence[str],
+    attack_labels: Sequence[int],
+    clients_per_source: int = 3,
+    alpha: float = 0.5,
+    seed: int = 42,
+    min_samples_per_class: int = MIN_SAMPLES_PER_CLASS,
+) -> list[list[int]]:
+    """Partition data by source dataset with optional within-source Dirichlet.
+
+    Each source dataset (cic, unsw, iiot) is assigned `clients_per_source` clients.
+    Within each source, samples are distributed using Dirichlet partitioning
+    on the attack labels to create heterogeneity.
+
+    Args:
+        source_labels: Sequence of source dataset identifiers (cic, unsw, iiot)
+        attack_labels: Sequence of attack class labels (0-6)
+        clients_per_source: Number of clients per source dataset
+        alpha: Dirichlet concentration for within-source partitioning
+        seed: Random seed for reproducibility
+        min_samples_per_class: Minimum samples per class per client
+
+    Returns:
+        List of index lists, one per client (total = num_sources * clients_per_source)
+        Clients are ordered: [cic_0, cic_1, ..., unsw_0, unsw_1, ..., iiot_0, ...]
+    """
+    source_labels = np.asarray(source_labels)
+    attack_labels = np.asarray(attack_labels)
+    unique_sources = sorted(set(source_labels))
+
+    all_client_indices: list[list[int]] = []
+
+    for source_idx, source in enumerate(unique_sources):
+        source_mask = source_labels == source
+        source_indices = np.where(source_mask)[0]
+        source_attack_labels = attack_labels[source_indices]
+
+        source_seed = seed + source_idx * 1000
+
+        if np.isinf(alpha):
+            within_source_shards = iid_partition(len(source_indices), clients_per_source, source_seed)
+        else:
+            try:
+                within_source_shards = dirichlet_partition(
+                    labels=source_attack_labels,
+                    num_clients=clients_per_source,
+                    alpha=alpha,
+                    seed=source_seed,
+                    min_samples_per_class=min_samples_per_class,
+                )
+            except ValueError as e:
+                warnings.warn(
+                    f"Dirichlet partition infeasible for source '{source}' "
+                    f"(alpha={alpha}, clients={clients_per_source}): {e}. "
+                    f"Falling back to IID partition.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                within_source_shards = iid_partition(len(source_indices), clients_per_source, source_seed)
+
+        for shard in within_source_shards:
+            global_indices = source_indices[shard].tolist()
+            all_client_indices.append(global_indices)
+
+    return all_client_indices
 
 
 def fit_preprocessor_train_only_and_transform_all(
