@@ -584,7 +584,7 @@ def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output
 
             baseline_row = {
                 "dataset": dataset,
-                "epsilon": float("inf"),
+                "epsilon": float("nan"),
                 "macro_f1_mean": mean,
                 "ci_lower": ci_lower,
                 "ci_upper": ci_upper,

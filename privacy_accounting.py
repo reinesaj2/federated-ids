@@ -16,7 +16,8 @@ import math
 import os
 
 logger = logging.getLogger(__name__)
-_USE_OPACUS = os.getenv("FEDIDS_USE_OPACUS", "").lower() in {"1", "true", "yes"}
+_USE_OPACUS_ENV = os.getenv("FEDIDS_USE_OPACUS")
+_USE_OPACUS = True if _USE_OPACUS_ENV is None else _USE_OPACUS_ENV.lower() in {"1", "true", "yes"}
 
 
 def _load_opacus():
@@ -148,11 +149,11 @@ class DPAccountant:
         Args:
             delta: Target delta for (epsilon, delta)-DP
         """
-        if RDPAccountant is None:
-            raise RuntimeError("Opacus not available; DPAccountant requires RDPAccountant from opacus (set FEDIDS_USE_OPACUS=1 when installed)")
         self.delta = delta
-        self.accountant = RDPAccountant()
+        self.accountant = RDPAccountant() if RDPAccountant is not None else None
         self._total_steps = 0
+        self._fallback_noise_multiplier: float | None = None
+        self._fallback_sample_rate: float | None = None
 
     def step(self, noise_multiplier: float, sample_rate: float = 1.0) -> None:
         """
@@ -162,8 +163,12 @@ class DPAccountant:
             noise_multiplier: Gaussian noise multiplier (sigma) for this step
             sample_rate: Sampling rate for this step
         """
-        self.accountant.step(noise_multiplier=noise_multiplier, sample_rate=sample_rate)
         self._total_steps += 1
+        if self.accountant is not None:
+            self.accountant.step(noise_multiplier=noise_multiplier, sample_rate=sample_rate)
+            return
+        self._fallback_noise_multiplier = noise_multiplier
+        self._fallback_sample_rate = sample_rate
 
     def get_epsilon(self) -> float:
         """
@@ -174,7 +179,17 @@ class DPAccountant:
         """
         if self._total_steps == 0:
             return 0.0
-        return float(self.accountant.get_epsilon(delta=self.delta))
+        if self.accountant is not None:
+            return float(self.accountant.get_epsilon(delta=self.delta))
+        if self._fallback_noise_multiplier is None:
+            return 0.0
+        sample_rate = self._fallback_sample_rate if self._fallback_sample_rate is not None else 1.0
+        return compute_epsilon(
+            noise_multiplier=float(self._fallback_noise_multiplier),
+            delta=self.delta,
+            num_steps=self._total_steps,
+            sample_rate=sample_rate,
+        )
 
     def get_total_steps(self) -> int:
         """
@@ -191,8 +206,11 @@ class DPAccountant:
 
         Clears all accumulated privacy loss. Useful for starting new experiments.
         """
-        self.accountant = RDPAccountant()
         self._total_steps = 0
+        if RDPAccountant is not None:
+            self.accountant = RDPAccountant()
+        self._fallback_noise_multiplier = None
+        self._fallback_sample_rate = None
 
     def get_privacy_summary(self) -> dict[str, float | int]:
         """

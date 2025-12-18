@@ -13,7 +13,8 @@ __pycache__/
 # Data
 /data/
 
-# Run artifacts (track by default; exclude clearly broken dumps)
+# Run artifacts
+/runs/
 /runs_buggy_*/
 /runs_incomplete_*/
 
