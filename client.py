@@ -1193,6 +1193,11 @@ def main() -> None:
         help="Number of local fine-tuning epochs after FL rounds for personalization (0=disabled)",
     )
     parser.add_argument(
+        "--binary_classification",
+        action="store_true",
+        help="Map all non-benign labels to a single ATTACK class (consistent across datasets)",
+    )
+    parser.add_argument(
         "--logdir",
         type=str,
         default="./logs",
@@ -1242,11 +1247,11 @@ def main() -> None:
         if not args.data_path:
             raise SystemExit("--data_path is required for dataset unsw/cic/edge-iiotset")
         if args.dataset == "unsw":
-            df, label_col, proto_col = load_unsw_nb15(args.data_path)
+            df, label_col, proto_col = load_unsw_nb15(args.data_path, use_multiclass=not args.binary_classification)
         elif args.dataset == "cic":
-            df, label_col, proto_col = load_cic_ids2017(args.data_path)
+            df, label_col, proto_col = load_cic_ids2017(args.data_path, use_multiclass=not args.binary_classification)
         elif args.dataset.startswith("edge-iiotset"):
-            df, label_col, proto_col = load_edge_iiotset(args.data_path, use_multiclass=True)
+            df, label_col, proto_col = load_edge_iiotset(args.data_path, use_multiclass=not args.binary_classification)
         else:
             raise SystemExit(f"Unknown dataset: {args.dataset}")
         chosen_proto_col = args.protocol_col or (proto_col or "")
