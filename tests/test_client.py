@@ -86,6 +86,19 @@ class TestTorchClient(unittest.TestCase):
             extra={"client_id": self.mock_metrics_logger.client_id, "round": 1},
         )
 
+    def test_fit_metrics_payload_excludes_none_values(self):
+        dp_enabled = False
+        runtime_config = {"dp_enabled": dp_enabled}
+        empty_config = {}
+        client = self._create_client(runtime_config)
+
+        initial_params = [p.detach().cpu().numpy() for p in self.mock_model.parameters()]
+        _weights, _num_examples, metrics = client.fit(initial_params, empty_config)
+
+        none_keys = [key for key, value in metrics.items() if value is None]
+
+        self.assertEqual(none_keys, [])
+
 
 class TestCreateModel(unittest.TestCase):
     def test_create_model_simple_for_synthetic(self):

@@ -898,6 +898,7 @@ class TorchClient(fl.client.NumPyClient):
         metrics_payload["macro_f1_test"] = macro_f1_global_holdout
         metrics_payload["n_val_samples"] = n_val_samples
         metrics_payload["n_test_samples"] = n_test_samples
+        metrics_payload = {key: value for key, value in metrics_payload.items() if value is not None}
 
         # Personalization: post-FL local fine-tuning (if enabled)
         personalization_epochs = int(self.runtime_config.get("personalization_epochs", 0))
@@ -1052,6 +1053,7 @@ class TorchClient(fl.client.NumPyClient):
                     "personalization_gain": personalization_gain,
                 }
             )
+            metrics_payload = {key: value for key, value in metrics_payload.items() if value is not None}
         except Exception as e:
             # If personalization evaluation fails, log warning but continue
             logging.getLogger("client").warning("personalization_eval_failed", extra={"error": str(e)})

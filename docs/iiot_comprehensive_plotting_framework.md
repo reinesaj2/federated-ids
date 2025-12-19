@@ -623,7 +623,7 @@ def test_end_to_end_pipeline(test_runs_dir, tmp_path):
 ## Performance Considerations
 
 - **Data loading:** O(n_runs \* n_rounds) - typically ~2600 records in <1 second
-- **Plot generation:** O(n_panels _ n_aggregators _ n_seeds) - ~30 seconds for all 4 objectives
+- **Plot generation:** O(n*panels * n*aggregators * n_seeds) - ~30 seconds for all 4 objectives
 - **Memory usage:** ~50 MB for typical dataset (2600 rows x 15 columns)
 
 **Optimization opportunities:**
