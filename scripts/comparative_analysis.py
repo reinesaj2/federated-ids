@@ -341,16 +341,14 @@ class ComparisonMatrix:
                         for pers in self.personalization_epochs:
                             for seed in self.seeds:
                                 configs.append(
-                                    ExperimentConfig(
+                                    self._create_config(
+                                        self._base_config(seed),
                                         aggregation=agg,
                                         alpha=alpha,
                                         adversary_fraction=adv_frac,
                                         dp_enabled=dp_config["enabled"],
                                         dp_noise_multiplier=dp_config["noise"],
                                         personalization_epochs=pers,
-                                        num_clients=self.num_clients,
-                                        num_rounds=self.num_rounds,
-                                        seed=seed,
                                     )
                                 )
         return configs

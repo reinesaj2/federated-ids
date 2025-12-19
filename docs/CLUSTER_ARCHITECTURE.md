@@ -141,6 +141,8 @@ Internet
 Add to `~/.ssh/config` for seamless access:
 
 ```
+EID for this project: reinesaj
+
 Host stu
     HostName stu.cs.jmu.edu
     User <YOUR_EID>

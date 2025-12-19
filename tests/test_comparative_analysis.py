@@ -201,6 +201,54 @@ def test_comparison_matrix_full_factorial():
     assert len(agg_alpha_pairs) == 4
 
 
+@pytest.mark.parametrize(
+    ("dataset", "data_path"),
+    [("edge-iiotset-full", "data/edge-iiotset/edge_iiotset_full.csv")],
+)
+def test_comparison_matrix_full_factorial_preserves_dataset(dataset, data_path):
+    aggregation_methods = ["fedavg"]
+    alpha_values = [0.2]
+    adversary_fractions = [0.1]
+    dp_configs = [{"enabled": False, "noise": 0.0}]
+    personalization_epochs = [0]
+    seeds = [101]
+    num_clients = 10
+    num_rounds = 20
+
+    matrix = ComparisonMatrix(
+        aggregation_methods=aggregation_methods,
+        alpha_values=alpha_values,
+        adversary_fractions=adversary_fractions,
+        dp_configs=dp_configs,
+        personalization_epochs=personalization_epochs,
+        seeds=seeds,
+        num_clients=num_clients,
+        num_rounds=num_rounds,
+        dataset=dataset,
+        data_path=data_path,
+    )
+
+    configs = matrix.generate_configs(filter_dimension=None)
+
+    expected = [
+        ExperimentConfig(
+            aggregation=aggregation_methods[0],
+            alpha=alpha_values[0],
+            adversary_fraction=adversary_fractions[0],
+            dp_enabled=dp_configs[0]["enabled"],
+            dp_noise_multiplier=dp_configs[0]["noise"],
+            personalization_epochs=personalization_epochs[0],
+            num_clients=num_clients,
+            num_rounds=num_rounds,
+            seed=seeds[0],
+            dataset=dataset,
+            data_path=data_path,
+        )
+    ]
+
+    assert configs == expected
+
+
 def test_comparison_matrix_invalid_dimension():
     """Test that invalid dimension raises ValueError."""
     matrix = ComparisonMatrix()
