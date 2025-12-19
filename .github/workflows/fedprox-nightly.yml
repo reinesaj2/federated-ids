@@ -400,7 +400,7 @@ jobs:
       - name: Install dependencies
         run: pip install pandas matplotlib seaborn numpy scipy
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: nightly-artifacts
       - name: Generate FedProx comparison summary
@@ -472,7 +472,7 @@ jobs:
             core.setOutput('artifact_name', summary.name);
       - name: Download baseline summary artifact
         if: steps.find_baseline.outputs.artifact_name != ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ steps.find_baseline.outputs.run_id }}
@@ -536,12 +536,12 @@ jobs:
           python-version: '3.11'
       - name: Download consolidated results
         id: download_summary_artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: fedprox-nightly-summary-${{ github.sha }}
           path: fedprox-summary
       - name: Download manual comparison results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         if: github.event_name == 'workflow_dispatch'
         with:
           name: manual-fedprox-comparison-${{ github.sha }}

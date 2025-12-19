@@ -256,7 +256,7 @@ jobs:
         run: pip install pandas matplotlib seaborn numpy scipy
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: edge-iiotset-artifacts
 
