@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from scipy import stats
 
 RUNS_DIR = Path("runs")
 OUTPUT_DIR = Path("thesis_plots_iiot")

@@ -69,19 +69,19 @@ class PerDatasetEncoderNet(nn.Module):
 DEFAULT_ENCODER_LAYOUTS = {
     "unsw": {
         "encoder_hidden": [512, 256],
-        "latent_dim": 192,
+        "latent_dim": 256,
         "shared_hidden": [128, 64],
         "dropout": 0.2,
     },
     "cic": {
         "encoder_hidden": [768, 384, 192],
         "latent_dim": 256,
-        "shared_hidden": [192, 96],
+        "shared_hidden": [128, 64],
         "dropout": 0.25,
     },
     "edge": {
         "encoder_hidden": [512, 384, 256],
-        "latent_dim": 192,
+        "latent_dim": 256,
         "shared_hidden": [128, 64],
         "dropout": 0.3,
     },
@@ -89,8 +89,8 @@ DEFAULT_ENCODER_LAYOUTS = {
 
 FALLBACK_LAYOUT = {
     "encoder_hidden": [256, 128],
-    "latent_dim": 128,
-    "shared_hidden": [64],
+    "latent_dim": 256,
+    "shared_hidden": [128, 64],
     "dropout": 0.1,
 }
 

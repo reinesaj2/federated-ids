@@ -11,7 +11,6 @@ This plot embodies the key discovery from our investigation:
 import csv
 import glob
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import numpy as np
 from pathlib import Path
 
@@ -50,7 +49,7 @@ def extract_metrics_from_runs(base_path, alpha_values, algorithm='fedavg', mu=0.
                         f1 = float(last.get('macro_f1_after', 0))
                         acc_values.append(acc)
                         f1_values.append(f1)
-            except Exception as e:
+            except Exception:
                 continue
 
         if acc_values and f1_values:
@@ -321,7 +320,6 @@ def create_revelation_plot(base_path, output_path):
     return output_file
 
 if __name__ == "__main__":
-    import sys
 
     # Paths
     base_path = "/Users/abrahamreines/Documents/Thesis/federated-ids/runs"

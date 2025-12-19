@@ -93,7 +93,7 @@ def main():
     if len(fedavg_005) > 0 and len(fedprox_005_mu05) > 0:
         t_stat, p_val = stats.ttest_ind(fedavg_005, fedprox_005_mu05, equal_var=False)
         sig = "***" if p_val < 0.001 else ("**" if p_val < 0.01 else ("*" if p_val < 0.05 else "ns"))
-        print(f"FedAvg vs FedProx(μ=0.05) at α=0.05:")
+        print("FedAvg vs FedProx(μ=0.05) at α=0.05:")
         print(f"  FedAvg:         {fedavg_005.mean():.3f} ± {fedavg_005.std():.3f} (n={len(fedavg_005)})")
         print(f"  FedProx μ=0.05: {fedprox_005_mu05.mean():.3f} ± {fedprox_005_mu05.std():.3f} (n={len(fedprox_005_mu05)})")
         print(f"  t={t_stat:.3f}, p={p_val:.6f} {sig}")
@@ -101,7 +101,7 @@ def main():
     if len(fedavg_005) > 0 and len(fedprox_005_mu10) > 0:
         t_stat, p_val = stats.ttest_ind(fedavg_005, fedprox_005_mu10, equal_var=False)
         sig = "***" if p_val < 0.001 else ("**" if p_val < 0.01 else ("*" if p_val < 0.05 else "ns"))
-        print(f"\nFedAvg vs FedProx(μ=0.1) at α=0.05:")
+        print("\nFedAvg vs FedProx(μ=0.1) at α=0.05:")
         print(f"  FedAvg:        {fedavg_005.mean():.3f} ± {fedavg_005.std():.3f} (n={len(fedavg_005)})")
         print(f"  FedProx μ=0.1: {fedprox_005_mu10.mean():.3f} ± {fedprox_005_mu10.std():.3f} (n={len(fedprox_005_mu10)})")
         print(f"  t={t_stat:.3f}, p={p_val:.6f} {sig}")
@@ -110,7 +110,7 @@ def main():
     if len(fedavg_100) > 0 and len(fedprox_100_mu10) > 0:
         t_stat, p_val = stats.ttest_ind(fedavg_100, fedprox_100_mu10, equal_var=False)
         sig = "***" if p_val < 0.001 else ("**" if p_val < 0.01 else ("*" if p_val < 0.05 else "ns"))
-        print(f"\nFedAvg vs FedProx(μ=0.1) at α=1.0 (IID):")
+        print("\nFedAvg vs FedProx(μ=0.1) at α=1.0 (IID):")
         print(f"  FedAvg:        {fedavg_100.mean():.3f} ± {fedavg_100.std():.3f} (n={len(fedavg_100)})")
         print(f"  FedProx μ=0.1: {fedprox_100_mu10.mean():.3f} ± {fedprox_100_mu10.std():.3f} (n={len(fedprox_100_mu10)})")
         print(f"  t={t_stat:.3f}, p={p_val:.6f} {sig}")

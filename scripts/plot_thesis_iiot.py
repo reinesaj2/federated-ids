@@ -564,7 +564,7 @@ def main():
     hetero_df = server_df[server_df["adversary"] == 0].copy()
     
     if not hetero_df.empty:
-        print(f"Generating Heterogeneity Impact Plots (Adv=0, All Alphas)")
+        print("Generating Heterogeneity Impact Plots (Adv=0, All Alphas)")
         plot_heterogeneity_impact(hetero_df, output_dir, style)
     else:
         print("Warning: No Adv=0 data found for Heterogeneity plot.")

@@ -2,7 +2,6 @@
 import pandas as pd
 from pathlib import Path
 import re
-import sys
 
 # Helper functions from the main script
 def parse_run_config(run_dir: Path) -> dict:

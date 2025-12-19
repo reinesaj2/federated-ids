@@ -4,7 +4,6 @@ Monitor experiment queue progress.
 """
 import json
 import sys
-from datetime import datetime
 from pathlib import Path
 
 PROGRESS_FILE = Path("experiment_queue_progress.json")

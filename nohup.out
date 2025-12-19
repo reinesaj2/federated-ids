@@ -1,0 +1,684 @@
+=== Cluster Runs Sync ===
+Remote: cluster:/scratch/reinesaj/federated-ids/runs
+Local:  ../cluster-experiments/cluster-runs
+Interval: 60s
+
+Starting continuous sync (Ctrl+C to stop)...
+
+[13:38:32] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/metrics.csv
+              0   0%    0.00kB/s    0:00:00            6,931 100%   26.75kB/s    0:00:00 (xfr#184, ir-chk=1013/11838)
+
+sent 118,279 bytes  received 550,289 bytes  121,557.82 bytes/sec
+total size is 1,012,992,622  speedup is 1,515.17
+[13:38:37] Synced: 1527 runs, 1527 with metrics
+
+[13:39:37] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           18,380 100%   29.77kB/s    0:00:00 (xfr#366, ir-chk=1012/11838)
+
+sent 286,437 bytes  received 623,704 bytes  140,021.69 bytes/sec
+total size is 1,014,556,302  speedup is 1,114.72
+[13:39:43] Synced: 1527 runs, 1527 with metrics
+
+[13:40:43] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           21,876 100%   30.65kB/s    0:00:00 (xfr#374, ir-chk=1012/11838)
+
+sent 311,715 bytes  received 637,460 bytes  146,026.92 bytes/sec
+total size is 1,016,337,934  speedup is 1,070.76
+[13:40:49] Synced: 1527 runs, 1527 with metrics
+
+[13:41:49] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           23,274 100%   30.43kB/s    0:00:00 (xfr#374, ir-chk=1012/11838)
+
+sent 327,243 bytes  received 630,052 bytes  147,276.15 bytes/sec
+total size is 1,018,057,893  speedup is 1,063.47
+[13:41:56] Synced: 1527 runs, 1527 with metrics
+
+[13:42:56] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           26,072 100%   35.81kB/s    0:00:00 (xfr#368, ir-chk=1012/11838)
+
+sent 341,525 bytes  received 633,354 bytes  149,981.38 bytes/sec
+total size is 1,019,812,699  speedup is 1,046.09
+[13:43:02] Synced: 1527 runs, 1527 with metrics
+
+[13:44:02] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,040 100%    2.69kB/s    0:00:00 (xfr#377, ir-chk=1012/11861)
+
+sent 357,800 bytes  received 627,181 bytes  151,535.54 bytes/sec
+total size is 1,021,247,815  speedup is 1,036.82
+[13:44:08] Synced: 1527 runs, 1527 with metrics
+
+[13:45:08] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.2_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            3,487 100%    4.97kB/s    0:00:00 (xfr#394, ir-chk=1012/12045)
+
+sent 294,083 bytes  received 656,927 bytes  126,801.33 bytes/sec
+total size is 1,021,976,075  speedup is 1,074.62
+[13:45:15] Synced: 1527 runs, 1527 with metrics
+
+[13:46:15] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.2_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,039 100%    2.78kB/s    0:00:00 (xfr#396, ir-chk=1012/12091)
+
+sent 310,299 bytes  received 644,064 bytes  146,825.08 bytes/sec
+total size is 1,023,209,188  speedup is 1,072.14
+[13:46:22] Synced: 1527 runs, 1527 with metrics
+
+[13:47:22] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            3,710 100%    5.63kB/s    0:00:00 (xfr#371, ir-chk=1012/12161)
+
+sent 278,603 bytes  received 645,875 bytes  168,086.91 bytes/sec
+total size is 1,024,861,583  speedup is 1,108.58
+[13:47:27] Synced: 1528 runs, 1528 with metrics
+
+[13:48:27] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            5,103 100%    7.08kB/s    0:00:00 (xfr#374, ir-chk=1012/12161)
+
+sent 297,622 bytes  received 639,243 bytes  144,133.08 bytes/sec
+total size is 1,026,590,289  speedup is 1,095.77
+[13:48:33] Synced: 1528 runs, 1528 with metrics
+
+[13:49:33] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            7,895 100%   10.83kB/s    0:00:00 (xfr#349, ir-chk=1012/12161)
+
+sent 305,331 bytes  received 620,850 bytes  168,396.55 bytes/sec
+total size is 1,028,146,185  speedup is 1,110.09
+[13:49:39] Synced: 1528 runs, 1528 with metrics
+
+[13:50:39] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           10,687 100%   13.31kB/s    0:00:00 (xfr#386, ir-chk=1012/12161)
+
+sent 252,076 bytes  received 640,478 bytes  162,282.55 bytes/sec
+total size is 1,028,987,886  speedup is 1,152.86
+[13:50:44] Synced: 1528 runs, 1528 with metrics
+
+[13:51:44] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           12,082 100%   22.60kB/s    0:00:00 (xfr#272, ir-chk=1012/12161)
+
+sent 143,320 bytes  received 576,529 bytes  110,746.00 bytes/sec
+total size is 1,029,268,693  speedup is 1,429.84
+[13:51:50] Synced: 1528 runs, 1528 with metrics
+
+[13:52:50] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,621 100%    6.84kB/s    0:00:00 (xfr#391, ir-chk=1012/11687)
+
+sent 413,717 bytes  received 634,290 bytes  190,546.73 bytes/sec
+total size is 960,515,096  speedup is 916.52
+[13:52:55] Synced: 1528 runs, 1528 with metrics
+
+[13:53:55] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            5,106 100%   23.52kB/s    0:00:00 (xfr#368, ir-chk=1012/11687)
+
+sent 15,398 bytes  received 719,811 bytes  113,109.08 bytes/sec
+total size is 962,419,538  speedup is 1,309.04
+[13:54:01] Synced: 1528 runs, 1528 with metrics
+
+[13:55:01] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            6,502 100%   24.24kB/s    0:00:00 (xfr#374, ir-chk=1012/11687)
+
+sent 31,464 bytes  received 642,932 bytes  122,617.45 bytes/sec
+total size is 964,113,848  speedup is 1,429.60
+[13:55:07] Synced: 1528 runs, 1528 with metrics
+
+[13:56:07] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            7,897 100%   26.87kB/s    0:00:00 (xfr#365, ir-chk=1012/11687)
+
+sent 45,577 bytes  received 621,554 bytes  121,296.55 bytes/sec
+total size is 965,746,767  speedup is 1,447.61
+[13:56:13] Synced: 1528 runs, 1528 with metrics
+
+[13:57:13] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           10,690 100%   36.12kB/s    0:00:00 (xfr#374, ir-chk=1012/11687)
+
+sent 60,312 bytes  received 610,553 bytes  121,975.45 bytes/sec
+total size is 967,234,770  speedup is 1,441.77
+[13:57:18] Synced: 1528 runs, 1528 with metrics
+
+[13:58:18] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           12,086 100%   40.84kB/s    0:00:00 (xfr#374, ir-chk=1012/11687)
+
+sent 72,906 bytes  received 628,473 bytes  127,523.45 bytes/sec
+total size is 969,005,810  speedup is 1,381.57
+[13:58:24] Synced: 1528 runs, 1528 with metrics
+
+[13:59:24] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           15,090 100%   49.78kB/s    0:00:00 (xfr#374, ir-chk=1012/11687)
+
+sent 88,144 bytes  received 621,494 bytes  129,025.09 bytes/sec
+total size is 970,706,269  speedup is 1,367.89
+[13:59:29] Synced: 1528 runs, 1528 with metrics
+
+[14:00:29] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           17,673 100%   51.52kB/s    0:00:00 (xfr#373, ir-chk=1012/11687)
+
+sent 102,447 bytes  received 632,982 bytes  113,142.92 bytes/sec
+total size is 972,594,670  speedup is 1,322.49
+[14:00:35] Synced: 1528 runs, 1528 with metrics
+
+[14:01:35] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           19,073 100%   48.76kB/s    0:00:00 (xfr#373, ir-chk=1012/11687)
+
+sent 118,503 bytes  received 616,496 bytes  133,636.18 bytes/sec
+total size is 974,178,947  speedup is 1,325.42
+[14:01:41] Synced: 1528 runs, 1528 with metrics
+
+[14:02:41] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           21,871 100%   58.52kB/s    0:00:00 (xfr#364, ir-chk=1012/11687)
+
+sent 131,468 bytes  received 618,954 bytes  136,440.36 bytes/sec
+total size is 975,851,719  speedup is 1,300.40
+[14:02:47] Synced: 1528 runs, 1528 with metrics
+
+[14:03:47] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           23,269 100%   61.42kB/s    0:00:00 (xfr#374, ir-chk=1012/11687)
+
+sent 146,918 bytes  received 619,822 bytes  139,407.27 bytes/sec
+total size is 977,588,929  speedup is 1,274.99
+[14:03:52] Synced: 1528 runs, 1528 with metrics
+
+[14:04:52] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.08_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           26,068 100%   60.47kB/s    0:00:00 (xfr#367, ir-chk=1012/11687)
+
+sent 160,783 bytes  received 626,298 bytes  121,089.38 bytes/sec
+total size is 979,336,337  speedup is 1,244.26
+[14:04:58] Synced: 1528 runs, 1528 with metrics
+
+[14:05:58] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.2_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,620 100%    5.98kB/s    0:00:00 (xfr#450, ir-chk=1012/11899)
+
+sent 227,525 bytes  received 637,311 bytes  133,051.69 bytes/sec
+total size is 980,923,715  speedup is 1,134.23
+[14:06:04] Synced: 1528 runs, 1528 with metrics
+
+[14:07:04] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.2_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,039 100%    4.94kB/s    0:00:00 (xfr#395, ir-chk=1012/11923)
+
+sent 141,963 bytes  received 670,726 bytes  125,029.08 bytes/sec
+total size is 982,571,736  speedup is 1,209.04
+[14:07:10] Synced: 1528 runs, 1528 with metrics
+
+[14:08:10] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,620 100%    6.80kB/s    0:00:00 (xfr#379, ir-chk=1012/12017)
+
+sent 125,557 bytes  received 638,153 bytes  117,493.85 bytes/sec
+total size is 984,042,077  speedup is 1,288.50
+[14:08:16] Synced: 1528 runs, 1528 with metrics
+
+[14:09:16] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            5,103 100%   12.98kB/s    0:00:00 (xfr#374, ir-chk=1012/12017)
+
+sent 114,462 bytes  received 638,292 bytes  136,864.36 bytes/sec
+total size is 985,679,965  speedup is 1,309.43
+[14:09:22] Synced: 1528 runs, 1528 with metrics
+
+[14:10:22] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            7,200 100%   16.82kB/s    0:00:00 (xfr#374, ir-chk=1012/12017)
+
+sent 128,460 bytes  received 634,516 bytes  138,722.91 bytes/sec
+total size is 987,469,107  speedup is 1,294.23
+[14:10:27] Synced: 1528 runs, 1528 with metrics
+
+[14:11:27] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            9,290 100%   23.32kB/s    0:00:00 (xfr#358, ir-chk=1012/12017)
+
+sent 125,686 bytes  received 641,306 bytes  117,998.77 bytes/sec
+total size is 989,154,873  speedup is 1,289.65
+[14:11:33] Synced: 1528 runs, 1528 with metrics
+
+[14:12:33] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           12,080 100%   23.78kB/s    0:00:00 (xfr#374, ir-chk=1012/12161)
+
+sent 149,391 bytes  received 660,635 bytes  147,277.45 bytes/sec
+total size is 990,772,382  speedup is 1,223.14
+[14:12:38] Synced: 1528 runs, 1528 with metrics
+
+[14:13:38] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           13,476 100%   27.53kB/s    0:00:00 (xfr#366, ir-chk=1012/12161)
+
+sent 94,610 bytes  received 651,914 bytes  135,731.64 bytes/sec
+total size is 992,462,447  speedup is 1,329.44
+[14:13:44] Synced: 1528 runs, 1528 with metrics
+
+[14:14:44] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           16,268 100%   31.33kB/s    0:00:00 (xfr#354, ir-chk=1012/12161)
+
+sent 89,146 bytes  received 643,152 bytes  133,145.09 bytes/sec
+total size is 994,069,221  speedup is 1,357.47
+[14:14:50] Synced: 1528 runs, 1528 with metrics
+
+[14:15:50] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           20,461 100%   35.24kB/s    0:00:00 (xfr#349, ir-chk=1012/12161)
+
+sent 91,791 bytes  received 639,115 bytes  132,892.00 bytes/sec
+total size is 995,120,689  speedup is 1,361.49
+[14:15:56] Synced: 1528 runs, 1528 with metrics
+
+[14:16:56] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           21,859 100%   33.46kB/s    0:00:00 (xfr#370, ir-chk=1012/12161)
+
+sent 131,720 bytes  received 654,130 bytes  142,881.82 bytes/sec
+total size is 996,889,069  speedup is 1,268.55
+[14:17:02] Synced: 1528 runs, 1528 with metrics
+
+[14:18:02] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           24,654 100%   32.19kB/s    0:00:00 (xfr#374, ir-chk=1012/12161)
+
+sent 149,240 bytes  received 654,024 bytes  146,048.00 bytes/sec
+total size is 998,773,148  speedup is 1,243.39
+[14:18:08] Synced: 1528 runs, 1528 with metrics
+
+[14:19:08] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu1.0_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,039 100%    2.71kB/s    0:00:00 (xfr#438, ir-chk=1012/12237)
+
+sent 157,829 bytes  received 668,949 bytes  150,323.27 bytes/sec
+total size is 1,000,537,976  speedup is 1,210.17
+[14:19:13] Synced: 1532 runs, 1532 with metrics
+
+[14:20:14] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu1.0_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            3,710 100%    5.42kB/s    0:00:00 (xfr#351, ir-chk=1012/12237)
+
+sent 128,436 bytes  received 666,107 bytes  144,462.36 bytes/sec
+total size is 1,002,276,123  speedup is 1,261.45
+[14:20:19] Synced: 1532 runs, 1532 with metrics
+
+[14:21:19] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.002_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,622 100%    4.00kB/s    0:00:00 (xfr#365, ir-chk=1012/12307)
+
+sent 117,128 bytes  received 637,590 bytes  116,110.46 bytes/sec
+total size is 1,003,255,363  speedup is 1,329.31
+[14:21:25] Synced: 1533 runs, 1533 with metrics
+
+[14:22:25] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.002_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,622 100%    4.00kB/s    0:00:00 (xfr#355, ir-chk=1012/12330)
+
+sent 131,174 bytes  received 668,077 bytes  122,961.69 bytes/sec
+total size is 1,004,818,235  speedup is 1,257.20
+[14:22:31] Synced: 1533 runs, 1533 with metrics
+
+[14:23:31] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.002_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            5,109 100%    7.57kB/s    0:00:00 (xfr#352, ir-chk=1012/12330)
+
+sent 153,367 bytes  received 641,627 bytes  122,306.77 bytes/sec
+total size is 1,006,405,015  speedup is 1,265.93
+[14:23:37] Synced: 1533 runs, 1533 with metrics
+
+[14:24:37] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.002_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            7,900 100%   10.47kB/s    0:00:00 (xfr#352, ir-chk=1012/12330)
+
+sent 166,743 bytes  received 650,196 bytes  148,534.36 bytes/sec
+total size is 1,008,265,187  speedup is 1,234.20
+[14:24:43] Synced: 1533 runs, 1533 with metrics
+
+[14:25:43] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.002_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           12,089 100%   16.35kB/s    0:00:00 (xfr#352, ir-chk=1012/12330)
+
+sent 182,727 bytes  received 638,912 bytes  126,406.00 bytes/sec
+total size is 1,009,885,009  speedup is 1,229.11
+[14:25:49] Synced: 1533 runs, 1533 with metrics
+
+[14:26:49] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.002_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           14,880 100%   19.69kB/s    0:00:00 (xfr#342, ir-chk=1012/12330)
+
+sent 184,843 bytes  received 645,120 bytes  127,686.62 bytes/sec
+total size is 1,011,389,330  speedup is 1,218.60
+[14:26:55] Synced: 1533 runs, 1533 with metrics
+
+[14:27:55] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.002_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           17,676 100%   22.13kB/s    0:00:00 (xfr#364, ir-chk=1012/12330)
+
+sent 211,935 bytes  received 651,946 bytes  132,904.77 bytes/sec
+total size is 1,012,949,829  speedup is 1,172.56
+[14:28:01] Synced: 1533 runs, 1533 with metrics
+
+[14:29:01] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.002_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           20,473 100%   24.96kB/s    0:00:00 (xfr#349, ir-chk=1012/12330)
+
+sent 211,592 bytes  received 663,910 bytes  134,692.62 bytes/sec
+total size is 1,014,842,709  speedup is 1,159.16
+[14:29:07] Synced: 1533 runs, 1533 with metrics
+
+[14:30:07] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.002_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           25,373 100%   29.71kB/s    0:00:00 (xfr#352, ir-chk=1012/12330)
+
+sent 228,123 bytes  received 658,845 bytes  136,456.62 bytes/sec
+total size is 1,016,663,887  speedup is 1,146.22
+[14:30:13] Synced: 1533 runs, 1533 with metrics
+
+[14:31:13] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.002_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           28,865 100%   36.05kB/s    0:00:00 (xfr#360, ir-chk=1012/12330)
+
+sent 229,489 bytes  received 658,023 bytes  118,334.93 bytes/sec
+total size is 1,018,099,852  speedup is 1,147.14
+[14:31:20] Synced: 1533 runs, 1533 with metrics
+
+[14:32:20] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.005_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,041 100%    2.19kB/s    0:00:00 (xfr#366, ir-chk=1012/12422)
+
+sent 262,833 bytes  received 681,764 bytes  145,322.62 bytes/sec
+total size is 1,019,401,003  speedup is 1,079.19
+[14:32:26] Synced: 1533 runs, 1533 with metrics
+
+[14:33:26] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.005_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            3,712 100%    3.92kB/s    0:00:00 (xfr#349, ir-chk=1012/12422)
+
+sent 269,646 bytes  received 702,874 bytes  149,618.46 bytes/sec
+total size is 1,021,561,874  speedup is 1,050.43
+[14:33:32] Synced: 1533 runs, 1533 with metrics
+
+[14:34:33] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.01_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,040 100%    2.31kB/s    0:00:00 (xfr#379, ir-chk=1012/12560)
+
+sent 258,538 bytes  received 691,522 bytes  172,738.18 bytes/sec
+total size is 1,022,503,901  speedup is 1,076.25
+[14:34:39] Synced: 1533 runs, 1533 with metrics
+
+[14:35:39] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.01_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            3,711 100%    4.42kB/s    0:00:00 (xfr#341, ir-chk=1012/12560)
+
+sent 253,536 bytes  received 717,679 bytes  176,584.55 bytes/sec
+total size is 1,024,276,993  speedup is 1,054.63
+[14:35:44] Synced: 1533 runs, 1533 with metrics
+
+[14:36:44] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.02_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            3,711 100%    4.20kB/s    0:00:00 (xfr#344, ir-chk=1012/12629)
+
+sent 227,081 bytes  received 748,956 bytes  150,159.54 bytes/sec
+total size is 1,026,548,129  speedup is 1,051.75
+[14:36:50] Synced: 1533 runs, 1533 with metrics
+
+[14:37:50] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.02_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            5,106 100%    5.69kB/s    0:00:00 (xfr#332, ir-chk=1012/12629)
+
+sent 239,641 bytes  received 725,804 bytes  148,530.00 bytes/sec
+total size is 1,028,733,988  speedup is 1,065.55
+[14:37:57] Synced: 1533 runs, 1533 with metrics
+
+[14:38:57] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.02_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            7,898 100%    8.13kB/s    0:00:00 (xfr#359, ir-chk=1012/12629)
+
+sent 259,576 bytes  received 758,828 bytes  156,677.54 bytes/sec
+total size is 1,031,384,562  speedup is 1,012.75
+[14:39:03] Synced: 1533 runs, 1533 with metrics
+
+[14:40:03] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.02_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           10,690 100%   10.91kB/s    0:00:00 (xfr#353, ir-chk=1012/12629)
+
+sent 263,282 bytes  received 782,367 bytes  160,869.08 bytes/sec
+total size is 1,034,290,599  speedup is 989.14
+[14:40:09] Synced: 1533 runs, 1533 with metrics
+
+[14:41:09] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.02_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           12,085 100%  907.83kB/s    0:00:00 (xfr#352, ir-chk=1012/12629)
+
+sent 288,349 bytes  received 799,228 bytes  167,319.54 bytes/sec
+total size is 1,037,672,502  speedup is 954.11
+[14:41:16] Synced: 1533 runs, 1533 with metrics
+
+[14:42:16] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.02_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           14,875 100%   15.45kB/s    0:00:00 (xfr#330, ir-chk=1012/12629)
+
+sent 291,009 bytes  received 787,605 bytes  165,940.62 bytes/sec
+total size is 1,040,932,721  speedup is 965.07
+[14:42:22] Synced: 1533 runs, 1533 with metrics
+
+[14:43:22] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.02_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,040 100%    2.51kB/s    0:00:00 (xfr#276, ir-chk=1012/12652)
+
+sent 238,767 bytes  received 725,433 bytes  175,309.09 bytes/sec
+total size is 1,043,229,467  speedup is 1,081.96
+[14:43:28] Synced: 1533 runs, 1533 with metrics
+
+[14:44:28] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.02_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,040 100%    2.51kB/s    0:00:00 (xfr#274, ir-chk=1012/12675)
+
+sent 251,427 bytes  received 664,331 bytes  166,501.45 bytes/sec
+total size is 1,044,735,685  speedup is 1,140.84
+[14:44:33] Synced: 1533 runs, 1533 with metrics
+
+[14:45:33] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.05_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,040 100%    2.69kB/s    0:00:00 (xfr#239, ir-chk=1012/12786)
+
+sent 171,165 bytes  received 619,417 bytes  121,628.00 bytes/sec
+total size is 1,045,471,241  speedup is 1,322.41
+[14:45:39] Synced: 1533 runs, 1533 with metrics
+
+[14:46:39] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.05_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            3,711 100%    5.10kB/s    0:00:00 (xfr#215, ir-chk=1012/12787)
+
+sent 158,781 bytes  received 633,008 bytes  121,813.69 bytes/sec
+total size is 1,046,725,918  speedup is 1,321.98
+[14:46:45] Synced: 1533 runs, 1533 with metrics
+
+[14:47:45] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.08_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,621 100%    3.55kB/s    0:00:00 (xfr#235, ir-chk=1012/12879)
+
+sent 174,102 bytes  received 618,999 bytes  122,015.54 bytes/sec
+total size is 1,047,566,592  speedup is 1,320.85
+[14:47:51] Synced: 1533 runs, 1533 with metrics
+
+[14:48:51] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.08_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            3,711 100%   10.15kB/s    0:00:00 (xfr#196, ir-chk=1012/12879)
+
+sent 133,539 bytes  received 601,673 bytes  113,109.54 bytes/sec
+total size is 1,048,494,349  speedup is 1,426.11
+[14:48:57] Synced: 1533 runs, 1533 with metrics
+
+[14:49:57] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.08_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,040 100%    5.44kB/s    0:00:00 (xfr#218, ir-chk=1012/12925)
+
+sent 137,227 bytes  received 609,144 bytes  135,703.82 bytes/sec
+total size is 1,049,248,605  speedup is 1,405.80
+[14:50:03] Synced: 1533 runs, 1533 with metrics
+
+[14:51:03] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.08_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            3,711 100%   11.50kB/s    0:00:00 (xfr#194, ir-chk=1012/12925)
+
+sent 123,421 bytes  received 604,558 bytes  132,359.82 bytes/sec
+total size is 1,050,298,373  speedup is 1,442.76
+[14:51:08] Synced: 1533 runs, 1533 with metrics
+
+[14:52:08] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.08_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            6,503 100%   15.34kB/s    0:00:00 (xfr#198, ir-chk=1012/12925)
+
+sent 134,849 bytes  received 609,809 bytes  114,562.77 bytes/sec
+total size is 1,051,538,541  speedup is 1,412.11
+[14:52:14] Synced: 1533 runs, 1533 with metrics
+
+[14:53:14] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.08_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           10,689 100%   28.84kB/s    0:00:00 (xfr#198, ir-chk=1012/12925)
+
+sent 145,529 bytes  received 600,166 bytes  114,722.31 bytes/sec
+total size is 1,052,624,301  speedup is 1,411.60
+[14:53:20] Synced: 1533 runs, 1533 with metrics
+
+[14:54:20] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.08_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00           13,483 100%   33.33kB/s    0:00:00 (xfr#198, ir-chk=1012/12925)
+
+sent 154,863 bytes  received 610,603 bytes  139,175.64 bytes/sec
+total size is 1,053,946,884  speedup is 1,376.87
+[14:54:26] Synced: 1533 runs, 1533 with metrics
+
+[14:55:26] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.1_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,620 100%    5.49kB/s    0:00:00 (xfr#205, ir-chk=1012/12994)
+
+sent 156,614 bytes  received 591,313 bytes  135,986.73 bytes/sec
+total size is 1,054,710,362  speedup is 1,410.18
+[14:55:31] Synced: 1533 runs, 1533 with metrics
+
+[14:56:31] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.1_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            4,411 100%   10.23kB/s    0:00:00 (xfr#198, ir-chk=1012/12994)
+
+sent 161,423 bytes  received 614,233 bytes  119,331.69 bytes/sec
+total size is 1,055,960,059  speedup is 1,361.38
+[14:56:37] Synced: 1533 runs, 1533 with metrics
+
+[14:57:37] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.1_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            6,502 100%   17.44kB/s    0:00:00 (xfr#198, ir-chk=1012/12994)
+
+sent 172,119 bytes  received 593,968 bytes  139,288.55 bytes/sec
+total size is 1,056,988,664  speedup is 1,379.72
+[14:57:42] Synced: 1533 runs, 1533 with metrics
+
+[14:58:42] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.2_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,039 100%    4.22kB/s    0:00:00 (xfr#233, ir-chk=1012/13109)
+
+sent 184,142 bytes  received 607,540 bytes  121,797.23 bytes/sec
+total size is 1,057,569,731  speedup is 1,335.85
+[14:58:48] Synced: 1533 runs, 1533 with metrics
+
+[14:59:48] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.2_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            3,710 100%    8.86kB/s    0:00:00 (xfr#187, ir-chk=1012/13109)
+
+sent 147,814 bytes  received 607,787 bytes  137,382.00 bytes/sec
+total size is 1,058,603,065  speedup is 1,401.01
+[14:59:54] Synced: 1533 runs, 1533 with metrics
+
+[15:00:54] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.2_seed44_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,039 100%    5.28kB/s    0:00:00 (xfr#208, ir-chk=1012/13155)
+
+sent 133,751 bytes  received 601,172 bytes  133,622.36 bytes/sec
+total size is 1,059,194,659  speedup is 1,441.23
+[15:00:59] Synced: 1533 runs, 1533 with metrics
+
+[15:01:59] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,620 100%    6.44kB/s    0:00:00 (xfr#221, ir-chk=1012/13225)
+
+sent 142,677 bytes  received 619,123 bytes  117,200.00 bytes/sec
+total size is 1,060,303,871  speedup is 1,391.84
+[15:02:05] Synced: 1534 runs, 1534 with metrics
+
+[15:03:05] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            3,710 100%    9.93kB/s    0:00:00 (xfr#196, ir-chk=1012/13225)
+
+sent 127,228 bytes  received 606,399 bytes  112,865.69 bytes/sec
+total size is 1,061,410,084  speedup is 1,446.80
+[15:03:11] Synced: 1534 runs, 1534 with metrics
+
+[15:04:11] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.5_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            6,501 100%   16.03kB/s    0:00:00 (xfr#198, ir-chk=1012/13225)
+
+sent 136,388 bytes  received 610,458 bytes  114,899.38 bytes/sec
+total size is 1,062,603,323  speedup is 1,422.79
+[15:04:17] Synced: 1534 runs, 1534 with metrics
+
+[15:05:17] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.5_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,620 100%    6.48kB/s    0:00:00 (xfr#212, ir-chk=1012/13249)
+
+sent 126,671 bytes  received 604,132 bytes  132,873.27 bytes/sec
+total size is 1,063,660,229  speedup is 1,455.47
+[15:05:23] Synced: 1535 runs, 1535 with metrics
+
+[15:06:23] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.5_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            3,710 100%   12.37kB/s    0:00:00 (xfr#174, ir-chk=1012/13249)
+
+sent 117,727 bytes  received 600,094 bytes  130,512.91 bytes/sec
+total size is 1,064,688,517  speedup is 1,483.22
+[15:06:29] Synced: 1535 runs, 1535 with metrics
+
+[15:07:29] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.5_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            6,504 100%   21.53kB/s    0:00:00 (xfr#176, ir-chk=1012/13249)
+
+sent 126,555 bytes  received 602,984 bytes  132,643.45 bytes/sec
+total size is 1,065,831,064  speedup is 1,460.97
+[15:07:34] Synced: 1535 runs, 1535 with metrics
+
+[15:08:34] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu0.5_seed43_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            7,900 100%   24.97kB/s    0:00:00 (xfr#176, ir-chk=1012/13249)
+
+sent 136,381 bytes  received 592,654 bytes  132,551.82 bytes/sec
+total size is 1,066,840,969  speedup is 1,463.36
+[15:08:40] Synced: 1535 runs, 1535 with metrics
+
+[15:09:40] Syncing...
+dsedge-iiotset-full_comp_fedprox_alpha0.05_adv0_dp0_pers0_mu1.0_seed42_datasetedge-iiotset-full/server.log
+              0   0%    0.00kB/s    0:00:00            2,620 100%    8.88kB/s    0:00:00 (xfr#203, ir-chk=1012/13297)
+
+sent 104,457 bytes  received 604,770 bytes  128,950.36 bytes/sec
+total size is 1,067,722,893  speedup is 1,505.47
+[15:09:45] Synced: 1537 runs, 1537 with metrics
+
+[15:10:45] Syncing...
+Connection closed by 134.126.141.221 port 22
+Connection closed by UNKNOWN port 65535
+rsync: connection unexpectedly closed (0 bytes received so far) [Receiver]
+rsync error: unexplained error (code 255) at io.c(232) [Receiver=3.4.1]

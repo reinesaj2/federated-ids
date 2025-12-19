@@ -4,7 +4,6 @@ import torch
 
 from models.per_dataset_encoder import (
     DEFAULT_ENCODER_LAYOUTS,
-    PerDatasetEncoderConfig,
     PerDatasetEncoderNet,
     get_default_encoder_config,
 )

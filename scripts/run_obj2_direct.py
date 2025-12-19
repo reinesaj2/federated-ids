@@ -4,8 +4,6 @@ Direct experiment runner for Objective 2 robust aggregation.
 Bypasses comparative_analysis.py and runs server/client directly.
 """
 import json
-import os
-import signal
 import subprocess
 import sys
 import time
@@ -168,10 +166,10 @@ def run_single_experiment(agg: str, alpha: float, seed: int) -> bool:
     # Check for metrics.csv
     metrics_file = run_dir / "metrics.csv"
     if metrics_file.exists():
-        log_message(f"  SUCCESS: metrics.csv exists")
+        log_message("  SUCCESS: metrics.csv exists")
         return True
     else:
-        log_message(f"  FAILED: no metrics.csv generated")
+        log_message("  FAILED: no metrics.csv generated")
         return False
 
 

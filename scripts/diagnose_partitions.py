@@ -17,7 +17,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
 from data_preprocessing import (
     MIN_SAMPLES_PER_CLASS,
@@ -87,7 +86,7 @@ def diagnose_partition(
 ):
     """Diagnose partition quality for given configuration."""
     print(f"{'=' * 80}")
-    print(f"PARTITION DIAGNOSTIC REPORT")
+    print("PARTITION DIAGNOSTIC REPORT")
     print(f"{'=' * 80}\n")
 
     # Load dataset
@@ -112,7 +111,7 @@ def diagnose_partition(
     print()
 
     # Configuration
-    print(f"CONFIGURATION:")
+    print("CONFIGURATION:")
     print(f"  Alpha: {alpha}")
     print(f"  Num clients: {num_clients}")
     print(f"  Seed: {seed}")
@@ -128,15 +127,15 @@ def diagnose_partition(
             seed=seed,
             min_samples_per_class=min_samples_per_class,
         )
-        print(f"SUCCESS: Partitioning completed\n")
+        print("SUCCESS: Partitioning completed\n")
     except ValueError as e:
-        print(f"FAILURE: Partitioning failed")
+        print("FAILURE: Partitioning failed")
         print(f"Error: {e}\n")
         return
 
     # Per-client analysis
     print(f"{'=' * 80}")
-    print(f"PER-CLIENT DISTRIBUTION")
+    print("PER-CLIENT DISTRIBUTION")
     print(f"{'=' * 80}\n")
 
     violations = []
@@ -162,7 +161,7 @@ def diagnose_partition(
 
     # Heterogeneity metrics
     print(f"{'=' * 80}")
-    print(f"HETEROGENEITY METRICS")
+    print("HETEROGENEITY METRICS")
     print(f"{'=' * 80}\n")
 
     metrics = calculate_heterogeneity_metrics(labels, shards)
@@ -173,18 +172,18 @@ def diagnose_partition(
     print(f"Max KL divergence: {metrics['max_kl_divergence']:.3f}")
     print()
 
-    print(f"Interpretation:")
+    print("Interpretation:")
     if metrics["avg_coefficient_variation"] > 0.5:
-        print(f"  - HIGH heterogeneity (CV > 0.5)")
+        print("  - HIGH heterogeneity (CV > 0.5)")
     elif metrics["avg_coefficient_variation"] > 0.3:
-        print(f"  - MODERATE heterogeneity (0.3 < CV < 0.5)")
+        print("  - MODERATE heterogeneity (0.3 < CV < 0.5)")
     else:
-        print(f"  - LOW heterogeneity (CV < 0.3, approaching IID)")
+        print("  - LOW heterogeneity (CV < 0.3, approaching IID)")
     print()
 
     # Summary
     print(f"{'=' * 80}")
-    print(f"SUMMARY")
+    print("SUMMARY")
     print(f"{'=' * 80}\n")
 
     if violations:
@@ -192,7 +191,7 @@ def diagnose_partition(
         for client_id, class_idx, count in violations:
             print(f"  Client {client_id}, class {class_idx}: {count} < {min_samples_per_class}")
     else:
-        print(f"STATUS: PASSED - All constraints satisfied")
+        print("STATUS: PASSED - All constraints satisfied")
 
     print()
 
