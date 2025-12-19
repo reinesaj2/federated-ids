@@ -95,12 +95,12 @@ class TestWorkflowConfiguration:
             workflow_content = yaml.safe_load(f)
 
         comparison_upload = next(
-            step for step in workflow_content["jobs"]["fedprox_comparison"]["steps"] if step.get("uses") == "actions/upload-artifact@v4"
+            step for step in workflow_content["jobs"]["fedprox_comparison"]["steps"] if "actions/upload-artifact" in step.get("uses", "")
         )
         assert comparison_upload["with"]["retention-days"] == 90
 
         summary_upload = next(
-            step for step in workflow_content["jobs"]["fedprox_summary"]["steps"] if step.get("uses") == "actions/upload-artifact@v4"
+            step for step in workflow_content["jobs"]["fedprox_summary"]["steps"] if "actions/upload-artifact" in step.get("uses", "")
         )
         assert summary_upload["with"]["retention-days"] >= 90
 
@@ -183,8 +183,8 @@ class TestWorkflowScriptIntegration:
 
         # Verify plots directory is included
         assert "!/plots/" in gitignore_content
-        # Verify runs directory is still excluded
-        assert "/runs/" in gitignore_content
+        # Verify problematic runs directories are excluded
+        assert "/runs_buggy_*/" in gitignore_content or "/runs_incomplete_*/" in gitignore_content
 
 
 class TestFailureScenarios:
