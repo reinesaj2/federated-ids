@@ -8,16 +8,17 @@
 ## Overview
 
 This runbook targets NeurIPS-scale robustness and statistical power. It emphasizes:
+
 - Cross-source heterogeneity using the hybrid dataset (CIC + UNSW + Edge-IIoTset).
 - Large alpha and mu grids with many seeds for tight confidence intervals.
 - Reproducible staging, monitoring, and analysis.
 
-| Phase | Jobs | Seeds | Purpose |
-|-------|------|-------|---------|
-| Audit | 1 | n/a | Dataset integrity and metadata checks |
-| Smoke | 1 | 1 | Verify pipeline end-to-end |
-| NeurIPS Sweep | 1400 | 20 | Full alpha x mu grid with robust CIs |
-| Robustness Extension (Optional) | 320+ | 20 | Attack resilience on hybrid data |
+| Phase                           | Jobs | Seeds | Purpose                               |
+| ------------------------------- | ---- | ----- | ------------------------------------- |
+| Audit                           | 1    | n/a   | Dataset integrity and metadata checks |
+| Smoke                           | 1    | 1     | Verify pipeline end-to-end            |
+| NeurIPS Sweep                   | 1400 | 20    | Full alpha x mu grid with robust CIs  |
+| Robustness Extension (Optional) | 320+ | 20    | Attack resilience on hybrid data      |
 
 ---
 
@@ -36,6 +37,7 @@ Expected: `passes_minimum_checks=true` and audit JSON at `data/hybrid/hybrid_ids
 ### 2. Confirm hybrid dataset support is enabled
 
 Hybrid runs assume the client can load the hybrid dataset and partition it in a source-aware way. If your branch does not yet support:
+
 - `--dataset hybrid` in `client.py`, and
 - source-aware partitioning using the `source_dataset` column,
 

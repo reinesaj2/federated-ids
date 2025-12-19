@@ -3,17 +3,20 @@
 ## Issue: Client Count Inconsistency
 
 ### Background
+
 The Bulyan algorithm requires n ≥ 4f + 3 clients to guarantee Byzantine resilience. This constraint affects experimental design across comparison dimensions.
 
 ### Current State
 
 **Attack Resilience Experiments (n=11)**:
+
 - FedAvg: 11 clients
 - Krum: 11 clients
 - Bulyan: 11 clients (MEETS n >= 4f + 3 for f=2)
 - Median: 11 clients
 
 **Other Comparison Dimensions (n=6)**:
+
 - Aggregation comparison: 6 clients
 - Heterogeneity comparison: 6 clients
 - Privacy comparison: 6 clients
@@ -24,6 +27,7 @@ The Bulyan algorithm requires n ≥ 4f + 3 clients to guarantee Byzantine resili
 **Problem**: Cannot directly compare attack resilience results with other dimensions due to different client counts.
 
 **Why This Matters**:
+
 1. Training dynamics differ with client count (more clients = more diverse data distributions)
 2. Aggregation variance changes with n
 3. Statistical significance harder to establish across different n
@@ -31,6 +35,7 @@ The Bulyan algorithm requires n ≥ 4f + 3 clients to guarantee Byzantine resili
 ### Solution Options
 
 #### Option 1: Accept Inconsistency (CURRENT)
+
 - **Pros**:
   - Experiments already running
   - Each dimension optimized for its specific research question
@@ -40,6 +45,7 @@ The Bulyan algorithm requires n ≥ 4f + 3 clients to guarantee Byzantine resili
   - Thesis requires careful explanation
 
 #### Option 2: Increase All Dimensions to n=11
+
 - **Pros**:
   - Full comparability across dimensions
   - Consistent experimental setup
@@ -48,6 +54,7 @@ The Bulyan algorithm requires n ≥ 4f + 3 clients to guarantee Byzantine resili
   - Not necessary for non-attack dimensions
 
 #### Option 3: Supplementary Experiments (RECOMMENDED)
+
 - **Approach**:
   - Keep attack dimension at n=11 (required for Bulyan)
   - Add supplementary n=6 attack experiments for FedAvg, Krum, Median
@@ -67,6 +74,7 @@ The Bulyan algorithm requires n ≥ 4f + 3 clients to guarantee Byzantine resili
 **Proceed with Option 3**: Run supplementary n=6 attack experiments after n=11 experiments complete.
 
 **Rationale**:
+
 1. Demonstrates Bulyan's stricter requirements (thesis contribution)
 2. Allows comparison with other dimensions at n=6
 3. Shows how all methods perform under consistent conditions
@@ -84,6 +92,7 @@ The Bulyan algorithm requires n ≥ 4f + 3 clients to guarantee Byzantine resili
 ### Statistical Considerations
 
 When comparing across client counts:
+
 - Report confidence intervals for all metrics
 - Use appropriate statistical tests (e.g., bootstrap, permutation tests)
 - Acknowledge client count as confounding variable
@@ -92,6 +101,7 @@ When comparing across client counts:
 ### Documentation for Thesis
 
 **Key Points to Emphasize**:
+
 1. Bulyan's n ≥ 4f + 3 requirement is not a limitation but a mathematical necessity
 2. The constraint ensures provable Byzantine resilience
 3. In practice, federated systems often have n >> 11 clients

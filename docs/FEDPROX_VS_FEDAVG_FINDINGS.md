@@ -19,12 +19,12 @@ FedProx provides **statistically significant improvements over FedAvg under high
 The Edge-IIoTset-Full dataset contains **15 attack classes** with **severe class imbalance** (2,680:1 ratio between largest and smallest classes). Five minority classes consistently achieve F1=0.0 due to insufficient samples:
 
 | Excluded Class | Samples | % of Data |
-|----------------|---------|-----------|
-| FINGERPRINTING | 6 | 0.02% |
-| MITM | 9 | 0.04% |
-| DDOS_TCP | 22 | 0.09% |
-| XSS | 110 | 0.45% |
-| RANSOMWARE | 184 | 0.76% |
+| -------------- | ------- | --------- |
+| FINGERPRINTING | 6       | 0.02%     |
+| MITM           | 9       | 0.04%     |
+| DDOS_TCP       | 22      | 0.09%     |
+| XSS            | 110     | 0.45%     |
+| RANSOMWARE     | 184     | 0.76%     |
 
 **Rationale for exclusion:** These classes drag macro F1 down by ~15-20 percentage points regardless of aggregation method. The Top-10 Class Macro F1 metric provides a more representative measure of model capability on classes with sufficient training data.
 
@@ -42,14 +42,14 @@ The Edge-IIoTset-Full dataset contains **15 attack classes** with **severe class
 
 ### 2.1 FedProx vs FedAvg by Heterogeneity Level
 
-| Alpha | FedAvg F1 | FedProx F1 (best mu) | Optimal mu | Delta | p-value | Cohen's d | Winner |
-|-------|-----------|----------------------|------------|-------|---------|-----------|--------|
-| 0.02 | 0.388 | 0.428 | 0.05 | +4.1% | 0.450 | 0.46 (small) | FedProx |
-| 0.05 | 0.501 | 0.581 | 0.10 | +8.0% | **0.045** | **1.35 (large)** | **FedProx** |
-| 0.10 | 0.582 | 0.640 | 0.02 | +5.9% | 0.122 | 0.98 (large) | FedProx |
-| 0.20 | 0.711 | 0.733 | 0.002 | +2.2% | 0.324 | 0.62 (medium) | FedProx |
-| 0.50 | 0.769 | 0.767 | 0.005 | -0.2% | 0.876 | -0.10 | FedAvg |
-| 1.00 | 0.800 | 0.794 | 0.500 | -0.6% | 0.690 | -0.29 | FedAvg |
+| Alpha | FedAvg F1 | FedProx F1 (best mu) | Optimal mu | Delta | p-value   | Cohen's d        | Winner      |
+| ----- | --------- | -------------------- | ---------- | ----- | --------- | ---------------- | ----------- |
+| 0.02  | 0.388     | 0.428                | 0.05       | +4.1% | 0.450     | 0.46 (small)     | FedProx     |
+| 0.05  | 0.501     | 0.581                | 0.10       | +8.0% | **0.045** | **1.35 (large)** | **FedProx** |
+| 0.10  | 0.582     | 0.640                | 0.02       | +5.9% | 0.122     | 0.98 (large)     | FedProx     |
+| 0.20  | 0.711     | 0.733                | 0.002      | +2.2% | 0.324     | 0.62 (medium)    | FedProx     |
+| 0.50  | 0.769     | 0.767                | 0.005      | -0.2% | 0.876     | -0.10            | FedAvg      |
+| 1.00  | 0.800     | 0.794                | 0.500      | -0.6% | 0.690     | -0.29            | FedAvg      |
 
 ### 2.2 Key Observations
 
@@ -71,14 +71,14 @@ The Edge-IIoTset-Full dataset contains **15 attack classes** with **severe class
 
 ### 3.1 Best Mu by Heterogeneity Level
 
-| Heterogeneity | Alpha | Optimal Mu | Interpretation |
-|---------------|-------|------------|----------------|
-| Extreme | 0.02 | 0.05 | Moderate regularization |
-| Very High | 0.05 | 0.10 | Strong regularization |
-| High | 0.10 | 0.02 | Light regularization |
-| Moderate | 0.20 | 0.002 | Minimal regularization |
-| Low | 0.50 | 0.005 | Negligible effect |
-| Near-IID | 1.00 | 0.500 | No benefit |
+| Heterogeneity | Alpha | Optimal Mu | Interpretation          |
+| ------------- | ----- | ---------- | ----------------------- |
+| Extreme       | 0.02  | 0.05       | Moderate regularization |
+| Very High     | 0.05  | 0.10       | Strong regularization   |
+| High          | 0.10  | 0.02       | Light regularization    |
+| Moderate      | 0.20  | 0.002      | Minimal regularization  |
+| Low           | 0.50  | 0.005      | Negligible effect       |
+| Near-IID      | 1.00  | 0.500      | No benefit              |
 
 ### 3.2 Mu Sensitivity Analysis
 
@@ -96,18 +96,18 @@ The FedProx proximal term strength (mu) has **non-monotonic effects**:
 
 Only **one comparison achieves p < 0.05**:
 
-| Alpha | Delta F1 | p-value | Cohen's d | Significance |
-|-------|----------|---------|-----------|--------------|
-| 0.05 | +8.0% | 0.045 | 1.35 | Significant, large effect |
+| Alpha | Delta F1 | p-value | Cohen's d | Significance              |
+| ----- | -------- | ------- | --------- | ------------------------- |
+| 0.05  | +8.0%    | 0.045   | 1.35      | Significant, large effect |
 
 ### 4.2 Effect Size Interpretation
 
 | Cohen's d | Interpretation | Alpha Values |
-|-----------|----------------|--------------|
-| > 0.8 | Large | 0.05, 0.10 |
-| 0.5 - 0.8 | Medium | 0.02, 0.20 |
-| 0.2 - 0.5 | Small | - |
-| < 0.2 | Negligible | 0.50, 1.00 |
+| --------- | -------------- | ------------ |
+| > 0.8     | Large          | 0.05, 0.10   |
+| 0.5 - 0.8 | Medium         | 0.02, 0.20   |
+| 0.2 - 0.5 | Small          | -            |
+| < 0.2     | Negligible     | 0.50, 1.00   |
 
 ---
 
@@ -116,11 +116,13 @@ Only **one comparison achieves p < 0.05**:
 ### 5.1 When to Use FedProx
 
 **Use FedProx when:**
+
 - Data heterogeneity is high (Dirichlet alpha <= 0.2)
 - Clients have significantly different label distributions
 - Client drift is causing convergence issues
 
 **Recommended mu values:**
+
 - Alpha 0.02 - 0.05: mu = 0.05 - 0.1
 - Alpha 0.1 - 0.2: mu = 0.01 - 0.02
 - Alpha > 0.5: Use FedAvg instead
@@ -128,6 +130,7 @@ Only **one comparison achieves p < 0.05**:
 ### 5.2 When to Use FedAvg
 
 **Use FedAvg when:**
+
 - Data is approximately IID (alpha >= 0.5)
 - Computational simplicity is preferred
 - No significant client drift observed
@@ -150,18 +153,18 @@ Only **one comparison achieves p < 0.05**:
 
 ### 7.1 Plots
 
-| File | Description |
-|------|-------------|
+| File                                                       | Description               |
+| ---------------------------------------------------------- | ------------------------- |
 | `plots/fedprox_vs_fedavg/fedprox_vs_fedavg_comparison.png` | 6-panel comparison figure |
-| `plots/fedprox_vs_fedavg/fedprox_vs_fedavg_winloss.png` | Win/loss summary |
-| `plots/fedprox_vs_fedavg/fedprox_vs_fedavg_table.csv` | Raw comparison data |
+| `plots/fedprox_vs_fedavg/fedprox_vs_fedavg_winloss.png`    | Win/loss summary          |
+| `plots/fedprox_vs_fedavg/fedprox_vs_fedavg_table.csv`      | Raw comparison data       |
 
 ### 7.2 Scripts
 
-| File | Description |
-|------|-------------|
-| `scripts/plot_fedprox_vs_fedavg.py` | Generates all comparison plots |
-| `scripts/plot_full_iiot_thesis.py` | General thesis plots for full IIoT |
+| File                                | Description                        |
+| ----------------------------------- | ---------------------------------- |
+| `scripts/plot_fedprox_vs_fedavg.py` | Generates all comparison plots     |
+| `scripts/plot_full_iiot_thesis.py`  | General thesis plots for full IIoT |
 
 ---
 

@@ -59,6 +59,7 @@ DOI: 10.36227/techrxiv.18857336.v1
 The integration uses a three-tier approach to balance testing speed with experimental comprehensiveness:
 
 #### Tier 1: Quick CI Validation
+
 - **Sample Size**: 50,000 (2.3% of dataset)
 - **Clients**: 3
 - **Rounds**: 5
@@ -67,6 +68,7 @@ The integration uses a three-tier approach to balance testing speed with experim
 - **Schedule**: Every pull request
 
 #### Tier 2: Comprehensive Nightly
+
 - **Sample Size**: 500,000 (22.5% of dataset)
 - **Clients**: 6
 - **Rounds**: 20
@@ -75,6 +77,7 @@ The integration uses a three-tier approach to balance testing speed with experim
 - **Schedule**: Nightly
 
 #### Tier 3: Full-Scale Thesis
+
 - **Sample Size**: 2,000,000 (90.1% of dataset)
 - **Clients**: 10
 - **Rounds**: 50
@@ -173,6 +176,7 @@ Edge-IIoTset experiments run automatically via GitHub Actions with three tiers:
 **Trigger:** Every pull request to `main`
 
 **Configuration:**
+
 - Dataset: edge-iiotset-quick (50k samples)
 - Clients: 3
 - Rounds: 5
@@ -190,6 +194,7 @@ Edge-IIoTset experiments run automatically via GitHub Actions with three tiers:
 **Trigger:** Daily at 2 AM UTC + pushes to `main`
 
 **Configuration:**
+
 - Dataset: edge-iiotset-nightly (500k samples)
 - Clients: 6
 - Rounds: 20
@@ -198,6 +203,7 @@ Edge-IIoTset experiments run automatically via GitHub Actions with three tiers:
 - Parallelization: max-parallel: 2
 
 **Process:**
+
 1. Run experiments for all dimensions in parallel
 2. Generate run-level plots for each experiment
 3. Generate thesis-quality plots per dimension
@@ -213,6 +219,7 @@ Edge-IIoTset experiments run automatically via GitHub Actions with three tiers:
 **Trigger:** Weekly on Sundays at 1 AM UTC
 
 **Configuration:**
+
 - Dataset: edge-iiotset-full (2M samples = 90% of full dataset)
 - Clients: 10
 - Rounds: 50
@@ -224,6 +231,7 @@ Edge-IIoTset experiments run automatically via GitHub Actions with three tiers:
 - Parallelization: max-parallel: 3 (one group per parallel job)
 
 **Process:**
+
 1. Run 3 dimension groups in parallel (8 hours each)
 2. Each group runs its dimensions sequentially
 3. Generate comprehensive thesis plots for all experiments
@@ -235,6 +243,7 @@ Edge-IIoTset experiments run automatically via GitHub Actions with three tiers:
 ### Automatic Plot Commitment
 
 All nightly and weekly workflows automatically:
+
 1. Generate thesis-quality plots (PNG + PDF)
 2. Consolidate results across all dimensions
 3. Commit plots to `plots/thesis/` with date-based organization
@@ -266,10 +275,12 @@ gh workflow run edge-iiotset-full-scale.yml \
 Edge-IIoTset has adjusted validation thresholds due to the increased difficulty of 15-class classification:
 
 ### Binary Classification
+
 - Minimum F1 Score: 0.75
 - Minimum Accuracy: 0.80
 
 ### Multi-class Classification
+
 - Minimum F1 Score: 0.60
 - Minimum Accuracy: 0.65
 
@@ -314,14 +325,17 @@ These thresholds are configured in `scripts/ci_checks.py`.
 If you see "Source dataset not found" errors:
 
 1. Verify Edge-IIoTset is extracted:
+
    ```bash
    ls datasets/edge-iiotset/Edge-IIoTset\ dataset/Selected\ dataset\ for\ ML\ and\ DL/
    ```
 
 2. Check file size:
+
    ```bash
    ls -lh datasets/edge-iiotset/Edge-IIoTset\ dataset/Selected\ dataset\ for\ ML\ and\ DL/DNN-EdgeIIoT-dataset.csv
    ```
+
    Expected: ~1.1GB
 
 3. Re-extract if needed:
@@ -335,6 +349,7 @@ If you see "Source dataset not found" errors:
 For systems with limited RAM:
 
 1. Use smaller tiers:
+
    ```bash
    python scripts/comparative_analysis.py --dataset edge-iiotset-quick
    ```
@@ -351,6 +366,7 @@ For systems with limited RAM:
 If models don't converge:
 
 1. Check class distribution in sample:
+
    ```bash
    python scripts/analyze_data_splits.py --dataset edge-iiotset-quick
    ```

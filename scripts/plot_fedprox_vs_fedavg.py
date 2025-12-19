@@ -113,10 +113,7 @@ def load_all_data() -> pd.DataFrame:
     """Load all FedAvg and FedProx experiments from full IIoT."""
     records = []
 
-    full_iiot_dirs = [
-        d for d in CLUSTER_RUNS_DIR.iterdir()
-        if d.is_dir() and "edge-iiotset-full" in d.name
-    ]
+    full_iiot_dirs = [d for d in CLUSTER_RUNS_DIR.iterdir() if d.is_dir() and "edge-iiotset-full" in d.name]
 
     print(f"Found {len(full_iiot_dirs)} edge-iiotset-full directories")
 
@@ -132,11 +129,13 @@ def load_all_data() -> pd.DataFrame:
         if metrics is None:
             continue
 
-        records.append({
-            **config,
-            **metrics,
-            "run_dir": run_dir.name,
-        })
+        records.append(
+            {
+                **config,
+                **metrics,
+                "run_dir": run_dir.name,
+            }
+        )
 
     return pd.DataFrame(records)
 
@@ -162,8 +161,7 @@ def plot_fedprox_vs_fedavg_comparison(df: pd.DataFrame, output_dir: Path):
 
     fig = plt.figure(figsize=(16, 14))
     fig.suptitle(
-        "FedProx vs FedAvg: When Does Proximal Regularization Help?\n"
-        "(Edge-IIoTset-Full, Top-10 Classes Macro F1)",
+        "FedProx vs FedAvg: When Does Proximal Regularization Help?\n" "(Edge-IIoTset-Full, Top-10 Classes Macro F1)",
         fontsize=16,
         fontweight="bold",
         y=0.98,
@@ -202,23 +200,17 @@ def plot_fedprox_vs_fedavg_comparison(df: pd.DataFrame, output_dir: Path):
             best_mu = best_mu_perf.idxmax()
             fp_best = fp[np.isclose(fp["mu"], best_mu, rtol=0.1)]
             mean, ci_lo, ci_hi = compute_ci(fp_best["macro_f1_top10"])
-            fedprox_best_by_alpha.append({
-                "alpha": alpha, "mean": mean, "ci_lo": ci_lo, "ci_hi": ci_hi, "best_mu": best_mu
-            })
+            fedprox_best_by_alpha.append({"alpha": alpha, "mean": mean, "ci_lo": ci_lo, "ci_hi": ci_hi, "best_mu": best_mu})
 
     if fedavg_by_alpha:
         fa_df = pd.DataFrame(fedavg_by_alpha)
-        ax1.plot(fa_df["alpha"], fa_df["mean"], "o-", color=colors["FedAvg"],
-                 label="FedAvg", linewidth=2, markersize=8)
-        ax1.fill_between(fa_df["alpha"], fa_df["ci_lo"], fa_df["ci_hi"],
-                         color=colors["FedAvg"], alpha=0.2)
+        ax1.plot(fa_df["alpha"], fa_df["mean"], "o-", color=colors["FedAvg"], label="FedAvg", linewidth=2, markersize=8)
+        ax1.fill_between(fa_df["alpha"], fa_df["ci_lo"], fa_df["ci_hi"], color=colors["FedAvg"], alpha=0.2)
 
     if fedprox_best_by_alpha:
         fp_df = pd.DataFrame(fedprox_best_by_alpha)
-        ax1.plot(fp_df["alpha"], fp_df["mean"], "s-", color=colors["FedProx"],
-                 label="FedProx (best mu)", linewidth=2, markersize=8)
-        ax1.fill_between(fp_df["alpha"], fp_df["ci_lo"], fp_df["ci_hi"],
-                         color=colors["FedProx"], alpha=0.2)
+        ax1.plot(fp_df["alpha"], fp_df["mean"], "s-", color=colors["FedProx"], label="FedProx (best mu)", linewidth=2, markersize=8)
+        ax1.fill_between(fp_df["alpha"], fp_df["ci_lo"], fp_df["ci_hi"], color=colors["FedProx"], alpha=0.2)
 
     ax1.set_xscale("log")
     ax1.set_xlabel("Dirichlet Alpha (lower = more heterogeneous)")
@@ -237,13 +229,15 @@ def plot_fedprox_vs_fedavg_comparison(df: pd.DataFrame, output_dir: Path):
         fp_row = next((x for x in fedprox_best_by_alpha if np.isclose(x["alpha"], alpha, rtol=0.1)), None)
         if fp_row:
             delta = fp_row["mean"] - fa_row["mean"]
-            delta_data.append({
-                "alpha": alpha,
-                "delta": delta,
-                "best_mu": fp_row["best_mu"],
-                "fedavg": fa_row["mean"],
-                "fedprox": fp_row["mean"],
-            })
+            delta_data.append(
+                {
+                    "alpha": alpha,
+                    "delta": delta,
+                    "best_mu": fp_row["best_mu"],
+                    "fedavg": fa_row["mean"],
+                    "fedprox": fp_row["mean"],
+                }
+            )
 
     if delta_data:
         delta_df = pd.DataFrame(delta_data)
@@ -273,10 +267,7 @@ def plot_fedprox_vs_fedavg_comparison(df: pd.DataFrame, output_dir: Path):
 
     for i, mu in enumerate(mu_values):
         for j, alpha in enumerate(alpha_order):
-            subset = fedprox_df[
-                (np.isclose(fedprox_df["mu"], mu, rtol=0.1)) &
-                (np.isclose(fedprox_df["alpha"], alpha, rtol=0.1))
-            ]
+            subset = fedprox_df[(np.isclose(fedprox_df["mu"], mu, rtol=0.1)) & (np.isclose(fedprox_df["alpha"], alpha, rtol=0.1))]
             if not subset.empty:
                 heatmap_data[i, j] = subset["macro_f1_top10"].mean()
 
@@ -304,15 +295,11 @@ def plot_fedprox_vs_fedavg_comparison(df: pd.DataFrame, output_dir: Path):
 
     for i, mu in enumerate(mu_values):
         for j, alpha in enumerate(alpha_order):
-            fp_subset = fedprox_df[
-                (np.isclose(fedprox_df["mu"], mu, rtol=0.1)) &
-                (np.isclose(fedprox_df["alpha"], alpha, rtol=0.1))
-            ]
+            fp_subset = fedprox_df[(np.isclose(fedprox_df["mu"], mu, rtol=0.1)) & (np.isclose(fedprox_df["alpha"], alpha, rtol=0.1))]
             fa_subset = fedavg_df[np.isclose(fedavg_df["alpha"], alpha, rtol=0.1)]
 
             if not fp_subset.empty and not fa_subset.empty:
-                delta_heatmap[i, j] = (fp_subset["macro_f1_top10"].mean() -
-                                       fa_subset["macro_f1_top10"].mean()) * 100
+                delta_heatmap[i, j] = (fp_subset["macro_f1_top10"].mean() - fa_subset["macro_f1_top10"].mean()) * 100
 
     if not np.all(np.isnan(delta_heatmap)):
         max_abs = np.nanmax(np.abs(delta_heatmap))
@@ -349,43 +336,52 @@ def plot_fedprox_vs_fedavg_comparison(df: pd.DataFrame, output_dir: Path):
             fp_mu = fp_at_alpha[np.isclose(fp_at_alpha["mu"], mu, rtol=0.1)]
             if not fp_mu.empty:
                 mean, ci_lo, ci_hi = compute_ci(fp_mu["macro_f1_top10"])
-                comparison_data.append({
-                    "method": f"FedProx\nmu={mu}",
-                    "mean": mean,
-                    "ci_lo": ci_lo,
-                    "ci_hi": ci_hi,
-                })
+                comparison_data.append(
+                    {
+                        "method": f"FedProx\nmu={mu}",
+                        "mean": mean,
+                        "ci_lo": ci_lo,
+                        "ci_hi": ci_hi,
+                    }
+                )
 
         comp_df = pd.DataFrame(comparison_data)
         x = np.arange(len(comp_df))
 
         bar_colors = [colors["FedAvg"]] + [
-            colors["better"] if comp_df.iloc[i]["mean"] > fa_mean else colors["worse"]
-            for i in range(1, len(comp_df))
+            colors["better"] if comp_df.iloc[i]["mean"] > fa_mean else colors["worse"] for i in range(1, len(comp_df))
         ]
 
         ax5.bar(x, comp_df["mean"], color=bar_colors, edgecolor="black", alpha=0.8)
-        ax5.errorbar(x, comp_df["mean"],
-                     yerr=[comp_df["mean"] - comp_df["ci_lo"], comp_df["ci_hi"] - comp_df["mean"]],
-                     fmt="none", color="black", capsize=4)
+        ax5.errorbar(
+            x,
+            comp_df["mean"],
+            yerr=[comp_df["mean"] - comp_df["ci_lo"], comp_df["ci_hi"] - comp_df["mean"]],
+            fmt="none",
+            color="black",
+            capsize=4,
+        )
 
-        ax5.axhline(fa_mean, color=colors["FedAvg"], linestyle="--", linewidth=2,
-                    label=f"FedAvg baseline ({fa_mean:.3f})")
+        ax5.axhline(fa_mean, color=colors["FedAvg"], linestyle="--", linewidth=2, label=f"FedAvg baseline ({fa_mean:.3f})")
 
         ax5.set_xticks(x)
         ax5.set_xticklabels(comp_df["method"], fontsize=9)
         ax5.set_ylabel("Top-10 Class Macro F1")
-        ax5.set_title(f"E) Detailed Comparison at alpha={target_alpha} (High Non-IID)",
-                      fontweight="bold")
+        ax5.set_title(f"E) Detailed Comparison at alpha={target_alpha} (High Non-IID)", fontweight="bold")
         ax5.legend(loc="upper right")
         ax5.grid(True, alpha=0.3, axis="y")
 
         wins = sum(1 for i in range(1, len(comp_df)) if comp_df.iloc[i]["mean"] > fa_mean)
         losses = len(comp_df) - 1 - wins
-        ax5.annotate(f"FedProx wins: {wins}/{len(comp_df)-1}\nFedProx loses: {losses}/{len(comp_df)-1}",
-                     xy=(0.02, 0.98), xycoords="axes fraction",
-                     fontsize=10, ha="left", va="top",
-                     bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8))
+        ax5.annotate(
+            f"FedProx wins: {wins}/{len(comp_df)-1}\nFedProx loses: {losses}/{len(comp_df)-1}",
+            xy=(0.02, 0.98),
+            xycoords="axes fraction",
+            fontsize=10,
+            ha="left",
+            va="top",
+            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
+        )
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     output_path = output_dir / "fedprox_vs_fedavg_comparison.png"
@@ -422,21 +418,20 @@ def plot_win_loss_summary(df: pd.DataFrame, output_dir: Path):
         fa_mean = fa["macro_f1_top10"].mean() if not fa.empty else np.nan
 
         for mu in mu_values:
-            fp = fedprox_df[
-                (np.isclose(fedprox_df["alpha"], alpha, rtol=0.1)) &
-                (np.isclose(fedprox_df["mu"], mu, rtol=0.1))
-            ]
+            fp = fedprox_df[(np.isclose(fedprox_df["alpha"], alpha, rtol=0.1)) & (np.isclose(fedprox_df["mu"], mu, rtol=0.1))]
             if not fp.empty and not np.isnan(fa_mean):
                 fp_mean = fp["macro_f1_top10"].mean()
                 delta = fp_mean - fa_mean
-                results.append({
-                    "alpha": alpha,
-                    "mu": mu,
-                    "fedavg": fa_mean,
-                    "fedprox": fp_mean,
-                    "delta": delta,
-                    "winner": "FedProx" if delta > 0.001 else ("FedAvg" if delta < -0.001 else "Tie"),
-                })
+                results.append(
+                    {
+                        "alpha": alpha,
+                        "mu": mu,
+                        "fedavg": fa_mean,
+                        "fedprox": fp_mean,
+                        "delta": delta,
+                        "winner": "FedProx" if delta > 0.001 else ("FedAvg" if delta < -0.001 else "Tie"),
+                    }
+                )
 
     results_df = pd.DataFrame(results)
 
@@ -521,7 +516,7 @@ def generate_comparison_table(df: pd.DataFrame, output_dir: Path):
             fp_vals = fp_best["macro_f1_top10"].values
             if len(fa_vals) > 1 and len(fp_vals) > 1:
                 t_stat, p_val = stats.ttest_ind(fp_vals, fa_vals)
-                pooled_std = np.sqrt((fa_vals.std()**2 + fp_vals.std()**2) / 2)
+                pooled_std = np.sqrt((fa_vals.std() ** 2 + fp_vals.std() ** 2) / 2)
                 cohens_d = delta / pooled_std if pooled_std > 0 else 0
             else:
                 p_val = np.nan
@@ -533,18 +528,20 @@ def generate_comparison_table(df: pd.DataFrame, output_dir: Path):
             p_val = np.nan
             cohens_d = np.nan
 
-        rows.append({
-            "alpha": alpha,
-            "fedavg_mean": fa_mean,
-            "fedavg_ci": f"({fa_lo:.3f}, {fa_hi:.3f})",
-            "fedprox_mean": fp_mean,
-            "fedprox_ci": f"({fp_lo:.3f}, {fp_hi:.3f})" if not np.isnan(fp_mean) else "N/A",
-            "best_mu": best_mu,
-            "delta": delta,
-            "p_value": p_val,
-            "cohens_d": cohens_d,
-            "winner": "FedProx" if delta > 0.001 else ("FedAvg" if delta < -0.001 else "Tie"),
-        })
+        rows.append(
+            {
+                "alpha": alpha,
+                "fedavg_mean": fa_mean,
+                "fedavg_ci": f"({fa_lo:.3f}, {fa_hi:.3f})",
+                "fedprox_mean": fp_mean,
+                "fedprox_ci": f"({fp_lo:.3f}, {fp_hi:.3f})" if not np.isnan(fp_mean) else "N/A",
+                "best_mu": best_mu,
+                "delta": delta,
+                "p_value": p_val,
+                "cohens_d": cohens_d,
+                "winner": "FedProx" if delta > 0.001 else ("FedAvg" if delta < -0.001 else "Tie"),
+            }
+        )
 
     table_df = pd.DataFrame(rows)
 
@@ -558,10 +555,12 @@ def generate_comparison_table(df: pd.DataFrame, output_dir: Path):
     print(f"{'Alpha':<8} {'FedAvg':<20} {'FedProx (best mu)':<20} {'mu*':<6} {'Delta':<8} {'p-val':<8} {'d':<6} {'Winner'}")
     print("-" * 90)
     for _, row in table_df.iterrows():
-        print(f"{row['alpha']:<8.2f} {row['fedavg_mean']:.3f} {row['fedavg_ci']:<11} "
-              f"{row['fedprox_mean']:.3f} {row['fedprox_ci']:<11} "
-              f"{row['best_mu']:<6.3f} {row['delta']:+.3f}  {row['p_value']:<8.3f} "
-              f"{row['cohens_d']:<6.2f} {row['winner']}")
+        print(
+            f"{row['alpha']:<8.2f} {row['fedavg_mean']:.3f} {row['fedavg_ci']:<11} "
+            f"{row['fedprox_mean']:.3f} {row['fedprox_ci']:<11} "
+            f"{row['best_mu']:<6.3f} {row['delta']:+.3f}  {row['p_value']:<8.3f} "
+            f"{row['cohens_d']:<6.2f} {row['winner']}"
+        )
 
     return table_df
 

@@ -104,7 +104,7 @@ def run_experiment(exp: dict, index: int) -> bool:
     fraction_eval = float(exp.get("fraction_eval", client_fraction))
     min_fit_clients = max(1, math.ceil(num_clients * client_fraction))
     min_eval_clients = max(1, math.ceil(num_clients * fraction_eval))
-    
+
     # Build preset name
     alpha_str = str(alpha) if alpha != float("inf") else "inf"
     adv_pct = int(adv_frac * 100)
@@ -125,7 +125,7 @@ def run_experiment(exp: dict, index: int) -> bool:
     )
     run_dir = BASE_DIR / "runs" / preset_name
     run_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Save config
     config = {
         "aggregation": agg,
@@ -144,33 +144,43 @@ def run_experiment(exp: dict, index: int) -> bool:
         "fraction_eval": fraction_eval,
         "local_epochs": local_epochs,
     }
-    
+
     with open(run_dir / "config.json", "w") as f:
         json.dump(config, f, indent=2)
-    
+
     port = find_free_port()
     num_adversaries = int(adv_frac * num_clients)
-    
+
     log_message(f"  Run dir: {preset_name}")
     log_message(f"  Port: {port}, Adversaries: {num_adversaries}")
-    
+
     # Server aggregation (fedprox uses fedavg on server side)
     server_agg = "fedavg" if agg == "fedprox" else agg
-    
+
     # Start server
     server_cmd = [
-        sys.executable, "server.py",
-        "--rounds", str(num_rounds),
-        "--aggregation", server_agg,
-        "--server_address", f"localhost:{port}",
-        "--logdir", str(run_dir),
-        "--min_fit_clients", str(min_fit_clients),
-        "--min_eval_clients", str(min_eval_clients),
-        "--min_available_clients", str(num_clients),
-        "--fraction_fit", str(client_fraction),
-        "--fraction_eval", str(fraction_eval),
+        sys.executable,
+        "server.py",
+        "--rounds",
+        str(num_rounds),
+        "--aggregation",
+        server_agg,
+        "--server_address",
+        f"localhost:{port}",
+        "--logdir",
+        str(run_dir),
+        "--min_fit_clients",
+        str(min_fit_clients),
+        "--min_eval_clients",
+        str(min_eval_clients),
+        "--min_available_clients",
+        str(num_clients),
+        "--fraction_fit",
+        str(client_fraction),
+        "--fraction_eval",
+        str(fraction_eval),
     ]
-    
+
     server_log = open(run_dir / "server.log", "w")
     server_proc = subprocess.Popen(
         server_cmd,
@@ -178,48 +188,64 @@ def run_experiment(exp: dict, index: int) -> bool:
         stderr=subprocess.STDOUT,
         cwd=str(BASE_DIR),
     )
-    
+
     time.sleep(3)
-    
+
     # Start clients
     client_procs = []
     client_logs = []
-    
+
     for client_id in range(num_clients):
         client_log_file = open(run_dir / f"client_{client_id}.log", "w")
         client_logs.append(client_log_file)
-        
+
         # Determine adversary mode
         is_adversary = client_id < num_adversaries
         adv_mode = "grad_ascent" if is_adversary else "none"
-        
+
         client_cmd = [
-            sys.executable, "client.py",
-            "--server_address", f"localhost:{port}",
-            "--dataset", dataset,
-            "--data_path", data_path,
-            "--partition_strategy", "dirichlet",  # Always use Dirichlet; alpha controls heterogeneity
-            "--num_clients", str(num_clients),
-            "--client_id", str(client_id),
-            "--seed", str(seed),
-            "--alpha", alpha_str,
-            "--adversary_mode", adv_mode,
-            "--personalization_epochs", str(pers_epochs),
-            "--logdir", str(run_dir),
-            "--local_epochs", str(local_epochs),
+            sys.executable,
+            "client.py",
+            "--server_address",
+            f"localhost:{port}",
+            "--dataset",
+            dataset,
+            "--data_path",
+            data_path,
+            "--partition_strategy",
+            "dirichlet",  # Always use Dirichlet; alpha controls heterogeneity
+            "--num_clients",
+            str(num_clients),
+            "--client_id",
+            str(client_id),
+            "--seed",
+            str(seed),
+            "--alpha",
+            alpha_str,
+            "--adversary_mode",
+            adv_mode,
+            "--personalization_epochs",
+            str(pers_epochs),
+            "--logdir",
+            str(run_dir),
+            "--local_epochs",
+            str(local_epochs),
         ]
-        
+
         # Add FedProx mu if applicable
         if fedprox_mu > 0:
             client_cmd.extend(["--fedprox_mu", str(fedprox_mu)])
-        
+
         # Add DP if applicable
         if dp_enabled:
-            client_cmd.extend([
-                "--dp_enabled",
-                "--dp_noise_multiplier", str(dp_noise),
-            ])
-        
+            client_cmd.extend(
+                [
+                    "--dp_enabled",
+                    "--dp_noise_multiplier",
+                    str(dp_noise),
+                ]
+            )
+
         client_proc = subprocess.Popen(
             client_cmd,
             stdout=client_log_file,
@@ -228,7 +254,7 @@ def run_experiment(exp: dict, index: int) -> bool:
         )
         client_procs.append(client_proc)
         time.sleep(0.5)
-    
+
     # Wait for completion
     try:
         server_proc.wait(timeout=1800)
@@ -241,18 +267,18 @@ def run_experiment(exp: dict, index: int) -> bool:
         for cl in client_logs:
             cl.close()
         return False
-    
+
     # Clean up
     for p in client_procs:
         try:
             p.wait(timeout=30)
         except subprocess.TimeoutExpired:
             p.kill()
-    
+
     server_log.close()
     for cl in client_logs:
         cl.close()
-    
+
     # Check success
     metrics_file = run_dir / "client_0_metrics.csv"
     if metrics_file.exists():
@@ -283,7 +309,7 @@ def main():
 
     for i in range(start_index, len(queue)):
         exp = queue[i]
-        
+
         log_message("")
         log_message(f"[{i+1}/{len(queue)}] {exp['description']}")
 

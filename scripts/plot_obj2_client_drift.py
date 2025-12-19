@@ -75,11 +75,13 @@ def load_drift_data():
 
                     # Round-by-round L2 data
                     for _, row in sdf.iterrows():
-                        data.append({
-                            **config,
-                            "round": row["round"],
-                            "l2": row["l2_dispersion_mean"],
-                        })
+                        data.append(
+                            {
+                                **config,
+                                "round": row["round"],
+                                "l2": row["l2_dispersion_mean"],
+                            }
+                        )
             except Exception:
                 pass
 
@@ -113,15 +115,19 @@ def plot_client_drift(df: pd.DataFrame, output_path: Path):
     ax1 = axes[0, 0]
 
     # Get final round L2 for each run
-    final_l2 = fedavg.groupby(["alpha", "seed"]).apply(
-        lambda x: x[x["round"] == x["round"].max()]["l2"].mean()
-    ).reset_index(name="l2_final")
+    final_l2 = (
+        fedavg.groupby(["alpha", "seed"]).apply(lambda x: x[x["round"] == x["round"].max()]["l2"].mean()).reset_index(name="l2_final")
+    )
 
-    l2_summary = final_l2.groupby("alpha").agg(
-        l2_mean=("l2_final", "mean"),
-        l2_sem=("l2_final", "sem"),
-        n=("l2_final", "count"),
-    ).reset_index()
+    l2_summary = (
+        final_l2.groupby("alpha")
+        .agg(
+            l2_mean=("l2_final", "mean"),
+            l2_sem=("l2_final", "sem"),
+            n=("l2_final", "count"),
+        )
+        .reset_index()
+    )
     l2_summary = l2_summary[l2_summary["alpha"] < 100].sort_values("alpha")
 
     ax1.errorbar(
@@ -164,10 +170,14 @@ def plot_client_drift(df: pd.DataFrame, output_path: Path):
         if len(subset) == 0:
             continue
 
-        round_summary = subset.groupby("round").agg(
-            l2_mean=("l2", "mean"),
-            l2_sem=("l2", "sem"),
-        ).reset_index()
+        round_summary = (
+            subset.groupby("round")
+            .agg(
+                l2_mean=("l2", "mean"),
+                l2_sem=("l2", "sem"),
+            )
+            .reset_index()
+        )
 
         ax2.plot(
             round_summary["round"],
@@ -200,20 +210,18 @@ def plot_client_drift(df: pd.DataFrame, output_path: Path):
 
         if len(fa_l2) > 0 and len(fp_l2) > 0:
             # Get final round L2
-            fa_final = fa_l2.groupby("seed").apply(
-                lambda x: x[x["round"] == x["round"].max()]["l2"].mean()
-            )
-            fp_final = fp_l2.groupby("seed").apply(
-                lambda x: x[x["round"] == x["round"].max()]["l2"].mean()
-            )
+            fa_final = fa_l2.groupby("seed").apply(lambda x: x[x["round"] == x["round"].max()]["l2"].mean())
+            fp_final = fp_l2.groupby("seed").apply(lambda x: x[x["round"] == x["round"].max()]["l2"].mean())
 
-            comparison_data.append({
-                "alpha": alpha,
-                "FedAvg_l2": fa_final.mean(),
-                "FedAvg_sem": fa_final.sem(),
-                "FedProx_l2": fp_final.mean(),
-                "FedProx_sem": fp_final.sem(),
-            })
+            comparison_data.append(
+                {
+                    "alpha": alpha,
+                    "FedAvg_l2": fa_final.mean(),
+                    "FedAvg_sem": fa_final.sem(),
+                    "FedProx_l2": fp_final.mean(),
+                    "FedProx_sem": fp_final.sem(),
+                }
+            )
 
     comp_df = pd.DataFrame(comparison_data)
 
@@ -221,12 +229,18 @@ def plot_client_drift(df: pd.DataFrame, output_path: Path):
         x = np.arange(len(comp_df))
         width = 0.35
 
-        ax3.bar(x - width/2, comp_df["FedAvg_l2"], width,
-                yerr=1.96 * comp_df["FedAvg_sem"],
-                label="FedAvg", color=colors["FedAvg"], capsize=3)
-        ax3.bar(x + width/2, comp_df["FedProx_l2"], width,
-                yerr=1.96 * comp_df["FedProx_sem"],
-                label="FedProx", color=colors["FedProx"], capsize=3)
+        ax3.bar(
+            x - width / 2, comp_df["FedAvg_l2"], width, yerr=1.96 * comp_df["FedAvg_sem"], label="FedAvg", color=colors["FedAvg"], capsize=3
+        )
+        ax3.bar(
+            x + width / 2,
+            comp_df["FedProx_l2"],
+            width,
+            yerr=1.96 * comp_df["FedProx_sem"],
+            label="FedProx",
+            color=colors["FedProx"],
+            capsize=3,
+        )
 
         ax3.set_xticks(x)
         ax3.set_xticklabels([f"$\\alpha$={a}" for a in comp_df["alpha"]])
@@ -239,12 +253,18 @@ def plot_client_drift(df: pd.DataFrame, output_path: Path):
     ax4 = axes[1, 1]
 
     # Get final values for scatter
-    final_data = df.groupby(["aggregation", "alpha", "seed"]).apply(
-        lambda x: pd.Series({
-            "l2_final": x[x["round"] == x["round"].max()]["l2"].mean(),
-            "f1_final": x["final_f1"].iloc[0],
-        })
-    ).reset_index()
+    final_data = (
+        df.groupby(["aggregation", "alpha", "seed"])
+        .apply(
+            lambda x: pd.Series(
+                {
+                    "l2_final": x[x["round"] == x["round"].max()]["l2"].mean(),
+                    "f1_final": x["final_f1"].iloc[0],
+                }
+            )
+        )
+        .reset_index()
+    )
 
     for agg in ["FedAvg", "FedProx"]:
         subset = final_data[final_data["aggregation"] == agg]

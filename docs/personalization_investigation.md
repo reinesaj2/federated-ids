@@ -27,6 +27,7 @@ DEBUG_PERSONALIZATION=1  # Enable diagnostic output
 ```
 
 **Metrics logged:**
+
 - Weight norms before/after personalization
 - Weight delta after first epoch
 - Train/test dataset sizes
@@ -34,6 +35,7 @@ DEBUG_PERSONALIZATION=1  # Enable diagnostic output
 - Gain magnitude and warnings for near-zero gains
 
 **Files modified:**
+
 - `client.py:638-740` - Added debug print statements
 - `test_debug_personalization.py` - Validated logging works correctly
 
@@ -42,6 +44,7 @@ DEBUG_PERSONALIZATION=1  # Enable diagnostic output
 Created `scripts/analyze_data_splits.py` to investigate train/test distributions:
 
 **Key findings:**
+
 ```
 Class Distribution Analysis (stratified split):
 Class      Train %      Test %       Difference
@@ -59,11 +62,13 @@ Max class distribution difference: 0.0000%
 Created `scripts/debug_personalization.py` with hyperparameter sweeps:
 
 **Test matrix:**
+
 - Personalization epochs: 0, 3, 5
 - Learning rates: 0.001, 0.01
 - Dirichlet alpha: 0.1 (non-IID), 1.0 (IID)
 
 **Expected results:**
+
 - [CONFIRMED] Non-IID (alpha=0.1) + 5 epochs -> positive gains
 - [EXPECTED] IID (alpha=1.0) + 5 epochs -> near-zero gains
 - [EXPECTED] Insufficient epochs (1-2) -> minimal gains
@@ -88,6 +93,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 **2. IID Data Partitioning (Secondary Cause)**
 
 When `alpha=1.0` (IID):
+
 - All clients have similar data distributions
 - Global model already captures local patterns
 - Personalization has nothing unique to adapt to
@@ -112,6 +118,7 @@ y_test = (X_test[:, 0] > 0.0).long()
 ```
 
 **Requirements for positive gains:**
+
 1. **Heterogeneous clients:** Low alpha (0.01-0.1) in Dirichlet partitioning
 2. **Distribution shift:** Train and test have different patterns
 3. **Sufficient epochs:** 5-10 personalization epochs
@@ -132,6 +139,7 @@ python client.py --personalization_epochs 5 --dirichlet_alpha 0.1 ...
 ```
 
 **Expected output:**
+
 ```
 [Client 0] Personalization R1: Starting with 5 epochs, global F1=0.7234, weight_norm=5.4321
 [Client 0] Train size: 800, Test size: 200
@@ -140,6 +148,7 @@ python client.py --personalization_epochs 5 --dirichlet_alpha 0.1 ...
 ```
 
 **If gain < 0.001:**
+
 ```
 [Client 0] WARNING: Near-zero gain detected!
 Possible causes: (1) train/test same distribution, (2) insufficient personalization epochs, (3) learning rate too low
@@ -156,6 +165,7 @@ python scripts/analyze_data_splits.py \
 ```
 
 **Output:**
+
 - Per-client train/test class distributions
 - Feature statistics comparison
 - Personalization likelihood assessment
@@ -172,6 +182,7 @@ python scripts/debug_personalization.py \
 ```
 
 **Runs 5 experiments:**
+
 1. Baseline (no personalization)
 2. 3 epochs, non-IID (α=0.1)
 3. 5 epochs, non-IID (α=0.1)
@@ -184,16 +195,16 @@ python scripts/debug_personalization.py \
 
 Aggregated metrics are computed from `logs_debug/` using the updated `summarize_client_metrics` helper so baseline runs no longer report blank values.
 
-| Dataset | α | Personalization Epochs | LR | Mean Global F1 | Mean Personalized F1 | Mean Gain | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| UNSW-NB15 | 0.1 | 0 | 0.01 | 0.8366 | 0.8366 | 0.0000 | Baseline confirms no change when personalization is disabled |
-| UNSW-NB15 | 0.1 | 3 | 0.01 | 0.9613 | 0.9720 | 0.0107 | Light personalization adds ~1% on average, with small regression on 1 shard |
-| UNSW-NB15 | 0.1 | 5 | 0.01 | 0.8880 | 0.9585 | 0.0704 | Longer adaptation boosts skewed shards (+17% for client 2) |
-| UNSW-NB15 | 0.1 | 5 | 0.001 | 0.9486 | 0.9595 | 0.0109 | Lower LR dampens gains, underscoring tuning sensitivity |
-| UNSW-NB15 | 1.0 | 5 | 0.01 | 0.9973 | 0.9998 | 0.0025 | IID partition keeps gains negligible, matching expectation |
-| UNSW-NB15 | 0.05 | 10 | 0.01 | 0.9848 | 1.0000 | 0.0151 | Recommendation run: highly skewed shard gains +5.0, others already saturated |
-| CIC-IDS2017 (sample) | 0.1 | 5 | 0.01 | 1.0000 | 1.0000 | 0.0000 | Sample split is single-class per shard; personalization cannot improve perfect scores |
-| CIC-IDS2017 (sample) | 1.0 | 5 | 0.01 | 1.0000 | 1.0000 | 0.0000 | Confirms personalization neutrality on already-perfect IID data |
+| Dataset              | α    | Personalization Epochs | LR    | Mean Global F1 | Mean Personalized F1 | Mean Gain | Notes                                                                                 |
+| -------------------- | ---- | ---------------------- | ----- | -------------- | -------------------- | --------- | ------------------------------------------------------------------------------------- |
+| UNSW-NB15            | 0.1  | 0                      | 0.01  | 0.8366         | 0.8366               | 0.0000    | Baseline confirms no change when personalization is disabled                          |
+| UNSW-NB15            | 0.1  | 3                      | 0.01  | 0.9613         | 0.9720               | 0.0107    | Light personalization adds ~1% on average, with small regression on 1 shard           |
+| UNSW-NB15            | 0.1  | 5                      | 0.01  | 0.8880         | 0.9585               | 0.0704    | Longer adaptation boosts skewed shards (+17% for client 2)                            |
+| UNSW-NB15            | 0.1  | 5                      | 0.001 | 0.9486         | 0.9595               | 0.0109    | Lower LR dampens gains, underscoring tuning sensitivity                               |
+| UNSW-NB15            | 1.0  | 5                      | 0.01  | 0.9973         | 0.9998               | 0.0025    | IID partition keeps gains negligible, matching expectation                            |
+| UNSW-NB15            | 0.05 | 10                     | 0.01  | 0.9848         | 1.0000               | 0.0151    | Recommendation run: highly skewed shard gains +5.0, others already saturated          |
+| CIC-IDS2017 (sample) | 0.1  | 5                      | 0.01  | 1.0000         | 1.0000               | 0.0000    | Sample split is single-class per shard; personalization cannot improve perfect scores |
+| CIC-IDS2017 (sample) | 1.0  | 5                      | 0.01  | 1.0000         | 1.0000               | 0.0000    | Confirms personalization neutrality on already-perfect IID data                       |
 
 > Attempting the full CIC-IDS2017 CSV exceeded the 20-minute harness limit; behaviour on the curated sample still demonstrates the saturation effect when clients already achieve F1 ≈ 1.0.
 
@@ -204,6 +215,7 @@ Aggregated metrics are computed from `logs_debug/` using the updated `summarize_
 Systematic experiments run via `scripts/comparative_analysis.py` with personalization dimension to validate CI integration and generate thesis-ready artifacts.
 
 **Configuration:**
+
 - Dataset: UNSW-NB15 sample
 - Alpha: 0.5 (moderate non-IID)
 - Personalization epochs: [0, 5]
@@ -213,12 +225,12 @@ Systematic experiments run via `scripts/comparative_analysis.py` with personaliz
 
 **Results Summary:**
 
-| Seed | Personalization Epochs | Mean Gain | Per-Client Gains | Analysis |
-| --- | --- | --- | --- | --- |
-| 42 | 0 | 0.0000 | All clients: 0.000 | Baseline: No personalization applied |
-| 42 | 5 | -0.0032 | Range: -0.011 to +0.002 | Mixed results: 4 negative, 2 near-zero |
-| 43 | 5 | -0.0012 | Range: -0.007 to 0.000 | Mostly negative/zero gains |
-| 44 | 5 | -0.0031 | Range: -0.016 to 0.000 | Negative gains dominate |
+| Seed | Personalization Epochs | Mean Gain | Per-Client Gains        | Analysis                               |
+| ---- | ---------------------- | --------- | ----------------------- | -------------------------------------- |
+| 42   | 0                      | 0.0000    | All clients: 0.000      | Baseline: No personalization applied   |
+| 42   | 5                      | -0.0032   | Range: -0.011 to +0.002 | Mixed results: 4 negative, 2 near-zero |
+| 43   | 5                      | -0.0012   | Range: -0.007 to 0.000  | Mostly negative/zero gains             |
+| 44   | 5                      | -0.0031   | Range: -0.016 to 0.000  | Negative gains dominate                |
 
 **Key Findings:**
 
@@ -234,6 +246,7 @@ Systematic experiments run via `scripts/comparative_analysis.py` with personaliz
    - Documents when personalization SHOULD NOT be used (moderate α scenarios)
 
 **Experimental Artifacts:**
+
 - Run directories: `runs/comp_fedavg_alpha0.5_adv0_dp0_pers{0,5}_seed{42,43,44}/`
 - Manifest: `results/comparative_analysis/experiment_manifest_personalization.json`
 - All client metrics include: `macro_f1_global`, `macro_f1_personalized`, `personalization_gain`, `benign_fpr_global`, `benign_fpr_personalized`
@@ -250,16 +263,19 @@ To demonstrate meaningful personalization benefit for thesis, need to run experi
 **To demonstrate personalization gains:**
 
 1. **Use very low alpha:**
+
    ```bash
    --dirichlet_alpha 0.05  # High heterogeneity
    ```
 
 2. **Increase personalization epochs:**
+
    ```bash
    --personalization_epochs 10  # Allow more adaptation
    ```
 
 3. **Use protocol-based partitioning (if applicable):**
+
    ```bash
    --partition_strategy protocol  # Natural heterogeneity in IDS data
    ```
@@ -290,6 +306,7 @@ To demonstrate meaningful personalization benefit for thesis, need to run experi
 ## Technical Validation
 
 **Unit test results:**
+
 ```bash
 $ pytest test_personalization.py test_debug_personalization.py -v
 ========================= 8 passed, 2 warnings =========================
@@ -301,6 +318,7 @@ test_personalization_computes_metrics_and_improves PASSED
 ```
 
 **Code review:**
+
 - [VERIFIED] Personalization loop runs correctly (`client.py:659-688`)
 - [VERIFIED] Global weights restored before return (`client.py:752`)
 - [VERIFIED] Metrics logged correctly (`client.py:742-751`)
@@ -311,11 +329,13 @@ test_personalization_computes_metrics_and_improves PASSED
 ## Conclusion
 
 **The personalization implementation is CORRECT.** Zero gains on real IDS data are **expected behavior** when:
+
 - Data is IID across clients
 - Train/test splits are stratified
 - Global model has already converged
 
 To validate Thesis Objective 3, experiments should:
+
 1. Use highly non-IID partitioning (α ≤ 0.1)
 2. Increase personalization epochs (5-10)
 3. Document that zero gains on IID data confirm correct implementation

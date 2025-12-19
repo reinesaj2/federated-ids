@@ -28,6 +28,7 @@
 ### 1.1 Purpose
 
 The JMU CS 470 cluster is a teaching and research HPC cluster designed for:
+
 - Parallel and distributed computing coursework
 - Machine learning and deep learning experiments
 - Research projects requiring GPU acceleration
@@ -47,12 +48,12 @@ The JMU CS 470 cluster is a teaching and research HPC cluster designed for:
 
 ### 1.3 Key Constraints
 
-| Resource | Limit | Notes |
-|----------|-------|-------|
-| Home directory | ~20 GB | NFS-mounted, backed up |
-| Scratch space | Large (unquoted) | Local to cluster, may be purged |
-| Job time limit | Unlimited (partition default) | 2 hours recommended for testing |
-| Login node compute | Prohibited | Use Slurm for all intensive work |
+| Resource           | Limit                         | Notes                            |
+| ------------------ | ----------------------------- | -------------------------------- |
+| Home directory     | ~20 GB                        | NFS-mounted, backed up           |
+| Scratch space      | Large (unquoted)              | Local to cluster, may be purged  |
+| Job time limit     | Unlimited (partition default) | 2 hours recommended for testing  |
+| Login node compute | Prohibited                    | Use Slurm for all intensive work |
 
 ---
 
@@ -61,35 +62,38 @@ The JMU CS 470 cluster is a teaching and research HPC cluster designed for:
 ### 2.1 Node Specifications
 
 #### Login Node (login02)
-| Component | Specification |
-|-----------|---------------|
-| CPU | AMD EPYC 7252 8-Core (2 sockets) |
-| Cores | 16 physical, 32 threads (SMT) |
-| RAM | 62 GiB |
-| Purpose | Job submission, file management only |
+
+| Component | Specification                        |
+| --------- | ------------------------------------ |
+| CPU       | AMD EPYC 7252 8-Core (2 sockets)     |
+| Cores     | 16 physical, 32 threads (SMT)        |
+| RAM       | 62 GiB                               |
+| Purpose   | Job submission, file management only |
 
 #### Compute Nodes (compute21-29)
-| Component | Specification |
-|-----------|---------------|
-| Count | 9 nodes |
-| CPU | AMD EPYC 7252 8-Core (2 sockets) |
-| Cores per node | 16 physical, 32 threads |
-| RAM per node | 62 GiB |
-| Total CPU cores | 144 physical (288 threads) |
-| Total RAM | ~558 GiB |
+
+| Component       | Specification                    |
+| --------------- | -------------------------------- |
+| Count           | 9 nodes                          |
+| CPU             | AMD EPYC 7252 8-Core (2 sockets) |
+| Cores per node  | 16 physical, 32 threads          |
+| RAM per node    | 62 GiB                           |
+| Total CPU cores | 144 physical (288 threads)       |
+| Total RAM       | ~558 GiB                         |
 
 #### GPU Nodes (gpu01-08)
-| Component | Specification |
-|-----------|---------------|
-| Count | 8 nodes |
-| CPU | AMD EPYC 7252 8-Core (2 sockets) |
-| Cores per node | 16 physical, 32 threads |
-| RAM per node | 62 GiB |
-| GPU | NVIDIA A2 (1 per node) |
-| GPU Memory | 15 GB VRAM per GPU |
-| Compute Capability | 8.6 (Ampere architecture) |
-| Total GPUs | 8 |
-| Total GPU VRAM | 120 GB |
+
+| Component          | Specification                    |
+| ------------------ | -------------------------------- |
+| Count              | 8 nodes                          |
+| CPU                | AMD EPYC 7252 8-Core (2 sockets) |
+| Cores per node     | 16 physical, 32 threads          |
+| RAM per node       | 62 GiB                           |
+| GPU                | NVIDIA A2 (1 per node)           |
+| GPU Memory         | 15 GB VRAM per GPU               |
+| Compute Capability | 8.6 (Ampere architecture)        |
+| Total GPUs         | 8                                |
+| Total GPU VRAM     | 120 GB                           |
 
 ### 2.2 Cluster Totals
 
@@ -108,6 +112,7 @@ The JMU CS 470 cluster is a teaching and research HPC cluster designed for:
 ### 2.3 NUMA Architecture
 
 Each node has a 2-socket NUMA topology:
+
 ```
 Socket 0: Cores 0-7, 16-23 (with SMT)
 Socket 1: Cores 8-15, 24-31 (with SMT)
@@ -190,11 +195,11 @@ ssh-copy-id -o ProxyJump=<EID>@stu.cs.jmu.edu <EID>@login02.cluster.cs.jmu.edu
 
 ### 4.2 Python Versions Available
 
-| Version | Path | Notes |
-|---------|------|-------|
-| Python 3.6.8 | `/usr/bin/python3` | System default (too old) |
-| Python 3.9 | `/usr/bin/python3.9` | Available |
-| Python 3.11.9 | `/usr/bin/python3.11` | **Recommended** |
+| Version       | Path                  | Notes                    |
+| ------------- | --------------------- | ------------------------ |
+| Python 3.6.8  | `/usr/bin/python3`    | System default (too old) |
+| Python 3.9    | `/usr/bin/python3.9`  | Available                |
+| Python 3.11.9 | `/usr/bin/python3.11` | **Recommended**          |
 
 ### 4.3 Module System
 
@@ -207,6 +212,7 @@ module load mpi/mpich-4.2.0-x86_64
 ```
 
 Available modules:
+
 - `mpi/mpich-4.2.0-x86_64`
 - `mpi/openmpi-x86_64`
 - `pmi/pmix-x86_64`
@@ -243,12 +249,13 @@ Available modules:
 
 ### 5.2 Storage Quotas
 
-| Location | Quota | Purpose |
-|----------|-------|---------|
-| `/nfs/home/<EID>` | ~20 GB | Config files, small scripts |
-| `/scratch/<EID>` | Large (unquoted) | Datasets, venvs, results |
+| Location          | Quota            | Purpose                     |
+| ----------------- | ---------------- | --------------------------- |
+| `/nfs/home/<EID>` | ~20 GB           | Config files, small scripts |
+| `/scratch/<EID>`  | Large (unquoted) | Datasets, venvs, results    |
 
 Check quota:
+
 ```bash
 quota -s
 ```
@@ -282,14 +289,14 @@ TotalNodes: 17
 
 ### 6.2 Key Slurm Commands
 
-| Command | Purpose |
-|---------|---------|
-| `sbatch script.sbatch` | Submit batch job |
-| `squeue -u $USER` | View your jobs |
-| `scancel <jobid>` | Cancel a job |
-| `sinfo -N` | View node status |
-| `scontrol show job <id>` | Job details |
-| `sacct -j <id>` | Job accounting |
+| Command                  | Purpose          |
+| ------------------------ | ---------------- |
+| `sbatch script.sbatch`   | Submit batch job |
+| `squeue -u $USER`        | View your jobs   |
+| `scancel <jobid>`        | Cancel a job     |
+| `sinfo -N`               | View node status |
+| `scontrol show job <id>` | Job details      |
+| `sacct -j <id>`          | Job accounting   |
 
 ### 6.3 Resource Request Syntax
 
@@ -419,6 +426,7 @@ ssh cluster 'cat /scratch/$USER/results/smoke_test/slurm-<JOBID>.out'
 ### 8.2 Smoke Test Configuration
 
 The `scripts/slurm/fedprox_smoke_test.sbatch` runs:
+
 - **Clients:** 10 (reduced from 20 for memory)
 - **Rounds:** 15
 - **Aggregation:** FedAvg with FedProx (mu=0.01)
@@ -480,6 +488,7 @@ export FEDIDS_USE_OPACUS=1
 **Issue:** 20 clients on single node causes `MemoryError` and `failed to map segment`.
 **Cause:** Each client loads 891MB dataset + PyTorch + scikit-learn.
 **Workaround:**
+
 - Reduce to 10 clients per node
 - Or distribute across multiple nodes with Slurm arrays
 
@@ -505,25 +514,26 @@ ServerAliveInterval 15
 
 ### 10.1 Smoke Test Benchmarks
 
-| Configuration | Nodes | Time | Rate |
-|---------------|-------|------|------|
-| 10 clients, 15 rounds | 1 (compute21) | 7 min | ~28s/round |
+| Configuration         | Nodes          | Time    | Rate       |
+| --------------------- | -------------- | ------- | ---------- |
+| 10 clients, 15 rounds | 1 (compute21)  | 7 min   | ~28s/round |
 | 20 clients, 30 rounds | 1 (login node) | ~15 min | ~30s/round |
 
 ### 10.2 Per-Round Timing Breakdown
 
 From smoke test logs:
+
 - Round duration: ~26-28 seconds
 - Aggregation time: ~0.23 ms
 - Most time spent in client training
 
 ### 10.3 Scaling Estimates
 
-| Experiment | Configs | Est. Time (1 node) | Est. Time (17 nodes) |
-|------------|---------|--------------------|-----------------------|
-| Heterogeneity (7 alpha x 10 seeds) | 70 | ~8 hours | ~30 min |
-| FedProx (7 alpha x 9 mu x 10 seeds) | 630 | ~3 days | ~4 hours |
-| Attack (4 agg x 4 adv x 10 seeds) | 160 | ~18 hours | ~1 hour |
+| Experiment                          | Configs | Est. Time (1 node) | Est. Time (17 nodes) |
+| ----------------------------------- | ------- | ------------------ | -------------------- |
+| Heterogeneity (7 alpha x 10 seeds)  | 70      | ~8 hours           | ~30 min              |
+| FedProx (7 alpha x 9 mu x 10 seeds) | 630     | ~3 days            | ~4 hours             |
+| Attack (4 agg x 4 adv x 10 seeds)   | 160     | ~18 hours          | ~1 hour              |
 
 ---
 
@@ -532,11 +542,13 @@ From smoke test logs:
 ### 11.1 Job Fails Immediately
 
 Check error log:
+
 ```bash
 cat /scratch/$USER/results/smoke_test/slurm-<JOBID>.err
 ```
 
 Common causes:
+
 - Unbound variable (use `${VAR:-default}` syntax)
 - Missing environment variable
 - Memory request too high
@@ -590,13 +602,13 @@ sinfo -N
 
 ### 12.2 Key Paths
 
-| Purpose | Path |
-|---------|------|
-| Repository | `/scratch/$USER/federated-ids` |
-| Virtual env | `/scratch/$USER/venvs/fedids-py311` |
-| Dataset | `/scratch/$USER/datasets/edge-iiotset/edge_iiotset_full.csv` |
-| Results | `/scratch/$USER/results/` |
-| Slurm scripts | `/scratch/$USER/federated-ids/scripts/slurm/` |
+| Purpose       | Path                                                         |
+| ------------- | ------------------------------------------------------------ |
+| Repository    | `/scratch/$USER/federated-ids`                               |
+| Virtual env   | `/scratch/$USER/venvs/fedids-py311`                          |
+| Dataset       | `/scratch/$USER/datasets/edge-iiotset/edge_iiotset_full.csv` |
+| Results       | `/scratch/$USER/results/`                                    |
+| Slurm scripts | `/scratch/$USER/federated-ids/scripts/slurm/`                |
 
 ### 12.3 Environment Activation
 
@@ -668,9 +680,9 @@ See `scripts/slurm/fedprox_smoke_test.sbatch` for a complete working example.
 
 ## Appendix C: Change Log
 
-| Date | Change |
-|------|--------|
-| 2025-12-16 | Initial documentation created |
-| 2025-12-16 | Added smoke test results and performance data |
+| Date       | Change                                              |
+| ---------- | --------------------------------------------------- |
+| 2025-12-16 | Initial documentation created                       |
+| 2025-12-16 | Added smoke test results and performance data       |
 | 2025-12-16 | Documented Slurm memory misconfiguration workaround |
-| 2025-12-16 | Added FEDIDS_USE_OPACUS requirement |
+| 2025-12-16 | Added FEDIDS_USE_OPACUS requirement                 |

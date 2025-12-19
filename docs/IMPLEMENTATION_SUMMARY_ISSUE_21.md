@@ -26,12 +26,14 @@ Four pure functions implementing additive masking:
 ### Integration Points
 
 **Client (`client.py`):**
+
 - Added SecAgg import
 - Store secret shares in TorchClient state
 - Generate and apply masking before parameter transmission
 - Flag-gated via `--secure_aggregation` or `D2_SECURE_AGG` env var
 
 **Server (`server.py`):**
+
 - Added CLI flag `--secure_aggregation`
 - Prepared for future unmasking (shares transmission via secure channel - future work)
 
@@ -56,16 +58,16 @@ Four pure functions implementing additive masking:
 
 ## Quality Metrics
 
-| Criterion | Result | Status |
-|-----------|--------|--------|
-| Code style (black) | 100% compliant | PASS |
-| Linting (flake8) | 0 errors | PASS |
-| Test coverage | 19 tests, all functions | PASS |
-| Cyclomatic complexity | 1-2 per function | PASS |
-| Docstring coverage | 100% | PASS |
-| Type hints (where applicable) | Complete | PASS |
-| Conventional commits | Yes | PASS |
-| No regressions | 33/33 existing tests pass | PASS |
+| Criterion                     | Result                    | Status |
+| ----------------------------- | ------------------------- | ------ |
+| Code style (black)            | 100% compliant            | PASS   |
+| Linting (flake8)              | 0 errors                  | PASS   |
+| Test coverage                 | 19 tests, all functions   | PASS   |
+| Cyclomatic complexity         | 1-2 per function          | PASS   |
+| Docstring coverage            | 100%                      | PASS   |
+| Type hints (where applicable) | Complete                  | PASS   |
+| Conventional commits          | Yes                       | PASS   |
+| No regressions                | 33/33 existing tests pass | PASS   |
 
 ---
 
@@ -82,6 +84,7 @@ Rationale for MVP approach over Paillier encryption:
 - **Documented limitation:** Future work to implement Paillier
 
 **How it works:**
+
 1. Client generates random vector r_i of same shape as update w_i
 2. Client transmits masked_w_i = w_i + r_i to server
 3. Server sums masked updates: Σ(masked_w_i)
@@ -103,11 +106,13 @@ Rationale for MVP approach over Paillier encryption:
 ## Thesis Integration
 
 **Objective 4 (Privacy Preservation):**
+
 - Robust Aggregation (Krum/Median/Bulyan): Implemented, tested
 - Differential Privacy: Scaffold exists, accounting not yet integrated
 - **Secure Aggregation: Implemented (this work) - masking functional**
 
 **Architecture Stack:**
+
 ```
 Client                      Server
 │                           │
@@ -155,16 +160,19 @@ Total: +375 lines, 0 regressions
 ## CLI Usage
 
 Client with SecAgg:
+
 ```bash
 python client.py --server_address 127.0.0.1:8080 --secure_aggregation
 ```
 
 Server with SecAgg:
+
 ```bash
 python server.py --secure_aggregation
 ```
 
 Environment variable override:
+
 ```bash
 D2_SECURE_AGG=1 python client.py ...
 ```

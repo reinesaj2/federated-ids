@@ -9,11 +9,11 @@
 
 This runbook implements the experimental protocol defined in `TEMPORAL_VALIDATION_PROTOCOL.md`:
 
-| Phase | Jobs | Seeds | Purpose |
-|-------|------|-------|---------|
-| Tuning | 231 | 42, 43, 44 | Select optimal mu* per alpha |
-| Evaluation | 70 | 45-49 | Report final results with CIs |
-| **Total** | **301** | - | ~2.1 hours on 17 nodes |
+| Phase      | Jobs    | Seeds      | Purpose                       |
+| ---------- | ------- | ---------- | ----------------------------- |
+| Tuning     | 231     | 42, 43, 44 | Select optimal mu\* per alpha |
+| Evaluation | 70      | 45-49      | Report final results with CIs |
+| **Total**  | **301** | -          | ~2.1 hours on 17 nodes        |
 
 ---
 
@@ -60,6 +60,7 @@ ssh stu 'cd ~/federated-ids && bash scripts/slurm/submit_temporal_validation.sh'
 ```
 
 This submits:
+
 - **FedProx tuning:** 210 jobs (7 alphas x 10 mu x 3 seeds)
 - **FedAvg baseline:** 21 jobs (7 alphas x 3 seeds)
 
@@ -89,14 +90,14 @@ bash scripts/sync_cluster_runs.sh --once
 
 ### Expected runtime
 
-| Concurrent Jobs | Est. Time |
-|-----------------|-----------|
-| 1 (sequential) | ~27 hours |
+| Concurrent Jobs   | Est. Time  |
+| ----------------- | ---------- |
+| 1 (sequential)    | ~27 hours  |
 | 17 (full cluster) | ~1.6 hours |
 
 ---
 
-## Phase 2: Mu* Selection
+## Phase 2: Mu\* Selection
 
 After tuning completes, analyze results to select optimal mu per alpha.
 
@@ -124,7 +125,7 @@ inf        0.002      0.9012           3
 
 ### Review selections
 
-- Check if mu* varies systematically with alpha
+- Check if mu\* varies systematically with alpha
 - Verify all alphas have complete tuning data (3 seeds each)
 - Save `mu_star_selection.json` for reproducibility
 
@@ -132,9 +133,9 @@ inf        0.002      0.9012           3
 
 ## Phase 3: Evaluation (70 jobs)
 
-### Create evaluation script with selected mu*
+### Create evaluation script with selected mu\*
 
-After reviewing mu* selections, create the evaluation script:
+After reviewing mu\* selections, create the evaluation script:
 
 ```bash
 # On cluster
@@ -152,8 +153,8 @@ ssh stu 'cd ~/federated-ids && sbatch --array=0-69%17 scripts/slurm/temporal_val
 
 ### Expected runtime
 
-| Concurrent Jobs | Est. Time |
-|-----------------|-----------|
+| Concurrent Jobs   | Est. Time   |
+| ----------------- | ----------- |
 | 17 (full cluster) | ~30 minutes |
 
 ---
@@ -207,6 +208,7 @@ ssh stu 'cd ~/federated-ids && find runs -maxdepth 2 -name metrics.csv | wc -l'
 ### Out of memory
 
 Reduce concurrent jobs:
+
 ```bash
 MAX_CONCURRENT=8 bash scripts/slurm/submit_temporal_validation.sh
 ```
@@ -217,21 +219,21 @@ MAX_CONCURRENT=8 bash scripts/slurm/submit_temporal_validation.sh
 
 ### Key paths on cluster
 
-| Purpose | Path |
-|---------|------|
-| Repository | `~/federated-ids` |
-| Virtual env | `~/federated-ids/venv` |
-| Dataset | `data/edge-iiotset/edge_iiotset_full.csv` |
-| Results | `/scratch/$USER/results/temporal_validation/` |
-| Runs | `~/federated-ids/runs/` |
+| Purpose     | Path                                          |
+| ----------- | --------------------------------------------- |
+| Repository  | `~/federated-ids`                             |
+| Virtual env | `~/federated-ids/venv`                        |
+| Dataset     | `data/edge-iiotset/edge_iiotset_full.csv`     |
+| Results     | `/scratch/$USER/results/temporal_validation/` |
+| Runs        | `~/federated-ids/runs/`                       |
 
 ### Slurm scripts
 
-| Script | Jobs | Purpose |
-|--------|------|---------|
-| `temporal_validation_tuning.sbatch` | 210 | FedProx tuning |
-| `temporal_validation_baseline.sbatch` | 21 | FedAvg baseline |
-| `submit_temporal_validation.sh` | 231 | Submit all tuning |
+| Script                                | Jobs | Purpose           |
+| ------------------------------------- | ---- | ----------------- |
+| `temporal_validation_tuning.sbatch`   | 210  | FedProx tuning    |
+| `temporal_validation_baseline.sbatch` | 21   | FedAvg baseline   |
+| `submit_temporal_validation.sh`       | 231  | Submit all tuning |
 
 ### Local sync
 
@@ -252,28 +254,28 @@ INTERVAL=30 bash scripts/sync_cluster_runs.sh
 
 ### Tuning Phase (231 jobs)
 
-| Dimension | Values | Count |
-|-----------|--------|-------|
-| Alpha | 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, inf | 7 |
-| Mu (FedProx) | 0.002, 0.005, 0.01, 0.02, 0.05, 0.08, 0.1, 0.2, 0.5, 1.0 | 10 |
-| Seeds | 42, 43, 44 | 3 |
-| **FedProx configs** | 7 x 10 x 3 | **210** |
-| **FedAvg configs** | 7 x 1 x 3 | **21** |
+| Dimension           | Values                                                   | Count   |
+| ------------------- | -------------------------------------------------------- | ------- |
+| Alpha               | 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, inf                      | 7       |
+| Mu (FedProx)        | 0.002, 0.005, 0.01, 0.02, 0.05, 0.08, 0.1, 0.2, 0.5, 1.0 | 10      |
+| Seeds               | 42, 43, 44                                               | 3       |
+| **FedProx configs** | 7 x 10 x 3                                               | **210** |
+| **FedAvg configs**  | 7 x 1 x 3                                                | **21**  |
 
 ### Evaluation Phase (70 jobs)
 
-| Dimension | Values | Count |
-|-----------|--------|-------|
-| Alpha | 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, inf | 7 |
-| Mu | mu*[alpha] (selected from tuning) | 1 per alpha |
-| Seeds | 45, 46, 47, 48, 49 | 5 |
-| **FedProx configs** | 7 x 1 x 5 | **35** |
-| **FedAvg configs** | 7 x 1 x 5 | **35** |
+| Dimension           | Values                              | Count       |
+| ------------------- | ----------------------------------- | ----------- |
+| Alpha               | 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, inf | 7           |
+| Mu                  | mu\*[alpha] (selected from tuning)  | 1 per alpha |
+| Seeds               | 45, 46, 47, 48, 49                  | 5           |
+| **FedProx configs** | 7 x 1 x 5                           | **35**      |
+| **FedAvg configs**  | 7 x 1 x 5                           | **35**      |
 
 ---
 
 ## Changelog
 
-| Date | Change |
-|------|--------|
+| Date       | Change                  |
+| ---------- | ----------------------- |
 | 2025-12-17 | Initial runbook created |

@@ -3,22 +3,8 @@
   "data_path": "data/cic/cic_ids2017_multiclass.csv",
   "num_clients": 6,
   "num_rounds": 20,
-  "seeds": [
-    42,
-    43,
-    44,
-    45,
-    46
-  ],
-  "alpha_values": [
-    "0.02",
-    "0.05",
-    "0.1",
-    "0.2",
-    "0.5",
-    "1",
-    "inf"
-  ],
+  "seeds": [42, 43, 44, 45, 46],
+  "alpha_values": ["0.02", "0.05", "0.1", "0.2", "0.5", "1", "inf"],
   "fedprox_mu_values": [
     "0",
     "0.002",
@@ -34,15 +20,9 @@
     {
       "dimension": "aggregation",
       "count": 20,
-      "datasets": [
-        "cic"
-      ],
-      "alpha_values": [
-        "1"
-      ],
-      "mu_values": [
-        "0"
-      ],
+      "datasets": ["cic"],
+      "alpha_values": ["1"],
+      "mu_values": ["0"],
       "sample_presets": [
         "comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed42",
         "comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed43",
@@ -54,15 +34,9 @@
     {
       "dimension": "attack",
       "count": 60,
-      "datasets": [
-        "cic"
-      ],
-      "alpha_values": [
-        "0.5"
-      ],
-      "mu_values": [
-        "0"
-      ],
+      "datasets": ["cic"],
+      "alpha_values": ["0.5"],
+      "mu_values": ["0"],
       "sample_presets": [
         "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42",
         "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43",
@@ -74,21 +48,9 @@
     {
       "dimension": "heterogeneity",
       "count": 35,
-      "datasets": [
-        "cic"
-      ],
-      "alpha_values": [
-        "0.02",
-        "0.05",
-        "0.1",
-        "0.2",
-        "0.5",
-        "1",
-        "inf"
-      ],
-      "mu_values": [
-        "0"
-      ],
+      "datasets": ["cic"],
+      "alpha_values": ["0.02", "0.05", "0.1", "0.2", "0.5", "1", "inf"],
+      "mu_values": ["0"],
       "sample_presets": [
         "comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed42",
         "comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed43",
@@ -100,15 +62,9 @@
     {
       "dimension": "privacy",
       "count": 20,
-      "datasets": [
-        "cic"
-      ],
-      "alpha_values": [
-        "0.5"
-      ],
-      "mu_values": [
-        "0"
-      ],
+      "datasets": ["cic"],
+      "alpha_values": ["0.5"],
+      "mu_values": ["0"],
       "sample_presets": [
         "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42",
         "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43",
@@ -120,15 +76,9 @@
     {
       "dimension": "personalization",
       "count": 15,
-      "datasets": [
-        "cic"
-      ],
-      "alpha_values": [
-        "0.5"
-      ],
-      "mu_values": [
-        "0"
-      ],
+      "datasets": ["cic"],
+      "alpha_values": ["0.5"],
+      "mu_values": ["0"],
       "sample_presets": [
         "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42",
         "comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43",

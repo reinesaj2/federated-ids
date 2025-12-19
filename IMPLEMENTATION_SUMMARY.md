@@ -13,6 +13,7 @@ Successfully integrated Edge-IIoTset (2022), a modern IoT/IIoT intrusion detecti
 ## Files Modified
 
 ### Core Data Pipeline
+
 1. **data_preprocessing.py**
    - Added `load_edge_iiotset()` function
    - Supports binary (2-class) and multi-class (15-class) classification
@@ -21,7 +22,7 @@ Successfully integrated Edge-IIoTset (2022), a modern IoT/IIoT intrusion detecti
 
 2. **client.py**
    - Added Edge-IIoTset import
-   - Extended dataset loading logic to support edge-iiotset-* datasets
+   - Extended dataset loading logic to support edge-iiotset-\* datasets
    - Maintains backward compatibility with UNSW/CIC
 
 3. **scripts/comparative_analysis.py**
@@ -82,18 +83,21 @@ Successfully integrated Edge-IIoTset (2022), a modern IoT/IIoT intrusion detecti
 ### Three-Tier Architecture
 
 #### Tier 1: Quick CI (50k samples)
+
 - Purpose: Fast PR validation
 - Clients: 3, Rounds: 5
 - Duration: ~10 minutes
 - Usage: Every pull request
 
 #### Tier 2: Nightly (500k samples)
+
 - Purpose: Comprehensive testing
 - Clients: 6, Rounds: 20
 - Duration: ~45 minutes
 - Usage: Nightly schedule
 
 #### Tier 3: Full-Scale (2M samples)
+
 - Purpose: Publication-quality results
 - Clients: 10, Rounds: 50
 - Duration: ~2 hours
@@ -120,6 +124,7 @@ Successfully integrated Edge-IIoTset (2022), a modern IoT/IIoT intrusion detecti
 ## Testing Status
 
 ### Unit Tests
+
 ```
 test_edge_iiotset_preprocessing.py::test_load_edge_iiotset_binary_classification PASSED
 test_edge_iiotset_preprocessing.py::test_load_edge_iiotset_multiclass_classification PASSED
@@ -134,6 +139,7 @@ test_edge_iiotset_preprocessing.py::test_load_edge_iiotset_whitespace_stripping 
 ```
 
 ### Integration Tests
+
 - Pending: Generate sample datasets
 - Pending: Run pilot experiment locally
 - Pending: Validate CI pipeline
@@ -141,12 +147,15 @@ test_edge_iiotset_preprocessing.py::test_load_edge_iiotset_whitespace_stripping 
 ## Next Steps
 
 ### Immediate (Before Commit)
+
 1. Generate quick sample for CI testing:
+
    ```bash
    python scripts/prepare_edge_iiotset_samples.py --tier quick
    ```
 
 2. Run pilot experiment locally:
+
    ```bash
    python scripts/comparative_analysis.py \
        --dataset edge-iiotset-quick \
@@ -157,11 +166,13 @@ test_edge_iiotset_preprocessing.py::test_load_edge_iiotset_whitespace_stripping 
 3. Validate artifacts generated correctly
 
 ### Short-term (This Week)
+
 4. Create CI workflow for Edge-IIoTset-quick
 5. Deploy nightly workflows for full-scale testing
 6. Document initial results in Issue #130
 
 ### Thesis Integration
+
 7. Run full experiment matrix (144 experiments)
 8. Compare results with UNSW/CIC baselines
 9. Generate publication-quality plots

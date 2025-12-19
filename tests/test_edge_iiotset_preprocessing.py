@@ -154,12 +154,7 @@ def test_load_edge_iiotset_drops_high_cardinality_columns(mock_edge_iiotset_csv:
     """Test that high-cardinality identifiers are dropped."""
     df, _, _ = load_edge_iiotset(mock_edge_iiotset_csv, use_multiclass=True)
 
-    dropped_cols = [
-        "frame.time",
-        "ip.src_host",
-        "ip.dst_host",
-        "tcp.payload"
-    ]
+    dropped_cols = ["frame.time", "ip.src_host", "ip.dst_host", "tcp.payload"]
 
     for col in dropped_cols:
         assert col not in df.columns, f"Column {col} should have been dropped"

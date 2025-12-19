@@ -23,6 +23,7 @@
 Compare FedAvg, Krum, Bulyan, and Median aggregation strategies.
 
 ### [x] Experiment 1: FedAvg (Baseline)
+
 - **Status:** COMPLETED (seed46 run; 15 rounds recorded, final round 5/6 clients)
 - **Started:** 2025-11-18 12:34 PM (seed46)
 - **PID:** n/a (no active run)
@@ -41,6 +42,7 @@ Compare FedAvg, Krum, Bulyan, and Median aggregation strategies.
 ---
 
 ### [x] Experiment 2: Krum
+
 - **Status:** COMPLETED (seed42, 15/15 rounds, stored artifacts retained)
 - **Config:** aggregation=krum, alpha=1.0, adversary=0.0, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed42/`
@@ -56,6 +58,7 @@ Compare FedAvg, Krum, Bulyan, and Median aggregation strategies.
 ---
 
 ### [x] Experiment 3: Bulyan
+
 - **Status:** COMPLETED (seed42, 15/15 rounds)
 - **Config:** aggregation=bulyan, alpha=1.0, adversary=0.0, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0.0_seed42/`
@@ -71,6 +74,7 @@ Compare FedAvg, Krum, Bulyan, and Median aggregation strategies.
 ---
 
 ### [x] Experiment 4: Median
+
 - **Status:** COMPLETED (seed42, 15/15 rounds)
 - **Config:** aggregation=median, alpha=1.0, adversary=0.0, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_median_alpha1.0_adv0_dp0_pers0_mu0.0_seed42/`
@@ -90,6 +94,7 @@ Compare FedAvg, Krum, Bulyan, and Median aggregation strategies.
 Evaluate performance across different data distributions (Non-IID via Dirichlet alpha).
 
 ### [x] Experiment 5: Alpha = 0.02 (Highly Non-IID)
+
 - **Status:** COMPLETED (seed42, 15/15 rounds; high heterogeneity FedAvg)
 - **Config:** aggregation=fedavg, alpha=0.02, adversary=0.0, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed42/`
@@ -107,6 +112,7 @@ Evaluate performance across different data distributions (Non-IID via Dirichlet 
 - **Completed heterogeneity configs:** dsedge-iiotset-full_comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed42 (15 rounds), dsedge-iiotset-full_comp_fedavg_alpha0.1_adv0_dp0_pers0_mu0.0_seed42 (15 rounds), dsedge-iiotset-full_comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42 (15 rounds), dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed42 (baseline reuse), dsedge-iiotset-full_comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed42 (15 rounds)
 
 ### [x] Experiment 6: Alpha = 0.1
+
 - **Status:** COMPLETED (seed42, 15/15 rounds captured)
 - **Config:** aggregation=fedavg, alpha=0.1, adversary=0.0, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha0.1_adv0_dp0_pers0_mu0.0_seed42/`
@@ -123,6 +129,7 @@ Evaluate performance across different data distributions (Non-IID via Dirichlet 
 ---
 
 ### [x] Experiment 7: Alpha = 0.5
+
 - **Status:** COMPLETED (seed42, 15/15 rounds)
 - **Config:** aggregation=fedavg, alpha=0.5, adversary=0.0, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42/`
@@ -138,6 +145,7 @@ Evaluate performance across different data distributions (Non-IID via Dirichlet 
 ---
 
 ### [x] Experiment 8: Alpha = 1.0
+
 - **Status:** COMPLETED (same as Experiment 1; artifacts reused from baseline)
 - **Config:** aggregation=fedavg, alpha=1.0, adversary=0.0, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed42/`
@@ -154,6 +162,7 @@ Evaluate performance across different data distributions (Non-IID via Dirichlet 
 ---
 
 ### [x] Experiment 9: Alpha = inf (IID / Uniform)
+
 - **Status:** COMPLETED (seed42 IID reference run, 15/15 rounds)
 - **Config:** aggregation=fedavg, alpha=inf, adversary=0.0, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed42/`
@@ -169,6 +178,7 @@ Evaluate performance across different data distributions (Non-IID via Dirichlet 
 ---
 
 ### [ ] Experiment 10: FedProx with mu=0.01 (Low Regularization)
+
 - **Status:** PENDING
 - **Config:** aggregation=fedprox, alpha=0.02, adversary=0.0, dp=0.0, pers=0, mu=0.01, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.01_seed42/`
@@ -185,6 +195,7 @@ Evaluate performance across different data distributions (Non-IID via Dirichlet 
 ---
 
 ### [ ] Experiment 11: FedProx with mu=0.1 (Medium Regularization)
+
 - **Status:** PENDING
 - **Config:** aggregation=fedprox, alpha=0.02, adversary=0.0, dp=0.0, pers=0, mu=0.1, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu0.1_seed42/`
@@ -200,6 +211,7 @@ Evaluate performance across different data distributions (Non-IID via Dirichlet 
 ---
 
 ### [ ] Experiment 12: FedProx with mu=1.0 (High Regularization)
+
 - **Status:** PENDING
 - **Config:** aggregation=fedprox, alpha=0.02, adversary=0.0, dp=0.0, pers=0, mu=1.0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedprox_alpha0.02_adv0_dp0_pers0_mu1.0_seed42/`
@@ -215,6 +227,7 @@ Evaluate performance across different data distributions (Non-IID via Dirichlet 
 ---
 
 ### [ ] Experiment 13: FedProx on IID data (Baseline Comparison)
+
 - **Status:** PENDING
 - **Config:** aggregation=fedprox, alpha=1.0, adversary=0.0, dp=0.0, pers=0, mu=0.1, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedprox_alpha1.0_adv0_dp0_pers0_mu0.1_seed42/`
@@ -235,6 +248,7 @@ Evaluate performance across different data distributions (Non-IID via Dirichlet 
 Test Byzantine attack resistance with different aggregation strategies.
 
 ### [ ] Experiment 14: FedAvg + 10% Adversaries
+
 - **Status:** PENDING
 - **Config:** aggregation=fedavg, alpha=1.0, adversary=0.1, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0.1_dp0_pers0_mu0.0_seed42/`
@@ -250,6 +264,7 @@ Test Byzantine attack resistance with different aggregation strategies.
 ---
 
 ### [ ] Experiment 11: Krum + 10% Adversaries
+
 - **Status:** PENDING
 - **Config:** aggregation=krum, alpha=1.0, adversary=0.1, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_krum_alpha1.0_adv0.1_dp0_pers0_mu0.0_seed42/`
@@ -265,6 +280,7 @@ Test Byzantine attack resistance with different aggregation strategies.
 ---
 
 ### [ ] Experiment 12: Median + 10% Adversaries
+
 - **Status:** PENDING
 - **Config:** aggregation=median, alpha=1.0, adversary=0.1, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_median_alpha1.0_adv0.1_dp0_pers0_mu0.0_seed42/`
@@ -280,6 +296,7 @@ Test Byzantine attack resistance with different aggregation strategies.
 ---
 
 ### [ ] Experiment 13: FedAvg + 30% Adversaries
+
 - **Status:** PENDING
 - **Config:** aggregation=fedavg, alpha=1.0, adversary=0.3, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0.3_dp0_pers0_mu0.0_seed42/`
@@ -299,6 +316,7 @@ Test Byzantine attack resistance with different aggregation strategies.
 Evaluate Differential Privacy and Secure Aggregation impact on model utility.
 
 ### [ ] Experiment 20: Secure Aggregation Only (No DP)
+
 - **Status:** PENDING
 - **Config:** aggregation=fedavg, alpha=1.0, adversary=0.0, dp=0.0, pers=0, secure_agg=true, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dp0_pers0_secagg1_mu0.0_seed42/`
@@ -315,6 +333,7 @@ Evaluate Differential Privacy and Secure Aggregation impact on model utility.
 ---
 
 ### [ ] Experiment 21: DP Noise = 0.5 (Medium Privacy)
+
 - **Status:** PENDING
 - **Config:** aggregation=fedavg, alpha=1.0, adversary=0.0, dp_noise=0.5, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dpnoise0.5_pers0_mu0.0_seed42/`
@@ -330,6 +349,7 @@ Evaluate Differential Privacy and Secure Aggregation impact on model utility.
 ---
 
 ### [ ] Experiment 22: DP Noise = 1.0 (High Privacy)
+
 - **Status:** PENDING
 - **Config:** aggregation=fedavg, alpha=1.0, adversary=0.0, dp_noise=1.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dpnoise1.0_pers0_mu0.0_seed42/`
@@ -345,6 +365,7 @@ Evaluate Differential Privacy and Secure Aggregation impact on model utility.
 ---
 
 ### [ ] Experiment 23: DP Noise = 2.0 (Very High Privacy)
+
 - **Status:** PENDING
 - **Config:** aggregation=fedavg, alpha=1.0, adversary=0.0, dp_noise=2.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dpnoise2.0_pers0_mu0.0_seed42/`
@@ -360,6 +381,7 @@ Evaluate Differential Privacy and Secure Aggregation impact on model utility.
 ---
 
 ### [ ] Experiment 24: Secure Aggregation + DP Combined
+
 - **Status:** PENDING
 - **Config:** aggregation=fedavg, alpha=1.0, adversary=0.0, dp_noise=0.5, pers=0, secure_agg=true, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dpnoise0.5_pers0_secagg1_mu0.0_seed42/`
@@ -376,6 +398,7 @@ Evaluate Differential Privacy and Secure Aggregation impact on model utility.
 ---
 
 ### [ ] Experiment 25: DP with Clipping (Privacy Accounting)
+
 - **Status:** PENDING
 - **Config:** aggregation=fedavg, alpha=1.0, adversary=0.0, dp_epsilon=3.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dpeps3.0_pers0_mu0.0_seed42/`
@@ -396,6 +419,7 @@ Evaluate Differential Privacy and Secure Aggregation impact on model utility.
 Test local model fine-tuning after federated training.
 
 ### [ ] Experiment 26: No Personalization (Baseline)
+
 - **Status:** COMPLETED (same as Experiment 1)
 - **Config:** aggregation=fedavg, alpha=1.0, adversary=0.0, dp=0.0, pers=0, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed46/`
@@ -405,6 +429,7 @@ Test local model fine-tuning after federated training.
 ---
 
 ### [ ] Experiment 27: Personalization = 3 Epochs
+
 - **Status:** PENDING
 - **Config:** aggregation=fedavg, alpha=1.0, adversary=0.0, dp=0.0, pers=3, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dp0_pers3_mu0.0_seed42/`
@@ -420,6 +445,7 @@ Test local model fine-tuning after federated training.
 ---
 
 ### [ ] Experiment 28: Personalization = 5 Epochs
+
 - **Status:** PENDING
 - **Config:** aggregation=fedavg, alpha=1.0, adversary=0.0, dp=0.0, pers=5, seed=42
 - **Results Path:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dp0_pers5_mu0.0_seed42/`
@@ -437,16 +463,19 @@ Test local model fine-tuning after federated training.
 ## QUICK VERIFICATION COMMANDS
 
 ### Count completed experiments:
+
 ```bash
 find ~/Documents/Thesis/worktrees/iiot-experiments/runs -name "metrics.csv" -type f | wc -l
 ```
 
 ### List all completed experiment directories:
+
 ```bash
 ls -d ~/Documents/Thesis/worktrees/iiot-experiments/runs/dsedge-iiotset-full_*/
 ```
 
 ### Check specific experiment completion:
+
 ```bash
 # Replace <config_name> with experiment config
 cat ~/Documents/Thesis/worktrees/iiot-experiments/runs/<config_name>/metrics.csv | wc -l
@@ -454,6 +483,7 @@ cat ~/Documents/Thesis/worktrees/iiot-experiments/runs/<config_name>/metrics.csv
 ```
 
 ### Find currently running experiment:
+
 ```bash
 ps aux | grep run_experiments_optimized | grep -v grep
 ```

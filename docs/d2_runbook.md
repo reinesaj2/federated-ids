@@ -44,21 +44,25 @@ This runbook documents the end-to-end workflow for running federated learning ex
 ## Step 1: Data Preprocessing
 
 ### Command
+
 ```bash
 python scripts/setup_real_datasets.py
 ```
 
 ### Purpose
+
 - Downloads and prepares CIC-IDS2017 and UNSW-NB15 datasets
 - Creates sample datasets for CI/testing
 - Validates data integrity
 
 ### Output
+
 - `data/cic/cic_ids2017_multiclass.csv`
 - `data/unsw/unsw_nb15.csv`
 - Sample files for rapid testing
 
 ### Validation
+
 ```bash
 ls -lh data/cic/cic_ids2017_multiclass.csv
 ls -lh data/unsw/unsw_nb15.csv
@@ -69,12 +73,14 @@ ls -lh data/unsw/unsw_nb15.csv
 ## Step 2: Run Experiments
 
 ### Centralized Training (Baseline)
+
 ```bash
 python server.py --rounds 20 --aggregation fedavg
 python client.py --dataset unsw --num_clients 1 --client_id 0
 ```
 
 ### Federated Training (Standard)
+
 ```bash
 # Terminal 1: Start server
 python server.py --rounds 20 --aggregation fedavg --server_address 127.0.0.1:8099
@@ -89,6 +95,7 @@ done
 ```
 
 ### Federated Training (Protocol-based Drift)
+
 ```bash
 # Predefine protocol-to-client mapping (cic example provided)
 python server.py --rounds 20 --aggregation fedavg --server_address 127.0.0.1:8098
@@ -102,6 +109,7 @@ for i in {0..4}; do
     --seed 7 &
 done
 ```
+
 `protocol_mapping_path` pins important protocols (HTTP, DNS, SSH, etc.) to specific clients, while any unlisted protocols fall back to balanced round-robin assignments without altering feature schemas.
 
 ### Per-dataset encoder toggle
@@ -118,6 +126,7 @@ python client.py --server_address 127.0.0.1:8099 \
 `--model_arch auto` (default) automatically selects the encoder for CIC/UNSW clients while synthetic and ad-hoc datasets continue to use the lightweight `SimpleNet`.
 
 ### Comparative Analysis (Automated)
+
 ```bash
 # Run all 5 thesis objectives on UNSW-NB15
 python scripts/comparative_analysis.py \
@@ -133,6 +142,7 @@ python scripts/comparative_analysis.py \
 ```
 
 ### Available Dimensions
+
 - `aggregation` - FedAvg vs robust methods (Krum, Bulyan, Median)
 - `attack` - Byzantine attack resilience (0%, 10%, 30% adversarial clients)
 - `heterogeneity` - Data heterogeneity sweep (alpha values)
@@ -141,6 +151,7 @@ python scripts/comparative_analysis.py \
 - `personalization` - Personalization epochs sweep
 
 ### Output
+
 - `runs/comp_*/` - Individual experiment directories
 - Each run contains artifacts (see Artifact Map below)
 
@@ -149,6 +160,7 @@ python scripts/comparative_analysis.py \
 ## Step 3: Generate Plots
 
 ### Command
+
 ```bash
 python scripts/generate_thesis_plots.py \
   --dimension heterogeneity \
@@ -157,17 +169,20 @@ python scripts/generate_thesis_plots.py \
 ```
 
 ### Options
+
 - `--dimension` - Experiment dimension to plot
 - `--runs_dir` - Directory containing experiment runs
 - `--output_dir` - Output directory for plots
 - `--dataset` - Filter by dataset (unsw, cic)
 
 ### Output
+
 - PNG plots with confidence intervals
 - PDF plots for thesis inclusion
 - CSV summaries with statistical data
 
 ### Validation
+
 ```bash
 find results/thesis_plots/ -name "*.png" -o -name "*.pdf"
 ```
@@ -177,6 +192,7 @@ find results/thesis_plots/ -name "*.png" -o -name "*.pdf"
 ## Step 4: Summarize Results
 
 ### Command
+
 ```bash
 python scripts/summarize_metrics.py \
   --run_dir runs/comp_fedavg_alpha0.1_adv0_dp0_pers0_seed42 \
@@ -184,26 +200,31 @@ python scripts/summarize_metrics.py \
 ```
 
 ### Purpose
+
 - Aggregates client-level metrics
 - Computes fairness indicators
 - Generates summary statistics
 
 ### Output
+
 - `summary.json` with aggregated metrics
 - Includes: macro_f1_argmax, worst/best client performance, CV, FPR fraction
 - Multi-class runs also emit a `confusion_matrix` block storing global + per-client counts/percentages for thesis visuals.
 
 ### Confusion Matrices
+
 ```bash
 python scripts/plot_metrics.py \
   --run_dir runs/comp_fedavg_alpha0.1_adv0_dp0_pers0_seed42 \
   --output_dir runs/comp_fedavg_alpha0.1_adv0_dp0_pers0_seed42 \
   --save_confusion_matrix --confusion_matrix_scope both
 ```
+
 - Saves normalized global heatmap to `runs/.../confusion_matrix.png`
 - Stores per-client count/percentage heatmaps under `runs/.../confusion_matrices/`
 
 ### Validation
+
 ```bash
 jq . runs/comp_*/summary.json
 ```
@@ -213,18 +234,21 @@ jq . runs/comp_*/summary.json
 ## Step 5: Commit Artifacts
 
 ### Plots
+
 ```bash
 git add plots/thesis/
 git commit -m "feat(plots): add thesis visualizations for heterogeneity experiments"
 ```
 
 ### Analysis Results
+
 ```bash
 git add analysis/
 git commit -m "feat(analysis): add statistical summaries for Issue #44"
 ```
 
 ### Experiment Runs (Selective)
+
 ```bash
 # Commit summaries only, not raw logs
 git add runs/*/summary.json
@@ -256,6 +280,7 @@ runs/comp_{aggregation}_alpha{α}_adv{%}_dp{σ}_pers{epochs}_mu{μ}_seed{n}/
 ### File Specifications
 
 #### config.json
+
 ```json
 {
   "aggregation": "fedavg",
@@ -272,7 +297,9 @@ runs/comp_{aggregation}_alpha{α}_adv{%}_dp{σ}_pers{epochs}_mu{μ}_seed{n}/
 ```
 
 #### metrics.csv
+
 Columns:
+
 - `round` - Training round number
 - `accuracy` - Global model accuracy
 - `loss` - Global model loss
@@ -281,7 +308,9 @@ Columns:
 - `timestamp` - Execution timestamp
 
 #### client_N_metrics.csv
+
 Columns:
+
 - `round` - Training round number
 - `client_id` - Client identifier
 - `macro_f1_argmax` - F1-score at argmax threshold
@@ -301,6 +330,7 @@ Columns:
 - `dp_clip_norm` - Gradient clipping norm (if DP enabled)
 
 #### summary.json
+
 ```json
 {
   "macro_f1_argmax": {
@@ -339,12 +369,14 @@ gh workflow run comparative-analysis-nightly.yml \
 ```
 
 ### Parameters
+
 - `dimensions` - Comma-separated list or "all"
 - `num_clients` - Number of federated clients (default: 6)
 - `num_rounds` - Training rounds (default: 20)
 - `run_cic` - Run CIC-IDS2017 experiments (default: true)
 
 ### Workflow Files
+
 - `.github/workflows/comparative-analysis-nightly.yml` - Main experiment workflow
 - `.github/workflows/fedprox-nightly.yml` - FedProx comparison workflow
 - `.github/workflows/ci.yml` - Standard CI checks
@@ -354,6 +386,7 @@ gh workflow run comparative-analysis-nightly.yml \
 ## Common Workflows
 
 ### Full Thesis Experiment Suite
+
 ```bash
 # Run all 5 objectives on both datasets
 for dimension in aggregation attack heterogeneity privacy personalization; do
@@ -361,7 +394,7 @@ for dimension in aggregation attack heterogeneity privacy personalization; do
     --dimension $dimension \
     --dataset unsw \
     --output_dir results/comparative_analysis/unsw
-  
+
   python scripts/comparative_analysis.py \
     --dimension $dimension \
     --dataset cic \
@@ -378,6 +411,7 @@ done
 ```
 
 ### Quick Smoke Test
+
 ```bash
 # Validate setup with minimal experiment
 python scripts/comparative_analysis.py \
@@ -389,6 +423,7 @@ python scripts/comparative_analysis.py \
 ```
 
 ### Reproduce Specific Experiment
+
 ```bash
 # Extract config from existing run
 CONFIG=$(cat runs/comp_fedavg_alpha0.1_adv0_dp0_pers0_seed42/config.json)
@@ -404,6 +439,7 @@ python client.py --dataset unsw --num_clients 6 --client_id 0 \
 ## Troubleshooting
 
 ### Issue: Port Already in Use
+
 ```bash
 # Check for existing processes
 lsof -i :8099
@@ -413,12 +449,14 @@ pkill -f "python server.py"
 ```
 
 ### Issue: Out of Memory
+
 ```bash
 # Reduce batch size or client count
 python client.py --batch_size 32 --num_clients 3
 ```
 
 ### Issue: Experiments Timeout in CI
+
 ```bash
 # Check workflow timeout settings
 grep "timeout-minutes" .github/workflows/comparative-analysis-nightly.yml
@@ -427,6 +465,7 @@ grep "timeout-minutes" .github/workflows/comparative-analysis-nightly.yml
 ```
 
 ### Issue: Missing Artifacts
+
 ```bash
 # Validate experiment completed
 ls -la runs/comp_*/summary.json
@@ -442,11 +481,13 @@ done
 ## Performance Benchmarks
 
 ### Local Execution
+
 - Single experiment (6 clients, 20 rounds): 3-5 minutes
 - Full dimension sweep (5 seeds): 15-25 minutes
 - Complete thesis suite (5 dimensions, 2 datasets): 2-3 hours
 
 ### CI Execution
+
 - Single dimension (UNSW): 30-45 minutes
 - Single dimension (CIC): 45-60 minutes
 - Full matrix (6 dimensions, 2 datasets): 8-12 hours
@@ -456,17 +497,20 @@ done
 ## References
 
 ### Related Documentation
+
 - [CIC Objectives Matrix](cic_objectives.md) - Experiment dimension details
 - [CI Optimization Guide](ci-optimization.md) - Timeout and resource configuration
 - [Threat Model](threat_model.md) - Security assumptions and defenses
 
 ### Key Scripts
+
 - `scripts/comparative_analysis.py` - Main experiment runner
 - `scripts/generate_thesis_plots.py` - Visualization generator
 - `scripts/summarize_metrics.py` - Metrics aggregation
 - `scripts/setup_real_datasets.py` - Data preparation
 
 ### External Resources
+
 - Flower Framework: https://flower.dev/docs/
 - CIC-IDS2017 Dataset: https://www.unb.ca/cic/datasets/ids-2017.html
 - UNSW-NB15 Dataset: https://research.unsw.edu.au/projects/unsw-nb15-dataset

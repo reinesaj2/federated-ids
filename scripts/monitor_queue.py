@@ -50,23 +50,23 @@ def main():
     # Show current experiment
     if current_index < total:
         current_exp = queue[current_index]
-        print(f"\nCurrent: {current_exp['aggregation']} alpha={current_exp['alpha']} "
-              f"adv={current_exp['adv_pct']}% seed={current_exp['seed']}")
+        print(
+            f"\nCurrent: {current_exp['aggregation']} alpha={current_exp['alpha']} "
+            f"adv={current_exp['adv_pct']}% seed={current_exp['seed']}"
+        )
 
     # Show next 5
     if current_index + 1 < total:
         print("\nNext 5 experiments:")
         for i in range(current_index + 1, min(current_index + 6, total)):
             exp = queue[i]
-            print(f"  {i+1}. {exp['aggregation']} alpha={exp['alpha']} "
-                  f"adv={exp['adv_pct']}% seed={exp['seed']}")
+            print(f"  {i+1}. {exp['aggregation']} alpha={exp['alpha']} " f"adv={exp['adv_pct']}% seed={exp['seed']}")
 
     # Show recent failures
     if failed > 0:
         print(f"\nRecent failures ({min(failed, 5)} of {failed}):")
         for exp in progress["failed"][-5:]:
-            print(f"  - {exp['aggregation']} alpha={exp['alpha']} "
-                  f"adv={exp['adv_pct']}% seed={exp['seed']}")
+            print(f"  - {exp['aggregation']} alpha={exp['alpha']} " f"adv={exp['adv_pct']}% seed={exp['seed']}")
 
     # Show last log lines
     if LOG_FILE.exists():

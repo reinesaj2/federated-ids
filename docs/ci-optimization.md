@@ -37,9 +37,9 @@ File: `.github/workflows/comparative-analysis-nightly.yml`
 ```yaml
 jobs:
   comparative_analysis:
-    timeout-minutes: 480  # 8 hours
+    timeout-minutes: 480 # 8 hours
     strategy:
-      max-parallel: 2     # Limit concurrent experiments
+      max-parallel: 2 # Limit concurrent experiments
 ```
 
 - **Workflow timeout**: 480 minutes (8 hours) for complete experiment matrix
@@ -51,6 +51,7 @@ jobs:
 ### Local Execution
 
 #### Default timeouts (sampled dataset)
+
 ```bash
 python scripts/comparative_analysis.py \
   --alpha 0.5 \
@@ -58,6 +59,7 @@ python scripts/comparative_analysis.py \
 ```
 
 #### Extended timeouts (full dataset)
+
 ```bash
 python scripts/comparative_analysis.py \
   --alpha 0.5 \
@@ -67,6 +69,7 @@ python scripts/comparative_analysis.py \
 ```
 
 #### Custom timeouts for specific scenarios
+
 ```bash
 # Byzantine experiments with full dataset
 python scripts/comparative_analysis.py \
@@ -94,6 +97,7 @@ env:
 ```
 
 Pass to script:
+
 ```bash
 python scripts/comparative_analysis.py \
   --server_timeout ${SERVER_TIMEOUT} \
@@ -104,21 +108,21 @@ python scripts/comparative_analysis.py \
 
 ### Server Timeout
 
-| Scenario | Recommended Value | Rationale |
-|----------|------------------|-----------|
-| Sampled dataset (8.2k samples) | 300s (default) | Fast aggregation, minimal overhead |
-| Full dataset (82k samples) | 600s | 10x data requires longer aggregation |
-| Bulyan/Krum aggregation | 900s | O(n²) complexity for distance computation |
-| Byzantine experiments | 900s | Additional validation overhead |
+| Scenario                       | Recommended Value | Rationale                                 |
+| ------------------------------ | ----------------- | ----------------------------------------- |
+| Sampled dataset (8.2k samples) | 300s (default)    | Fast aggregation, minimal overhead        |
+| Full dataset (82k samples)     | 600s              | 10x data requires longer aggregation      |
+| Bulyan/Krum aggregation        | 900s              | O(n²) complexity for distance computation |
+| Byzantine experiments          | 900s              | Additional validation overhead            |
 
 ### Client Timeout
 
-| Scenario | Recommended Value | Rationale |
-|----------|------------------|-----------|
-| Sampled dataset | 900s (default) | 3 local epochs on 8.2k samples |
-| Full dataset | 1800s | 10x data, 3 local epochs |
-| Differential privacy | 1200s | Noise injection adds ~30% overhead |
-| Personalization | 1500s | Additional fine-tuning phase |
+| Scenario             | Recommended Value | Rationale                          |
+| -------------------- | ----------------- | ---------------------------------- |
+| Sampled dataset      | 900s (default)    | 3 local epochs on 8.2k samples     |
+| Full dataset         | 1800s             | 10x data, 3 local epochs           |
+| Differential privacy | 1200s             | Noise injection adds ~30% overhead |
+| Personalization      | 1500s             | Additional fine-tuning phase       |
 
 ## Error Handling
 
@@ -173,6 +177,7 @@ awk -F',' 'NR>1 {sum+=$11; count++} END {print "Avg round time:", sum/count/1000
 ### Pre-Optimization Issues
 
 Before parameterization:
+
 - Fixed 120s server timeout caused failures on full dataset
 - Fixed 600s client timeout insufficient for DP experiments
 - No graceful degradation in CI
@@ -181,6 +186,7 @@ Before parameterization:
 ### Implementation (PR #91)
 
 Changes merged 2025-10-21:
+
 - Parameterized timeouts in `comparative_analysis.py`
 - Extended workflow timeout to 8 hours
 - Limited parallel jobs to 2
@@ -192,11 +198,13 @@ Changes merged 2025-10-21:
 ### Experiment Times Out Despite High Timeout
 
 **Check**:
+
 1. System resources (CPU, memory, disk I/O)
 2. Port conflicts (default 8080)
 3. Dataset corruption or missing files
 
 **Solution**:
+
 ```bash
 # Monitor resources during experiment
 python scripts/comparative_analysis.py --alpha 0.5 &
@@ -210,6 +218,7 @@ done
 ### CI Workflow Exceeds 8 Hours
 
 **Check**:
+
 1. Number of experiments in matrix
 2. Dataset size setting
 3. Number of rounds configured
@@ -219,6 +228,7 @@ done
 ### High Failure Rate in CI
 
 **Check**:
+
 1. Success rate from validation logs
 2. Individual experiment error logs
 3. Timeout values vs actual execution times

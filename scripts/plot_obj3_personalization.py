@@ -2,7 +2,7 @@
 """
 Objective 3: Personalization Benefit in IIoT Federated IDS
 
-Shows how local fine-tuning after federated training improves 
+Shows how local fine-tuning after federated training improves
 individual client performance.
 
 Based on 30 personalization experiments + baselines.
@@ -133,14 +133,22 @@ def plot_personalization(df: pd.DataFrame, output_path: Path):
     x = np.arange(len(pers_levels))
     width = 0.35
 
-    ax1.bar(x - width/2, global_means, width, yerr=[1.96*s for s in global_sems],
-            label="Global Model", color=colors["Global"], capsize=4)
-    
+    ax1.bar(
+        x - width / 2, global_means, width, yerr=[1.96 * s for s in global_sems], label="Global Model", color=colors["Global"], capsize=4
+    )
+
     # Only plot personalized where we have data
     pers_valid = [p if not np.isnan(p) else 0 for p in pers_means]
     pers_sem_valid = [s if not np.isnan(s) else 0 for s in pers_sems]
-    ax1.bar(x + width/2, pers_valid, width, yerr=[1.96*s for s in pers_sem_valid],
-            label="Personalized Model", color=colors["Personalized"], capsize=4)
+    ax1.bar(
+        x + width / 2,
+        pers_valid,
+        width,
+        yerr=[1.96 * s for s in pers_sem_valid],
+        label="Personalized Model",
+        color=colors["Personalized"],
+        capsize=4,
+    )
 
     ax1.set_xticks(x)
     ax1.set_xticklabels([f"{e} epochs" for e in pers_levels])
@@ -164,16 +172,14 @@ def plot_personalization(df: pd.DataFrame, output_path: Path):
 
         sns.histplot(pers_df["gain"], kde=True, ax=ax2, color=colors["Personalized"])
         ax2.axvline(0, color="gray", linestyle="--", alpha=0.7)
-        ax2.axvline(pers_df["gain"].mean(), color="red", linestyle="-", linewidth=2,
-                    label=f"Mean: {pers_df['gain'].mean():.2f}%")
+        ax2.axvline(pers_df["gain"].mean(), color="red", linestyle="-", linewidth=2, label=f"Mean: {pers_df['gain'].mean():.2f}%")
 
         ax2.set_xlabel("Personalization Gain (%)")
         ax2.set_ylabel("Count")
         ax2.set_title("B) Distribution of Personalization Gains", fontweight="bold")
         ax2.legend(loc="upper right")
     else:
-        ax2.text(0.5, 0.5, "No personalization data\navailable", ha="center", va="center",
-                 transform=ax2.transAxes, fontsize=14)
+        ax2.text(0.5, 0.5, "No personalization data\navailable", ha="center", va="center", transform=ax2.transAxes, fontsize=14)
         ax2.set_title("B) Distribution of Personalization Gains", fontweight="bold")
 
     # Panel C: Personalization by Heterogeneity Level
@@ -190,11 +196,13 @@ def plot_personalization(df: pd.DataFrame, output_path: Path):
             global_vals = subset["final_f1"]
             if len(pers_vals) > 0:
                 gain = (pers_vals.mean() - global_vals.mean()) * 100
-                pers_by_alpha.append({
-                    "alpha": alpha,
-                    "gain": gain,
-                    "n": len(pers_vals),
-                })
+                pers_by_alpha.append(
+                    {
+                        "alpha": alpha,
+                        "gain": gain,
+                        "n": len(pers_vals),
+                    }
+                )
 
     if len(pers_by_alpha) > 0:
         alpha_df = pd.DataFrame(pers_by_alpha)
@@ -208,17 +216,14 @@ def plot_personalization(df: pd.DataFrame, output_path: Path):
         # Show baseline comparison instead
         baseline = benign[benign["pers_epochs"] == 0]
         pers = benign[benign["pers_epochs"] > 0]
-        
+
         compare_data = [
-            {"condition": "No Pers (baseline)", "f1": baseline["final_f1"].mean(), 
-             "sem": baseline["final_f1"].sem(), "n": len(baseline)},
-            {"condition": "With Pers (3-5 ep)", "f1": pers["final_f1"].mean(),
-             "sem": pers["final_f1"].sem(), "n": len(pers)},
+            {"condition": "No Pers (baseline)", "f1": baseline["final_f1"].mean(), "sem": baseline["final_f1"].sem(), "n": len(baseline)},
+            {"condition": "With Pers (3-5 ep)", "f1": pers["final_f1"].mean(), "sem": pers["final_f1"].sem(), "n": len(pers)},
         ]
         comp_df = pd.DataFrame(compare_data)
-        
-        ax3.bar(range(len(comp_df)), comp_df["f1"], yerr=1.96*comp_df["sem"],
-                color=[colors["Global"], colors["Personalized"]], capsize=4)
+
+        ax3.bar(range(len(comp_df)), comp_df["f1"], yerr=1.96 * comp_df["sem"], color=[colors["Global"], colors["Personalized"]], capsize=4)
         ax3.set_xticks(range(len(comp_df)))
         ax3.set_xticklabels(comp_df["condition"])
         ax3.set_ylabel("Macro F1 Score")
@@ -264,9 +269,16 @@ def plot_personalization(df: pd.DataFrame, output_path: Path):
         else:
             summary_text += "  Result: Not significant"
 
-    ax4.text(0.1, 0.9, summary_text, transform=ax4.transAxes, fontsize=11,
-             verticalalignment="top", fontfamily="monospace",
-             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8))
+    ax4.text(
+        0.1,
+        0.9,
+        summary_text,
+        transform=ax4.transAxes,
+        fontsize=11,
+        verticalalignment="top",
+        fontfamily="monospace",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
+    )
     ax4.axis("off")
     ax4.set_title("D) Statistical Summary", fontweight="bold")
 

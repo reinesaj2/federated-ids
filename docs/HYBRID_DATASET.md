@@ -5,6 +5,7 @@ This document describes the intelligent fusion of three benchmark intrusion dete
 ## Overview
 
 The hybrid dataset combines:
+
 - **CIC-IDS2017**: Flow-level network traffic features
 - **UNSW-NB15**: Connection-level features
 - **Edge-IIoTset**: Packet-level IoT/IIoT protocol features
@@ -14,18 +15,21 @@ Each source dataset captures network intrusions at different granularities and f
 ## Dataset Sources
 
 ### CIC-IDS2017
+
 - **Source**: Canadian Institute for Cybersecurity
 - **Reference**: Sharafaldin et al., ICISSP 2018
 - **Features**: 78 flow-based features (packet lengths, IATs, TCP flags)
 - **Attack Types**: DoS, DDoS, PortScan, Brute Force, Web Attacks, Botnet, Infiltration
 
 ### UNSW-NB15
+
 - **Source**: University of New South Wales
 - **Reference**: Moustafa & Slay, MilCIS 2015
 - **Features**: 49 connection-based features (duration, bytes, TTL, jitter)
 - **Attack Types**: Fuzzers, Analysis, Backdoors, DoS, Exploits, Generic, Reconnaissance, Shellcode, Worms
 
 ### Edge-IIoTset
+
 - **Source**: IEEE DataPort
 - **Reference**: Ferrag et al., IEEE Access 2022
 - **Features**: 63 packet-level IoT protocol features (MQTT, Modbus, TCP, UDP, DNS, HTTP)
@@ -35,15 +39,15 @@ Each source dataset captures network intrusions at different granularities and f
 
 The hybrid dataset harmonizes attack labels into a 7-class taxonomy:
 
-| Class | Name       | Description                                    | Source Mappings                           |
-|-------|------------|------------------------------------------------|-------------------------------------------|
-| 0     | BENIGN     | Normal/legitimate traffic                      | Normal, Benign (all datasets)             |
-| 1     | DOS        | Denial of Service attacks                      | DoS*, DDoS*, DDOS_ICMP/UDP/TCP/HTTP       |
-| 2     | PROBE      | Reconnaissance and scanning                    | PortScan, Reconnaissance, Fingerprinting  |
-| 3     | EXPLOIT    | Injection and exploitation attacks             | SQL_Injection, XSS, Exploits, Web Attacks |
-| 4     | BRUTEFORCE | Password and credential attacks                | FTP-Patator, SSH-Patator, Password        |
-| 5     | MALWARE    | Malicious software and backdoors               | Backdoor, Shellcode, Worms, Ransomware    |
-| 6     | OTHER      | Generic and uncategorized attacks              | Generic, Fuzzers, MITM, Analysis          |
+| Class | Name       | Description                        | Source Mappings                           |
+| ----- | ---------- | ---------------------------------- | ----------------------------------------- |
+| 0     | BENIGN     | Normal/legitimate traffic          | Normal, Benign (all datasets)             |
+| 1     | DOS        | Denial of Service attacks          | DoS*, DDoS*, DDOS_ICMP/UDP/TCP/HTTP       |
+| 2     | PROBE      | Reconnaissance and scanning        | PortScan, Reconnaissance, Fingerprinting  |
+| 3     | EXPLOIT    | Injection and exploitation attacks | SQL_Injection, XSS, Exploits, Web Attacks |
+| 4     | BRUTEFORCE | Password and credential attacks    | FTP-Patator, SSH-Patator, Password        |
+| 5     | MALWARE    | Malicious software and backdoors   | Backdoor, Shellcode, Worms, Ransomware    |
+| 6     | OTHER      | Generic and uncategorized attacks  | Generic, Fuzzers, MITM, Analysis          |
 
 ## Feature Alignment Strategy
 
@@ -69,10 +73,10 @@ Since each dataset has fundamentally different feature spaces, the hybrid datase
 4. **TCP State Features**
    - CIC: FIN/SYN/RST/ACK Flag Counts
    - UNSW: tcprtt, synack, state
-   - IIoT: tcp.flags.*, tcp.connection.*
+   - IIoT: tcp.flags._, tcp.connection._
 
 5. **Protocol-Specific Features**
-   - IIoT-only: mqtt.*, mbtcp.*, dns.qry.*
+   - IIoT-only: mqtt._, mbtcp._, dns.qry.\*
 
 ## Usage
 
@@ -89,15 +93,15 @@ python scripts/create_hybrid_dataset.py \
 
 ### Command Line Options
 
-| Option           | Default                              | Description                              |
-|------------------|--------------------------------------|------------------------------------------|
-| `--data-dir`     | `data`                               | Root directory with dataset folders      |
-| `--output`       | `data/hybrid/hybrid_ids_dataset.csv` | Output CSV path                          |
-| `--iiot-variant` | `nightly`                            | IIoT variant: nightly, full, 500k        |
-| `--max-samples`  | None                                 | Limit samples per source dataset         |
+| Option           | Default                              | Description                                     |
+| ---------------- | ------------------------------------ | ----------------------------------------------- |
+| `--data-dir`     | `data`                               | Root directory with dataset folders             |
+| `--output`       | `data/hybrid/hybrid_ids_dataset.csv` | Output CSV path                                 |
+| `--iiot-variant` | `nightly`                            | IIoT variant: nightly, full, 500k               |
+| `--max-samples`  | None                                 | Limit samples per source dataset                |
 | `--balance`      | `none`                               | Balance strategy: none, undersample, stratified |
-| `--no-normalize` | False                                | Skip StandardScaler normalization        |
-| `--seed`         | 42                                   | Random seed for reproducibility          |
+| `--no-normalize` | False                                | Skip StandardScaler normalization               |
+| `--seed`         | 42                                   | Random seed for reproducibility                 |
 
 ### Balance Strategies
 
@@ -109,15 +113,15 @@ python scripts/create_hybrid_dataset.py \
 
 The hybrid dataset CSV contains:
 
-| Column                 | Type    | Description                              |
-|------------------------|---------|------------------------------------------|
-| `duration`             | float   | Connection/flow duration                 |
-| `fwd_packets`          | float   | Forward packet count                     |
-| `bwd_packets`          | float   | Backward packet count                    |
-| ... (50+ features)     | float   | Semantic features from each source       |
-| `source_dataset`       | string  | Origin dataset: cic, unsw, iiot          |
-| `attack_class`         | int     | Unified class index (0-6)                |
-| `attack_label_original`| string  | Original attack label from source        |
+| Column                  | Type   | Description                        |
+| ----------------------- | ------ | ---------------------------------- |
+| `duration`              | float  | Connection/flow duration           |
+| `fwd_packets`           | float  | Forward packet count               |
+| `bwd_packets`           | float  | Backward packet count              |
+| ... (50+ features)      | float  | Semantic features from each source |
+| `source_dataset`        | string | Origin dataset: cic, unsw, iiot    |
+| `attack_class`          | int    | Unified class index (0-6)          |
+| `attack_label_original` | string | Original attack label from source  |
 
 ## Integration with Federated Learning
 

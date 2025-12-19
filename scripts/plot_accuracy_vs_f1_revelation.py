@@ -25,6 +25,7 @@ plt.rcParams['ytick.labelsize'] = 9
 plt.rcParams['legend.fontsize'] = 9
 plt.rcParams['figure.titlesize'] = 14
 
+
 def extract_metrics_from_runs(base_path, alpha_values, algorithm='fedavg', mu=0.0):
     """Extract accuracy and F1 metrics from experiment runs."""
     results = {}
@@ -59,10 +60,11 @@ def extract_metrics_from_runs(base_path, alpha_values, algorithm='fedavg', mu=0.
                 'acc_std': np.std(acc_values),
                 'f1_mean': np.mean(f1_values),
                 'f1_std': np.std(f1_values),
-                'n': len(acc_values)
+                'n': len(acc_values),
             }
 
     return results
+
 
 def create_revelation_plot(base_path, output_path):
     """Create the comprehensive accuracy vs F1 revelation plot."""
@@ -85,7 +87,7 @@ def create_revelation_plot(base_path, output_path):
         'The Accuracy-F1 Paradox: How FedProx Performance Degradation is Hidden by Inappropriate Metrics',
         fontsize=16,
         fontweight='bold',
-        y=0.98
+        y=0.98,
     )
 
     # Colors
@@ -103,15 +105,30 @@ def create_revelation_plot(base_path, output_path):
     fedavg_acc_std = [fedavg_data[a]['acc_std'] for a in alpha_values if a in fedavg_data]
     fedprox_acc_std = [fedprox_data[a]['acc_std'] for a in alpha_values if a in fedprox_data]
 
-    ax1.errorbar(alphas_numeric[:len(fedavg_acc)], fedavg_acc, yerr=fedavg_acc_std,
-                 marker='o', linewidth=2, capsize=5, label='FedAvg', color=color_fedavg)
-    ax1.errorbar(alphas_numeric[:len(fedprox_acc)], fedprox_acc, yerr=fedprox_acc_std,
-                 marker='s', linewidth=2, capsize=5, label='FedProx (μ=0.1)', color=color_fedprox)
+    ax1.errorbar(
+        alphas_numeric[: len(fedavg_acc)],
+        fedavg_acc,
+        yerr=fedavg_acc_std,
+        marker='o',
+        linewidth=2,
+        capsize=5,
+        label='FedAvg',
+        color=color_fedavg,
+    )
+    ax1.errorbar(
+        alphas_numeric[: len(fedprox_acc)],
+        fedprox_acc,
+        yerr=fedprox_acc_std,
+        marker='s',
+        linewidth=2,
+        capsize=5,
+        label='FedProx (μ=0.1)',
+        color=color_fedprox,
+    )
 
     ax1.set_xlabel('Dirichlet α (Heterogeneity Level)', fontweight='bold')
     ax1.set_ylabel('Accuracy', fontweight='bold')
-    ax1.set_title('(A) What Literature Reports: Accuracy\n"FedProx looks acceptable (99% → 98%)"',
-                  fontsize=11, pad=10)
+    ax1.set_title('(A) What Literature Reports: Accuracy\n"FedProx looks acceptable (99% → 98%)"', fontsize=11, pad=10)
     ax1.set_xscale('log')
     ax1.set_ylim([0.85, 1.00])
     ax1.grid(True, alpha=0.3, linestyle='--')
@@ -127,32 +144,49 @@ def create_revelation_plot(base_path, output_path):
     fedavg_f1_std = [fedavg_data[a]['f1_std'] for a in alpha_values if a in fedavg_data]
     fedprox_f1_std = [fedprox_data[a]['f1_std'] for a in alpha_values if a in fedprox_data]
 
-    ax2.errorbar(alphas_numeric[:len(fedavg_f1)], fedavg_f1, yerr=fedavg_f1_std,
-                 marker='o', linewidth=2, capsize=5, label='FedAvg', color=color_fedavg)
-    ax2.errorbar(alphas_numeric[:len(fedprox_f1)], fedprox_f1, yerr=fedprox_f1_std,
-                 marker='s', linewidth=2, capsize=5, label='FedProx (μ=0.1)', color=color_fedprox)
+    ax2.errorbar(
+        alphas_numeric[: len(fedavg_f1)],
+        fedavg_f1,
+        yerr=fedavg_f1_std,
+        marker='o',
+        linewidth=2,
+        capsize=5,
+        label='FedAvg',
+        color=color_fedavg,
+    )
+    ax2.errorbar(
+        alphas_numeric[: len(fedprox_f1)],
+        fedprox_f1,
+        yerr=fedprox_f1_std,
+        marker='s',
+        linewidth=2,
+        capsize=5,
+        label='FedProx (μ=0.1)',
+        color=color_fedprox,
+    )
 
     ax2.set_xlabel('Dirichlet α (Heterogeneity Level)', fontweight='bold')
     ax2.set_ylabel('Macro-F1', fontweight='bold')
-    ax2.set_title('(B) What We Reveal: Macro-F1\n"FedProx is catastrophic (46% → 29%, -38%)"',
-                  fontsize=11, pad=10, color=color_bad)
+    ax2.set_title('(B) What We Reveal: Macro-F1\n"FedProx is catastrophic (46% → 29%, -38%)"', fontsize=11, pad=10, color=color_bad)
     ax2.set_xscale('log')
     ax2.set_ylim([0.2, 0.75])
     ax2.grid(True, alpha=0.3, linestyle='--')
     ax2.legend(loc='lower right')
 
     # Add degradation annotations
-    for i, alpha in enumerate(alpha_values[:len(fedavg_f1)]):
+    for i, alpha in enumerate(alpha_values[: len(fedavg_f1)]):
         if alpha in fedavg_data and alpha in fedprox_data:
-            degradation = ((fedprox_data[alpha]['f1_mean'] - fedavg_data[alpha]['f1_mean']) /
-                          fedavg_data[alpha]['f1_mean'] * 100)
+            degradation = (fedprox_data[alpha]['f1_mean'] - fedavg_data[alpha]['f1_mean']) / fedavg_data[alpha]['f1_mean'] * 100
             if i % 2 == 0:  # Annotate every other point to avoid clutter
-                ax2.annotate(f'{degradation:.0f}%',
-                           xy=(alphas_numeric[i], fedprox_f1[i]),
-                           xytext=(10, -15), textcoords='offset points',
-                           fontsize=8, color=color_bad,
-                           bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
-                                   edgecolor=color_bad, alpha=0.7))
+                ax2.annotate(
+                    f'{degradation:.0f}%',
+                    xy=(alphas_numeric[i], fedprox_f1[i]),
+                    xytext=(10, -15),
+                    textcoords='offset points',
+                    fontsize=8,
+                    color=color_bad,
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=color_bad, alpha=0.7),
+                )
 
     # Panel C: Side-by-side bar comparison at alpha=0.05
     ax3 = plt.subplot(2, 3, 3)
@@ -165,22 +199,19 @@ def create_revelation_plot(base_path, output_path):
         acc_vals = [fedavg_data[alpha_key]['acc_mean'], fedprox_data[alpha_key]['acc_mean']]
         f1_vals = [fedavg_data[alpha_key]['f1_mean'], fedprox_data[alpha_key]['f1_mean']]
 
-        bars1 = ax3.bar(x - width/2, acc_vals, width, label='Accuracy',
-                       color=color_good, alpha=0.8, edgecolor='black', linewidth=1.5)
-        bars2 = ax3.bar(x + width/2, f1_vals, width, label='Macro-F1',
-                       color=color_bad, alpha=0.8, edgecolor='black', linewidth=1.5)
+        bars1 = ax3.bar(x - width / 2, acc_vals, width, label='Accuracy', color=color_good, alpha=0.8, edgecolor='black', linewidth=1.5)
+        bars2 = ax3.bar(x + width / 2, f1_vals, width, label='Macro-F1', color=color_bad, alpha=0.8, edgecolor='black', linewidth=1.5)
 
         # Add value labels
         for bars in [bars1, bars2]:
             for bar in bars:
                 height = bar.get_height()
-                ax3.text(bar.get_x() + bar.get_width()/2., height,
-                        f'{height:.1%}',
-                        ha='center', va='bottom', fontsize=9, fontweight='bold')
+                ax3.text(
+                    bar.get_x() + bar.get_width() / 2.0, height, f'{height:.1%}', ha='center', va='bottom', fontsize=9, fontweight='bold'
+                )
 
         ax3.set_ylabel('Performance', fontweight='bold')
-        ax3.set_title('(C) Direct Comparison at α=0.05\n"54% gap reveals class imbalance"',
-                     fontsize=11, pad=10)
+        ax3.set_title('(C) Direct Comparison at α=0.05\n"54% gap reveals class imbalance"', fontsize=11, pad=10)
         ax3.set_xticks(x)
         ax3.set_xticklabels(['FedAvg', 'FedProx'], fontweight='bold')
         ax3.legend(loc='upper right')
@@ -190,10 +221,8 @@ def create_revelation_plot(base_path, output_path):
         # Add gap annotations
         for i, (acc, f1) in enumerate(zip(acc_vals, f1_vals)):
             gap = acc - f1
-            ax3.annotate('', xy=(i, f1), xytext=(i, acc),
-                        arrowprops=dict(arrowstyle='<->', color='red', lw=1.5))
-            ax3.text(i + 0.15, (acc + f1) / 2, f'Gap:\n{gap:.1%}',
-                    fontsize=8, color='red', fontweight='bold')
+            ax3.annotate('', xy=(i, f1), xytext=(i, acc), arrowprops=dict(arrowstyle='<->', color='red', lw=1.5))
+            ax3.text(i + 0.15, (acc + f1) / 2, f'Gap:\n{gap:.1%}', fontsize=8, color='red', fontweight='bold')
 
     # Panel D: Performance degradation across all alphas
     ax4 = plt.subplot(2, 3, 4)
@@ -204,10 +233,8 @@ def create_revelation_plot(base_path, output_path):
 
     for alpha in alpha_values:
         if alpha in fedavg_data and alpha in fedprox_data:
-            acc_deg = ((fedprox_data[alpha]['acc_mean'] - fedavg_data[alpha]['acc_mean']) /
-                      fedavg_data[alpha]['acc_mean'] * 100)
-            f1_deg = ((fedprox_data[alpha]['f1_mean'] - fedavg_data[alpha]['f1_mean']) /
-                     fedavg_data[alpha]['f1_mean'] * 100)
+            acc_deg = (fedprox_data[alpha]['acc_mean'] - fedavg_data[alpha]['acc_mean']) / fedavg_data[alpha]['acc_mean'] * 100
+            f1_deg = (fedprox_data[alpha]['f1_mean'] - fedavg_data[alpha]['f1_mean']) / fedavg_data[alpha]['f1_mean'] * 100
 
             acc_degradation.append(acc_deg)
             f1_degradation.append(f1_deg)
@@ -216,16 +243,13 @@ def create_revelation_plot(base_path, output_path):
     x = np.arange(len(alpha_labels))
     width = 0.35
 
-    bars1 = ax4.bar(x - width/2, acc_degradation, width, label='Accuracy',
-                   color=color_good, alpha=0.8, edgecolor='black', linewidth=1.5)
-    bars2 = ax4.bar(x + width/2, f1_degradation, width, label='Macro-F1',
-                   color=color_bad, alpha=0.8, edgecolor='black', linewidth=1.5)
+    bars1 = ax4.bar(x - width / 2, acc_degradation, width, label='Accuracy', color=color_good, alpha=0.8, edgecolor='black', linewidth=1.5)
+    bars2 = ax4.bar(x + width / 2, f1_degradation, width, label='Macro-F1', color=color_bad, alpha=0.8, edgecolor='black', linewidth=1.5)
 
     ax4.axhline(y=0, color='black', linestyle='-', linewidth=1)
     ax4.set_ylabel('Performance Change (%)', fontweight='bold')
     ax4.set_xlabel('Heterogeneity Level', fontweight='bold')
-    ax4.set_title('(D) FedProx Performance Impact\n"Accuracy hides F1 degradation"',
-                 fontsize=11, pad=10)
+    ax4.set_title('(D) FedProx Performance Impact\n"Accuracy hides F1 degradation"', fontsize=11, pad=10)
     ax4.set_xticks(x)
     ax4.set_xticklabels(alpha_labels, rotation=0)
     ax4.legend(loc='lower right')
@@ -235,9 +259,16 @@ def create_revelation_plot(base_path, output_path):
     # Add value labels for F1 degradation
     for i, bar in enumerate(bars2):
         height = bar.get_height()
-        ax4.text(bar.get_x() + bar.get_width()/2., height - 2,
-                f'{height:.0f}%',
-                ha='center', va='top', fontsize=8, fontweight='bold', color='white')
+        ax4.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            height - 2,
+            f'{height:.0f}%',
+            ha='center',
+            va='top',
+            fontsize=8,
+            fontweight='bold',
+            color='white',
+        )
 
     # Panel E: Accuracy-F1 Gap comparison
     ax5 = plt.subplot(2, 3, 5)
@@ -245,19 +276,22 @@ def create_revelation_plot(base_path, output_path):
     fedavg_gaps = [acc - f1 for acc, f1 in zip(fedavg_acc, fedavg_f1)]
     fedprox_gaps = [acc - f1 for acc, f1 in zip(fedprox_acc, fedprox_f1)]
 
-    ax5.plot(alphas_numeric[:len(fedavg_gaps)], fedavg_gaps, marker='o',
-            linewidth=2, label='FedAvg Gap', color=color_fedavg)
-    ax5.plot(alphas_numeric[:len(fedprox_gaps)], fedprox_gaps, marker='s',
-            linewidth=2, label='FedProx Gap', color=color_fedprox)
+    ax5.plot(alphas_numeric[: len(fedavg_gaps)], fedavg_gaps, marker='o', linewidth=2, label='FedAvg Gap', color=color_fedavg)
+    ax5.plot(alphas_numeric[: len(fedprox_gaps)], fedprox_gaps, marker='s', linewidth=2, label='FedProx Gap', color=color_fedprox)
 
-    ax5.fill_between(alphas_numeric[:len(fedavg_gaps)], fedavg_gaps, fedprox_gaps,
-                     where=[fedprox_gaps[i] > fedavg_gaps[i] for i in range(len(fedavg_gaps))],
-                     alpha=0.3, color=color_bad, label='FedProx Widens Gap')
+    ax5.fill_between(
+        alphas_numeric[: len(fedavg_gaps)],
+        fedavg_gaps,
+        fedprox_gaps,
+        where=[fedprox_gaps[i] > fedavg_gaps[i] for i in range(len(fedavg_gaps))],
+        alpha=0.3,
+        color=color_bad,
+        label='FedProx Widens Gap',
+    )
 
     ax5.set_xlabel('Dirichlet α (Heterogeneity Level)', fontweight='bold')
     ax5.set_ylabel('Accuracy - Macro-F1 Gap', fontweight='bold')
-    ax5.set_title('(E) Class Imbalance Effect\n"FedProx worsens minority class performance"',
-                 fontsize=11, pad=10)
+    ax5.set_title('(E) Class Imbalance Effect\n"FedProx worsens minority class performance"', fontsize=11, pad=10)
     ax5.set_xscale('log')
     ax5.grid(True, alpha=0.3, linestyle='--')
     ax5.legend(loc='upper right')
@@ -300,9 +334,16 @@ def create_revelation_plot(base_path, output_path):
        - Per-class analysis is essential
     """
 
-    ax6.text(0.05, 0.95, summary_text, transform=ax6.transAxes,
-            fontsize=9, verticalalignment='top', family='monospace',
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
+    ax6.text(
+        0.05,
+        0.95,
+        summary_text,
+        transform=ax6.transAxes,
+        fontsize=9,
+        verticalalignment='top',
+        family='monospace',
+        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3),
+    )
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.96])
 
@@ -320,6 +361,7 @@ def create_revelation_plot(base_path, output_path):
 
     return output_file
 
+
 if __name__ == "__main__":
     import sys
 
@@ -327,18 +369,18 @@ if __name__ == "__main__":
     base_path = "/Users/abrahamreines/Documents/Thesis/federated-ids/runs"
     output_path = "/Users/abrahamreines/Documents/Thesis/federated-ids/results"
 
-    print("="*70)
+    print("=" * 70)
     print("Creating Accuracy vs F1 Revelation Plot")
-    print("="*70)
+    print("=" * 70)
     print(f"Reading data from: {base_path}")
     print(f"Saving plot to: {output_path}")
     print()
 
     output_file = create_revelation_plot(base_path, output_path)
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("SUCCESS: Plot created embodying investigation findings")
-    print("="*70)
+    print("=" * 70)
     print("\nThis plot demonstrates:")
     print("  - Why literature missed the problem (accuracy looks fine)")
     print("  - Why we discovered it (macro-F1 reveals degradation)")

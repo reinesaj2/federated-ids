@@ -13,22 +13,21 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 5. Reproducibility & logging (seeds, logs, plots)
 6. Algorithm comparison (FedAvg vs FedProx)
 7. Real datasets (UNSW‑NB15, CIC‑IDS2017)
-<<<<<<< HEAD
+   <<<<<<< HEAD
 8. **Experimental Results & Performance Analysis**
 9. **Visualization Gallery & Plot References**
 10. **Quick Links to Analysis & Results**
 11. D2 Runbook (experiment workflow & artifact map)
 12. Troubleshooting (common errors and fixes)
 13. Project structure
-14. Notes on privacy/robustness scaffolding
-=======
-8. Experimental Results & Performance Analysis
-9. Visualization Gallery & Plot References
-10. Quick Links to Analysis & Results
-11. Troubleshooting (common errors and fixes)
-12. Project structure
-13. Privacy & robustness disclosure (D2 scope)
-14. D2 Runbook (experiment workflow & artifact map)
+14. # Notes on privacy/robustness scaffolding
+15. Experimental Results & Performance Analysis
+16. Visualization Gallery & Plot References
+17. Quick Links to Analysis & Results
+18. Troubleshooting (common errors and fixes)
+19. Project structure
+20. Privacy & robustness disclosure (D2 scope)
+21. D2 Runbook (experiment workflow & artifact map)
 
 ---
 
@@ -462,12 +461,12 @@ Synthesis of the committed artifacts (see [`PERFORMANCE_COMPARISON_TABLES.md`](P
 
 ### Performance Comparison Tables
 
-| Aggregation | Macro‑F1 (benign) | Macro‑F1 (30 % adv.) | Δ at 30 % | Source |
-|-------------|------------------|----------------------|-----------|--------|
-| FedAvg | 1.000 | 0.675 | −74.5 % | `results/comparative_analysis/attack_resilience_stats.csv` |
-| Krum | 0.969 | 0.787 | −18.8 % | `results/comparative_analysis/attack_resilience_stats.csv` |
-| Bulyan | 0.994 | 0.854 | −14.1 % | `results/comparative_analysis/attack_resilience_stats.csv` |
-| Median | 0.999 | 0.894 | −10.5 % | `results/comparative_analysis/attack_resilience_stats.csv` |
+| Aggregation | Macro‑F1 (benign) | Macro‑F1 (30 % adv.) | Δ at 30 % | Source                                                     |
+| ----------- | ----------------- | -------------------- | --------- | ---------------------------------------------------------- |
+| FedAvg      | 1.000             | 0.675                | −74.5 %   | `results/comparative_analysis/attack_resilience_stats.csv` |
+| Krum        | 0.969             | 0.787                | −18.8 %   | `results/comparative_analysis/attack_resilience_stats.csv` |
+| Bulyan      | 0.994             | 0.854                | −14.1 %   | `results/comparative_analysis/attack_resilience_stats.csv` |
+| Median      | 0.999             | 0.894                | −10.5 %   | `results/comparative_analysis/attack_resilience_stats.csv` |
 
 Additional tables (FedProx stability, personalization breakdown, privacy curve) live in [`PERFORMANCE_COMPARISON_TABLES.md`](PERFORMANCE_COMPARISON_TABLES.md).
 
@@ -492,6 +491,7 @@ All publication-ready plots are organized in [`plots/thesis/`](plots/thesis/):
 - **FedProx Analysis**: [`fedprox_heterogeneity_analysis.png`](plots/thesis/2025-10-21/thesis-comparative/fedprox_heterogeneity_analysis.png)
 
 **Complete Plot Collection**:
+
 - **Aggregation Comparison**: [`plots/thesis/2025-10-05/thesis-comparative/aggregation_comparison.png`](plots/thesis/2025-10-05/thesis-comparative/aggregation_comparison.png)
 - **Attack Resilience**: [`plots/thesis/2025-10-05/thesis-comparative/attack_resilience.png`](plots/thesis/2025-10-05/thesis-comparative/attack_resilience.png)
 - **Personalization Benefits**: [`plots/thesis/2025-10-20/thesis-comparative/personalization_benefit.png`](plots/thesis/2025-10-20/thesis-comparative/personalization_benefit.png)
@@ -518,12 +518,14 @@ Browse all plots chronologically: [`plots/index.html`](plots/index.html)
 ## 10) Quick Links to Analysis & Results
 
 ### Experimental Data
+
 - **Aggregated Outputs**: [`results/`](results/) – Plot-ready CSV/PNG bundles
 - **Comparative Run Logs**: `comparative-analysis-*/runs/` – per-seed metrics (FedAvg, FedProx, personalization)
 - **Analysis Scripts**: [`scripts/`](scripts/) – Plot generation and analysis tools
 - **Documentation**: [`docs/`](docs/) – Detailed experimental methodology
 
 ### Key Analysis Files
+
 - **Performance Tables**: [`PERFORMANCE_COMPARISON_TABLES.md`](PERFORMANCE_COMPARISON_TABLES.md)
 - **FedProx Analysis**: [`analysis/fedprox_nightly/`](analysis/fedprox_nightly/)
 - **Personalization Study**: [`analysis/personalization/`](analysis/personalization/)
@@ -531,6 +533,7 @@ Browse all plots chronologically: [`plots/index.html`](plots/index.html)
 - **Threat Model**: [`docs/threat_model.md`](docs/threat_model.md)
 
 ### Reproducibility
+
 - **Experiment Bundles**: Aggregated CSV/JSON outputs under `results/` and `analysis/` (see comparative-analysis folders)
 - **Seed Control**: Reported runs use documented seeds (42, 43, 44, 101–505 depending on study)
 - **Data Sources**: UNSW-NB15 (82k samples) and CIC-IDS2017 datasets
@@ -614,11 +617,13 @@ Preprocess → Run Experiments → Generate Plots → Summarize → Commit Artif
 ```
 
 ### Step 1: Preprocess Data
+
 ```bash
 python scripts/setup_real_datasets.py
 ```
 
 ### Step 2: Run Experiments
+
 ```bash
 # Automated comparative analysis (recommended)
 python scripts/comparative_analysis.py \
@@ -630,6 +635,7 @@ python scripts/comparative_analysis.py \
 Available dimensions: `aggregation`, `attack`, `heterogeneity`, `heterogeneity_fedprox`, `privacy`, `personalization`
 
 ### Step 3: Generate Plots
+
 ```bash
 python scripts/generate_thesis_plots.py \
   --dimension heterogeneity \
@@ -638,6 +644,7 @@ python scripts/generate_thesis_plots.py \
 ```
 
 ### Step 4: Summarize Results
+
 ```bash
 python scripts/summarize_metrics.py \
   --run_dir runs/comp_fedavg_alpha0.1_adv0_dp0_pers0_seed42 \
@@ -647,6 +654,7 @@ python scripts/summarize_metrics.py \
 ### Artifact Structure
 
 Each experiment run creates a directory `runs/comp_{config}/` containing:
+
 - `config.json` - Experiment configuration
 - `metrics.csv` - Server-level metrics per round
 - `client_N_metrics.csv` - Per-client metrics per round

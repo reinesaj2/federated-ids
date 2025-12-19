@@ -17,6 +17,7 @@ min_w F_k(w) + (mu/2) * ||w - w_t||^2
 ```
 
 Where:
+
 - `F_k(w)` is the local loss function
 - `w_t` is the global model at round t
 - `mu` is the proximal term strength (tested values: 0.01, 0.05, 0.1)
@@ -32,23 +33,27 @@ Does FedProx improve federated intrusion detection performance on heterogeneous 
 ## Experimental Setup
 
 ### Dataset
+
 - **Source**: Edge-IIoTset (nightly partition)
 - **Size**: 500,000 samples
 - **Classes**: Binary (364,014 benign, 135,986 attack)
 - **Features**: 62 network traffic features
 
 ### Heterogeneity Simulation
+
 - **Method**: Dirichlet distribution partitioning
 - **Alpha values tested**: 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0
 - **Lower alpha = higher heterogeneity** (more skewed class distributions)
 
 ### Experimental Parameters
+
 - **Clients**: 6
 - **Rounds**: 15-80 (depending on experiment batch)
 - **Seeds**: 5 per configuration (42, 43, 44, 45, 46)
 - **FedProx mu values**: 0.01, 0.05, 0.1
 
 ### Total Experiments
+
 - FedAvg: 184 runs
 - FedProx: 271 runs
 
@@ -58,8 +63,8 @@ Does FedProx improve federated intrusion detection performance on heterogeneous 
 
 ### Overall Performance Comparison
 
-| Algorithm | Mean F1 | Std Dev | N |
-|-----------|---------|---------|---|
+| Algorithm | Mean F1 | Std Dev | N   |
+| --------- | ------- | ------- | --- |
 | FedAvg    | 0.6967  | 0.0449  | 184 |
 | FedProx   | 0.6817  | 0.0361  | 271 |
 
@@ -69,17 +74,17 @@ Does FedProx improve federated intrusion detection performance on heterogeneous 
 ### Performance by Heterogeneity Level
 
 | Alpha | FedAvg F1 | FedProx F1 | Difference | p-value | Significance |
-|-------|-----------|------------|------------|---------|--------------|
+| ----- | --------- | ---------- | ---------- | ------- | ------------ |
 | 0.005 | 0.7111    | 0.7058     | -0.53%     | 0.6998  | NS           |
 | 0.010 | 0.6983    | 0.7029     | +0.46%     | 0.7550  | NS           |
-| 0.020 | 0.7092    | 0.6848     | -2.44%     | 0.0013  | **           |
+| 0.020 | 0.7092    | 0.6848     | -2.44%     | 0.0013  | \*\*         |
 | 0.050 | 0.6968    | 0.6893     | -0.75%     | 0.5079  | NS           |
-| 0.100 | 0.7049    | 0.6796     | -2.53%     | 0.0059  | **           |
+| 0.100 | 0.7049    | 0.6796     | -2.53%     | 0.0059  | \*\*         |
 | 0.200 | 0.6658    | 0.6523     | -1.36%     | 0.1917  | NS           |
 | 0.500 | 0.6855    | 0.6747     | -1.08%     | 0.1859  | NS           |
 | 1.000 | 0.7233    | 0.7172     | -0.61%     | 0.7659  | NS           |
 
-NS = Not Significant, ** = p < 0.01
+NS = Not Significant, \*\* = p < 0.01
 
 ### Key Observations
 
@@ -98,22 +103,22 @@ NS = Not Significant, ** = p < 0.01
 ### Why FedProx Underperforms on IIoT IDS Data
 
 1. **Binary Classification Resilience**
-   
+
    The IIoT intrusion detection task is binary (attack vs benign). Even with extreme Dirichlet partitioning, each client receives samples from both classes, providing sufficient signal for local learning. The proximal term's constraint on local updates may be unnecessarily restrictive.
 
 2. **Proximal Term as a Hindrance**
-   
+
    The proximal term `(mu/2) * ||w - w_t||^2` penalizes deviation from the global model. For IIoT IDS:
    - Local data distributions, while heterogeneous, contain discriminative features
    - Constraining local updates prevents the model from fully exploiting local patterns
    - The "drift" that FedProx tries to prevent may actually be beneficial learning
 
 3. **Network Traffic Feature Characteristics**
-   
+
    IIoT network traffic features (packet sizes, timing, protocols) have consistent statistical properties across devices. This inherent feature-level homogeneity reduces the impact of label distribution heterogeneity.
 
 4. **Class Imbalance Interaction**
-   
+
    With 73% benign and 27% attack samples, Dirichlet partitioning creates varied but still learnable local distributions. The minority class (attack) is still represented in most partitions at sufficient frequency.
 
 ---
@@ -141,15 +146,18 @@ NS = Not Significant, ** = p < 0.01
 ## Statistical Methods
 
 ### Tests Performed
+
 - **Independent samples t-test**: Comparing FedAvg and FedProx F1 distributions
 - **Effect size**: Cohen's d for practical significance
 
 ### Significance Thresholds
-- p < 0.05: *
-- p < 0.01: **
-- p < 0.001: ***
+
+- p < 0.05: \*
+- p < 0.01: \*\*
+- p < 0.001: \*\*\*
 
 ### Assumptions Verified
+
 - Sample sizes sufficient (N > 30 for most comparisons)
 - F1 scores approximately normally distributed
 - Independent observations across seeds
@@ -175,6 +183,7 @@ FedProx does not improve federated intrusion detection on IIoT data compared to 
 ## Appendix: Raw Data Summary
 
 ### FedAvg by Alpha
+
 ```
 alpha    mean_f1   std_f1    n
 0.005    0.7111    0.0305    5
@@ -189,6 +198,7 @@ inf      0.7068    0.0348    17
 ```
 
 ### FedProx by Alpha
+
 ```
 alpha    mean_f1   std_f1    n
 0.005    0.7058    0.0250    15
@@ -203,6 +213,6 @@ alpha    mean_f1   std_f1    n
 
 ---
 
-*Analysis conducted: December 2, 2025*
-*Dataset: Edge-IIoTset (nightly partition)*
-*Total experiments analyzed: 455*
+_Analysis conducted: December 2, 2025_
+_Dataset: Edge-IIoTset (nightly partition)_
+_Total experiments analyzed: 455_

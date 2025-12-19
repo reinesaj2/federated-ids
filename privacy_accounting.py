@@ -33,6 +33,7 @@ def _load_opacus():
     try:
         from opacus.accountants.rdp import RDPAccountant as _RDPAccountant
         from opacus.accountants.utils import get_noise_multiplier as _get_noise_multiplier
+
         return _RDPAccountant, _get_noise_multiplier
     except Exception as exc:  # pragma: no cover - defensive fallback path
         logger.warning("Opacus import failed (%s); using analytic DP fallback", exc)

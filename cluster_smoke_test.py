@@ -14,18 +14,8 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser(description="Run cluster smoke test")
-    parser.add_argument(
-        "--dataset-path",
-        type=str,
-        required=True,
-        help="Path to edge_iiotset_full.csv"
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="/scratch/$USER/results/smoke_test",
-        help="Output directory for results"
-    )
+    parser.add_argument("--dataset-path", type=str, required=True, help="Path to edge_iiotset_full.csv")
+    parser.add_argument("--output-dir", type=str, default="/scratch/$USER/results/smoke_test", help="Output directory for results")
     args = parser.parse_args()
 
     # Validate dataset exists
@@ -45,16 +35,26 @@ def main():
         sys.executable,  # Use same python
         "experiment.py",
         preset_name,
-        "--num_clients", "20",
-        "--num_rounds", "30",
-        "--aggregation", "fedprox",
-        "--alpha", "0.5",
-        "--adversary_fraction", "0",
-        "--dp_enabled", "0",
-        "--personalization_epochs", "0",
-        "--fedprox_mu", "0.01",
-        "--seed", "42",
-        "--data_path", str(dataset_path),
+        "--num_clients",
+        "20",
+        "--num_rounds",
+        "30",
+        "--aggregation",
+        "fedprox",
+        "--alpha",
+        "0.5",
+        "--adversary_fraction",
+        "0",
+        "--dp_enabled",
+        "0",
+        "--personalization_epochs",
+        "0",
+        "--fedprox_mu",
+        "0.01",
+        "--seed",
+        "42",
+        "--data_path",
+        str(dataset_path),
     ]
 
     print("=" * 80)
@@ -76,12 +76,7 @@ def main():
 
     # Run experiment
     try:
-        result = subprocess.run(
-            cmd,
-            check=True,
-            capture_output=False,
-            text=True
-        )
+        result = subprocess.run(cmd, check=True, capture_output=False, text=True)
 
         elapsed = time.time() - start_time
 
@@ -94,13 +89,17 @@ def main():
         # Save timing info
         timing_file = output_dir / "smoke_test_timing.json"
         with open(timing_file, "w") as f:
-            json.dump({
-                "elapsed_seconds": elapsed,
-                "elapsed_minutes": elapsed / 60,
-                "num_clients": 20,
-                "num_rounds": 30,
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-            }, f, indent=2)
+            json.dump(
+                {
+                    "elapsed_seconds": elapsed,
+                    "elapsed_minutes": elapsed / 60,
+                    "num_clients": 20,
+                    "num_rounds": 30,
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                },
+                f,
+                indent=2,
+            )
         print(f"Timing saved to: {timing_file}")
 
     except subprocess.CalledProcessError as e:

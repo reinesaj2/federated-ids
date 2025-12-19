@@ -35,6 +35,7 @@ The CI workflow has been updated to include the `heterogeneity_fedprox` dimensio
 ## Data Integrity
 
 All experimental data is stored in the `runs/` directory with the following structure:
+
 - `runs/comp_fedavg_alpha{alpha}_adv0_dp0_pers0_mu{mu}_seed{seed}/`
   - `config.json`: Experiment parameters
   - `metrics.csv`: Server-side aggregation metrics

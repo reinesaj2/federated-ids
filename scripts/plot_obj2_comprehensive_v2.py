@@ -249,9 +249,9 @@ def plot_comprehensive_obj2(df: pd.DataFrame, output_path: Path):
         conv_data.append({"aggregation": agg, "alpha": alpha, "seed": seed, "rounds_to_90": r90})
 
     conv_df = pd.DataFrame(conv_data)
-    conv_summary = conv_df.groupby(["aggregation", "alpha"]).agg(
-        r90_mean=("rounds_to_90", "mean"), r90_sem=("rounds_to_90", "sem")
-    ).reset_index()
+    conv_summary = (
+        conv_df.groupby(["aggregation", "alpha"]).agg(r90_mean=("rounds_to_90", "mean"), r90_sem=("rounds_to_90", "sem")).reset_index()
+    )
 
     for agg in ["FedAvg", "FedProx"]:
         subset = conv_summary[conv_summary["aggregation"] == agg].copy()
@@ -279,9 +279,11 @@ def plot_comprehensive_obj2(df: pd.DataFrame, output_path: Path):
 
     # Panel 3: Client Model Drift
     drift_df = final_df[final_df["l2_dispersion"].notna()].copy()
-    drift_summary = drift_df.groupby(["aggregation", "alpha"]).agg(
-        drift_mean=("l2_dispersion", "mean"), drift_sem=("l2_dispersion", "sem")
-    ).reset_index()
+    drift_summary = (
+        drift_df.groupby(["aggregation", "alpha"])
+        .agg(drift_mean=("l2_dispersion", "mean"), drift_sem=("l2_dispersion", "sem"))
+        .reset_index()
+    )
 
     for agg in ["FedAvg", "FedProx"]:
         subset = drift_summary[drift_summary["aggregation"] == agg].copy()
@@ -313,10 +315,7 @@ def plot_comprehensive_obj2(df: pd.DataFrame, output_path: Path):
 
     for i, agg in enumerate(heatmap_aggs):
         for j, alpha in enumerate(heatmap_alphas):
-            subset = final_df[
-                (final_df["aggregation"] == agg) & 
-                (np.isclose(final_df["alpha"], alpha, rtol=0.1))
-            ]
+            subset = final_df[(final_df["aggregation"] == agg) & (np.isclose(final_df["alpha"], alpha, rtol=0.1))]
             if not subset.empty:
                 heatmap_data[i, j] = subset["f1_mean"].mean()
 
@@ -343,28 +342,30 @@ def plot_comprehensive_obj2(df: pd.DataFrame, output_path: Path):
     for agg in bar_aggs:
         iid_vals = iid_data[iid_data["aggregation"] == agg]["f1_mean"]
         noniid_vals = noniid_data[noniid_data["aggregation"] == agg]["f1_mean"]
-        bar_data.append({
-            "Aggregator": agg,
-            "IID": iid_vals.mean() if len(iid_vals) > 0 else np.nan,
-            "IID_sem": iid_vals.sem() if len(iid_vals) > 1 else 0,
-            "Non-IID": noniid_vals.mean() if len(noniid_vals) > 0 else np.nan,
-            "Non-IID_sem": noniid_vals.sem() if len(noniid_vals) > 1 else 0,
-        })
+        bar_data.append(
+            {
+                "Aggregator": agg,
+                "IID": iid_vals.mean() if len(iid_vals) > 0 else np.nan,
+                "IID_sem": iid_vals.sem() if len(iid_vals) > 1 else 0,
+                "Non-IID": noniid_vals.mean() if len(noniid_vals) > 0 else np.nan,
+                "Non-IID_sem": noniid_vals.sem() if len(noniid_vals) > 1 else 0,
+            }
+        )
 
     bar_df = pd.DataFrame(bar_data)
     x = np.arange(len(bar_aggs))
     width = 0.35
 
     if not bar_df.empty:
+        ax5.bar(x - width / 2, bar_df["IID"], width, yerr=1.96 * bar_df["IID_sem"], label="IID ($\\alpha$=1.0)", color="#1f77b4", capsize=3)
         ax5.bar(
-            x - width / 2, bar_df["IID"], width,
-            yerr=1.96 * bar_df["IID_sem"],
-            label="IID ($\\alpha$=1.0)", color="#1f77b4", capsize=3
-        )
-        ax5.bar(
-            x + width / 2, bar_df["Non-IID"], width,
+            x + width / 2,
+            bar_df["Non-IID"],
+            width,
             yerr=1.96 * bar_df["Non-IID_sem"],
-            label="Non-IID ($\\alpha$$\\leq$0.02)", color="#ff7f0e", capsize=3
+            label="Non-IID ($\\alpha$$\\leq$0.02)",
+            color="#ff7f0e",
+            capsize=3,
         )
         ax5.set_xticks(x)
         ax5.set_xticklabels(bar_aggs)

@@ -33,11 +33,11 @@ Temporal splitting is chosen over held-out clients because:
 
 For each client's local data, ordered by `frame.time` (or equivalent temporal field):
 
-| Split | Proportion | Purpose |
-|-------|------------|---------|
-| Train | 70% (earliest) | Client local training |
-| Validation | 15% (middle) | Hyperparameter selection (mu) |
-| Test | 15% (latest) | Final metric reporting |
+| Split      | Proportion     | Purpose                       |
+| ---------- | -------------- | ----------------------------- |
+| Train      | 70% (earliest) | Client local training         |
+| Validation | 15% (middle)   | Hyperparameter selection (mu) |
+| Test       | 15% (latest)   | Final metric reporting        |
 
 ```
 Timeline per client:
@@ -71,19 +71,19 @@ This ensures metrics reflect the final aggregated model, not the one-round-behin
 
 ### 3.1 Tuning Phase
 
-| Parameter | Value |
-|-----------|-------|
-| Seeds | {42, 43, 44} |
-| Metric used | `macro_f1` on **validation** set |
-| Purpose | Select optimal `mu` per `alpha` level |
+| Parameter   | Value                                 |
+| ----------- | ------------------------------------- |
+| Seeds       | {42, 43, 44}                          |
+| Metric used | `macro_f1` on **validation** set      |
+| Purpose     | Select optimal `mu` per `alpha` level |
 
 ### 3.2 Evaluation Phase
 
-| Parameter | Value |
-|-----------|-------|
-| Seeds | {45, 46, 47, 48, 49} |
-| Metric used | `macro_f1` on **test** set |
-| Purpose | Report final results with confidence intervals |
+| Parameter   | Value                                          |
+| ----------- | ---------------------------------------------- |
+| Seeds       | {45, 46, 47, 48, 49}                           |
+| Metric used | `macro_f1` on **test** set                     |
+| Purpose     | Report final results with confidence intervals |
 
 ### 3.3 Seed Isolation Guarantee
 
@@ -100,18 +100,19 @@ This ensures metrics reflect the final aggregated model, not the one-round-behin
 **`macro_f1`** on global test set (aggregated across all clients)
 
 Rationale:
+
 - Handles class imbalance (common in IDS datasets)
 - Treats all attack classes equally regardless of frequency
 - Standard metric in multi-class IDS literature
 
 ### 4.2 Secondary Metrics (Reporting Only)
 
-| Metric | Definition | Rationale |
-|--------|------------|-----------|
-| Client-mean macro_f1 | Unweighted mean of per-client macro_f1 | Fairness across participants |
-| Benign FPR | False positive rate on benign class | Operational cost of false alarms |
-| Per-class recall | Recall for each attack type | Identifies which attacks are missed |
-| Accuracy | Overall correctness | Baseline comparison |
+| Metric               | Definition                             | Rationale                           |
+| -------------------- | -------------------------------------- | ----------------------------------- |
+| Client-mean macro_f1 | Unweighted mean of per-client macro_f1 | Fairness across participants        |
+| Benign FPR           | False positive rate on benign class    | Operational cost of false alarms    |
+| Per-class recall     | Recall for each attack type            | Identifies which attacks are missed |
+| Accuracy             | Overall correctness                    | Baseline comparison                 |
 
 ### 4.3 Global Metric Computation (Sample-Weighted)
 
@@ -126,6 +127,7 @@ where:
 ```
 
 **Rationale:**
+
 - Reflects true global performance across the entire distributed dataset
 - Larger clients (more data) contribute proportionally more
 - Matches deployment scenario where total prediction quality matters
@@ -149,6 +151,7 @@ mu*[alpha] = argmax_{mu} ( mean_{seed in {42,43,44}} global_macro_f1_val(alpha, 
 ```
 
 **Mu grid rationale:**
+
 - {0.002, 0.005, 0.01, 0.02, 0.05, 0.08, 0.1, 0.2}: Matches existing 315 runs for comparability
 - {0.5, 1.0}: Added to empirically test whether higher regularization helps under extreme non-IID
 
@@ -173,38 +176,38 @@ After mu selection is locked:
 
 Matches existing 315 runs for comparability:
 
-| Alpha | Interpretation |
-|-------|----------------|
-| 0.02 | Extreme non-IID (highly skewed label distributions) |
-| 0.05 | Very high non-IID |
-| 0.1 | High non-IID |
-| 0.2 | Moderate-high non-IID |
-| 0.5 | Moderate non-IID |
-| 1.0 | Mild non-IID |
-| inf | IID (uniform label distribution) |
+| Alpha | Interpretation                                      |
+| ----- | --------------------------------------------------- |
+| 0.02  | Extreme non-IID (highly skewed label distributions) |
+| 0.05  | Very high non-IID                                   |
+| 0.1   | High non-IID                                        |
+| 0.2   | Moderate-high non-IID                               |
+| 0.5   | Moderate non-IID                                    |
+| 1.0   | Mild non-IID                                        |
+| inf   | IID (uniform label distribution)                    |
 
 **Total alpha values:** 7
 
 ### 6.2 Mu Grid (FedProx Regularization)
 
-| Mu | Source |
-|----|--------|
-| 0.002, 0.005, 0.01, 0.02, 0.05, 0.08, 0.1, 0.2 | Existing sweep (8 values) |
-| 0.5, 1.0 | New high-mu exploration (2 values) |
+| Mu                                             | Source                             |
+| ---------------------------------------------- | ---------------------------------- |
+| 0.002, 0.005, 0.01, 0.02, 0.05, 0.08, 0.1, 0.2 | Existing sweep (8 values)          |
+| 0.5, 1.0                                       | New high-mu exploration (2 values) |
 
 **Total mu values:** 10
 
 ### 6.3 Tuning Phase Jobs
 
 | Alpha | Mu Values | Seeds | Total Configs |
-|-------|-----------|-------|---------------|
-| 0.02 | 10 values | 3 | 30 |
-| 0.05 | 10 values | 3 | 30 |
-| 0.1 | 10 values | 3 | 30 |
-| 0.2 | 10 values | 3 | 30 |
-| 0.5 | 10 values | 3 | 30 |
-| 1.0 | 10 values | 3 | 30 |
-| inf | 10 values | 3 | 30 |
+| ----- | --------- | ----- | ------------- |
+| 0.02  | 10 values | 3     | 30            |
+| 0.05  | 10 values | 3     | 30            |
+| 0.1   | 10 values | 3     | 30            |
+| 0.2   | 10 values | 3     | 30            |
+| 0.5   | 10 values | 3     | 30            |
+| 1.0   | 10 values | 3     | 30            |
+| inf   | 10 values | 3     | 30            |
 
 **Total tuning jobs (FedProx):** 210 (7 alphas x 10 mu x 3 seeds)  
 **Total tuning jobs (FedAvg):** 21 (7 alphas x 3 seeds)  
@@ -212,15 +215,15 @@ Matches existing 315 runs for comparability:
 
 ### 6.4 Evaluation Phase Jobs
 
-| Alpha | Mu | Seeds | Total Configs |
-|-------|-----|-------|---------------|
-| 0.02 | mu*[0.02] | 5 | 5 |
-| 0.05 | mu*[0.05] | 5 | 5 |
-| 0.1 | mu*[0.1] | 5 | 5 |
-| 0.2 | mu*[0.2] | 5 | 5 |
-| 0.5 | mu*[0.5] | 5 | 5 |
-| 1.0 | mu*[1.0] | 5 | 5 |
-| inf | mu*[inf] | 5 | 5 |
+| Alpha | Mu         | Seeds | Total Configs |
+| ----- | ---------- | ----- | ------------- |
+| 0.02  | mu\*[0.02] | 5     | 5             |
+| 0.05  | mu\*[0.05] | 5     | 5             |
+| 0.1   | mu\*[0.1]  | 5     | 5             |
+| 0.2   | mu\*[0.2]  | 5     | 5             |
+| 0.5   | mu\*[0.5]  | 5     | 5             |
+| 1.0   | mu\*[1.0]  | 5     | 5             |
+| inf   | mu\*[inf]  | 5     | 5             |
 
 **Total evaluation jobs (FedProx):** 35 (7 alphas x 5 seeds)  
 **Total evaluation jobs (FedAvg):** 35 (7 alphas x 5 seeds)  
@@ -228,11 +231,11 @@ Matches existing 315 runs for comparability:
 
 ### 6.5 Compute Budget Summary
 
-| Phase | Jobs | Est. Time/Job | Total Time (1 node) | Total Time (17 nodes) |
-|-------|------|---------------|---------------------|----------------------|
-| Tuning | 231 | ~7 min | ~27 hours | ~1.6 hours |
-| Evaluation | 70 | ~7 min | ~8 hours | ~0.5 hours |
-| **Total** | **301** | - | **~35 hours** | **~2.1 hours** |
+| Phase      | Jobs    | Est. Time/Job | Total Time (1 node) | Total Time (17 nodes) |
+| ---------- | ------- | ------------- | ------------------- | --------------------- |
+| Tuning     | 231     | ~7 min        | ~27 hours           | ~1.6 hours            |
+| Evaluation | 70      | ~7 min        | ~8 hours            | ~0.5 hours            |
+| **Total**  | **301** | -             | **~35 hours**       | **~2.1 hours**        |
 
 ---
 
@@ -317,7 +320,7 @@ If FedProx does not significantly outperform FedAvg:
 CI = mean +/- t_{0.975, df=4} * (std / sqrt(5))
 ```
 
-where t_{0.975, 4} = 2.776
+where t\_{0.975, 4} = 2.776
 
 ### 9.2 Significance Testing
 
@@ -336,12 +339,12 @@ Report Cohen's d for practical significance:
 d = (mean_FedProx - mean_FedAvg) / pooled_std
 ```
 
-| d | Interpretation |
-|---|----------------|
-| < 0.2 | Negligible |
-| 0.2 - 0.5 | Small |
-| 0.5 - 0.8 | Medium |
-| > 0.8 | Large |
+| d         | Interpretation |
+| --------- | -------------- |
+| < 0.2     | Negligible     |
+| 0.2 - 0.5 | Small          |
+| 0.5 - 0.8 | Medium         |
+| > 0.8     | Large          |
 
 ---
 

@@ -1,20 +1,9 @@
 {
   "experiment_metadata": {
     "total_comparisons": 9,
-    "alpha_values_tested": [
-      0.1,
-      0.5,
-      0.05
-    ],
-    "mu_values_tested": [
-      0.0,
-      0.1,
-      0.01
-    ],
-    "algorithms_compared": [
-      "FedAvg",
-      "FedProx"
-    ]
+    "alpha_values_tested": [0.1, 0.5, 0.05],
+    "mu_values_tested": [0.0, 0.1, 0.01],
+    "algorithms_compared": ["FedAvg", "FedProx"]
   },
   "key_findings": {
     "best_l2_distance": {

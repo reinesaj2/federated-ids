@@ -110,10 +110,7 @@ def load_full_iiot_data() -> pd.DataFrame:
     """Load all edge-iiotset-full experimental data."""
     all_data = []
 
-    full_iiot_dirs = [
-        d for d in CLUSTER_RUNS_DIR.iterdir()
-        if d.is_dir() and "edge-iiotset-full" in d.name
-    ]
+    full_iiot_dirs = [d for d in CLUSTER_RUNS_DIR.iterdir() if d.is_dir() and "edge-iiotset-full" in d.name]
 
     print(f"Found {len(full_iiot_dirs)} edge-iiotset-full experiment directories")
 
@@ -202,9 +199,7 @@ def plot_obj2_heterogeneity(df: pd.DataFrame, output_dir: Path):
     markers = {"FedAvg": "o", "Krum": "s", "Bulyan": "D", "Median": "^", "FedProx": "P"}
 
     benign_df = df[df["adversary"] == 0].copy()
-    final_df = benign_df[
-        benign_df["round"] == benign_df.groupby(["aggregation", "alpha", "seed"])["round"].transform("max")
-    ]
+    final_df = benign_df[benign_df["round"] == benign_df.groupby(["aggregation", "alpha", "seed"])["round"].transform("max")]
 
     alpha_order = sorted([a for a in final_df["alpha"].unique() if pd.notna(a) and 0 < a < 100])
 
@@ -226,7 +221,8 @@ def plot_obj2_heterogeneity(df: pd.DataFrame, output_dir: Path):
 
         sum_df = pd.DataFrame(summary)
         ax1.plot(
-            sum_df["alpha"], sum_df["mean"],
+            sum_df["alpha"],
+            sum_df["mean"],
             marker=markers.get(agg, "o"),
             color=colors.get(agg, "#333"),
             label=agg,
@@ -234,7 +230,9 @@ def plot_obj2_heterogeneity(df: pd.DataFrame, output_dir: Path):
             markersize=8,
         )
         ax1.fill_between(
-            sum_df["alpha"], sum_df["ci_lo"], sum_df["ci_hi"],
+            sum_df["alpha"],
+            sum_df["ci_lo"],
+            sum_df["ci_hi"],
             color=colors.get(agg, "#333"),
             alpha=0.2,
         )
@@ -282,7 +280,8 @@ def plot_obj2_heterogeneity(df: pd.DataFrame, output_dir: Path):
 
         sum_df = pd.DataFrame(summary)
         ax2.errorbar(
-            sum_df["alpha"], sum_df["mean"],
+            sum_df["alpha"],
+            sum_df["mean"],
             yerr=[sum_df["mean"] - sum_df["ci_lo"], sum_df["ci_hi"] - sum_df["mean"]],
             marker=markers.get(agg, "o"),
             color=colors.get(agg, "#333"),
@@ -318,7 +317,8 @@ def plot_obj2_heterogeneity(df: pd.DataFrame, output_dir: Path):
 
         sum_df = pd.DataFrame(summary)
         ax3.plot(
-            sum_df["alpha"], sum_df["mean"],
+            sum_df["alpha"],
+            sum_df["mean"],
             marker=markers.get(agg, "o"),
             color=colors.get(agg, "#333"),
             label=agg,
@@ -340,10 +340,7 @@ def plot_obj2_heterogeneity(df: pd.DataFrame, output_dir: Path):
 
     for i, agg in enumerate(heatmap_aggs):
         for j, alpha in enumerate(heatmap_alphas):
-            subset = final_df[
-                (final_df["aggregation"] == agg) &
-                (np.isclose(final_df["alpha"], alpha, rtol=0.1))
-            ]
+            subset = final_df[(final_df["aggregation"] == agg) & (np.isclose(final_df["alpha"], alpha, rtol=0.1))]
             if not subset.empty:
                 heatmap_data[i, j] = subset["f1_mean"].mean()
 
@@ -372,28 +369,30 @@ def plot_obj2_heterogeneity(df: pd.DataFrame, output_dir: Path):
     for agg in bar_aggs:
         iid_vals = iid_data[iid_data["aggregation"] == agg]["f1_mean"]
         noniid_vals = noniid_data[noniid_data["aggregation"] == agg]["f1_mean"]
-        bar_data.append({
-            "Aggregator": agg,
-            "IID": iid_vals.mean() if len(iid_vals) > 0 else np.nan,
-            "IID_sem": iid_vals.sem() if len(iid_vals) > 1 else 0,
-            "Non-IID": noniid_vals.mean() if len(noniid_vals) > 0 else np.nan,
-            "Non-IID_sem": noniid_vals.sem() if len(noniid_vals) > 1 else 0,
-        })
+        bar_data.append(
+            {
+                "Aggregator": agg,
+                "IID": iid_vals.mean() if len(iid_vals) > 0 else np.nan,
+                "IID_sem": iid_vals.sem() if len(iid_vals) > 1 else 0,
+                "Non-IID": noniid_vals.mean() if len(noniid_vals) > 0 else np.nan,
+                "Non-IID_sem": noniid_vals.sem() if len(noniid_vals) > 1 else 0,
+            }
+        )
 
     bar_df = pd.DataFrame(bar_data)
     x = np.arange(len(bar_aggs))
     width = 0.35
 
     if not bar_df.empty and not bar_df["IID"].isna().all():
+        ax5.bar(x - width / 2, bar_df["IID"], width, yerr=1.96 * bar_df["IID_sem"], label="IID (alpha=1.0)", color="#1f77b4", capsize=3)
         ax5.bar(
-            x - width / 2, bar_df["IID"], width,
-            yerr=1.96 * bar_df["IID_sem"],
-            label="IID (alpha=1.0)", color="#1f77b4", capsize=3
-        )
-        ax5.bar(
-            x + width / 2, bar_df["Non-IID"], width,
+            x + width / 2,
+            bar_df["Non-IID"],
+            width,
             yerr=1.96 * bar_df["Non-IID_sem"],
-            label="Non-IID (alpha<=0.1)", color="#ff7f0e", capsize=3
+            label="Non-IID (alpha<=0.1)",
+            color="#ff7f0e",
+            capsize=3,
         )
         ax5.set_xticks(x)
         ax5.set_xticklabels(bar_aggs)
@@ -415,7 +414,8 @@ def plot_obj2_heterogeneity(df: pd.DataFrame, output_dir: Path):
         round_f1 = subset.groupby("round")["f1_mean"].agg(["mean", "sem"]).reset_index()
 
         ax6.plot(
-            round_f1["round"], round_f1["mean"],
+            round_f1["round"],
+            round_f1["mean"],
             marker="o",
             color=alpha_colors.get(alpha, "#333"),
             label=f"alpha={alpha}",
@@ -463,9 +463,7 @@ def plot_fedprox_mu_analysis(df: pd.DataFrame, output_dir: Path):
     )
 
     fedprox_df = df[(df["aggregation"] == "FedProx") & (df["adversary"] == 0)].copy()
-    final_df = fedprox_df[
-        fedprox_df["round"] == fedprox_df.groupby(["alpha", "mu", "seed"])["round"].transform("max")
-    ]
+    final_df = fedprox_df[fedprox_df["round"] == fedprox_df.groupby(["alpha", "mu", "seed"])["round"].transform("max")]
 
     mu_values = sorted(final_df["mu"].unique())
     alpha_values = sorted([a for a in final_df["alpha"].unique() if pd.notna(a) and 0 < a < 100])
@@ -483,13 +481,18 @@ def plot_fedprox_mu_analysis(df: pd.DataFrame, output_dir: Path):
         if alpha_data.empty:
             continue
 
-        summary = alpha_data.groupby("mu").agg(
-            f1_mean=("f1_mean", "mean"),
-            f1_sem=("f1_mean", "sem"),
-        ).reset_index()
+        summary = (
+            alpha_data.groupby("mu")
+            .agg(
+                f1_mean=("f1_mean", "mean"),
+                f1_sem=("f1_mean", "sem"),
+            )
+            .reset_index()
+        )
 
         ax1.errorbar(
-            summary["mu"], summary["f1_mean"],
+            summary["mu"],
+            summary["f1_mean"],
             yerr=1.96 * summary["f1_sem"],
             marker=alpha_markers.get(alpha, "o"),
             color=alpha_colors.get(alpha, "#333"),
@@ -514,10 +517,7 @@ def plot_fedprox_mu_analysis(df: pd.DataFrame, output_dir: Path):
 
     for i, mu in enumerate(heatmap_mus):
         for j, alpha in enumerate(heatmap_alphas):
-            subset = final_df[
-                (np.isclose(final_df["mu"], mu, rtol=0.1)) &
-                (np.isclose(final_df["alpha"], alpha, rtol=0.1))
-            ]
+            subset = final_df[(np.isclose(final_df["mu"], mu, rtol=0.1)) & (np.isclose(final_df["alpha"], alpha, rtol=0.1))]
             if not subset.empty:
                 heatmap_data[i, j] = subset["f1_mean"].mean()
 
@@ -564,9 +564,7 @@ def plot_fedprox_mu_analysis(df: pd.DataFrame, output_dir: Path):
     # Panel D: FedProx vs FedAvg comparison
     ax4 = axes[1, 1]
     fedavg_df = df[(df["aggregation"] == "FedAvg") & (df["adversary"] == 0)].copy()
-    fedavg_final = fedavg_df[
-        fedavg_df["round"] == fedavg_df.groupby(["alpha", "seed"])["round"].transform("max")
-    ]
+    fedavg_final = fedavg_df[fedavg_df["round"] == fedavg_df.groupby(["alpha", "seed"])["round"].transform("max")]
 
     comparison_data = []
     for alpha in alpha_values:
@@ -574,13 +572,15 @@ def plot_fedprox_mu_analysis(df: pd.DataFrame, output_dir: Path):
         fedprox_vals = final_df[np.isclose(final_df["alpha"], alpha, rtol=0.1)]["f1_mean"]
 
         if len(fedavg_vals) > 0 and len(fedprox_vals) > 0:
-            comparison_data.append({
-                "alpha": alpha,
-                "FedAvg": fedavg_vals.mean(),
-                "FedAvg_sem": fedavg_vals.sem() if len(fedavg_vals) > 1 else 0,
-                "FedProx_best": fedprox_vals.max(),
-                "FedProx_mean": fedprox_vals.mean(),
-            })
+            comparison_data.append(
+                {
+                    "alpha": alpha,
+                    "FedAvg": fedavg_vals.mean(),
+                    "FedAvg_sem": fedavg_vals.sem() if len(fedavg_vals) > 1 else 0,
+                    "FedProx_best": fedprox_vals.max(),
+                    "FedProx_mean": fedprox_vals.mean(),
+                }
+            )
 
     if comparison_data:
         comp_df = pd.DataFrame(comparison_data)
@@ -640,7 +640,8 @@ def plot_convergence_analysis(df: pd.DataFrame, output_dir: Path):
         round_f1 = subset.groupby("round")["f1_mean"].agg(["mean", "sem"]).reset_index()
 
         ax1.plot(
-            round_f1["round"], round_f1["mean"],
+            round_f1["round"],
+            round_f1["mean"],
             color=alpha_colors[idx],
             label=f"alpha={alpha}",
             linewidth=2,
@@ -661,10 +662,7 @@ def plot_convergence_analysis(df: pd.DataFrame, output_dir: Path):
 
     # Panel B: FedProx convergence by mu (alpha=0.1)
     ax2 = axes[0, 1]
-    fedprox_df = benign_df[
-        (benign_df["aggregation"] == "FedProx") &
-        (np.isclose(benign_df["alpha"], 0.1, rtol=0.1))
-    ]
+    fedprox_df = benign_df[(benign_df["aggregation"] == "FedProx") & (np.isclose(benign_df["alpha"], 0.1, rtol=0.1))]
     mu_values = [0.01, 0.05, 0.1, 0.2]
     mu_colors = plt.cm.viridis(np.linspace(0.1, 0.9, len(mu_values)))
 
@@ -676,7 +674,8 @@ def plot_convergence_analysis(df: pd.DataFrame, output_dir: Path):
         round_f1 = subset.groupby("round")["f1_mean"].agg(["mean", "sem"]).reset_index()
 
         ax2.plot(
-            round_f1["round"], round_f1["mean"],
+            round_f1["round"],
+            round_f1["mean"],
             color=mu_colors[idx],
             label=f"mu={mu}",
             linewidth=2,
@@ -697,7 +696,8 @@ def plot_convergence_analysis(df: pd.DataFrame, output_dir: Path):
         agg_data = first_by_alpha[first_by_alpha["aggregation"] == agg]
         if not agg_data.empty:
             ax3.scatter(
-                agg_data["alpha"], agg_data["f1_mean"],
+                agg_data["alpha"],
+                agg_data["f1_mean"],
                 label=agg,
                 s=80,
                 alpha=0.7,
@@ -719,13 +719,15 @@ def plot_convergence_analysis(df: pd.DataFrame, output_dir: Path):
         if len(group_sorted) >= 2:
             initial_f1 = group_sorted["f1_mean"].iloc[0]
             final_f1 = group_sorted["f1_mean"].iloc[-1]
-            initial_final.append({
-                "aggregation": agg,
-                "alpha": alpha,
-                "initial_f1": initial_f1,
-                "final_f1": final_f1,
-                "gain": final_f1 - initial_f1,
-            })
+            initial_final.append(
+                {
+                    "aggregation": agg,
+                    "alpha": alpha,
+                    "initial_f1": initial_f1,
+                    "final_f1": final_f1,
+                    "gain": final_f1 - initial_f1,
+                }
+            )
 
     if initial_final:
         if_df = pd.DataFrame(initial_final)
@@ -734,7 +736,8 @@ def plot_convergence_analysis(df: pd.DataFrame, output_dir: Path):
             agg_data = if_df[if_df["aggregation"] == agg]
             if not agg_data.empty:
                 ax4.scatter(
-                    agg_data["initial_f1"], agg_data["final_f1"],
+                    agg_data["initial_f1"],
+                    agg_data["final_f1"],
                     label=agg,
                     s=50,
                     alpha=0.6,
@@ -760,18 +763,20 @@ def plot_convergence_analysis(df: pd.DataFrame, output_dir: Path):
 def generate_summary_stats(df: pd.DataFrame, output_dir: Path):
     """Generate summary statistics CSV."""
     benign_df = df[df["adversary"] == 0].copy()
-    final_df = benign_df[
-        benign_df["round"] == benign_df.groupby(["aggregation", "alpha", "seed"])["round"].transform("max")
-    ]
+    final_df = benign_df[benign_df["round"] == benign_df.groupby(["aggregation", "alpha", "seed"])["round"].transform("max")]
 
-    summary = final_df.groupby(["aggregation", "alpha"]).agg(
-        f1_mean=("f1_mean", "mean"),
-        f1_std=("f1_mean", "std"),
-        f1_min=("f1_mean", "min"),
-        f1_max=("f1_mean", "max"),
-        n_seeds=("seed", "nunique"),
-        n_records=("f1_mean", "count"),
-    ).reset_index()
+    summary = (
+        final_df.groupby(["aggregation", "alpha"])
+        .agg(
+            f1_mean=("f1_mean", "mean"),
+            f1_std=("f1_mean", "std"),
+            f1_min=("f1_mean", "min"),
+            f1_max=("f1_mean", "max"),
+            n_seeds=("seed", "nunique"),
+            n_records=("f1_mean", "count"),
+        )
+        .reset_index()
+    )
 
     output_path = output_dir / "summary_stats_full_iiot.csv"
     summary.to_csv(output_path, index=False)

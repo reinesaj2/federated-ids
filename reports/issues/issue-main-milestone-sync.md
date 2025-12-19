@@ -11,11 +11,11 @@
 
 2. **Sequential Milestone Merges**
    - Merge milestones oldest → newest (M0 → M4), resolving conflicts immediately:
-     * M0 CI foundation (CI helpers, adaptive L2 thresholds)
-     * M1 experiments core (FedProx µ grid, `ExperimentConfig.with_dataset`)
-     * M2 privacy/security (secure aggregation logging, DP schema updates)
-     * M3 visualization/reporting (thesis plots + confusion/personalization helpers)
-     * M4 automation (workflow automation hooks)
+     - M0 CI foundation (CI helpers, adaptive L2 thresholds)
+     - M1 experiments core (FedProx µ grid, `ExperimentConfig.with_dataset`)
+     - M2 privacy/security (secure aggregation logging, DP schema updates)
+     - M3 visualization/reporting (thesis plots + confusion/personalization helpers)
+     - M4 automation (workflow automation hooks)
 
 3. **Gate with Targeted Tests**
    - After each merge, run the scoped tests tied to that milestone (e.g., CI helper tests, comparative-analysis suite, client secure-aggregation tests, visualization tests).
@@ -34,4 +34,4 @@
 - All milestone functionality (secure aggregation logging, DP validation, FedProx scatter/personalization plots, etc.) present on `main`.
 - `pytest` succeeds end-to-end in the supported environment.
 - Automation worktrees updated or documented with rebase plans.
-- Issue closed only after CI pipelines confirm green status. 
+- Issue closed only after CI pipelines confirm green status.

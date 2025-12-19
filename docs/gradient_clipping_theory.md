@@ -39,11 +39,13 @@ This ensures `||g'|| ≤ λ` while preserving the gradient direction.
 ### 3. Scope Limitation: Adversarial Clients Only
 
 **Rationale:**
+
 - **Preserve Legitimate Learning**: Honest clients should not have their gradients clipped to maintain natural learning dynamics
 - **Target Adversarial Behavior**: Only known adversarial clients need gradient clipping to bound their attack strength
 - **Conditional Application**: Use `adversary_mode` to identify when clipping should be applied
 
 **Implementation:**
+
 ```python
 if mode in ["grad_ascent", "label_flip"]:
     clip_factor = float(self.runtime_config.get("adversary_clip_factor", 2.0))
@@ -62,6 +64,7 @@ Based on gradient norm analysis in `scripts/analyze_gradient_norms.py`:
 - **Chosen value**: 2.0x (conservative but effective)
 
 **Mathematical Justification:**
+
 - **Lower bound**: Must be larger than typical legitimate gradients to avoid clipping honest updates
 - **Upper bound**: Must be smaller than typical adversarial gradients to effectively bound attacks
 - **Sweet spot**: 2.0x provides good balance between effectiveness and preservation of legitimate learning
@@ -69,16 +72,19 @@ Based on gradient norm analysis in `scripts/analyze_gradient_norms.py`:
 ### 5. Comparison with 100x Multiplier
 
 **Previous Implementation (INCORRECT):**
+
 ```python
 max_norm=clip_factor * 100.0  # Excessive multiplier
 ```
 
 **Problems with 100x:**
+
 - **Overly Conservative**: Would allow adversarial gradients up to 200x typical legitimate norms
 - **Ineffective**: Adversarial clients could still send very large updates
 - **No Theoretical Basis**: No literature supports such large multipliers
 
 **Corrected Implementation:**
+
 ```python
 max_norm=clip_factor  # Direct use of analysis-based recommendation
 ```
@@ -88,20 +94,24 @@ max_norm=clip_factor  # Direct use of analysis-based recommendation
 ### 1. Conditional Application
 
 **Adversarial Modes:**
+
 - `grad_ascent`: Gradient ascent attack (negated loss)
 - `label_flip`: Label flipping attack (wrong labels)
 
 **Legitimate Mode:**
+
 - `none`: No gradient clipping applied
 
 ### 2. Configuration
 
 **Environment Variable:**
+
 ```bash
 export D2_ADVERSARY_CLIP_FACTOR=2.0
 ```
 
 **Default Value:**
+
 ```python
 "adversary_clip_factor": float(os.environ.get("D2_ADVERSARY_CLIP_FACTOR", "2.0"))
 ```
@@ -109,6 +119,7 @@ export D2_ADVERSARY_CLIP_FACTOR=2.0
 ### 3. Integration with Existing Patterns
 
 **Consistent with DP Configuration:**
+
 - Follows same pattern as `dp_clip` configuration
 - Uses environment variable override capability
 - Maintains backward compatibility
@@ -118,6 +129,7 @@ export D2_ADVERSARY_CLIP_FACTOR=2.0
 ### 1. Unit Tests
 
 **Test Coverage:**
+
 - Legitimate clients not clipped
 - Adversarial clients properly clipped
 - Configurable clipping factors
@@ -127,6 +139,7 @@ export D2_ADVERSARY_CLIP_FACTOR=2.0
 ### 2. Empirical Validation
 
 **Gradient Norm Analysis:**
+
 - Monitor gradient norms during training
 - Verify clipping occurs only for adversarial clients
 - Confirm legitimate learning is preserved

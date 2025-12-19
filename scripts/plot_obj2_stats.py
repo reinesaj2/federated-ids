@@ -281,12 +281,7 @@ def plot_seed_significance(per_seed: pd.DataFrame) -> None:
             size=6,
             ax=ax,
         )
-        summary = (
-            sub.groupby("algo")["f1"]
-            .agg(["mean", "sem"])
-            .reindex(algo_order)
-            .reset_index()
-        )
+        summary = sub.groupby("algo")["f1"].agg(["mean", "sem"]).reindex(algo_order).reset_index()
         ax.errorbar(
             x=np.arange(len(algo_order)),
             y=summary["mean"],
@@ -306,10 +301,7 @@ def plot_seed_significance(per_seed: pd.DataFrame) -> None:
     axes[0].set_ylabel("Final Macro-F1")
     fig.suptitle("Seed-level Macro-F1 with FedProx/Bulyan Baselines", fontsize=16, fontweight="bold", y=1.02)
 
-    handles = [
-        Line2D([], [], marker="o", color=color_map[a], linestyle="", markersize=8, label=a)
-        for a in algo_order
-    ]
+    handles = [Line2D([], [], marker="o", color=color_map[a], linestyle="", markersize=8, label=a) for a in algo_order]
     fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 1.08), ncol=len(algo_order), frameon=False)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
 
@@ -334,9 +326,7 @@ def plot_bulyan_vs_fedavg(per_seed: pd.DataFrame) -> None:
     for _, row in per_seed.iterrows():
         if row["aggregation"] not in ("FedAvg", "Bulyan"):
             continue
-        plot_rows.append(
-            {"alpha": row["alpha"], "algo": row["aggregation"], "f1": row["f1_mean"]}
-        )
+        plot_rows.append({"alpha": row["alpha"], "algo": row["aggregation"], "f1": row["f1_mean"]})
     plot_df = pd.DataFrame(plot_rows)
     plot_df = plot_df[plot_df["alpha"].isin(focus_alphas)]
 
@@ -357,12 +347,7 @@ def plot_bulyan_vs_fedavg(per_seed: pd.DataFrame) -> None:
             size=6,
             ax=ax,
         )
-        summary = (
-            sub.groupby("algo")["f1"]
-            .agg(["mean", "sem"])
-            .reindex(["FedAvg", "Bulyan"])
-            .reset_index()
-        )
+        summary = sub.groupby("algo")["f1"].agg(["mean", "sem"]).reindex(["FedAvg", "Bulyan"]).reset_index()
         ax.errorbar(
             x=np.arange(2),
             y=summary["mean"],
@@ -381,10 +366,7 @@ def plot_bulyan_vs_fedavg(per_seed: pd.DataFrame) -> None:
     axes[0].set_ylabel("Final Macro-F1")
     fig.suptitle("Bulyan vs FedAvg (Seed-level Macro-F1)", fontsize=15, fontweight="bold", y=1.04)
 
-    handles = [
-        Line2D([], [], marker="o", color=color_map[a], linestyle="", markersize=8, label=a)
-        for a in ["FedAvg", "Bulyan"]
-    ]
+    handles = [Line2D([], [], marker="o", color=color_map[a], linestyle="", markersize=8, label=a) for a in ["FedAvg", "Bulyan"]]
     fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 1.08), ncol=2, frameon=False)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
 
