@@ -633,10 +633,10 @@ def test_mixed_config_generation():
     """Test generation of mixed experiment configurations."""
     matrix = ComparisonMatrix(seeds=[42], num_clients=6)
     configs = matrix.generate_configs(filter_dimension="mixed")
-    
+
     assert len(configs) == 1
     config = configs[0]
-    
+
     assert config.dataset == "mixed"
     assert config.client_datasets is not None
     assert len(config.client_datasets) == 6
@@ -659,9 +659,9 @@ def test_mixed_config_defaults():
         num_rounds=10,
         seed=42,
         dataset="unsw",
-        data_path="data/unsw/path.csv"
+        data_path="data/unsw/path.csv",
     )
-    
+
     # Should return default dataset/path for any client
     assert config.get_client_dataset(0) == "unsw"
     assert config.get_client_dataset(5) == "unsw"
