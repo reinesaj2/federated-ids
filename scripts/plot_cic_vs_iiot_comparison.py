@@ -19,7 +19,7 @@ Data Sources:
 
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -151,7 +151,7 @@ def load_cross_dataset_data() -> pd.DataFrame:
     print(f"\nSuccessfully loaded {len(df)} runs total:")
     print(f"  - CIC-IDS2017: {cic_loaded} runs")
     print(f"  - Edge-IIoTset: {iiot_loaded} runs ({iiot_loaded/3.44:.1f}% of 344 available)")
-    print(f"\nLoad statistics:")
+    print("\nLoad statistics:")
     print(f"  - Missing CSV files: {load_failed['no_csv']}")
     print(f"  - Empty CSV files: {load_failed['empty_csv']}")
     print(f"  - CSV parse errors: {load_failed['parse_error']}")
@@ -488,7 +488,7 @@ def generate_statistical_comparison_report(df: pd.DataFrame):
         cohen_d = (baseline_cic.mean() - baseline_iiot.mean()) / np.sqrt(
             (baseline_cic.std()**2 + baseline_iiot.std()**2) / 2
         )
-        report_lines.append(f"\nBaseline FedAvg (benign):")
+        report_lines.append("\nBaseline FedAvg (benign):")
         report_lines.append(f"  CIC mean: {baseline_cic.mean():.4f}")
         report_lines.append(f"  IIOT mean: {baseline_iiot.mean():.4f}")
         report_lines.append(f"  t-statistic: {t_stat:.4f}")
@@ -520,7 +520,7 @@ def main():
         print("ERROR: No data loaded. Check runs directory.")
         return
 
-    print(f"\nDataset breakdown:")
+    print("\nDataset breakdown:")
     print(df.groupby("dataset").size())
 
     print("\nGenerating comparison plots...")

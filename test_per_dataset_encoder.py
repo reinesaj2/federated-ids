@@ -138,7 +138,7 @@ def test_get_default_encoder_config_unsw():
         cfg.latent_dim,
         cfg.shared_hidden,
         cfg.dropout,
-    ) == ("unsw", TEST_INPUT_DIM_MEDIUM, TEST_NUM_CLASSES_MEDIUM, [512, 256], 192, [128, 64], 0.2)
+    ) == ("unsw", TEST_INPUT_DIM_MEDIUM, TEST_NUM_CLASSES_MEDIUM, [512, 256], 256, [128, 64], 0.2)
 
 
 def test_get_default_encoder_config_cic():
@@ -151,12 +151,12 @@ def test_get_default_encoder_config_cic():
         cfg.latent_dim,
         cfg.shared_hidden,
         cfg.dropout,
-    ) == ("cic", TEST_INPUT_DIM_LARGE, TEST_NUM_CLASSES_LARGE, [768, 384, 192], 256, [192, 96], 0.25)
+    ) == ("cic", TEST_INPUT_DIM_LARGE, TEST_NUM_CLASSES_LARGE, [768, 384, 192], 256, [128, 64], 0.25)
 
 
 def test_get_default_encoder_config_unknown_dataset_uses_fallback():
     cfg = get_default_encoder_config("mystery", input_dim=64, num_classes=3)
-    assert (cfg.encoder_hidden, cfg.latent_dim, cfg.shared_hidden, cfg.dropout) == ([256, 128], 128, [64], 0.1)
+    assert (cfg.encoder_hidden, cfg.latent_dim, cfg.shared_hidden, cfg.dropout) == ([256, 128], 256, [128, 64], 0.1)
 
 
 def test_get_default_encoder_config_latent_override():

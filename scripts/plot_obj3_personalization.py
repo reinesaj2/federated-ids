@@ -238,17 +238,17 @@ def plot_personalization(df: pd.DataFrame, output_path: Path):
     summary_text = "PERSONALIZATION SUMMARY\n"
     summary_text += "=" * 35 + "\n\n"
 
-    summary_text += f"Baseline (0 epochs):\n"
+    summary_text += "Baseline (0 epochs):\n"
     summary_text += f"  N = {len(baseline)}\n"
     summary_text += f"  F1 = {baseline['final_f1'].mean():.4f} (+/- {baseline['final_f1'].std():.4f})\n\n"
 
     if len(pers3) > 0:
-        summary_text += f"Personalized (3 epochs):\n"
+        summary_text += "Personalized (3 epochs):\n"
         summary_text += f"  N = {len(pers3)}\n"
         summary_text += f"  F1 = {pers3['final_f1'].mean():.4f} (+/- {pers3['final_f1'].std():.4f})\n\n"
 
     if len(pers5) > 0:
-        summary_text += f"Personalized (5 epochs):\n"
+        summary_text += "Personalized (5 epochs):\n"
         summary_text += f"  N = {len(pers5)}\n"
         summary_text += f"  F1 = {pers5['final_f1'].mean():.4f} (+/- {pers5['final_f1'].std():.4f})\n\n"
 
@@ -256,7 +256,7 @@ def plot_personalization(df: pd.DataFrame, output_path: Path):
     if len(baseline) > 0 and len(pers3) > 0:
         t, p = stats.ttest_ind(pers3["final_f1"], baseline["final_f1"])
         diff = pers3["final_f1"].mean() - baseline["final_f1"].mean()
-        summary_text += f"Statistical Test (3 ep vs baseline):\n"
+        summary_text += "Statistical Test (3 ep vs baseline):\n"
         summary_text += f"  Difference: {diff*100:+.2f}%\n"
         summary_text += f"  p-value: {p:.4f}\n"
         if p < 0.05:

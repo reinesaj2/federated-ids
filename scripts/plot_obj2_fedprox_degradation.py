@@ -170,7 +170,7 @@ def plot_fedprox_degradation(df: pd.DataFrame):
         if subset.empty:
             continue
 
-        label = f"FedAvg (μ=0)" if mu == 0.0 else f"FedProx (μ={mu})"
+        label = "FedAvg (μ=0)" if mu == 0.0 else f"FedProx (μ={mu})"
         marker = "o" if mu == 0.0 else ("s" if mu == 0.01 else ("D" if mu == 0.05 else "^"))
 
         ax1.plot(

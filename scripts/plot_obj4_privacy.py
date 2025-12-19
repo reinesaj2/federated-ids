@@ -11,7 +11,6 @@ import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import stats
@@ -200,11 +199,11 @@ def plot_privacy_utility(df: pd.DataFrame, output_path: Path):
     summary_text = "PRIVACY-UTILITY SUMMARY\n"
     summary_text += "=" * 40 + "\n\n"
 
-    summary_text += f"Without Differential Privacy:\n"
+    summary_text += "Without Differential Privacy:\n"
     summary_text += f"  N = {len(no_dp)}\n"
     summary_text += f"  F1 = {no_dp['final_f1'].mean():.4f} (+/- {no_dp['final_f1'].std():.4f})\n\n"
 
-    summary_text += f"With Differential Privacy:\n"
+    summary_text += "With Differential Privacy:\n"
     summary_text += f"  N = {len(with_dp)}\n"
     if len(with_dp) > 0:
         summary_text += f"  F1 = {with_dp['final_f1'].mean():.4f} (+/- {with_dp['final_f1'].std():.4f})\n"
@@ -218,7 +217,7 @@ def plot_privacy_utility(df: pd.DataFrame, output_path: Path):
     if len(no_dp) > 0 and len(with_dp) > 0:
         t, p = stats.ttest_ind(with_dp["final_f1"], no_dp["final_f1"])
         diff = with_dp["final_f1"].mean() - no_dp["final_f1"].mean()
-        summary_text += f"Statistical Test:\n"
+        summary_text += "Statistical Test:\n"
         summary_text += f"  Difference: {diff*100:+.2f}%\n"
         summary_text += f"  p-value: {p:.4f}\n"
         if p < 0.05:

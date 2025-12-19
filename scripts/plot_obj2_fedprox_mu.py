@@ -250,7 +250,7 @@ def plot_fedprox_mu(fedprox_df: pd.DataFrame, fedavg_df: pd.DataFrame, output_pa
               for mu in fedprox_df["mu"].unique() if len(fedprox_df[fedprox_df["mu"] == mu]) > 2]
     if len(groups) >= 2:
         f_stat, p_val = stats.f_oneway(*groups)
-        summary_text += f"ANOVA across mu values:\n"
+        summary_text += "ANOVA across mu values:\n"
         summary_text += f"  F = {f_stat:.2f}, p = {p_val:.4f}\n"
         if p_val > 0.05:
             summary_text += "  Result: NO significant effect of mu\n"
