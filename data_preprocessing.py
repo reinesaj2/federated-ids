@@ -505,6 +505,11 @@ def load_csv_dataset(
     return df
 
 
+def _collapse_labels_to_binary(series: pd.Series) -> pd.Series:
+    benign_tokens = {"BENIGN", "0", "0.0"}
+    return series.apply(lambda value: "BENIGN" if value in benign_tokens else "ATTACK")
+
+
 def load_unsw_nb15(csv_path: str, use_multiclass: bool = True) -> tuple[pd.DataFrame, str, str | None]:
     """
     Load UNSW-NB15 CSV and return (dataframe, label_col, protocol_col).
@@ -528,8 +533,7 @@ def load_unsw_nb15(csv_path: str, use_multiclass: bool = True) -> tuple[pd.DataF
     df[label_col] = df[label_col].replace({"NORMAL": "BENIGN"})
 
     if not use_multiclass:
-        # Map all non-BENIGN to ATTACK
-        df[label_col] = df[label_col].apply(lambda x: "BENIGN" if x == "BENIGN" else "ATTACK")
+        df[label_col] = _collapse_labels_to_binary(df[label_col])
 
     # Protocol column often 'proto'
     proto_col = "proto" if "proto" in df.columns else None
@@ -561,8 +565,7 @@ def load_cic_ids2017(csv_path: str, use_multiclass: bool = True) -> tuple[pd.Dat
     df[label_col] = df[label_col].replace({"NORMAL": "BENIGN"})
 
     if not use_multiclass:
-        # Map all non-BENIGN to ATTACK
-        df[label_col] = df[label_col].apply(lambda x: "BENIGN" if x == "BENIGN" else "ATTACK")
+        df[label_col] = _collapse_labels_to_binary(df[label_col])
 
     # Protocol column may be 'Protocol', 'ProtocolName', or 'proto'
     proto_col_candidates = ["Protocol", "ProtocolName", "proto"]
