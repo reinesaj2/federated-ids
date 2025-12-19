@@ -1,0 +1,34 @@
+[15:50:27] Macro-F1 Improvement Validation Experiments
+[15:50:27] ================================================================================
+[15:50:27] ================================================================================
+[15:50:27] EXPERIMENT 1: Analyzing existing SimpleNet baseline
+[15:50:27] ================================================================================
+[15:50:27] Found baseline: dsedge-iiotset-nightly_p0b1bacd1_comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed42_datasetedge-iiotset-nightly
+[15:50:28] Baseline macro-F1: final=0.7227, mean=0.6650
+[15:50:28] 
+[15:50:28] ================================================================================
+[15:50:28] EXPERIMENT 2: PerDatasetEncoderNet (auto architecture)
+[15:50:28] ================================================================================
+[15:50:28] Starting Experiment 2 (PerDatasetEncoderNet)...
+[15:50:28] Command: python scripts/comparative_analysis.py --dimension heterogeneity --dataset edge-iiotset-nightly --aggregation-methods fedavg --alpha-values 0.5 --adversary-fractions 0.0 --seeds 42 --num_clients 6 --num_rounds 10
+[15:53:46] SUCCESS: Experiment 2 (PerDatasetEncoderNet)
+[15:53:46] 
+[15:53:46] ================================================================================
+[15:53:46] EXPERIMENT 3: PerDatasetEncoderNet + FocalLoss
+[15:53:46] ================================================================================
+[15:53:46] SKIPPED: comparative_analysis.py doesn't support --use-focal-loss yet
+[15:53:46] To run manually:
+[15:53:46]   1. Start server with edge-iiotset-quick
+[15:53:46]   2. Start 6 clients with --use_focal_loss --focal_gamma 2.0
+[15:53:46] 
+[15:53:46] ================================================================================
+[15:53:46] EXPERIMENT SUMMARY
+[15:53:46] ================================================================================
+[15:53:46] Exp 1 (SimpleNet baseline): macro-F1 = 0.7227
+[15:53:46] Exp 2 (PerDatasetEncoderNet): COMPLETED - check latest runs/
+[15:53:46] Exp 3 (+ FocalLoss): MANUAL RUN NEEDED
+[15:53:46] 
+[15:53:46] Next steps:
+[15:53:46] 1. Analyze results in runs/ directory
+[15:53:46] 2. Compare macro-F1 scores across experiments
+[15:53:46] 3. Check per-class F1 improvements

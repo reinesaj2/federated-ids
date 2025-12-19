@@ -16,7 +16,8 @@ import math
 import os
 
 logger = logging.getLogger(__name__)
-_USE_OPACUS = os.getenv("FEDIDS_USE_OPACUS", "").lower() in {"1", "true", "yes"}
+env_flag = os.getenv("FEDIDS_USE_OPACUS")
+_USE_OPACUS = env_flag.lower() not in {"0", "false", "no"} if env_flag is not None else True
 
 
 def _load_opacus():
@@ -40,6 +41,33 @@ def _load_opacus():
 
 RDPAccountant, get_noise_multiplier = _load_opacus()
 
+
+class _AnalyticAccountant:
+    """Lightweight DP accountant fallback when Opacus is unavailable."""
+
+    def __init__(self, delta: float) -> None:
+        self.delta = delta
+        self._steps: list[tuple[float, float]] = []
+
+    def step(self, noise_multiplier: float, sample_rate: float = 1.0) -> None:
+        self._steps.append((float(noise_multiplier), float(sample_rate)))
+
+    def get_epsilon(self) -> float:
+        if not self._steps:
+            return 0.0
+        if self.delta <= 0.0 or self.delta >= 1.0:
+            return float("inf")
+
+        factor = math.sqrt(2 * math.log(1 / self.delta))
+        epsilon = 0.0
+        for noise, sample_rate in self._steps:
+            if noise <= 0.0:
+                return float("inf")
+            epsilon += sample_rate * factor / noise
+        return float(epsilon)
+
+    def reset(self) -> None:
+        self._steps.clear()
 
 def compute_epsilon(
     noise_multiplier: float,
@@ -148,10 +176,9 @@ class DPAccountant:
         Args:
             delta: Target delta for (epsilon, delta)-DP
         """
-        if RDPAccountant is None:
-            raise RuntimeError("Opacus not available; DPAccountant requires RDPAccountant from opacus (set FEDIDS_USE_OPACUS=1 when installed)")
         self.delta = delta
-        self.accountant = RDPAccountant()
+        self._using_opacus = RDPAccountant is not None
+        self.accountant = RDPAccountant() if self._using_opacus else _AnalyticAccountant(delta)
         self._total_steps = 0
 
     def step(self, noise_multiplier: float, sample_rate: float = 1.0) -> None:
@@ -174,7 +201,9 @@ class DPAccountant:
         """
         if self._total_steps == 0:
             return 0.0
-        return float(self.accountant.get_epsilon(delta=self.delta))
+        if self._using_opacus:
+            return float(self.accountant.get_epsilon(delta=self.delta))
+        return float(self.accountant.get_epsilon())
 
     def get_total_steps(self) -> int:
         """
@@ -191,7 +220,7 @@ class DPAccountant:
 
         Clears all accumulated privacy loss. Useful for starting new experiments.
         """
-        self.accountant = RDPAccountant()
+        self.accountant = RDPAccountant() if self._using_opacus else _AnalyticAccountant(self.delta)
         self._total_steps = 0
 
     def get_privacy_summary(self) -> dict[str, float | int]:

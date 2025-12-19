@@ -1,0 +1,180 @@
+
+======================================================================
+🚀 OPTIMIZED EXPERIMENT RUNNER FOR FULL DATASETS
+======================================================================
+
+📊 EXPERIMENT SUMMARY:
+  Total configurations: 72
+  ✅ Already completed: 0
+  ⚠️  Stuck/retry: 0
+  ⏳ Pending: 72
+  👷 Parallel workers: 3
+  ⏰ Estimated time: 24.0 hours
+  📁 Dataset type: full
+======================================================================
+
+[1/72] (1.4%) ❌ comp_fedavg_alpha1.0_adv0_dp0_pers0_seed42: Experiment comp_fedavg_alpha1.0_adv0_dp0_pers0_see... [retry 1/2]
+
+📊 Resources: CPU 73.4% | RAM 57.5% (13.6GB free)
+[2/72] (2.8%) ❌ comp_fedavg_alpha1.0_adv0_dp0_pers0_seed44: Experiment comp_fedavg_alpha1.0_adv0_dp0_pers0_see... [retry 1/2]
+[3/72] (4.2%) ❌ comp_fedavg_alpha1.0_adv0_dp0_pers0_seed43: Experiment comp_fedavg_alpha1.0_adv0_dp0_pers0_see... [retry 1/2]
+[4/72] (5.6%) ✅ comp_krum_alpha1.0_adv0_dp0_pers0_seed43 [0.7m on worker 1] ETA: 26.3h
+
+📊 Resources: CPU 74.8% | RAM 53.3% (15.0GB free)
+[5/72] (6.9%) ✅ comp_krum_alpha1.0_adv0_dp0_pers0_seed42 [0.7m on worker 0] ETA: 20.8h
+[6/72] (8.3%) ✅ comp_bulyan_alpha1.0_adv0_dp0_pers0_seed43 [0.6m on worker 1] ETA: 17.2h
+
+📊 Resources: CPU 92.6% | RAM 61.4% (12.3GB free)
+[7/72] (9.7%) ✅ comp_krum_alpha1.0_adv0_dp0_pers0_seed44 [1.8m on worker 2] ETA: 14.6h
+[8/72] (11.1%) ✅ comp_bulyan_alpha1.0_adv0_dp0_pers0_seed44 [0.7m on worker 2] ETA: 12.6h
+
+📊 Resources: CPU 87.6% | RAM 61.2% (12.4GB free)
+[9/72] (12.5%) ✅ comp_bulyan_alpha1.0_adv0_dp0_pers0_seed42 [1.7m on worker 0] ETA: 11.1h
+[10/72] (13.9%) ✅ comp_median_alpha1.0_adv0_dp0_pers0_seed43 [0.7m on worker 1] ETA: 9.8h
+
+📊 Resources: CPU 91.8% | RAM 61.5% (12.3GB free)
+[SKIP] comp_fedavg_alpha1.0_adv0_dp0_pers0_seed42: Already completed
+[SKIP] comp_fedavg_alpha1.0_adv0_dp0_pers0_seed43: Already completed
+[SKIP] comp_fedavg_alpha1.0_adv0_dp0_pers0_seed44: Already completed
+[14/72] (19.4%) ✅ comp_median_alpha1.0_adv0_dp0_pers0_seed44 [0.7m on worker 2] ETA: 6.6h
+[15/72] (20.8%) ✅ comp_median_alpha1.0_adv0_dp0_pers0_seed42 [1.8m on worker 0] ETA: 6.1h
+
+📊 Resources: CPU 79.1% | RAM 61.7% (12.3GB free)
+[16/72] (22.2%) ✅ comp_fedavg_alpha0.5_adv0_dp0_pers0_seed43 [0.9m on worker 1] ETA: 5.6h
+[17/72] (23.6%) ✅ comp_fedavg_alpha0.5_adv0_dp0_pers0_seed42 [1.6m on worker 0] ETA: 5.2h
+
+📊 Resources: CPU 68.4% | RAM 61.9% (12.2GB free)
+[18/72] (25.0%) ✅ comp_fedavg_alpha0.5_adv0_dp0_pers0_seed44 [1.2m on worker 2] ETA: 4.9h
+[19/72] (26.4%) ✅ comp_fedavg_alpha0.1_adv0_dp0_pers0_seed43 [1.3m on worker 1] ETA: 4.5h
+
+📊 Resources: CPU 84.1% | RAM 62.3% (12.1GB free)
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_seed42: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_seed43: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_seed44: Already completed
+[23/72] (31.9%) ✅ comp_fedavg_alpha0.1_adv0_dp0_pers0_seed44 [1.4m on worker 2] ETA: 3.5h
+
+📊 Resources: CPU 86.8% | RAM 63.5% (11.7GB free)
+[24/72] (33.3%) ✅ comp_fedavg_alpha0.5_adv10_dp0_pers0_seed42 [0.7m on worker 0] ETA: 3.3h
+[25/72] (34.7%) ✅ comp_fedavg_alpha0.5_adv10_dp0_pers0_seed43 [0.9m on worker 1] ETA: 3.1h
+
+📊 Resources: CPU 85.4% | RAM 58.4% (13.3GB free)
+[26/72] (36.1%) ✅ comp_fedavg_alpha0.1_adv0_dp0_pers0_seed42 [3.0m on worker 0] ETA: 2.9h
+[27/72] (37.5%) ✅ comp_fedavg_alpha0.5_adv10_dp0_pers0_seed44 [1.3m on worker 2] ETA: 2.8h
+
+📊 Resources: CPU 98.2% | RAM 68.9% (10.0GB free)
+[28/72] (38.9%) ✅ comp_fedavg_alpha0.5_adv30_dp0_pers0_seed43 [1.1m on worker 1] ETA: 2.6h
+[29/72] (40.3%) ✅ comp_fedavg_alpha0.5_adv30_dp0_pers0_seed42 [1.2m on worker 0] ETA: 2.5h
+
+📊 Resources: CPU 100.0% | RAM 69.4% (9.8GB free)
+[30/72] (41.7%) ✅ comp_fedavg_alpha0.5_adv30_dp0_pers0_seed44 [1.2m on worker 2] ETA: 2.4h
+
+📊 Resources: CPU 85.8% | RAM 61.9% (12.2GB free)
+[31/72] (43.1%) ✅ comp_krum_alpha0.5_adv0_dp0_pers0_seed42 [0.9m on worker 0] ETA: 2.2h
+[32/72] (44.4%) ✅ comp_krum_alpha0.5_adv0_dp0_pers0_seed44 [0.9m on worker 2] ETA: 2.1h
+
+📊 Resources: CPU 78.8% | RAM 59.6% (12.9GB free)
+[33/72] (45.8%) ✅ comp_krum_alpha0.5_adv0_dp0_pers0_seed43 [1.9m on worker 1] ETA: 2.0h
+[34/72] (47.2%) ✅ comp_krum_alpha0.5_adv10_dp0_pers0_seed43 [0.8m on worker 1] ETA: 1.9h
+
+📊 Resources: CPU 82.6% | RAM 61.0% (12.5GB free)
+[35/72] (48.6%) ✅ comp_krum_alpha0.5_adv10_dp0_pers0_seed42 [1.8m on worker 0] ETA: 1.8h
+[36/72] (50.0%) ✅ comp_krum_alpha0.5_adv30_dp0_pers0_seed43 [0.6m on worker 1] ETA: 1.7h
+
+📊 Resources: CPU 62.8% | RAM 59.0% (13.1GB free)
+[37/72] (51.4%) ✅ comp_krum_alpha0.5_adv30_dp0_pers0_seed44 [0.9m on worker 2] ETA: 1.6h
+
+📊 Resources: CPU 75.5% | RAM 63.6% (11.6GB free)
+[38/72] (52.8%) ✅ comp_krum_alpha0.5_adv30_dp0_pers0_seed42 [1.8m on worker 0] ETA: 1.6h
+[39/72] (54.2%) ✅ comp_bulyan_alpha0.5_adv0_dp0_pers0_seed43 [0.7m on worker 1] ETA: 1.5h
+
+📊 Resources: CPU 82.9% | RAM 63.4% (11.7GB free)
+[40/72] (55.6%) ✅ comp_bulyan_alpha0.5_adv0_dp0_pers0_seed42 [0.9m on worker 0] ETA: 1.4h
+[41/72] (56.9%) ✅ comp_bulyan_alpha0.5_adv10_dp0_pers0_seed42 [0.6m on worker 0] ETA: 1.3h
+
+📊 Resources: CPU 63.9% | RAM 60.3% (12.7GB free)
+[42/72] (58.3%) ✅ comp_bulyan_alpha0.5_adv10_dp0_pers0_seed43 [0.5m on worker 1] ETA: 1.3h
+[43/72] (59.7%) ✅ comp_bulyan_alpha0.5_adv10_dp0_pers0_seed44 [0.7m on worker 2] ETA: 1.2h
+
+📊 Resources: CPU 65.7% | RAM 58.6% (13.3GB free)
+[44/72] (61.1%) ❌ comp_krum_alpha0.5_adv10_dp0_pers0_seed44: Experiment comp_krum_alpha0.5_adv10_dp0_pers0_seed... [retry 1/2]
+
+📊 Resources: CPU 65.1% | RAM 63.5% (11.7GB free)
+[45/72] (62.5%) ❌ comp_bulyan_alpha0.5_adv0_dp0_pers0_seed44: Experiment comp_bulyan_alpha0.5_adv0_dp0_pers0_see... [retry 1/2]
+
+📊 Resources: CPU 64.7% | RAM 64.7% (11.3GB free)
+[46/72] (63.9%) ❌ comp_bulyan_alpha0.5_adv30_dp0_pers0_seed42: Experiment comp_bulyan_alpha0.5_adv30_dp0_pers0_se... [retry 1/2]
+
+📊 Resources: CPU 66.8% | RAM 63.0% (11.8GB free)
+[47/72] (65.3%) ✅ comp_median_alpha0.5_adv0_dp0_pers0_seed42 [0.6m on worker 0] ETA: 1.8h
+
+📊 Resources: CPU 65.3% | RAM 60.3% (12.7GB free)
+[48/72] (66.7%) ✅ comp_median_alpha0.5_adv0_dp0_pers0_seed43 [0.5m on worker 1] ETA: 1.7h
+
+📊 Resources: CPU 65.3% | RAM 61.3% (12.4GB free)
+[49/72] (68.1%) ✅ comp_median_alpha0.5_adv0_dp0_pers0_seed44 [0.7m on worker 2] ETA: 1.6h
+
+📊 Resources: CPU 70.7% | RAM 60.9% (12.5GB free)
+[50/72] (69.4%) ❌ comp_bulyan_alpha0.5_adv30_dp0_pers0_seed43: Experiment comp_bulyan_alpha0.5_adv30_dp0_pers0_se... [retry 1/2]
+
+📊 Resources: CPU 66.3% | RAM 61.1% (12.5GB free)
+[51/72] (70.8%) ✅ comp_median_alpha0.5_adv10_dp0_pers0_seed43 [0.5m on worker 1] ETA: 2.0h
+
+📊 Resources: CPU 64.7% | RAM 59.5% (13.0GB free)
+[52/72] (72.2%) ✅ comp_median_alpha0.5_adv10_dp0_pers0_seed44 [0.7m on worker 2] ETA: 1.9h
+
+📊 Resources: CPU 74.0% | RAM 59.9% (12.8GB free)
+[53/72] (73.6%) ❌ comp_bulyan_alpha0.5_adv30_dp0_pers0_seed44: Experiment comp_bulyan_alpha0.5_adv30_dp0_pers0_se... [retry 1/2]
+
+📊 Resources: CPU 64.3% | RAM 66.4% (10.8GB free)
+[54/72] (75.0%) ✅ comp_median_alpha0.5_adv30_dp0_pers0_seed43 [0.5m on worker 1] ETA: 1.6h
+
+📊 Resources: CPU 64.4% | RAM 59.9% (12.8GB free)
+[55/72] (76.4%) ✅ comp_median_alpha0.5_adv30_dp0_pers0_seed44 [0.7m on worker 2] ETA: 1.5h
+
+📊 Resources: CPU 56.7% | RAM 59.9% (12.8GB free)
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_seed42: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_seed43: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_seed44: Already completed
+[59/72] (81.9%) ✅ comp_fedavg_alpha0.5_adv0_dp1_pers0_seed42 [1.1m on worker 0] ETA: 1.1h
+
+📊 Resources: CPU 57.6% | RAM 60.4% (12.7GB free)
+[60/72] (83.3%) ❌ comp_median_alpha0.5_adv10_dp0_pers0_seed42: Experiment comp_median_alpha0.5_adv10_dp0_pers0_se... [retry 1/2]
+
+📊 Resources: CPU 52.5% | RAM 62.3% (12.1GB free)
+[61/72] (84.7%) ✅ comp_fedavg_alpha0.5_adv0_dp1_pers0_seed44 [1.0m on worker 2] ETA: 53m
+
+📊 Resources: CPU 51.0% | RAM 59.4% (13.0GB free)
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_seed42: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_seed43: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp1_pers0_seed44: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_seed42: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_seed43: Already completed
+[SKIP] comp_fedavg_alpha0.5_adv0_dp0_pers0_seed44: Already completed
+[68/72] (94.4%) ✅ comp_fedavg_alpha0.5_adv0_dp0_pers5_seed42 [3.8m on worker 0] ETA: 18m
+
+📊 Resources: CPU 60.5% | RAM 58.5% (13.3GB free)
+[69/72] (95.8%) ✅ comp_fedavg_alpha0.5_adv0_dp0_pers5_seed43 [2.0m on worker 1] ETA: 13m
+
+📊 Resources: CPU 57.2% | RAM 58.4% (13.3GB free)
+[70/72] (97.2%) ✅ comp_fedavg_alpha0.5_adv0_dp0_pers5_seed44 [3.1m on worker 2] ETA: 9m
+
+📊 Resources: CPU 25.7% | RAM 57.1% (13.7GB free)
+[71/72] (98.6%) ❌ comp_median_alpha0.5_adv30_dp0_pers0_seed42: Experiment comp_median_alpha0.5_adv30_dp0_pers0_se... [retry 1/2]
+
+📊 Resources: CPU 17.2% | RAM 60.0% (12.8GB free)
+[72/72] (100.0%) ❌ comp_fedavg_alpha0.5_adv0_dp1_pers0_seed43: Experiment comp_fedavg_alpha0.5_adv0_dp1_pers0_see... [retry 1/2]
+
+📊 Resources: CPU 27.9% | RAM 55.7% (14.2GB free)
+
+======================================================================
+📊 FINAL SUMMARY
+======================================================================
+✅ Completed: 72
+❌ Failed: 11
+⏱️  Total time: 6.4 hours
+⚡ Avg time per experiment: 5.4 minutes
+📈 Total now complete: 72/72
+
+⚠️  11 experiments failed. Run again to retry.
+======================================================================
+

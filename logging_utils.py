@@ -2,8 +2,14 @@ import json
 import logging
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
+
+# Python 3.10 compatibility: datetime.UTC added in 3.11
+try:
+    from datetime import UTC  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover
+    UTC = timezone.utc
 
 # Standard LogRecord attributes that should not be included as extras
 STANDARD_FIELDS: frozenset[str] = frozenset(

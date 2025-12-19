@@ -1,0 +1,752 @@
+[Sat Nov  8 12:10:04 PST 2025] Starting comprehensive experiment suite
+[Sat Nov  8 12:10:04 PST 2025] Starting TIER 1 - Objective 1: Robust Aggregation (20 experiments)
+Generated 20 experiment configurations for dimension: aggregation
+Dataset: unsw (data/unsw/UNSW_NB15_training-set.csv)
+
+[1/20] Running: comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 0 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[2/20] Running: comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 1 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[3/20] Running: comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 2 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[4/20] Running: comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 3 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[5/20] Running: comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 4 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[6/20] Running: comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 5 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[7/20] Running: comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 6 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[8/20] Running: comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 7 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[9/20] Running: comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 8 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[10/20] Running: comp_krum_alpha1.0_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 9 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[11/20] Running: comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 10 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[12/20] Running: comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 11 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[13/20] Running: comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 12 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[14/20] Running: comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 13 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[15/20] Running: comp_bulyan_alpha1.0_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 14 successful, 0 failed
+  FAILED: Client process timed out
+
+[16/20] Running: comp_median_alpha1.0_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 14 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[17/20] Running: comp_median_alpha1.0_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 15 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[18/20] Running: comp_median_alpha1.0_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 16 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[19/20] Running: comp_median_alpha1.0_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 17 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[20/20] Running: comp_median_alpha1.0_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 18 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+EXPERIMENT SUMMARY:
+  Total experiments: 20
+  Successful: 19
+  Failed: 1
+  Success rate: 95.0%
+
+Experiment manifest saved to: results/comparative_analysis/experiment_manifest_aggregation.json
+Total experiments run: 20
+Failed experiments: 1
+[Sat Nov  8 12:39:53 PST 2025] Completed aggregation experiments
+[Sat Nov  8 12:39:53 PST 2025] Starting TIER 1 - Objective 1: Attack Resilience (60 experiments)
+Generated 60 experiment configurations for dimension: attack
+Dataset: unsw (data/unsw/UNSW_NB15_training-set.csv)
+
+[1/60] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 0 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[2/60] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 1 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[3/60] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 2 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[4/60] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 3 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[5/60] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 4 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[6/60] Running: comp_fedavg_alpha0.5_adv10_dp0_pers0_mu0.0_seed42
+  Progress: 5 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[7/60] Running: comp_fedavg_alpha0.5_adv10_dp0_pers0_mu0.0_seed43
+  Progress: 6 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[8/60] Running: comp_fedavg_alpha0.5_adv10_dp0_pers0_mu0.0_seed44
+  Progress: 7 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[9/60] Running: comp_fedavg_alpha0.5_adv10_dp0_pers0_mu0.0_seed45
+  Progress: 8 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[10/60] Running: comp_fedavg_alpha0.5_adv10_dp0_pers0_mu0.0_seed46
+  Progress: 9 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[11/60] Running: comp_fedavg_alpha0.5_adv30_dp0_pers0_mu0.0_seed42
+  Progress: 10 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[12/60] Running: comp_fedavg_alpha0.5_adv30_dp0_pers0_mu0.0_seed43
+  Progress: 11 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[13/60] Running: comp_fedavg_alpha0.5_adv30_dp0_pers0_mu0.0_seed44
+  Progress: 12 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[14/60] Running: comp_fedavg_alpha0.5_adv30_dp0_pers0_mu0.0_seed45
+  Progress: 13 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[15/60] Running: comp_fedavg_alpha0.5_adv30_dp0_pers0_mu0.0_seed46
+  Progress: 14 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[16/60] Running: comp_krum_alpha0.5_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 15 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[17/60] Running: comp_krum_alpha0.5_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 16 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[18/60] Running: comp_krum_alpha0.5_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 17 successful, 0 failed
+  FAILED: Client process timed out
+
+[19/60] Running: comp_krum_alpha0.5_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 17 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[20/60] Running: comp_krum_alpha0.5_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 18 successful, 1 failed
+  FAILED: Client process timed out
+
+[21/60] Running: comp_krum_alpha0.5_adv10_dp0_pers0_mu0.0_seed42
+  Progress: 18 successful, 2 failed
+  SUCCESS: Exit code None, metrics generated
+
+[22/60] Running: comp_krum_alpha0.5_adv10_dp0_pers0_mu0.0_seed43
+  Progress: 19 successful, 2 failed
+  FAILED: Client process timed out
+
+[23/60] Running: comp_krum_alpha0.5_adv10_dp0_pers0_mu0.0_seed44
+  Progress: 19 successful, 3 failed
+  SUCCESS: Exit code None, metrics generated
+
+[24/60] Running: comp_krum_alpha0.5_adv10_dp0_pers0_mu0.0_seed45
+  Progress: 20 successful, 3 failed
+  SUCCESS: Exit code None, metrics generated
+
+[25/60] Running: comp_krum_alpha0.5_adv10_dp0_pers0_mu0.0_seed46
+  Progress: 21 successful, 3 failed
+  SUCCESS: Exit code None, metrics generated
+
+[26/60] Running: comp_krum_alpha0.5_adv30_dp0_pers0_mu0.0_seed42
+  Progress: 22 successful, 3 failed
+  SUCCESS: Exit code None, metrics generated
+
+[27/60] Running: comp_krum_alpha0.5_adv30_dp0_pers0_mu0.0_seed43
+  Progress: 23 successful, 3 failed
+  SUCCESS: Exit code None, metrics generated
+
+[28/60] Running: comp_krum_alpha0.5_adv30_dp0_pers0_mu0.0_seed44
+  Progress: 24 successful, 3 failed
+  SUCCESS: Exit code None, metrics generated
+
+[29/60] Running: comp_krum_alpha0.5_adv30_dp0_pers0_mu0.0_seed45
+  Progress: 25 successful, 3 failed
+  FAILED: Client process timed out
+
+[30/60] Running: comp_krum_alpha0.5_adv30_dp0_pers0_mu0.0_seed46
+  Progress: 25 successful, 4 failed
+  SUCCESS: Exit code None, metrics generated
+
+[31/60] Running: comp_bulyan_alpha0.5_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 26 successful, 4 failed
+  SUCCESS: Exit code None, metrics generated
+
+[32/60] Running: comp_bulyan_alpha0.5_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 27 successful, 4 failed
+  SUCCESS: Exit code None, metrics generated
+
+[33/60] Running: comp_bulyan_alpha0.5_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 28 successful, 4 failed
+  SUCCESS: Exit code None, metrics generated
+
+[34/60] Running: comp_bulyan_alpha0.5_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 29 successful, 4 failed
+  SUCCESS: Exit code None, metrics generated
+
+[35/60] Running: comp_bulyan_alpha0.5_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 30 successful, 4 failed
+  SUCCESS: Exit code None, metrics generated
+
+[36/60] Running: comp_bulyan_alpha0.5_adv10_dp0_pers0_mu0.0_seed42
+  Progress: 31 successful, 4 failed
+  FAILED: Client process timed out
+
+[37/60] Running: comp_bulyan_alpha0.5_adv10_dp0_pers0_mu0.0_seed43
+  Progress: 31 successful, 5 failed
+  SUCCESS: Exit code None, metrics generated
+
+[38/60] Running: comp_bulyan_alpha0.5_adv10_dp0_pers0_mu0.0_seed44
+  Progress: 32 successful, 5 failed
+  SUCCESS: Exit code None, metrics generated
+
+[39/60] Running: comp_bulyan_alpha0.5_adv10_dp0_pers0_mu0.0_seed45
+  Progress: 33 successful, 5 failed
+  SUCCESS: Exit code None, metrics generated
+
+[40/60] Running: comp_bulyan_alpha0.5_adv10_dp0_pers0_mu0.0_seed46
+  Progress: 34 successful, 5 failed
+  SUCCESS: Exit code None, metrics generated
+
+[41/60] Running: comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed42
+  Progress: 35 successful, 5 failed
+  SUCCESS: Exit code None, metrics generated
+
+[42/60] Running: comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed43
+  Progress: 36 successful, 5 failed
+  FAILED: Client process timed out
+
+[43/60] Running: comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed44
+  Progress: 36 successful, 6 failed
+  SUCCESS: Exit code None, metrics generated
+
+[44/60] Running: comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed45
+  Progress: 37 successful, 6 failed
+  FAILED: Client process timed out
+
+[45/60] Running: comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed46
+  Progress: 37 successful, 7 failed
+  SUCCESS: Exit code None, metrics generated
+
+[46/60] Running: comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 38 successful, 7 failed
+  FAILED: Client process timed out
+
+[47/60] Running: comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 38 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[48/60] Running: comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 39 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[49/60] Running: comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 40 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[50/60] Running: comp_median_alpha0.5_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 41 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[51/60] Running: comp_median_alpha0.5_adv10_dp0_pers0_mu0.0_seed42
+  Progress: 42 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[52/60] Running: comp_median_alpha0.5_adv10_dp0_pers0_mu0.0_seed43
+  Progress: 43 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[53/60] Running: comp_median_alpha0.5_adv10_dp0_pers0_mu0.0_seed44
+  Progress: 44 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[54/60] Running: comp_median_alpha0.5_adv10_dp0_pers0_mu0.0_seed45
+  Progress: 45 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[55/60] Running: comp_median_alpha0.5_adv10_dp0_pers0_mu0.0_seed46
+  Progress: 46 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[56/60] Running: comp_median_alpha0.5_adv30_dp0_pers0_mu0.0_seed42
+  Progress: 47 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[57/60] Running: comp_median_alpha0.5_adv30_dp0_pers0_mu0.0_seed43
+  Progress: 48 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[58/60] Running: comp_median_alpha0.5_adv30_dp0_pers0_mu0.0_seed44
+  Progress: 49 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[59/60] Running: comp_median_alpha0.5_adv30_dp0_pers0_mu0.0_seed45
+  Progress: 50 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+[60/60] Running: comp_median_alpha0.5_adv30_dp0_pers0_mu0.0_seed46
+  Progress: 51 successful, 8 failed
+  SUCCESS: Exit code None, metrics generated
+
+EXPERIMENT SUMMARY:
+  Total experiments: 60
+  Successful: 52
+  Failed: 8
+  Success rate: 86.7%
+
+Experiment manifest saved to: results/comparative_analysis/experiment_manifest_attack.json
+Total experiments run: 60
+Failed experiments: 8
+[Sat Nov  8 16:38:06 PST 2025] Completed attack experiments
+[Sat Nov  8 16:38:06 PST 2025] Starting TIER 1 - Objective 2: Data Heterogeneity (35 experiments)
+Generated 35 experiment configurations for dimension: heterogeneity
+Dataset: unsw (data/unsw/UNSW_NB15_training-set.csv)
+
+[1/35] Running: comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 0 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[2/35] Running: comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 1 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[3/35] Running: comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 2 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[4/35] Running: comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 3 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[5/35] Running: comp_fedavg_alpha0.02_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 4 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[6/35] Running: comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 5 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[7/35] Running: comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 6 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[8/35] Running: comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 7 successful, 0 failed
+  FAILED: Client process timed out
+
+[9/35] Running: comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 7 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[10/35] Running: comp_fedavg_alpha0.05_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 8 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[11/35] Running: comp_fedavg_alpha0.1_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 9 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[12/35] Running: comp_fedavg_alpha0.1_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 10 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[13/35] Running: comp_fedavg_alpha0.1_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 11 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[14/35] Running: comp_fedavg_alpha0.1_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 12 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[15/35] Running: comp_fedavg_alpha0.1_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 13 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[16/35] Running: comp_fedavg_alpha0.2_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 14 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[17/35] Running: comp_fedavg_alpha0.2_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 15 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[18/35] Running: comp_fedavg_alpha0.2_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 16 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[19/35] Running: comp_fedavg_alpha0.2_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 17 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[20/35] Running: comp_fedavg_alpha0.2_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 18 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[21/35] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 19 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[22/35] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 20 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[23/35] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 21 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[24/35] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 22 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[25/35] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 23 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[26/35] Running: comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 24 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[27/35] Running: comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 25 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[28/35] Running: comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 26 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[29/35] Running: comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 27 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[30/35] Running: comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 28 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[31/35] Running: comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 29 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[32/35] Running: comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 30 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[33/35] Running: comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 31 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[34/35] Running: comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 32 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+[35/35] Running: comp_fedavg_alphainf_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 33 successful, 1 failed
+  SUCCESS: Exit code None, metrics generated
+
+EXPERIMENT SUMMARY:
+  Total experiments: 35
+  Successful: 34
+  Failed: 1
+  Success rate: 97.1%
+
+Experiment manifest saved to: results/comparative_analysis/experiment_manifest_heterogeneity.json
+Total experiments run: 35
+Failed experiments: 1
+[Sat Nov  8 17:30:59 PST 2025] Completed heterogeneity experiments
+[Sat Nov  8 17:30:59 PST 2025] Starting TIER 2 - Objective 4: Privacy-Utility Tradeoff (40 experiments)
+Generated 40 experiment configurations for dimension: privacy
+Dataset: unsw (data/unsw/UNSW_NB15_training-set.csv)
+
+[1/40] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 0 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[2/40] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 1 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[3/40] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 2 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[4/40] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 3 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[5/40] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 4 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[6/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42
+  Progress: 5 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[7/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43
+  Progress: 6 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[8/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44
+  Progress: 7 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[9/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45
+  Progress: 8 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[10/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46
+  Progress: 9 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[11/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42
+  Progress: 10 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[12/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43
+  Progress: 11 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[13/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44
+  Progress: 12 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[14/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45
+  Progress: 13 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[15/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46
+  Progress: 14 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[16/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42
+  Progress: 15 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[17/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43
+  Progress: 16 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[18/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44
+  Progress: 17 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[19/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45
+  Progress: 18 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[20/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46
+  Progress: 19 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[21/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42
+  Progress: 20 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[22/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43
+  Progress: 21 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[23/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44
+  Progress: 22 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[24/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45
+  Progress: 23 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[25/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46
+  Progress: 24 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[26/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42
+  Progress: 25 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[27/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43
+  Progress: 26 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[28/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44
+  Progress: 27 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[29/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45
+  Progress: 28 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[30/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46
+  Progress: 29 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[31/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42
+  Progress: 30 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[32/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43
+  Progress: 31 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[33/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44
+  Progress: 32 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[34/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45
+  Progress: 33 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[35/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46
+  Progress: 34 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[36/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed42
+  Progress: 35 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[37/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed43
+  Progress: 36 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[38/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed44
+  Progress: 37 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[39/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed45
+  Progress: 38 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[40/40] Running: comp_fedavg_alpha0.5_adv0_dp1_pers0_mu0.0_seed46
+  Progress: 39 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+EXPERIMENT SUMMARY:
+  Total experiments: 40
+  Successful: 40
+  Failed: 0
+  Success rate: 100.0%
+
+Experiment manifest saved to: results/comparative_analysis/experiment_manifest_privacy.json
+Total experiments run: 40
+[Sat Nov  8 18:10:35 PST 2025] Completed privacy experiments
+[Sat Nov  8 18:10:35 PST 2025] Starting TIER 2 - Objective 3: Personalization (15 experiments)
+Generated 15 experiment configurations for dimension: personalization
+Dataset: unsw (data/unsw/UNSW_NB15_training-set.csv)
+
+[1/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed42
+  Progress: 0 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[2/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed43
+  Progress: 1 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[3/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed44
+  Progress: 2 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[4/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed45
+  Progress: 3 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[5/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers0_mu0.0_seed46
+  Progress: 4 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[6/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed42
+  Progress: 5 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[7/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed43
+  Progress: 6 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[8/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed44
+  Progress: 7 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[9/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed45
+  Progress: 8 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[10/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers3_mu0.0_seed46
+  Progress: 9 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[11/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers5_mu0.0_seed42
+  Progress: 10 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[12/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers5_mu0.0_seed43
+  Progress: 11 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[13/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers5_mu0.0_seed44
+  Progress: 12 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[14/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers5_mu0.0_seed45
+  Progress: 13 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+[15/15] Running: comp_fedavg_alpha0.5_adv0_dp0_pers5_mu0.0_seed46
+  Progress: 14 successful, 0 failed
+  SUCCESS: Exit code None, metrics generated
+
+EXPERIMENT SUMMARY:
+  Total experiments: 15
+  Successful: 15
+  Failed: 0
+  Success rate: 100.0%
+
+Experiment manifest saved to: results/comparative_analysis/experiment_manifest_personalization.json
+Total experiments run: 15
+[Sat Nov  8 18:41:35 PST 2025] Completed personalization experiments
+[Sat Nov  8 18:41:35 PST 2025] ALL TIER 1 + TIER 2 EXPERIMENTS COMPLETED SUCCESSFULLY
+Total experiments: 170
+Results in: results/comparative_analysis/

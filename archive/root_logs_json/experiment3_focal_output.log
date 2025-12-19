@@ -1,0 +1,36 @@
+================================================================================
+EXPERIMENT 3: PerDatasetEncoderNet + FocalLoss
+================================================================================
+Run directory: /Users/abrahamreines/Documents/Thesis/federated-ids/runs/exp3_focal_alpha1.0_r20_20251208_155926
+Configuration: α=1.0 (IID), rounds=20, FocalLoss γ=2.0
+
+Starting server...
+Server started (PID: 22363)
+Client 0 started (PID: 22537) with FocalLoss
+Client 1 started (PID: 22542) with FocalLoss
+Client 2 started (PID: 22556) with FocalLoss
+Client 3 started (PID: 22571) with FocalLoss
+Client 4 started (PID: 22590) with FocalLoss
+Client 5 started (PID: 22604) with FocalLoss
+
+All clients started. Waiting for experiment to complete...
+Expected duration: ~40 minutes
+
+Waiting for client 0...
+Waiting for client 1...
+Waiting for client 2...
+Waiting for client 3...
+Waiting for client 4...
+Waiting for client 5...
+Waiting for server...
+
+================================================================================
+EXPERIMENT 3 COMPLETED!
+================================================================================
+Results saved to: /Users/abrahamreines/Documents/Thesis/federated-ids/runs/exp3_focal_alpha1.0_r20_20251208_155926
+Server exit code: 0
+
+Analyzing results...
+Final Round 20 Results:
+  Macro-F1: 61.67%
+  Accuracy: 94.18%

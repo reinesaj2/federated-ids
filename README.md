@@ -13,15 +13,6 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 5. Reproducibility & logging (seeds, logs, plots)
 6. Algorithm comparison (FedAvg vs FedProx)
 7. Real datasets (UNSW‑NB15, CIC‑IDS2017)
-<<<<<<< HEAD
-8. **Experimental Results & Performance Analysis**
-9. **Visualization Gallery & Plot References**
-10. **Quick Links to Analysis & Results**
-11. D2 Runbook (experiment workflow & artifact map)
-12. Troubleshooting (common errors and fixes)
-13. Project structure
-14. Notes on privacy/robustness scaffolding
-=======
 8. Experimental Results & Performance Analysis
 9. Visualization Gallery & Plot References
 10. Quick Links to Analysis & Results
@@ -30,12 +21,10 @@ and non‑IID partitioning (IID, Dirichlet, protocol). Includes robust aggregati
 13. Privacy & robustness disclosure (D2 scope)
 14. D2 Runbook (experiment workflow & artifact map)
 
----
-
 ## 1) Prerequisites
 
 - macOS or Linux (Windows works via WSL2).
-- Python 3.10–3.12 recommended (CPU‑only is fine). Check with:
+- Python 3.13 recommended (CPU‑only is fine). Check with:
   ```bash
   python3 --version
   ```
@@ -415,7 +404,7 @@ Use `--encoder_latent_dim` to override the latent size for ablations; passing `0
 
 ---
 
-## 7) Real datasets (UNSW‑NB15, CIC‑IDS2017)
+## 7) Real datasets (UNSW‑NB15, CIC‑IDS2017, Edge‑IIoTset)
 
 Important rule: all clients connected to the same server must use the same dataset and preprocessing settings.
 Do not mix synthetic with UNSW/CIC (or different feature configs) on the same server run, or you will get a
@@ -446,6 +435,35 @@ python scripts/prepare_unsw_sample.py \
   --output data/unsw/UNSW_NB15_training-set.sample.csv \
   --frac 0.10 --seed 42
 ```
+
+### 7.3 Edge‑IIoTset (IoT/IIoT; 14 attack types, 15 classes)
+
+Edge‑IIoTset (2022) is integrated with three tiers and dedicated preprocessing fixes to keep memory in check.
+
+Tiers (materialized by `scripts/setup_real_datasets.py` if present, or by the sample prep script below):
+- `edge-iiotset-quick` (~50k rows, CI smoke)
+- `edge-iiotset-nightly` (~500k rows, scheduled runs)
+- `edge-iiotset-full` (~1.7M rows, full thesis runs)
+
+Prepare or regenerate tiers from the raw Kaggle/IEEE drop (place CSVs under `datasets/edge-iiotset/Edge-IIoTset dataset/`):
+
+```bash
+python scripts/prepare_edge_iiotset_samples.py --tier all \
+  --source "datasets/edge-iiotset/Edge-IIoTset dataset/Selected dataset for ML and DL/DNN-EdgeIIoT-dataset.csv" \
+  --output-dir data/edge-iiotset --seed 42
+```
+
+Run comparative experiments on the quick tier (works on laptop):
+
+```bash
+python scripts/comparative_analysis.py --dataset edge-iiotset-quick --num_clients 5 --rounds 5 \
+  --dimension aggregation --aggregation_methods fedavg,median,krum,bulyan
+python scripts/plot_metrics.py --run_dir runs --output_dir runs/plots_edge_quick
+```
+
+Notes:
+- Preprocessing drops high-cardinality identifier columns to avoid OOM (see `docs/EDGE_IIOTSET_PREPROCESSING_FIX.md`).
+- For full-scale runs, use chunked loader via `scripts/setup_real_datasets.py` or the prep script above; ensure enough RAM/disk.
 
 ---
 

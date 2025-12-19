@@ -4,24 +4,26 @@ Test FedProx implementation to ensure proximal regularization is working correct
 """
 
 
+import pytest
 import torch
 
-from client import SimpleNet, get_parameters, set_parameters, train_epoch
+from client import DEFAULT_WEIGHT_DECAY, SimpleNet, get_parameters, set_parameters, train_epoch
+
+
+def _build_loader(num_samples: int, num_features: int, num_classes: int, batch_size: int = 16):
+    torch.manual_seed(42)
+    X = torch.randn(num_samples, num_features)
+    y = torch.randint(0, num_classes, (num_samples,))
+    from torch.utils.data import DataLoader, TensorDataset
+
+    dataset = TensorDataset(X, y)
+    return DataLoader(dataset, batch_size=batch_size)
 
 
 def test_fedprox_proximal_term():
     """Test that FedProx proximal regularization term is applied correctly."""
 
-    # Create a simple synthetic dataset
-    torch.manual_seed(42)
-    X = torch.randn(100, 10)
-    y = torch.randint(0, 2, (100,))
-
-    # Create DataLoader
-    from torch.utils.data import DataLoader, TensorDataset
-
-    dataset = TensorDataset(X, y)
-    loader = DataLoader(dataset, batch_size=32)
+    loader = _build_loader(num_samples=100, num_features=10, num_classes=2, batch_size=32)
 
     # Create model and get initial parameters (simulating global model)
     model = SimpleNet(num_features=10, num_classes=2)
@@ -74,14 +76,7 @@ def test_fedprox_proximal_term():
 def test_fedprox_different_mu_values():
     """Test that different mu values produce different losses."""
 
-    torch.manual_seed(42)
-    X = torch.randn(50, 5)
-    y = torch.randint(0, 2, (50,))
-
-    from torch.utils.data import DataLoader, TensorDataset
-
-    dataset = TensorDataset(X, y)
-    loader = DataLoader(dataset, batch_size=16)
+    loader = _build_loader(num_samples=50, num_features=5, num_classes=2, batch_size=16)
 
     model = SimpleNet(num_features=5, num_classes=2)
     device = torch.device("cpu")
@@ -118,7 +113,40 @@ def test_fedprox_different_mu_values():
     assert all(loss >= 0.0 for loss in losses.values())
 
 
-if __name__ == "__main__":
-    test_fedprox_proximal_term()
-    test_fedprox_different_mu_values()
-    print("[PASS] All FedProx tests passed!")
+@pytest.mark.parametrize("mu", [0.0, 0.01, 0.05, 0.1, 1.0])
+def test_fedprox_uses_adamw_regardless_of_mu(monkeypatch, mu):
+    """Ensure FedProx uses AdamW for all mu values (both 0 and >0)."""
+
+    loader = _build_loader(num_samples=20, num_features=4, num_classes=2, batch_size=8)
+    model = SimpleNet(num_features=4, num_classes=2)
+    device = torch.device("cpu")
+    global_params = get_parameters(model)
+
+    calls = {"adamw": 0, "sgd": 0, "weight_decay": None}
+
+    from client import create_adamw_optimizer as orig_create_adamw
+
+    def wrapped_create_adamw(params, *args, **kwargs):
+        calls["adamw"] += 1
+        calls["weight_decay"] = kwargs.get("weight_decay", DEFAULT_WEIGHT_DECAY)
+        return orig_create_adamw(params, *args, **kwargs)
+
+    def fail_sgd(*args, **kwargs):
+        calls["sgd"] += 1
+        raise AssertionError("SGD should not be used - AdamW should be used for all cases")
+
+    monkeypatch.setattr("client.create_adamw_optimizer", wrapped_create_adamw)
+    monkeypatch.setattr(torch.optim, "SGD", fail_sgd)
+
+    train_epoch(
+        model=model,
+        loader=loader,
+        device=device,
+        lr=0.01,
+        global_params=global_params,
+        fedprox_mu=mu,
+    )
+
+    assert calls["adamw"] >= 1, f"AdamW should be used for mu={mu}"
+    assert calls["sgd"] == 0, f"SGD should never be called for mu={mu}"
+    assert calls["weight_decay"] == pytest.approx(DEFAULT_WEIGHT_DECAY), f"Weight decay should be {DEFAULT_WEIGHT_DECAY} for mu={mu}"

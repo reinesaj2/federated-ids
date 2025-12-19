@@ -126,7 +126,6 @@ def train_epoch(
 ) -> float:
     model.train()
     criterion = loss_fn if loss_fn is not None else nn.CrossEntropyLoss()
-    optimizer = create_adamw_optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
     total_loss = 0.0
     num_batches = 0
 
@@ -134,6 +133,10 @@ def train_epoch(
     global_tensors = None
     if fedprox_mu > 0.0 and global_params is not None:
         global_tensors = [torch.tensor(param, dtype=torch.float32).to(device) for param in global_params]
+
+    # Use AdamW for all cases - proximal term is optimizer-agnostic
+    # per research in docs/FEDPROX_OPTIMIZER_RESEARCH.md
+    optimizer = create_adamw_optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     for xb, yb in loader:
         xb = xb.to(device)
@@ -426,13 +429,12 @@ class TorchClient(fl.client.NumPyClient):
                     # Perform gradient ascent by negating the loss
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
-
                     # Get FedProx parameters (server config takes precedence)
                     fedprox_mu = float(config.get("fedprox_mu", self.runtime_config.get("fedprox_mu", 0.0)))
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
+                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -461,7 +463,6 @@ class TorchClient(fl.client.NumPyClient):
                     # Train on intentionally wrong labels: rotate class index by +1
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
                     n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
 
                     # Get FedProx parameters (server config takes precedence)
@@ -469,6 +470,7 @@ class TorchClient(fl.client.NumPyClient):
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
+                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -498,11 +500,11 @@ class TorchClient(fl.client.NumPyClient):
                 elif attack_mode == "sign_flip_topk":
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
-                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
                     fedprox_mu = float(config.get("fedprox_mu", self.runtime_config.get("fedprox_mu", 0.0)))
                     global_tensors = None
                     if fedprox_mu > 0.0:
                         global_tensors = [torch.tensor(param, dtype=torch.float32).to(self.device) for param in parameters]
+                    optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
                     for xb, yb in self.train_loader:
                         xb = xb.to(self.device)
@@ -542,6 +544,7 @@ class TorchClient(fl.client.NumPyClient):
                 elif attack_mode == "targeted_label":
                     self.model.train()
                     criterion = torch.nn.CrossEntropyLoss()
+                    fedprox_mu = float(self.runtime_config.get("fedprox_mu", 0.0))
                     optimizer = create_adamw_optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
                     n_classes = max(int(self.data_stats.get("n_classes", 2)), 2)
 
