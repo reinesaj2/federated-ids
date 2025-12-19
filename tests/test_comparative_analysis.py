@@ -627,3 +627,43 @@ def test_comparison_matrix_base_config_includes_fedprox_mu():
 
     assert "fedprox_mu" in base_config
     assert base_config["fedprox_mu"] == 0.0
+
+
+def test_mixed_config_generation():
+    """Test generation of mixed experiment configurations."""
+    matrix = ComparisonMatrix(seeds=[42], num_clients=6)
+    configs = matrix.generate_configs(filter_dimension="mixed")
+
+    assert len(configs) == 1
+    config = configs[0]
+
+    assert config.dataset == "mixed"
+    assert config.client_datasets is not None
+    assert len(config.client_datasets) == 6
+    assert config.client_datasets[0] == "cic"
+    assert config.client_datasets[5] == "unsw"
+    assert config.get_client_dataset(0) == "cic"
+    assert config.get_client_dataset(5) == "unsw"
+
+
+def test_mixed_config_defaults():
+    """Test that default config behaves as expected (backward compatibility)."""
+    config = ExperimentConfig(
+        aggregation="fedavg",
+        alpha=1.0,
+        adversary_fraction=0.0,
+        dp_enabled=False,
+        dp_noise_multiplier=0.0,
+        personalization_epochs=0,
+        num_clients=6,
+        num_rounds=10,
+        seed=42,
+        dataset="unsw",
+        data_path="data/unsw/path.csv",
+    )
+
+    # Should return default dataset/path for any client
+    assert config.get_client_dataset(0) == "unsw"
+    assert config.get_client_dataset(5) == "unsw"
+    assert config.get_client_data_path(0) == "data/unsw/path.csv"
+    assert config.get_client_data_path(5) == "data/unsw/path.csv"

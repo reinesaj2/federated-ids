@@ -57,6 +57,20 @@ class ExperimentConfig:
     fedprox_mu: float = 0.0
     dataset: str = "unsw"
     data_path: str = "data/unsw/UNSW_NB15_training-set.csv"
+    client_datasets: Optional[List[str]] = None
+    client_data_paths: Optional[List[str]] = None
+
+    def get_client_dataset(self, client_id: int) -> str:
+        """Get dataset for specific client (with fallback)."""
+        if self.client_datasets and client_id < len(self.client_datasets):
+            return self.client_datasets[client_id]
+        return self.dataset
+
+    def get_client_data_path(self, client_id: int) -> str:
+        """Get data path for specific client (with fallback)."""
+        if self.client_data_paths and client_id < len(self.client_data_paths):
+            return self.client_data_paths[client_id]
+        return self.data_path
 
     @classmethod
     def with_dataset(cls, dataset: str, **kwargs):
@@ -298,6 +312,39 @@ class ComparisonMatrix:
                 )
         return configs
 
+    def _generate_mixed_configs(self) -> List[ExperimentConfig]:
+        """Generate configs for mixed-dataset federation (CIC + UNSW).
+
+        Uses 3 CIC clients and 3 UNSW clients to demonstrate cross-domain
+        federated learning capability.
+        """
+        configs = []
+
+        # Paths for mixed dataset
+        cic_path = "data/cic/cic_ids2017_multiclass.csv"
+        unsw_path = "data/unsw/UNSW_NB15_training-set.csv"
+
+        # 3 CIC, 3 UNSW
+        client_datasets = ["cic"] * 3 + ["unsw"] * 3
+        client_data_paths = [cic_path] * 3 + [unsw_path] * 3
+
+        for seed in self.seeds:
+            # Use base config
+            base = self._base_config(seed)
+
+            # Create config with mixed clients
+            config = self._create_config(
+                base,
+                alpha=DEFAULT_ALPHA_NON_IID,
+                dataset="mixed",  # Label as mixed
+                client_datasets=client_datasets,
+                client_data_paths=client_data_paths,
+                num_clients=6,  # Fixed at 6 for 3+3 split
+            )
+            configs.append(config)
+
+        return configs
+
     def _generate_full_factorial_configs(self) -> List[ExperimentConfig]:
         """Generate full factorial experiment matrix (WARNING: very large)."""
         configs = []
@@ -345,6 +392,7 @@ class ComparisonMatrix:
             "attack": self._generate_attack_configs,
             "privacy": self._generate_privacy_configs,
             "personalization": self._generate_personalization_configs,
+            "mixed": self._generate_mixed_configs,
         }
 
         if filter_dimension is None:
@@ -496,15 +544,20 @@ def run_federated_experiment(
                 adversary_mode = "grad_ascent" if client_id < num_adversaries else "none"
 
                 client_log = run_dir / f"client_{client_id}.log"
+
+                # Get client-specific dataset config
+                client_dataset = config.get_client_dataset(client_id)
+                client_data_path = config.get_client_data_path(client_id)
+
                 client_cmd = [
                     "python",
                     "client.py",
                     "--server_address",
                     f"localhost:{port}",
                     "--dataset",
-                    config.dataset,
+                    client_dataset,
                     "--data_path",
-                    config.data_path,
+                    client_data_path,
                     "--partition_strategy",
                     "dirichlet",  # Always use Dirichlet; alpha controls heterogeneity
                     "--alpha",
@@ -582,6 +635,7 @@ def main():
             "attack",
             "privacy",
             "personalization",
+            "mixed",
             "full",
         ],
         default="aggregation",

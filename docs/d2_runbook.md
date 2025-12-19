@@ -139,6 +139,7 @@ python scripts/comparative_analysis.py \
 - `heterogeneity_fedprox` - FedProx mu parameter sweep
 - `privacy` - Differential privacy noise sweep
 - `personalization` - Personalization epochs sweep
+- `mixed` - Cross-dataset federation (CIC + UNSW)
 
 ### Output
 - `runs/comp_*/` - Individual experiment directories
