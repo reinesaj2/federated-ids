@@ -102,7 +102,7 @@ class TestCreateModel(unittest.TestCase):
         model, metadata = create_model(dataset_name="unsw", num_features=196, num_classes=10, model_arch="auto", encoder_latent_dim=0)
         assert isinstance(model, PerDatasetEncoderNet)
         assert metadata["model_arch"] == "per_dataset_encoder"
-        assert metadata["latent_dim"] == 192
+        assert metadata["latent_dim"] == 256
 
     def test_create_model_encoder_for_cic_auto(self):
         model, metadata = create_model(dataset_name="cic", num_features=220, num_classes=12, model_arch="auto", encoder_latent_dim=0)

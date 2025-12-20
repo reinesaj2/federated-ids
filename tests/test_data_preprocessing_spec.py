@@ -7,6 +7,7 @@ from data_preprocessing import (
     dirichlet_partition,
     fit_preprocessor_global,
     load_cic_ids2017,
+    load_unsw_nb15,
     prepare_partitions_from_dataframe,
     protocol_partition,
     transform_with_preprocessor,
@@ -142,3 +143,46 @@ def test_load_cic_ids2017_drops_infinite_rows(tmp_path):
     assert len(loaded_df) == 1
     assert np.isfinite(loaded_df["Flow Bytes/s"].values).all()
     assert label_col == "Label"
+
+
+def test_load_unsw_nb15_binary_classification_maps_numeric_labels(tmp_path):
+    benign_label = 0
+    attack_label = 1
+    labels = [benign_label, attack_label, benign_label, attack_label]
+    df = pd.DataFrame(
+        {
+            "dur": [1.0, 2.0, 3.0, 4.0],
+            "label": labels,
+            "proto": ["tcp", "udp", "tcp", "udp"],
+        }
+    )
+    csv_path = tmp_path / "unsw_binary.csv"
+    df.to_csv(csv_path, index=False)
+
+    loaded_df, label_col, _ = load_unsw_nb15(str(csv_path), use_multiclass=False)
+
+    assert label_col == "label"
+    assert set(loaded_df[label_col].unique()) == {"BENIGN", "ATTACK"}
+    assert (loaded_df[label_col] == "BENIGN").sum() == labels.count(benign_label)
+
+
+def test_load_cic_ids2017_binary_classification_collapses_attack_labels(tmp_path):
+    benign_label = "BENIGN"
+    normal_label = "Normal"
+    attack_label = "DoS"
+    labels = [benign_label, normal_label, attack_label]
+    df = pd.DataFrame(
+        {
+            "Flow Duration": [1.0, 2.0, 3.0],
+            "Label": labels,
+            "Protocol": ["TCP", "UDP", "TCP"],
+        }
+    )
+    csv_path = tmp_path / "cic_binary.csv"
+    df.to_csv(csv_path, index=False)
+
+    loaded_df, label_col, _ = load_cic_ids2017(str(csv_path), use_multiclass=False)
+
+    assert label_col == "Label"
+    assert set(loaded_df[label_col].unique()) == {"BENIGN", "ATTACK"}
+    assert (loaded_df[label_col] == "BENIGN").sum() == 2

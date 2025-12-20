@@ -505,7 +505,12 @@ def load_csv_dataset(
     return df
 
 
-def load_unsw_nb15(csv_path: str) -> tuple[pd.DataFrame, str, str | None]:
+def _collapse_labels_to_binary(series: pd.Series) -> pd.Series:
+    benign_tokens = {"BENIGN", "0", "0.0"}
+    return series.apply(lambda value: "BENIGN" if value in benign_tokens else "ATTACK")
+
+
+def load_unsw_nb15(csv_path: str, use_multiclass: bool = True) -> tuple[pd.DataFrame, str, str | None]:
     """
     Load UNSW-NB15 CSV and return (dataframe, label_col, protocol_col).
     Tries common column names across variants.
@@ -527,6 +532,9 @@ def load_unsw_nb15(csv_path: str) -> tuple[pd.DataFrame, str, str | None]:
     df[label_col] = df[label_col].astype(str).str.strip().str.upper()
     df[label_col] = df[label_col].replace({"NORMAL": "BENIGN"})
 
+    if not use_multiclass:
+        df[label_col] = _collapse_labels_to_binary(df[label_col])
+
     # Protocol column often 'proto'
     proto_col = "proto" if "proto" in df.columns else None
     # Basic cleanup
@@ -535,7 +543,7 @@ def load_unsw_nb15(csv_path: str) -> tuple[pd.DataFrame, str, str | None]:
     return df, label_col, proto_col
 
 
-def load_cic_ids2017(csv_path: str) -> tuple[pd.DataFrame, str, str | None]:
+def load_cic_ids2017(csv_path: str, use_multiclass: bool = True) -> tuple[pd.DataFrame, str, str | None]:
     """
     Load CIC-IDS2017 CSV and return (dataframe, label_col, protocol_col).
     Tries common column names across merged/day CSVs.
@@ -555,6 +563,9 @@ def load_cic_ids2017(csv_path: str) -> tuple[pd.DataFrame, str, str | None]:
     # Normalize negative/benign label naming to BENIGN for consistency
     df[label_col] = df[label_col].astype(str).str.strip().str.upper()
     df[label_col] = df[label_col].replace({"NORMAL": "BENIGN"})
+
+    if not use_multiclass:
+        df[label_col] = _collapse_labels_to_binary(df[label_col])
 
     # Protocol column may be 'Protocol', 'ProtocolName', or 'proto'
     proto_col_candidates = ["Protocol", "ProtocolName", "proto"]
