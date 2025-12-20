@@ -19,6 +19,7 @@ After implementing the fix for heterogeneity partitioning bugs (enforcing min_sa
 ### Original Bug
 
 The original data_preprocessing.py implementation had a critical bug where the `min_samples_per_class` parameter was accepted but completely ignored. This allowed:
+
 - Clients with 0 samples of certain classes
 - Invalid stratified train/test splitting
 - Meaningless per-class metrics (F1=0 for missing classes)
@@ -30,6 +31,7 @@ Implemented constraint enforcement via resampling (up to 100 attempts) to ensure
 ### The Discovery
 
 After fixing the bug, experiments with alpha<0.05 consistently fail with:
+
 ```
 ValueError: Failed to create valid Dirichlet partition after 100 attempts.
 Constraints: 12 clients, 481986 samples, 15 classes, alpha=0.0050, min_samples_per_class=5.
@@ -43,19 +45,20 @@ Constraints: 12 clients, 481986 samples, 15 classes, alpha=0.0050, min_samples_p
 
 The Dirichlet distribution with concentration parameter alpha controls data heterogeneity:
 
-| Alpha | Distribution Pattern | Client Data Share |
-|-------|---------------------|-------------------|
-| 0.005 | Extreme concentration | 99%+ → 1-2 clients |
-| 0.01  | Very high concentration | 95%+ → 2-3 clients |
-| 0.02  | High concentration | 90%+ → 3-4 clients |
-| 0.05  | Moderate concentration | ~70% → half of clients |
-| 0.1   | Moderate heterogeneity | More balanced |
-| 1.0   | Low heterogeneity | Nearly balanced |
-| inf   | IID (uniform) | Perfectly balanced |
+| Alpha | Distribution Pattern    | Client Data Share      |
+| ----- | ----------------------- | ---------------------- |
+| 0.005 | Extreme concentration   | 99%+ → 1-2 clients     |
+| 0.01  | Very high concentration | 95%+ → 2-3 clients     |
+| 0.02  | High concentration      | 90%+ → 3-4 clients     |
+| 0.05  | Moderate concentration  | ~70% → half of clients |
+| 0.1   | Moderate heterogeneity  | More balanced          |
+| 1.0   | Low heterogeneity       | Nearly balanced        |
+| inf   | IID (uniform)           | Perfectly balanced     |
 
 ### Why Alpha=0.005 Fails
 
 **Requirements**:
+
 - 12 clients
 - 15 classes
 - MIN_SAMPLES_PER_CLASS=5 per client
@@ -63,6 +66,7 @@ The Dirichlet distribution with concentration parameter alpha controls data hete
 **Minimum samples needed**: 12 clients × 15 classes × 5 samples = **900 samples**
 
 **What happens at alpha=0.005**:
+
 1. Dirichlet assigns 99% of data to Client 0: ~477K samples
 2. Remaining 11 clients share 1%: ~4K samples total
 3. Each of 11 clients gets: ~364 samples
@@ -73,6 +77,7 @@ The Dirichlet distribution with concentration parameter alpha controls data hete
 ### Experimental Validation
 
 Tested with multiple datasets:
+
 - edge-iiotset-nightly: 481,614 samples → FAILED
 - edge_iiotset_500k_curated: 481,986 samples → FAILED
 
@@ -87,12 +92,14 @@ Both failed after 100 partition attempts. Increasing dataset size does NOT solve
 Alpha values [0.005, 0.01, 0.02] experiments existed but were **scientifically invalid**:
 
 **Example from old run**:
+
 ```
 Client 0: class_0=0, class_1=450  (missing class 0!)
 Client 7: class_0=320, class_1=0  (missing class 1!)
 ```
 
 **Consequences**:
+
 - Stratified splitting failed or produced warnings
 - Per-class F1 scores = 0.0 for missing classes
 - Convergence metrics meaningless (clients can't learn missing classes)
@@ -117,18 +124,19 @@ After empirical testing, the feasible alpha range for our configuration (12 clie
 
 The feasible range still provides comprehensive heterogeneity analysis:
 
-| Alpha | Heterogeneity Level | CV (Coefficient of Variation) |
-|-------|-------------------|-------------------------------|
-| 0.05  | High heterogeneity | ~0.6-0.8 |
-| 0.1   | Moderate-high | ~0.4-0.6 |
-| 0.2   | Moderate | ~0.3-0.5 |
-| 0.5   | Low-moderate | ~0.2-0.3 |
-| 1.0   | Low heterogeneity | ~0.1-0.2 |
-| inf   | IID (no heterogeneity) | ~0.0 |
+| Alpha | Heterogeneity Level    | CV (Coefficient of Variation) |
+| ----- | ---------------------- | ----------------------------- |
+| 0.05  | High heterogeneity     | ~0.6-0.8                      |
+| 0.1   | Moderate-high          | ~0.4-0.6                      |
+| 0.2   | Moderate               | ~0.3-0.5                      |
+| 0.5   | Low-moderate           | ~0.2-0.3                      |
+| 1.0   | Low heterogeneity      | ~0.1-0.2                      |
+| inf   | IID (no heterogeneity) | ~0.0                          |
 
 ### Scientific Validity
 
 The feasible range provides:
+
 1. **High heterogeneity** (alpha=0.05): Challenging non-IID scenario
 2. **Gradient of heterogeneity**: Smooth transition from high → IID
 3. **Valid metrics**: All clients have samples from all classes
@@ -141,18 +149,21 @@ The feasible range provides:
 ### Queue Update
 
 **Old Queue** (30 experiments):
+
 - Alpha: [0.005, 0.01, 0.02, 0.05, 0.1, inf]
 - Clients: 12
 - Seeds: [42, 43, 44, 45, 46]
 - Total: 6 alphas × 5 seeds = 30 experiments
 
 **New Queue** (15 experiments):
+
 - Alpha: [0.05, 0.1, inf]
 - Clients: 6 (CHANGED from 12 to match original experiments)
 - Seeds: [42, 43, 44, 45, 46]
 - Total: 3 alphas × 5 seeds = 15 experiments
 
 **Rationale**:
+
 - 6 clients matches original experiment configuration
 - Makes minimum requirement: 6 clients × 15 classes × 5 samples = 450 (feasible)
 - 12 clients would require: 12 × 15 × 5 = 900 (infeasible at alpha=0.05)
@@ -175,6 +186,7 @@ The feasible range provides:
 
 **Updated Approach**:
 Evaluate heterogeneity range [0.05, inf] which:
+
 - Covers high heterogeneity (alpha=0.05) to IID (alpha=inf)
 - Ensures all experiments use valid data partitions
 - Allows meaningful comparison of FedAvg vs FedProx
@@ -191,15 +203,19 @@ This is a **valuable contribution** - it defines the practical limits of heterog
 ## Alternative Approaches Considered
 
 ### Option 1: Lower MIN_SAMPLES_PER_CLASS
+
 **Rejected**: Defeats the bug fix. With MIN_SAMPLES_PER_CLASS=1, clients would still have missing/minimal class representation, producing invalid metrics.
 
 ### Option 2: Reduce to 6 Clients
+
 **Rejected**: User requirement is 12 clients for robustness. Practical FL systems typically have 10+ participants.
 
 ### Option 3: Binary Classification
+
 **Rejected**: IDS datasets are inherently multiclass (normal + multiple attack types). Collapsing to binary loses critical information.
 
 ### Option 4: Increase MAX_PARTITION_ATTEMPTS
+
 **Rejected**: Already tried 100 attempts. The issue is mathematical impossibility, not insufficient sampling.
 
 ---
@@ -244,6 +260,7 @@ Dirichlet partition attempt 100/100 failed constraint: Client 0: class 0 has 0 s
 ### Validation with Alpha=0.05
 
 Tested alpha=0.05 with same configuration:
+
 ```
 SUCCESS: Partitioning completed after 3 attempts
 All clients have ≥5 samples per class

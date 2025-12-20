@@ -19,6 +19,7 @@
 ## Original Thesis Objectives (from deliverable1/FL.txt)
 
 ### Research Objective 1
+
 > "Implement and Evaluate Robust Aggregation Methods: Integrate state-of-the-art robust aggregator algorithms into the federated learning process, including Krum, Bulyan, and coordinate-wise median rules. These will be used to mitigate the effect of malicious or anomalous model updates. We will empirically evaluate how each method improves resilience against simulated poisoning attacks, compared to standard FedAvg."
 
 **Original Attack Levels:** [0%, 10%, 30%] for all methods
@@ -30,10 +31,13 @@
 ### Mathematical Constraint
 
 Bulyan (El Mhamdi et al. 2018) requires:
+
 ```
 n >= 4f + 3
 ```
+
 Where:
+
 - `n` = total number of clients
 - `f` = maximum number of Byzantine (malicious) clients to tolerate
 
@@ -41,16 +45,17 @@ Where:
 
 **With n=11 clients (infrastructure limit):**
 
-| Attack Level | Actual f | Required n | Current n | Valid? |
-|--------------|----------|------------|-----------|--------|
-| 0% | 0 | 3 | 11 | VALID |
-| 10% | 1 | 7 | 11 | VALID |
-| 20% | 2 | 11 | 11 | VALID (exactly satisfied) |
-| **30%** | **3** | **15** | **11** | **INVALID** |
+| Attack Level | Actual f | Required n | Current n | Valid?                    |
+| ------------ | -------- | ---------- | --------- | ------------------------- |
+| 0%           | 0        | 3          | 11        | VALID                     |
+| 10%          | 1        | 7          | 11        | VALID                     |
+| 20%          | 2        | 11         | 11        | VALID (exactly satisfied) |
+| **30%**      | **3**    | **15**     | **11**    | **INVALID**               |
 
 ### Root Cause
 
 **Auto-Guessing Mechanism:**
+
 - Server didn't specify `--byzantine_f` explicitly
 - `robust_aggregation.py:275` auto-calculated: `f = (n-3)//4 = (11-3)//4 = 2`
 - Validation checked: `11 >= 4(2) + 3 = 11` → PASSED
@@ -62,6 +67,7 @@ Where:
 ### Evidence
 
 **Code Location:** `robust_aggregation.py:51-64, 220-221`
+
 ```python
 def _guess_f_byzantine(n: int) -> int:
     """Uses Bulyan's constraint: n >= 4f + 3"""
@@ -73,6 +79,7 @@ if n < 4 * f + 3:
 ```
 
 **Invalid Runs Identified:**
+
 - `dsedge-iiotset-nightly_comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed42`
 - `dsedge-iiotset-nightly_comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed43`
 - `dsedge-iiotset-nightly_comp_bulyan_alpha0.5_adv30_dp0_pers0_mu0.0_seed44`
@@ -91,24 +98,27 @@ if n < 4 * f + 3:
 
 ### Attack Level Matrix (Revised)
 
-| Aggregation Method | Attack Levels | Mathematical Constraint | Rationale |
-|--------------------|---------------|-------------------------|-----------|
-| FedAvg | [0%, 10%, 30%] | None (no Byzantine guarantees) | Baseline comparison |
-| Krum | [0%, 10%, 30%] | Heuristic (no strict requirement) | Distance-based selection |
-| **Bulyan** | **[0%, 10%, 20%]** | **n >= 4f + 3 (formal proof)** | **Theoretical maximum for n=11** |
-| Median | [0%, 10%, 30%] | f < n/2 (satisfied at 30%) | Coordinate-wise robustness |
+| Aggregation Method | Attack Levels      | Mathematical Constraint           | Rationale                        |
+| ------------------ | ------------------ | --------------------------------- | -------------------------------- |
+| FedAvg             | [0%, 10%, 30%]     | None (no Byzantine guarantees)    | Baseline comparison              |
+| Krum               | [0%, 10%, 30%]     | Heuristic (no strict requirement) | Distance-based selection         |
+| **Bulyan**         | **[0%, 10%, 20%]** | **n >= 4f + 3 (formal proof)**    | **Theoretical maximum for n=11** |
+| Median             | [0%, 10%, 30%]     | f < n/2 (satisfied at 30%)        | Coordinate-wise robustness       |
 
 ### Experimental Coverage
 
 **Completed (Valid):**
+
 - Bulyan adv0: 5 runs (seeds 42-46)
 - Bulyan adv10: 5 runs (seeds 42-46)
 - Bulyan adv20: 6 runs (seeds 42-45, 47-48)
 
 **Required (To Complete):**
+
 - Bulyan adv20: 4 runs (seeds 46, 49, 50, 51) → **10 total seeds for statistical power**
 
 **Deleted (Invalid):**
+
 - Bulyan adv30: 5 runs (seeds 42-46) → Byzantine resilience violated
 
 ---
@@ -148,11 +158,13 @@ def validate_bulyan_byzantine_resilience(
 **Change:** Add `--byzantine_f` to all attack experiments
 
 **Before:**
+
 ```bash
 python server.py --aggregation bulyan  # Auto-guesses f=(n-3)//4
 ```
 
 **After:**
+
 ```bash
 python server.py --aggregation bulyan --byzantine_f 2  # Explicit
 ```
@@ -164,6 +176,7 @@ python server.py --aggregation bulyan --byzantine_f 2  # Explicit
 **Action:** Deleted 5 invalid Bulyan adv30 runs
 
 **Log:** `experiment_cleanup.log`
+
 ```
 [2025-12-01T22:00:00Z] Deleted Bulyan adv30 runs (n=11, f=3, requires n>=15)
 - dsedge-iiotset-nightly_comp_bulyan_alpha0.5_adv30_*_seed{42,43,44,45,46}
@@ -173,6 +186,7 @@ Rationale: Violated Byzantine resilience constraint n>=4f+3
 ### 4. Documentation Updates
 
 **Modified:**
+
 - `docs/iiot_neurips_implementation_plan.md` - Updated attack dimension table
 - `docs/bulyan_experimental_design.md` - Added validation approach
 - **NEW:** `docs/BULYAN_CONSTRAINT_RESOLUTION.md` (this document)
@@ -186,9 +200,11 @@ Rationale: Violated Byzantine resilience constraint n>=4f+3
 #### DO (Strength Framing)
 
 **Chapter 4: Methodology**
+
 > "We evaluated Byzantine resilience across aggregation methods with varying attack intensities. FedAvg, Krum, and Median were tested at 0%, 10%, and 30% adversarial clients, as these methods lack formal Byzantine fault tolerance guarantees. Bulyan, which provides provable Byzantine resilience under the constraint n >= 4f + 3 (El Mhamdi et al., 2018), was tested at 0%, 10%, and 20% adversaries—the theoretical maximum guaranteed for our infrastructure configuration of 11 clients. This differential evaluation demonstrates the tradeoff between formal guarantees (requiring stricter operational constraints) and heuristic defenses (more flexible but without provable bounds)."
 
 **Chapter 5: Results**
+
 > "Figure X shows Byzantine resilience across attack intensities. While Bulyan was evaluated up to 20% adversaries (the maximum satisfying n >= 4(2) + 3 = 11 with our client count), this represents the highest formally guaranteed resilience level in our setup. Other methods, tested to 30%, show degraded performance beyond Bulyan's evaluated range, highlighting the value of theoretical guarantees."
 
 #### DON'T (Weakness Framing)

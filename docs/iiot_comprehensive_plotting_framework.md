@@ -5,6 +5,7 @@
 The IIoT Comprehensive Plotting Framework generates publication-quality multi-panel visualizations for thesis objectives in federated learning for Industrial IoT intrusion detection systems. Each objective produces a 6-panel figure (3x3 GridSpec layout) with complementary views of experimental results.
 
 **Key Features:**
+
 - 4 thesis objectives with 6 visualization panels each
 - Consistent styling, color schemes, and confidence intervals
 - Automatic data loading from experiment run directories
@@ -38,6 +39,7 @@ thesis_plots_iiot/
 The unified DataFrame from `load_iiot_data.py` contains:
 
 **Configuration Columns:**
+
 - `aggregation`: fedavg | krum | bulyan | median
 - `alpha`: Dirichlet parameter (0.02, 0.05, 0.1, 0.2, 0.5, 1.0, inf)
 - `adv_pct`: Adversary percentage (0, 10, 30)
@@ -46,6 +48,7 @@ The unified DataFrame from `load_iiot_data.py` contains:
 - `run_id`: Full experiment directory name
 
 **Per-Round Metrics:**
+
 - `round`: Communication round number
 - `l2_to_benign_mean`: L2 distance from benign consensus (robustness)
 - `l2_dispersion_mean`: L2 dispersion among clients (drift)
@@ -55,6 +58,7 @@ The unified DataFrame from `load_iiot_data.py` contains:
 - `personalization_gain`: Computed as `macro_f1_personalized - macro_f1_global`
 
 ### Evaluation Enhancements (to address low macro F1 clarity)
+
 - Add a **global evaluation pass on a public/common holdout** (no private data centralization) and log `macro_f1_global_holdout`, `micro_f1_global_holdout`, and per-class F1 to `metrics.csv` for headline reporting.
 - Keep per-client `macro_f1_after` for personalization analysis, but emphasize the global holdout metrics in plots and tables.
 - Log DP settings (`dp_noise_multiplier`, `dp_clip_norm`) and rounds per config in the unified DataFrame to support privacy–utility curves.
@@ -104,11 +108,13 @@ The unified DataFrame from `load_iiot_data.py` contains:
    - Key Insight: Direct statistical comparison
 
 **Data Filters:**
+
 - Alpha: 0.5 (moderate heterogeneity)
 - Attack levels: 0, 10, 30
 - Seeds: All (n=5)
 
 **Key Functions:**
+
 - `plot_objective1_robustness(df, output_dir)`
 - `plot_robustness_l2_vs_attack(df, ax)`
 - `plot_utility_under_attack(df, ax)`
@@ -160,11 +166,13 @@ The unified DataFrame from `load_iiot_data.py` contains:
    - Key Insight: Detailed convergence trajectories for baseline method
 
 **Data Filters:**
+
 - Attack level: 0 (benign)
 - All alpha values
 - Seeds: All (n=5)
 
 **Key Functions:**
+
 - `plot_objective2_heterogeneity(df, output_dir)`
 - `plot_f1_vs_alpha(df, ax)`
 - `plot_convergence_speed(df, ax)`
@@ -218,11 +226,13 @@ The unified DataFrame from `load_iiot_data.py` contains:
    - Key Insight: Most points above diagonal = consistent improvement
 
 **Data Filters:**
+
 - Personalization epochs > 0
 - All attack levels
 - Seeds: All (n=5)
 
 **Key Functions:**
+
 - `plot_objective3_personalization(df, output_dir)`
 - `plot_gain_vs_adversary(df, ax)`
 - `plot_gain_vs_alpha(df, ax)`
@@ -274,11 +284,13 @@ The unified DataFrame from `load_iiot_data.py` contains:
    - Key Insight: Bulyan accumulates 450ms over 20 rounds vs FedAvg 30ms
 
 **Data Filters:**
+
 - Alpha: 0.5 (moderate heterogeneity) for most panels
 - Attack level: 0 (benign) for most panels
 - Seeds: All (n=5)
 
 **Key Functions:**
+
 - `plot_objective4_system_overhead(df, output_dir)`
 - `plot_aggregation_time(df, ax)`
 - `plot_time_vs_attack(df, ax)`
@@ -418,6 +430,7 @@ To modify which metrics are plotted or filter criteria:
 **Cause:** No experiment runs found matching expected naming pattern.
 
 **Solution:** Verify run directories follow pattern `runs/dsedge-iiotset-*` and contain:
+
 - `metrics.csv` (server metrics)
 - `client_*_metrics.csv` (client metrics)
 
@@ -432,6 +445,7 @@ To modify which metrics are plotted or filter criteria:
 **Cause:** Insufficient experimental coverage for that objective.
 
 **Solution:**
+
 - Objective 3 requires `pers_epochs > 0` experiments
 - Check data availability: `df['aggregation'].value_counts()`
 - Verify specific alpha/attack combinations exist
@@ -441,6 +455,7 @@ To modify which metrics are plotted or filter criteria:
 **Cause:** Older matplotlib versions use deprecated parameter names.
 
 **Solution:** Update matplotlib: `pip install --upgrade matplotlib>=3.9`
+
 - Framework uses `tick_labels` parameter (not deprecated `labels`)
 
 ### Issue: Memory errors with large datasets
@@ -448,6 +463,7 @@ To modify which metrics are plotted or filter criteria:
 **Cause:** Loading thousands of experiment runs simultaneously.
 
 **Solution:**
+
 - Process runs in batches using `load_iiot_data()` with custom filtering
 - Reduce DPI: Change `dpi=300` to `dpi=150` in `plt.savefig()` calls
 - Use selective date ranges in run directory filtering
@@ -556,6 +572,7 @@ from load_iiot_data import load_iiot_data
 ```
 
 **Required packages:**
+
 ```bash
 pip install numpy pandas scipy matplotlib
 ```
@@ -605,11 +622,12 @@ def test_end_to_end_pipeline(test_runs_dir, tmp_path):
 
 ## Performance Considerations
 
-- **Data loading:** O(n_runs * n_rounds) - typically ~2600 records in <1 second
-- **Plot generation:** O(n_panels * n_aggregators * n_seeds) - ~30 seconds for all 4 objectives
+- **Data loading:** O(n_runs \* n_rounds) - typically ~2600 records in <1 second
+- **Plot generation:** O(n*panels * n*aggregators * n_seeds) - ~30 seconds for all 4 objectives
 - **Memory usage:** ~50 MB for typical dataset (2600 rows x 15 columns)
 
 **Optimization opportunities:**
+
 - Cache loaded data between plot generations
 - Parallelize panel rendering using `multiprocessing`
 - Use `matplotlib.use('Agg')` backend for headless servers

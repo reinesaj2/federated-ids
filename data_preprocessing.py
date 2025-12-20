@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,7 +12,12 @@ import torch
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, Dataset, TensorDataset
+
+try:
+    import scipy.sparse as sp  # type: ignore
+except Exception:  # pragma: no cover
+    sp = None
 
 # Drop silently if missing; helps avoid leakage/time proxies in IDS datasets
 DEFAULT_DROP_COLS: list[str] = [
@@ -32,6 +38,98 @@ MIN_SAMPLES_PER_CLASS: int = 5
 # Maximum resampling attempts for Dirichlet partitioning before falling back to even distribution
 # Empirically chosen to balance distribution quality with computational cost
 MAX_PARTITION_ATTEMPTS: int = 100
+
+# Temporal validation protocol constants
+TEMPORAL_TRAIN_FRAC: float = 0.70
+TEMPORAL_VAL_FRAC: float = 0.15
+TEMPORAL_TEST_FRAC: float = 0.15
+FRAME_TIME_FORMAT: str = "%Y %H:%M:%S.%f"
+
+
+def parse_frame_time(series: pd.Series) -> pd.Series:
+    """Parse Edge-IIoTset frame.time column as datetime.
+
+    Format: "2021 19:46:24.393481000" (year + time, no month/day)
+
+    Args:
+        series: Pandas Series containing frame.time strings
+
+    Returns:
+        Series of datetime64 values; unparsable values become NaT
+    """
+    return pd.to_datetime(series.str.strip(), format=FRAME_TIME_FORMAT, errors="coerce")
+
+
+def temporal_sort_indices(
+    df: pd.DataFrame,
+    time_col: str = "frame.time",
+) -> tuple[np.ndarray, int]:
+    """Compute indices that sort dataframe by temporal order.
+
+    Rows with unparsable timestamps retain their original relative position
+    among other unparsable rows, placed after all parsable rows.
+
+    Args:
+        df: DataFrame containing the time column
+        time_col: Name of the timestamp column
+
+    Returns:
+        Tuple of (sort_indices, n_unparsable) where:
+        - sort_indices: Array of row indices in temporal order
+        - n_unparsable: Count of rows that fell back to original order
+    """
+    if time_col not in df.columns:
+        return np.arange(len(df), dtype=np.int64), len(df)
+
+    timestamps = parse_frame_time(df[time_col])
+    valid_mask = ~timestamps.isna()
+    n_unparsable = int((~valid_mask).sum())
+
+    valid_indices = np.where(valid_mask)[0]
+    invalid_indices = np.where(~valid_mask)[0]
+
+    if len(valid_indices) > 0:
+        valid_timestamps = timestamps.iloc[valid_indices]
+        sorted_valid_order = valid_timestamps.argsort()
+        sorted_valid_indices = valid_indices[sorted_valid_order]
+    else:
+        sorted_valid_indices = np.array([], dtype=np.int64)
+
+    sort_indices = np.concatenate([sorted_valid_indices, invalid_indices]).astype(np.int64)
+    return sort_indices, n_unparsable
+
+
+def temporal_train_val_test_split_indices(
+    n_samples: int,
+    train_frac: float = TEMPORAL_TRAIN_FRAC,
+    val_frac: float = TEMPORAL_VAL_FRAC,
+    test_frac: float = TEMPORAL_TEST_FRAC,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Split pre-sorted indices into train/val/test by position (not random).
+
+    Args:
+        n_samples: Total number of samples (assumed already temporally sorted)
+        train_frac: Fraction for training (earliest samples)
+        val_frac: Fraction for validation (middle samples)
+        test_frac: Fraction for test (latest samples)
+
+    Returns:
+        Tuple of (train_indices, val_indices, test_indices)
+
+    Raises:
+        ValueError: If fractions don't sum to 1.0
+    """
+    if not math.isclose(train_frac + val_frac + test_frac, 1.0, rel_tol=1e-6):
+        raise ValueError("train_frac + val_frac + test_frac must sum to 1.0")
+
+    train_end = int(n_samples * train_frac)
+    val_end = train_end + int(n_samples * val_frac)
+
+    train_idx = np.arange(0, train_end, dtype=np.int64)
+    val_idx = np.arange(train_end, val_end, dtype=np.int64)
+    test_idx = np.arange(val_end, n_samples, dtype=np.int64)
+
+    return train_idx, val_idx, test_idx
 
 
 @dataclass
@@ -428,13 +526,54 @@ def numpy_to_loaders(
     test_size: float = 0.2,
 ) -> tuple[DataLoader, DataLoader]:
     # Defensive guard: handle empty shards gracefully
-    if len(X) == 0 or len(y) == 0:
+    if X.shape[0] == 0 or y.size == 0:
         # Return dummy loaders with minimal tensors
         dummy_X = torch.zeros((1, X.shape[1] if X.size > 0 else 1), dtype=torch.float32)
         dummy_y = torch.zeros((1,), dtype=torch.long)
         dummy_ds = TensorDataset(dummy_X, dummy_y)
         dummy_loader = DataLoader(dummy_ds, batch_size=batch_size, shuffle=False)
         return dummy_loader, dummy_loader
+
+    if sp is not None and sp.issparse(X):
+        row_indices = np.arange(X.shape[0], dtype=np.int64)
+
+        try:
+            train_rows, test_rows = train_test_split(row_indices, test_size=test_size, random_state=seed, stratify=y)
+        except ValueError as e:
+            if "least populated class" in str(e) or "minimum number of groups" in str(e):
+                train_rows, test_rows = train_test_split(row_indices, test_size=test_size, random_state=seed, stratify=None)
+            else:
+                raise e
+
+        class _RowIndexDataset(Dataset):
+            def __init__(self, rows: np.ndarray) -> None:
+                self.rows = rows.astype(np.int64, copy=False)
+
+            def __len__(self) -> int:
+                return int(self.rows.shape[0])
+
+            def __getitem__(self, idx: int) -> int:
+                return int(self.rows[idx])
+
+        def _collate_sparse_rows(batch: list[int]) -> tuple[torch.Tensor, torch.Tensor]:
+            rows = np.fromiter(batch, dtype=np.int64, count=len(batch))
+            xb = X[rows].toarray().astype(np.float32, copy=False)
+            yb = y[rows]
+            return torch.from_numpy(xb), torch.from_numpy(yb)
+
+        train_loader = DataLoader(
+            _RowIndexDataset(train_rows),
+            batch_size=batch_size,
+            shuffle=True,
+            collate_fn=_collate_sparse_rows,
+        )
+        test_loader = DataLoader(
+            _RowIndexDataset(test_rows),
+            batch_size=batch_size,
+            shuffle=False,
+            collate_fn=_collate_sparse_rows,
+        )
+        return train_loader, test_loader
 
     # Try stratified split first, fall back to simple split if stratification fails
     try:
@@ -488,6 +627,104 @@ def numpy_to_train_val_test_loaders(
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+    return train_loader, val_loader, test_loader
+
+
+def numpy_to_temporal_train_val_test_loaders(
+    X: np.ndarray,
+    y: np.ndarray,
+    batch_size: int,
+    sort_indices: np.ndarray | None = None,
+    splits: tuple[float, float, float] = (
+        TEMPORAL_TRAIN_FRAC,
+        TEMPORAL_VAL_FRAC,
+        TEMPORAL_TEST_FRAC,
+    ),
+) -> tuple[DataLoader, DataLoader, DataLoader]:
+    """Create train/val/test loaders using temporal (positional) split.
+
+    Unlike numpy_to_train_val_test_loaders which uses random stratified splitting,
+    this function splits by position in the (pre-sorted) data:
+    - Train: first 70% (earliest samples)
+    - Val: next 15% (middle samples)
+    - Test: final 15% (latest samples)
+
+    Supports both dense numpy arrays and sparse scipy matrices.
+
+    Args:
+        X: Feature matrix (n_samples, n_features), dense or sparse
+        y: Label vector (n_samples,)
+        batch_size: Batch size for DataLoaders
+        sort_indices: Optional pre-computed temporal sort indices. If None,
+                      assumes X and y are already in temporal order.
+        splits: Tuple of (train_frac, val_frac, test_frac), must sum to 1.0
+
+    Returns:
+        Tuple of (train_loader, val_loader, test_loader)
+    """
+    train_frac, val_frac, test_frac = splits
+    if not math.isclose(train_frac + val_frac + test_frac, 1.0, rel_tol=1e-6):
+        raise ValueError("splits must sum to 1.0")
+
+    if sort_indices is not None:
+        X = X[sort_indices]
+        y = y[sort_indices]
+
+    n_samples = X.shape[0]
+    train_idx, val_idx, test_idx = temporal_train_val_test_split_indices(n_samples, train_frac, val_frac, test_frac)
+
+    if sp is not None and sp.issparse(X):
+
+        class _RowIndexDataset(Dataset):
+            def __init__(self, rows: np.ndarray) -> None:
+                self.rows = rows.astype(np.int64, copy=False)
+
+            def __len__(self) -> int:
+                return int(self.rows.shape[0])
+
+            def __getitem__(self, idx: int) -> int:
+                return int(self.rows[idx])
+
+        def _make_collate(X_ref, y_ref):
+            def _collate_sparse_rows(batch: list[int]) -> tuple[torch.Tensor, torch.Tensor]:
+                rows = np.fromiter(batch, dtype=np.int64, count=len(batch))
+                xb = X_ref[rows].toarray().astype(np.float32, copy=False)
+                yb = y_ref[rows]
+                return torch.from_numpy(xb), torch.from_numpy(yb.astype(np.int64, copy=False))
+
+            return _collate_sparse_rows
+
+        train_ds = _RowIndexDataset(train_idx)
+        val_ds = _RowIndexDataset(val_idx)
+        test_ds = _RowIndexDataset(test_idx)
+
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, collate_fn=_make_collate(X, y))
+        val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, collate_fn=_make_collate(X, y))
+        test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, collate_fn=_make_collate(X, y))
+
+        return train_loader, val_loader, test_loader
+
+    X_train, y_train = X[train_idx], y[train_idx]
+    X_val, y_val = X[val_idx], y[val_idx]
+    X_test, y_test = X[test_idx], y[test_idx]
+
+    train_ds = TensorDataset(
+        torch.from_numpy(X_train.astype(np.float32, copy=False)),
+        torch.from_numpy(y_train.astype(np.int64, copy=False)),
+    )
+    val_ds = TensorDataset(
+        torch.from_numpy(X_val.astype(np.float32, copy=False)),
+        torch.from_numpy(y_val.astype(np.int64, copy=False)),
+    )
+    test_ds = TensorDataset(
+        torch.from_numpy(X_test.astype(np.float32, copy=False)),
+        torch.from_numpy(y_test.astype(np.int64, copy=False)),
+    )
+
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+
     return train_loader, val_loader, test_loader
 
 
@@ -636,6 +873,193 @@ def load_edge_iiotset(
     df = df.drop_duplicates().reset_index(drop=True)
 
     return df, label_col, proto_col
+
+
+def load_edge_iiotset_with_temporal_order(
+    csv_path: str | Path,
+    use_multiclass: bool = True,
+    max_samples: int | None = None,
+) -> tuple[pd.DataFrame, str, str | None, np.ndarray, int]:
+    """Load Edge-IIoTset CSV with temporal ordering for validation protocol.
+
+    Similar to load_edge_iiotset() but preserves frame.time for temporal ordering
+    before dropping it from features.
+
+    Args:
+        csv_path: Path to Edge-IIoTset CSV
+        use_multiclass: If True, use Attack_type (15 classes); if False, use Attack_label (binary)
+        max_samples: Optional limit on number of samples to load
+
+    Returns:
+        Tuple of (dataframe, label_col, protocol_col, temporal_sort_indices, n_unparsable)
+        where:
+        - dataframe: Cleaned DataFrame with frame.time dropped
+        - label_col: Name of label column
+        - protocol_col: Protocol column name (None for Edge-IIoTset)
+        - temporal_sort_indices: Indices that sort data by frame.time
+        - n_unparsable: Count of rows with unparsable timestamps
+    """
+    df = pd.read_csv(str(csv_path), low_memory=False, nrows=max_samples)
+    df.columns = [col.strip() if isinstance(col, str) else col for col in df.columns]
+    df = df.replace([np.inf, -np.inf], np.nan)
+
+    label_col = "Attack_type" if use_multiclass else "Attack_label"
+    if label_col not in df.columns:
+        raise ValueError(
+            f"Expected label column '{label_col}' not found in Edge-IIoTset dataset. " f"Available columns: {list(df.columns)}"
+        )
+
+    if use_multiclass and "Attack_type" in df.columns:
+        df[label_col] = df[label_col].astype(str).str.strip()
+        df[label_col] = df[label_col].replace({"Normal": "BENIGN"})
+
+    proto_col = None
+
+    sort_indices, n_unparsable = temporal_sort_indices(df, time_col="frame.time")
+
+    drop_cols = [
+        "frame.time",
+        "ip.src_host",
+        "ip.dst_host",
+        "tcp.payload",
+        "tcp.options",
+        "tcp.srcport",
+        "http.request.full_uri",
+        "http.file_data",
+    ]
+    df = df.drop(columns=[c for c in drop_cols if c in df.columns], errors="ignore")
+
+    df = df.dropna(axis=1, how="all")
+
+    valid_rows_mask = ~df.isna().any(axis=1)
+    valid_rows_mask &= ~df.duplicated()
+
+    original_to_new = np.full(len(valid_rows_mask), -1, dtype=np.int64)
+    new_idx = 0
+    for old_idx in range(len(valid_rows_mask)):
+        if valid_rows_mask.iloc[old_idx]:
+            original_to_new[old_idx] = new_idx
+            new_idx += 1
+
+    df = df[valid_rows_mask].reset_index(drop=True)
+
+    new_sort_indices = []
+    for old_idx in sort_indices:
+        new_idx = original_to_new[old_idx]
+        if new_idx >= 0:
+            new_sort_indices.append(new_idx)
+    sort_indices = np.array(new_sort_indices, dtype=np.int64)
+
+    return df, label_col, proto_col, sort_indices, n_unparsable
+
+
+def load_hybrid_dataset(
+    csv_path: str | Path,
+    max_samples: int | None = None,
+) -> tuple[pd.DataFrame, str, str | None, str]:
+    """Load hybrid IDS dataset with source provenance preserved.
+
+    The hybrid dataset combines CIC-IDS2017, UNSW-NB15, and Edge-IIoTset
+    with unified 7-class attack taxonomy and source_dataset column.
+
+    Args:
+        csv_path: Path to hybrid dataset CSV (may be gzipped)
+        max_samples: Optional limit on number of samples to load
+
+    Returns:
+        Tuple of (dataframe, label_col, protocol_col, source_col) where:
+        - dataframe: Cleaned DataFrame with features and metadata
+        - label_col: "attack_class" (unified 7-class taxonomy)
+        - protocol_col: None (not applicable to hybrid)
+        - source_col: "source_dataset" (values: cic, unsw, iiot)
+    """
+    path = Path(csv_path)
+    compression = "gzip" if path.suffix == ".gz" else None
+    df = pd.read_csv(str(path), low_memory=False, nrows=max_samples, compression=compression)
+    df.columns = [col.strip() if isinstance(col, str) else col for col in df.columns]
+    df = df.replace([np.inf, -np.inf], np.nan)
+
+    label_col = "attack_class"
+    source_col = "source_dataset"
+
+    if label_col not in df.columns:
+        raise ValueError(f"Expected label column '{label_col}' not found. Available: {list(df.columns)}")
+    if source_col not in df.columns:
+        raise ValueError(f"Expected source column '{source_col}' not found. Available: {list(df.columns)}")
+
+    metadata_cols = [source_col, label_col, "attack_label_original"]
+    feature_cols = [c for c in df.columns if c not in metadata_cols]
+    df[feature_cols] = df[feature_cols].fillna(0).astype(np.float32)
+    df = df.dropna(subset=[label_col]).reset_index(drop=True)
+
+    return df, label_col, None, source_col
+
+
+def source_aware_partition(
+    source_labels: Sequence[str],
+    attack_labels: Sequence[int],
+    clients_per_source: int = 3,
+    alpha: float = 0.5,
+    seed: int = 42,
+    min_samples_per_class: int = MIN_SAMPLES_PER_CLASS,
+) -> list[list[int]]:
+    """Partition data by source dataset with optional within-source Dirichlet.
+
+    Each source dataset (cic, unsw, iiot) is assigned `clients_per_source` clients.
+    Within each source, samples are distributed using Dirichlet partitioning
+    on the attack labels to create heterogeneity.
+
+    Args:
+        source_labels: Sequence of source dataset identifiers (cic, unsw, iiot)
+        attack_labels: Sequence of attack class labels (0-6)
+        clients_per_source: Number of clients per source dataset
+        alpha: Dirichlet concentration for within-source partitioning
+        seed: Random seed for reproducibility
+        min_samples_per_class: Minimum samples per class per client
+
+    Returns:
+        List of index lists, one per client (total = num_sources * clients_per_source)
+        Clients are ordered: [cic_0, cic_1, ..., unsw_0, unsw_1, ..., iiot_0, ...]
+    """
+    source_labels = np.asarray(source_labels)
+    attack_labels = np.asarray(attack_labels)
+    unique_sources = sorted(set(source_labels))
+
+    all_client_indices: list[list[int]] = []
+
+    for source_idx, source in enumerate(unique_sources):
+        source_mask = source_labels == source
+        source_indices = np.where(source_mask)[0]
+        source_attack_labels = attack_labels[source_indices]
+
+        source_seed = seed + source_idx * 1000
+
+        if np.isinf(alpha):
+            within_source_shards = iid_partition(len(source_indices), clients_per_source, source_seed)
+        else:
+            try:
+                within_source_shards = dirichlet_partition(
+                    labels=source_attack_labels,
+                    num_clients=clients_per_source,
+                    alpha=alpha,
+                    seed=source_seed,
+                    min_samples_per_class=min_samples_per_class,
+                )
+            except ValueError as e:
+                warnings.warn(
+                    f"Dirichlet partition infeasible for source '{source}' "
+                    f"(alpha={alpha}, clients={clients_per_source}): {e}. "
+                    f"Falling back to IID partition.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                within_source_shards = iid_partition(len(source_indices), clients_per_source, source_seed)
+
+        for shard in within_source_shards:
+            global_indices = source_indices[shard].tolist()
+            all_client_indices.append(global_indices)
+
+    return all_client_indices
 
 
 def fit_preprocessor_train_only_and_transform_all(

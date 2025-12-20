@@ -96,11 +96,15 @@ def plot_attack_resilience(df: pd.DataFrame, output_path: Path):
 
     for agg in agg_order:
         agg_data = df[df["aggregation"] == agg]
-        summary = agg_data.groupby("adv_pct").agg(
-            f1_mean=("final_f1", "mean"),
-            f1_sem=("final_f1", "sem"),
-            n=("final_f1", "count"),
-        ).reset_index()
+        summary = (
+            agg_data.groupby("adv_pct")
+            .agg(
+                f1_mean=("final_f1", "mean"),
+                f1_sem=("final_f1", "sem"),
+                n=("final_f1", "count"),
+            )
+            .reset_index()
+        )
 
         if len(summary) >= 2:
             ax1.errorbar(
@@ -135,12 +139,14 @@ def plot_attack_resilience(df: pd.DataFrame, output_path: Path):
             attack_f1 = agg_df[agg_df["adv_pct"] == adv]["final_f1"]
             if len(attack_f1) > 0 and baseline > 0:
                 retained = (attack_f1.mean() / baseline) * 100
-                resilience_data.append({
-                    "aggregation": agg,
-                    "adv_pct": adv,
-                    "retained": retained,
-                    "n": len(attack_f1),
-                })
+                resilience_data.append(
+                    {
+                        "aggregation": agg,
+                        "adv_pct": adv,
+                        "retained": retained,
+                        "n": len(attack_f1),
+                    }
+                )
 
     res_df = pd.DataFrame(resilience_data)
 
@@ -162,7 +168,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_path: Path):
                 elif row["adv_pct"] == 30:
                     x_positions.append(2 + offsets[i] * width)
                 y_values.append(row["retained"])
-            
+
             ax2.bar(
                 x_positions,
                 y_values,
@@ -189,12 +195,14 @@ def plot_attack_resilience(df: pd.DataFrame, output_path: Path):
     for agg in agg_order:
         subset = adv10[adv10["aggregation"] == agg]
         if len(subset) > 0:
-            adv10_data.append({
-                "aggregation": agg,
-                "f1_mean": subset["final_f1"].mean(),
-                "f1_sem": subset["final_f1"].sem(),
-                "n": len(subset),
-            })
+            adv10_data.append(
+                {
+                    "aggregation": agg,
+                    "f1_mean": subset["final_f1"].mean(),
+                    "f1_sem": subset["final_f1"].sem(),
+                    "n": len(subset),
+                }
+            )
 
     adv10_df = pd.DataFrame(adv10_data)
 
@@ -214,7 +222,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_path: Path):
         for i, row in adv10_df.iterrows():
             ax3.annotate(
                 f"n={row['n']}",
-                xy=(i, row["f1_mean"] + 1.96*row["f1_sem"] + 0.01),
+                xy=(i, row["f1_mean"] + 1.96 * row["f1_sem"] + 0.01),
                 ha="center",
                 fontsize=9,
             )
@@ -232,12 +240,14 @@ def plot_attack_resilience(df: pd.DataFrame, output_path: Path):
     for agg in agg_order:
         subset = adv30[adv30["aggregation"] == agg]
         if len(subset) > 0:
-            adv30_data.append({
-                "aggregation": agg,
-                "f1_mean": subset["final_f1"].mean(),
-                "f1_sem": subset["final_f1"].sem(),
-                "n": len(subset),
-            })
+            adv30_data.append(
+                {
+                    "aggregation": agg,
+                    "f1_mean": subset["final_f1"].mean(),
+                    "f1_sem": subset["final_f1"].sem(),
+                    "n": len(subset),
+                }
+            )
 
     adv30_df = pd.DataFrame(adv30_data)
 
@@ -256,7 +266,7 @@ def plot_attack_resilience(df: pd.DataFrame, output_path: Path):
         for i, row in adv30_df.iterrows():
             ax4.annotate(
                 f"n={row['n']}",
-                xy=(i, row["f1_mean"] + 1.96*row["f1_sem"] + 0.01),
+                xy=(i, row["f1_mean"] + 1.96 * row["f1_sem"] + 0.01),
                 ha="center",
                 fontsize=9,
             )

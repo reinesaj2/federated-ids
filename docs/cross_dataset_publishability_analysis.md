@@ -10,11 +10,11 @@
 
 This document presents a comprehensive statistical analysis of federated learning experiments for intrusion detection across three benchmark datasets. The analysis evaluates five thesis objectives and determines publishability based on statistical significance (p-values), effect sizes (Cohen's d), and practical impact.
 
-| Dataset | Best Objective | Key Finding | Publication Potential |
-|---------|---------------|-------------|----------------------|
-| **IIoT** | Obj1: Robust Aggregation | 35% F1 improvement, d=1.35, p<1e-12 | **EXCEPTIONAL** |
-| **UNSW** | Obj4: Privacy + Obj5: Performance | 7% DP cost, 97.6% F1 baseline | **STRONG** |
-| **CIC** | Limited | High DP cost (42%), weak robust agg | **WEAK** |
+| Dataset  | Best Objective                    | Key Finding                         | Publication Potential |
+| -------- | --------------------------------- | ----------------------------------- | --------------------- |
+| **IIoT** | Obj1: Robust Aggregation          | 35% F1 improvement, d=1.35, p<1e-12 | **EXCEPTIONAL**       |
+| **UNSW** | Obj4: Privacy + Obj5: Performance | 7% DP cost, 97.6% F1 baseline       | **STRONG**            |
+| **CIC**  | Limited                           | High DP cost (42%), weak robust agg | **WEAK**              |
 
 ---
 
@@ -34,11 +34,11 @@ This document presents a comprehensive statistical analysis of federated learnin
 
 #### Results Summary
 
-| Dataset | FedAvg @30% Adv | Krum @30% Adv | Median @30% Adv | Best Improvement | p-value | Cohen's d | Verdict |
-|---------|-----------------|---------------|-----------------|------------------|---------|-----------|---------|
-| **IIoT** | 0.138 | 0.450 | **0.489** | **+35.1%** | 2.75e-13 | 1.35 (Large) | **HIGHLY PUBLISHABLE** |
-| **UNSW** | 0.633 | **0.784** | 0.771 | +15.1% | 2.03e-02 | 0.45 (Small) | PUBLISHABLE |
-| **CIC** | 0.568 | 0.616 | 0.540 | +4.8% | 4.59e-01 | 0.16 (Negligible) | NOT PUBLISHABLE |
+| Dataset  | FedAvg @30% Adv | Krum @30% Adv | Median @30% Adv | Best Improvement | p-value  | Cohen's d         | Verdict                |
+| -------- | --------------- | ------------- | --------------- | ---------------- | -------- | ----------------- | ---------------------- |
+| **IIoT** | 0.138           | 0.450         | **0.489**       | **+35.1%**       | 2.75e-13 | 1.35 (Large)      | **HIGHLY PUBLISHABLE** |
+| **UNSW** | 0.633           | **0.784**     | 0.771           | +15.1%           | 2.03e-02 | 0.45 (Small)      | PUBLISHABLE            |
+| **CIC**  | 0.568           | 0.616         | 0.540           | +4.8%            | 4.59e-01 | 0.16 (Negligible) | NOT PUBLISHABLE        |
 
 #### Key Findings
 
@@ -65,11 +65,11 @@ IIoT achieves d=1.35, which is a "very large" effect - exceptional for ML resear
 
 #### Results Summary
 
-| Dataset | IID F1 (alpha=1.0) | Non-IID F1 (alpha=0.02-0.05) | Difference | p-value | Cohen's d | Verdict |
-|---------|--------------------|-----------------------------|------------|---------|-----------|---------|
-| **UNSW** | 0.9998 | 0.9998 | 0.0000 | 0.8265 | 0.07 | NULL RESULT |
-| **CIC** | 0.7243 | 0.7455 | -0.0212 | 0.5721 | -0.24 | NULL RESULT |
-| **IIoT** | 0.7040 | 0.7056 | -0.0016 | 0.6848 | -0.05 | NULL RESULT |
+| Dataset  | IID F1 (alpha=1.0) | Non-IID F1 (alpha=0.02-0.05) | Difference | p-value | Cohen's d | Verdict     |
+| -------- | ------------------ | ---------------------------- | ---------- | ------- | --------- | ----------- |
+| **UNSW** | 0.9998             | 0.9998                       | 0.0000     | 0.8265  | 0.07      | NULL RESULT |
+| **CIC**  | 0.7243             | 0.7455                       | -0.0212    | 0.5721  | -0.24     | NULL RESULT |
+| **IIoT** | 0.7040             | 0.7056                       | -0.0016    | 0.6848  | -0.05     | NULL RESULT |
 
 #### Key Findings
 
@@ -83,6 +83,7 @@ IIoT achieves d=1.35, which is a "very large" effect - exceptional for ML resear
 #### Publication Angle
 
 While not publishable as a positive result, this null finding has value:
+
 - Saves other researchers from pursuing non-IID mitigation for FL-IDS
 - Suggests IDS may be an ideal application domain for vanilla federated learning
 - Could be included as a discussion point or short paper contribution
@@ -93,11 +94,11 @@ While not publishable as a positive result, this null finding has value:
 
 #### Results Summary
 
-| Dataset | No Personalization | With Personalization (3-5 epochs) | Gain | p-value | Cohen's d | Verdict |
-|---------|-------------------|----------------------------------|------|---------|-----------|---------|
-| **UNSW** | 0.9918 | 0.9994 | +0.0076 | 0.3281 | 0.25 | NULL RESULT |
-| **CIC** | 0.7321 | 0.7525 | +0.0204 | 0.3867 | 0.21 | NULL RESULT |
-| **IIoT** | 0.6832 | 0.6783 | -0.0049 | 0.2635 | -0.14 | NULL RESULT |
+| Dataset  | No Personalization | With Personalization (3-5 epochs) | Gain    | p-value | Cohen's d | Verdict     |
+| -------- | ------------------ | --------------------------------- | ------- | ------- | --------- | ----------- |
+| **UNSW** | 0.9918             | 0.9994                            | +0.0076 | 0.3281  | 0.25      | NULL RESULT |
+| **CIC**  | 0.7321             | 0.7525                            | +0.0204 | 0.3867  | 0.21      | NULL RESULT |
+| **IIoT** | 0.6832             | 0.6783                            | -0.0049 | 0.2635  | -0.14     | NULL RESULT |
 
 #### Key Findings
 
@@ -120,11 +121,11 @@ While not publishable as a positive result, this null finding has value:
 
 #### Results Summary
 
-| Dataset | No DP F1 | With DP F1 | Privacy Cost | p-value | Cohen's d | Verdict |
-|---------|----------|------------|--------------|---------|-----------|---------|
-| **IIoT** | 0.6840 | 0.6629 | **2.1%** | <0.0001 | 0.52 (Medium) | **FAVORABLE** |
-| **UNSW** | 0.9989 | 0.9278 | **7.1%** | <0.0001 | 0.91 (Large) | ACCEPTABLE |
-| **CIC** | 0.7584 | 0.3383 | **42.0%** | <0.0001 | 2.30 (Very Large) | **PROBLEMATIC** |
+| Dataset  | No DP F1 | With DP F1 | Privacy Cost | p-value | Cohen's d         | Verdict         |
+| -------- | -------- | ---------- | ------------ | ------- | ----------------- | --------------- |
+| **IIoT** | 0.6840   | 0.6629     | **2.1%**     | <0.0001 | 0.52 (Medium)     | **FAVORABLE**   |
+| **UNSW** | 0.9989   | 0.9278     | **7.1%**     | <0.0001 | 0.91 (Large)      | ACCEPTABLE      |
+| **CIC**  | 0.7584   | 0.3383     | **42.0%**    | <0.0001 | 2.30 (Very Large) | **PROBLEMATIC** |
 
 #### Key Findings
 
@@ -153,11 +154,11 @@ Privacy Cost Ranking:
 
 #### Results Summary
 
-| Dataset | Macro F1 | Accuracy | False Positive Rate | Classes | Verdict |
-|---------|----------|----------|---------------------|---------|---------|
-| **UNSW** | **0.976** | 0.982 | 0.031 | 10 | EXCELLENT |
-| **CIC** | 0.708 | 0.899 | 0.113 | 15 | GOOD |
-| **IIoT** | 0.645 | 0.921 | 0.036 | 15 | MODERATE |
+| Dataset  | Macro F1  | Accuracy | False Positive Rate | Classes | Verdict   |
+| -------- | --------- | -------- | ------------------- | ------- | --------- |
+| **UNSW** | **0.976** | 0.982    | 0.031               | 10      | EXCELLENT |
+| **CIC**  | 0.708     | 0.899    | 0.113               | 15      | GOOD      |
+| **IIoT** | 0.645     | 0.921    | 0.036               | 15      | MODERATE  |
 
 #### Key Findings
 
@@ -170,6 +171,7 @@ Privacy Cost Ranking:
 #### Baseline Comparison Context
 
 These results should be compared against:
+
 - Centralized training baselines
 - Prior FL-IDS literature
 - Standalone client performance (no federation)
@@ -178,13 +180,13 @@ These results should be compared against:
 
 ## Publishability Matrix
 
-| | Obj1: Robust | Obj2: Non-IID | Obj3: Personal | Obj4: Privacy | Obj5: Overall | TOTAL |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **UNSW** | ** | - | - | *** | *** | 8/15 |
-| **CIC** | - | - | - | * | ** | 3/15 |
-| **IIoT** | *** | - | - | ** | ** | 7/15 |
+|          | Obj1: Robust | Obj2: Non-IID | Obj3: Personal | Obj4: Privacy | Obj5: Overall | TOTAL |
+| -------- | :----------: | :-----------: | :------------: | :-----------: | :-----------: | :---: |
+| **UNSW** |     \*\*     |       -       |       -        |    \*\*\*     |    \*\*\*     | 8/15  |
+| **CIC**  |      -       |       -       |       -        |      \*       |     \*\*      | 3/15  |
+| **IIoT** |    \*\*\*    |       -       |       -        |     \*\*      |     \*\*      | 7/15  |
 
-**Legend:** *** = Highly Publishable, ** = Moderate, * = Weak, - = Not Publishable (null result)
+**Legend:** **\* = Highly Publishable, ** = Moderate, \* = Weak, - = Not Publishable (null result)
 
 ---
 
@@ -195,12 +197,14 @@ These results should be compared against:
 **Target Venues:** IEEE S&P, NDSS, CCS, USENIX Security
 
 **Structure:**
+
 1. **Lead with IIoT results** - 35% improvement, d=1.35, p<1e-12 (strongest finding)
 2. **Validate with UNSW** - 15% improvement, d=0.45, p<0.05 (confirms generalizability)
 3. **Discuss CIC as edge case** - Explains when robust aggregation is less effective
 4. **Contribution:** First comprehensive study of Byzantine resilience for FL-based IDS on industrial IoT data
 
 **Key Claims:**
+
 - Robust aggregation (Median, Krum) maintains 48-49% F1 under 30% Byzantine attack where FedAvg fails completely (14% F1)
 - Effect is dataset-dependent: larger improvements on IIoT than UNSW/CIC
 - Provides deployment guidance for adversarial FL-IDS environments
@@ -210,12 +214,14 @@ These results should be compared against:
 **Target Venues:** PETS, IEEE TIFS, ACM CCS
 
 **Structure:**
+
 1. **Lead with IIoT** - 2.1% privacy cost (excellent)
 2. **Compare UNSW** - 7.1% cost (acceptable)
 3. **Cautionary tale with CIC** - 42% cost (DP breaks the model)
 4. **Contribution:** Dataset-dependent privacy-utility analysis for FL-IDS
 
 **Key Claims:**
+
 - Differential privacy is viable for industrial IoT intrusion detection with minimal utility loss
 - Privacy costs vary dramatically by dataset (2-42%)
 - Practitioners must evaluate DP impact before deployment
@@ -225,6 +231,7 @@ These results should be compared against:
 **Target Venues:** NeurIPS Workshop, ICLR Workshop, MLSys
 
 **Structure:**
+
 1. Non-IID partitioning has no impact on FL-IDS performance (null result)
 2. Personalization provides no benefit for IDS (null result)
 3. Both findings consistent across 3 diverse datasets
@@ -255,23 +262,23 @@ Interpretation:
 
 ### Sample Sizes
 
-| Dataset | Total Runs | Client Metrics (n) |
-|---------|------------|-------------------|
-| UNSW | 428 | 2,339 - 3,712 per condition |
-| CIC | 425 | 3,712 - 3,896 per condition |
-| IIoT | 44 | 220 - 440 per condition |
+| Dataset | Total Runs | Client Metrics (n)          |
+| ------- | ---------- | --------------------------- |
+| UNSW    | 428        | 2,339 - 3,712 per condition |
+| CIC     | 425        | 3,712 - 3,896 per condition |
+| IIoT    | 44         | 220 - 440 per condition     |
 
 ---
 
 ## Strongest Individual Results
 
-| Rank | Finding | Dataset | Effect Size | p-value | Recommendation |
-|------|---------|---------|-------------|---------|----------------|
-| 1 | Robust Aggregation | IIoT | d=1.35 | <1e-12 | Primary paper lead |
-| 2 | Differential Privacy | UNSW | d=0.91 | <0.0001 | Secondary paper |
-| 3 | Baseline Performance | UNSW | F1=0.976 | N/A | Benchmark claim |
-| 4 | Privacy Trade-off | IIoT | 2.1% cost | <0.0001 | Secondary paper |
-| 5 | Robust Aggregation | UNSW | d=0.45 | 0.02 | Validation |
+| Rank | Finding              | Dataset | Effect Size | p-value | Recommendation     |
+| ---- | -------------------- | ------- | ----------- | ------- | ------------------ |
+| 1    | Robust Aggregation   | IIoT    | d=1.35      | <1e-12  | Primary paper lead |
+| 2    | Differential Privacy | UNSW    | d=0.91      | <0.0001 | Secondary paper    |
+| 3    | Baseline Performance | UNSW    | F1=0.976    | N/A     | Benchmark claim    |
+| 4    | Privacy Trade-off    | IIoT    | 2.1% cost   | <0.0001 | Secondary paper    |
+| 5    | Robust Aggregation   | UNSW    | d=0.45      | 0.02    | Validation         |
 
 ---
 

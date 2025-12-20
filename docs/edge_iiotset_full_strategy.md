@@ -5,6 +5,7 @@
 This document describes the original full-scale experiment strategy which **failed due to memory constraints** (exit code 143).
 
 **See:** [compute_constraints_and_solutions.md](./compute_constraints_and_solutions.md) for:
+
 - Root cause analysis of exit code 143 failures
 - Solutions explored (larger runners, AWS, etc.)
 - Final temporal distribution architecture (6 workflows, 1 per day)
@@ -28,11 +29,11 @@ All tiers preserve the full 14 attack classes + BENIGN distribution so every exp
 
 ## Execution Phases
 
-| Phase | Datasets | Purpose | Entry Criteria | Exit Criteria |
-| --- | --- | --- | --- | --- |
-| Phase 1 | Edge-IIoTset Full | Generate publication-quality metrics/plots across all dimensions | Dataset assets verified, optimized runner ready | All manifests complete, plots stored under `results/thesis_plots/edge_iiotset_full` |
-| Phase 2 | CIC/UNSW Baselines | Reuse/refresh CIC & UNSW runs for matched presets | Equivalent configs identified | CIC/UNSW manifests complete |
-| Phase 3 | Cross-Dataset Comparison | Plot IIoT vs CIC/UNSW per objective | Phase 1+2 completion | Combined figures/tables archived |
+| Phase   | Datasets                 | Purpose                                                          | Entry Criteria                                  | Exit Criteria                                                                       |
+| ------- | ------------------------ | ---------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Phase 1 | Edge-IIoTset Full        | Generate publication-quality metrics/plots across all dimensions | Dataset assets verified, optimized runner ready | All manifests complete, plots stored under `results/thesis_plots/edge_iiotset_full` |
+| Phase 2 | CIC/UNSW Baselines       | Reuse/refresh CIC & UNSW runs for matched presets                | Equivalent configs identified                   | CIC/UNSW manifests complete                                                         |
+| Phase 3 | Cross-Dataset Comparison | Plot IIoT vs CIC/UNSW per objective                              | Phase 1+2 completion                            | Combined figures/tables archived                                                    |
 
 > **Note:** Previous quick/nightly staging steps are optional now that we’re prioritizing the full 2M-sample tier. If time permits, they can still be executed for smoke-testing, but the core plan assumes direct focus on the full dataset.
 

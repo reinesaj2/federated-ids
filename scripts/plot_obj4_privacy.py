@@ -102,10 +102,20 @@ def plot_privacy_utility(df: pd.DataFrame, output_path: Path):
     ax1 = axes[0, 0]
 
     compare_data = [
-        {"condition": "No DP", "f1_mean": no_dp["final_f1"].mean(), 
-         "f1_sem": no_dp["final_f1"].sem(), "n": len(no_dp), "color": colors["No DP"]},
-        {"condition": "With DP", "f1_mean": with_dp["final_f1"].mean(),
-         "f1_sem": with_dp["final_f1"].sem(), "n": len(with_dp), "color": colors["With DP"]},
+        {
+            "condition": "No DP",
+            "f1_mean": no_dp["final_f1"].mean(),
+            "f1_sem": no_dp["final_f1"].sem(),
+            "n": len(no_dp),
+            "color": colors["No DP"],
+        },
+        {
+            "condition": "With DP",
+            "f1_mean": with_dp["final_f1"].mean(),
+            "f1_sem": with_dp["final_f1"].sem(),
+            "n": len(with_dp),
+            "color": colors["With DP"],
+        },
     ]
     comp_df = pd.DataFrame(compare_data)
 
@@ -126,8 +136,7 @@ def plot_privacy_utility(df: pd.DataFrame, output_path: Path):
 
     # Add sample sizes and difference
     for i, row in comp_df.iterrows():
-        ax1.annotate(f"n={row['n']}", xy=(i, row["f1_mean"] + 1.96*row["f1_sem"] + 0.01),
-                     ha="center", fontsize=10)
+        ax1.annotate(f"n={row['n']}", xy=(i, row["f1_mean"] + 1.96 * row["f1_sem"] + 0.01), ha="center", fontsize=10)
 
     if len(no_dp) > 0 and len(with_dp) > 0:
         diff = (with_dp["final_f1"].mean() - no_dp["final_f1"].mean()) * 100
@@ -145,11 +154,9 @@ def plot_privacy_utility(df: pd.DataFrame, output_path: Path):
     ax2 = axes[0, 1]
 
     if len(no_dp) > 0:
-        sns.kdeplot(no_dp["final_f1"], ax=ax2, color=colors["No DP"], 
-                    label=f"No DP (n={len(no_dp)})", fill=True, alpha=0.3)
+        sns.kdeplot(no_dp["final_f1"], ax=ax2, color=colors["No DP"], label=f"No DP (n={len(no_dp)})", fill=True, alpha=0.3)
     if len(with_dp) > 0:
-        sns.kdeplot(with_dp["final_f1"], ax=ax2, color=colors["With DP"],
-                    label=f"With DP (n={len(with_dp)})", fill=True, alpha=0.3)
+        sns.kdeplot(with_dp["final_f1"], ax=ax2, color=colors["With DP"], label=f"With DP (n={len(with_dp)})", fill=True, alpha=0.3)
 
     ax2.set_xlabel("Macro F1 Score")
     ax2.set_ylabel("Density")
@@ -170,12 +177,14 @@ def plot_privacy_utility(df: pd.DataFrame, output_path: Path):
 
         if len(no_dp_alpha) > 0 and len(dp_alpha) > 0:
             cost = (no_dp_alpha["final_f1"].mean() - dp_alpha["final_f1"].mean()) * 100
-            privacy_cost.append({
-                "alpha": alpha,
-                "cost": cost,
-                "no_dp_n": len(no_dp_alpha),
-                "dp_n": len(dp_alpha),
-            })
+            privacy_cost.append(
+                {
+                    "alpha": alpha,
+                    "cost": cost,
+                    "no_dp_n": len(no_dp_alpha),
+                    "dp_n": len(dp_alpha),
+                }
+            )
 
     if len(privacy_cost) > 0:
         cost_df = pd.DataFrame(privacy_cost)
@@ -187,8 +196,7 @@ def plot_privacy_utility(df: pd.DataFrame, output_path: Path):
         ax3.set_title("C) Privacy Cost by Heterogeneity Level", fontweight="bold")
     else:
         # Show overall comparison with error bars
-        ax3.text(0.5, 0.5, "Limited DP data\nacross alpha levels",
-                 ha="center", va="center", transform=ax3.transAxes, fontsize=12)
+        ax3.text(0.5, 0.5, "Limited DP data\nacross alpha levels", ha="center", va="center", transform=ax3.transAxes, fontsize=12)
         ax3.set_title("C) Privacy Cost by Heterogeneity Level", fontweight="bold")
 
     ax3.grid(True, alpha=0.3, axis="y")
@@ -235,9 +243,16 @@ def plot_privacy_utility(df: pd.DataFrame, output_path: Path):
             summary_text += f"Privacy cost is NOTABLE ({abs(diff)*100:.1f}%)\n"
             summary_text += "Consider privacy vs utility tradeoff"
 
-    ax4.text(0.05, 0.95, summary_text, transform=ax4.transAxes, fontsize=10,
-             verticalalignment="top", fontfamily="monospace",
-             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8))
+    ax4.text(
+        0.05,
+        0.95,
+        summary_text,
+        transform=ax4.transAxes,
+        fontsize=10,
+        verticalalignment="top",
+        fontfamily="monospace",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
+    )
     ax4.axis("off")
     ax4.set_title("D) Statistical Summary", fontweight="bold")
 

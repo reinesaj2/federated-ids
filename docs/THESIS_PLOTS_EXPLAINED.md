@@ -12,6 +12,7 @@ Dataset: Edge-IIoTset (IoT network traffic)
 Traditional intrusion detection systems are trained on centralized data collected from all network devices. This creates privacy risks and requires sending sensitive traffic logs to a central server.
 
 Federated intrusion detection is a collaborative approach where:
+
 - Each network site keeps its traffic data local
 - Sites build detection models independently using their own data
 - Only the model updates are shared, not the raw traffic
@@ -32,34 +33,40 @@ In a federated system, compromised or malicious devices can poison the shared de
 ### What the Plots Show
 
 **Top Left - Robustness: Distance from Poisoned Consensus**
+
 - Y-axis: How far each method stays from the malicious consensus (higher = better defense)
 - X-axis: Percentage of malicious participants (0% to 30%)
 - FedAvg (standard averaging) has low robustness - it gets pulled toward the poisoned model
 - Krum, Bulyan, and Median maintain high distance, rejecting malicious inputs
 
 **Top Right - Utility Under Attack**
+
 - Y-axis: Detection accuracy (F1 score, 0.0 to 1.0, where 1.0 is perfect)
 - X-axis: Attack intensity
 - FedAvg fails catastrophically (drops to 0.0 detection capability)
 - Bulyan, Median, and Krum maintain 60-70% detection accuracy even with 30% attackers
 
 **Middle Left - Convergence at 30% Attack**
+
 - Shows how detection accuracy improves over 15 communication rounds
 - FedAvg stays flat at 0.0 (completely broken)
 - Robust methods converge to usable detection models despite ongoing attacks
 
 **Middle Right - Attack Resilience Matrix**
+
 - Green = maintained performance, Red = degraded performance
 - Bulyan and Median maintain 65-68% accuracy across all attack levels
 - FedAvg shows 0.2% at 10%+ attacks (total failure)
 
 **Bottom Left - Robustness-Utility Tradeoff**
+
 - X-axis: Robustness (distance from poisoned model)
 - Y-axis: Detection accuracy
 - Top-right corner is ideal (high robustness + high accuracy)
 - Bulyan and Median achieve this; FedAvg sits in bottom-left (low/low)
 
 **Bottom - Performance Comparison with 95% Confidence**
+
 - Shows detection accuracy at 0%, 10%, and 30% adversary levels
 - Error bars indicate statistical certainty
 - Bulyan and Median show minimal degradation as attacks intensify
@@ -86,6 +93,7 @@ Machine learning researchers developed FedProx, an algorithm that adds a constra
 ### What the Plots Show
 
 **Top Left - FedAvg: Remarkably Stable Across Heterogeneity**
+
 - X-axis: Alpha parameter (lower = more different environments, higher = more similar)
 - Y-axis: Detection accuracy (F1 score)
 - FedAvg maintains 67-72% accuracy across all heterogeneity levels
@@ -93,17 +101,20 @@ Machine learning researchers developed FedProx, an algorithm that adds a constra
 - Conclusion: Standard averaging already handles diverse environments well
 
 **Top Right - FedProx Provides No Benefit Over FedAvg**
+
 - Compares FedAvg (blue) to FedProx (orange) across different alpha values
 - Average difference: -0.92% (FedAvg actually performs better)
 - Statistical test: p < 0.05 (difference is significant, FedAvg wins)
 - FedProx adds complexity without improving detection
 
 **Bottom Left - All Aggregators Perform Similarly at IID**
+
 - When data is identical across sites (alpha = 1.0), all methods achieve ~70% F1
 - ANOVA test: F=0.54, p=0.709 (no significant difference)
 - This confirms the algorithms are implemented correctly
 
 **Bottom Right - Aggregator Comparison at Non-IID**
+
 - When data is diverse (alpha = 0.5), performance varies by method
 - FedAvg: 68% (n=66 runs)
 - Bulyan: 70% (n=11 runs, highest)
@@ -131,35 +142,41 @@ After building a global detection model from all sites, each network can customi
 ### What the Plots Show
 
 **Top Left - Personalization Gains by Configuration**
+
 - Comparing 3 epochs vs 5 epochs of personalization
 - Mean gain: 4.8% (3 epochs) to 8.0% (5 epochs)
 - Error bars show 95% confidence intervals
 - More personalization epochs = better local detection
 
 **Top Right - Gain vs Attack Intensity**
+
 - X-axis: Percentage of adversaries in the network
 - Y-axis: Improvement from personalization
 - Most points clustered around 5-10% gain at 0% adversaries
 - Personalization works in benign settings (no ongoing attacks)
 
 **Middle Left - Gain by Training Epochs**
+
 - Linear relationship: more personalization training = more gain
 - 3 epochs: ~3.5% improvement
 - 5 epochs: ~8.0% improvement
 - Diminishing returns expected beyond 5 epochs
 
 **Middle Right - Gain vs Data Heterogeneity**
+
 - X-axis: Heterogeneity level (alpha)
 - Y-axis: Personalization benefit
 - Shows personalization works across different environment types
 - Benefit is consistent regardless of how different the local data is
 
 **Bottom Left - Gain vs Global Performance**
+
 - Heatmap shows relationship between global model quality and personalization benefit
 - All cells are light colored (near-zero adversary impact)
 - Personalization provides consistent benefit regardless of global model quality
 
 **Bottom Middle - Personalization Risk Profile**
+
 - Green: Positive gain (improved detection)
 - Yellow: Neutral (no change)
 - Red: Negative gain (degraded detection)
@@ -167,6 +184,7 @@ After building a global detection model from all sites, each network can customi
 - Under attack (0.1-0.4): 75-80% still positive, but some risk
 
 **Bottom Right - Gain Distribution (Benign)**
+
 - X-axis: Individual network sites
 - Green bars: Personalized model performance
 - Blue bars: Global model performance
@@ -196,24 +214,28 @@ The question: how much does privacy protection hurt detection accuracy?
 ### What the Plots Show
 
 **Top Left - Performance: No DP vs With DP**
+
 - Blue bar (No DP): 69.7% detection accuracy (n=137 experiments)
 - Red bar (With DP): 67.7% detection accuracy (n=16 experiments)
 - Privacy cost: -2.0% accuracy
 - Error bars show confidence intervals (overlapping = small difference)
 
 **Top Right - F1 Score Distributions**
+
 - Blue distribution (No DP): centered around 0.70-0.75
 - Red distribution (With DP): slightly left-shifted to 0.65-0.70
 - Substantial overlap indicates small practical difference
 - Privacy protection causes slight but measurable accuracy reduction
 
 **Bottom Left - Privacy Cost by Heterogeneity Level**
+
 - Red bar shows privacy cost at alpha=0.5 (moderately diverse networks)
 - Height: 12.3% reduction
 - Note: This is higher than the 2.0% overall cost shown in top-left
 - Privacy cost may vary based on network diversity
 
 **Bottom Right - Statistical Summary**
+
 - Without DP: F1 = 0.6972 (n=137)
 - With DP: F1 = 0.6770 (n=16), Epsilon = 1615.68
 - Statistical test: Difference = -2.01%, p-value = 0.0614
@@ -244,6 +266,7 @@ Byzantine-resilient methods and differential privacy add computational overhead.
 ### What the Plots Show
 
 **Top Left - Aggregation Overhead**
+
 - Y-axis: Aggregation time in milliseconds (log scale)
 - FedAvg: ~0.5ms median (fastest, blue boxes near bottom)
 - Krum: ~10ms median (26.8x slower, orange boxes)
@@ -252,18 +275,21 @@ Byzantine-resilient methods and differential privacy add computational overhead.
 - Reference lines: Real-time threshold (100ms), Raspberry Pi 4 limit (50ms)
 
 **Top Middle - Overhead vs Attack Level**
+
 - X-axis: Adversary percentage (0%, 10%, 30%)
 - Robust methods (Krum, Bulyan, Median) maintain consistent ~10-20ms regardless of attack intensity
 - FedAvg stays fast (~0.5ms) but provides no attack protection
 - Overhead does not increase with attack intensity (good for predictability)
 
 **Top Right - Overhead vs Heterogeneity**
+
 - X-axis: Data diversity (Dirichlet alpha)
 - All methods show stable overhead across heterogeneity levels
 - Bulyan shows slight decrease at higher heterogeneity (more similar data is easier to aggregate)
 - Overhead is primarily determined by algorithm choice, not data characteristics
 
 **Middle Left - Cost-Benefit Tradeoff**
+
 - X-axis: Aggregation time (log scale)
 - Y-axis: Detection accuracy at 30% attack
 - FedAvg: Fast but 0% accuracy under attack (bottom-left, unacceptable)
@@ -273,6 +299,7 @@ Byzantine-resilient methods and differential privacy add computational overhead.
 - Top-right corner is ideal (fast + accurate)
 
 **Middle Right - Overhead Multiplier**
+
 - Compares each method to FedAvg baseline (1.0x)
 - Krum: 26.8x slower
 - Bulyan: 45.7x slower (highest overhead)
@@ -280,6 +307,7 @@ Byzantine-resilient methods and differential privacy add computational overhead.
 - Despite multipliers, absolute times are still under 50ms (real-time capable)
 
 **Bottom - Total Computational Cost Over Training**
+
 - X-axis: Communication rounds (1-15)
 - Y-axis: Cumulative aggregation time (ms)
 - FedAvg: ~40ms total after 15 rounds (flat blue line)
@@ -295,6 +323,7 @@ Byzantine-resilient methods add 27-46x overhead compared to standard averaging, 
 **Practical Recommendation:** The computational overhead of Bulyan and Median is negligible compared to their security benefits. For IoT gateways and edge servers (typically more powerful than end devices), this overhead is easily absorbed. Even on Raspberry Pi 4 hardware, aggregation completes in under 50ms, supporting real-time detection updates.
 
 **Deployment Guidance:**
+
 - Low-power IoT sensors: Use FedAvg (if operating in trusted network) or Median (best overhead/security balance)
 - Edge gateways: Use Bulyan (best attack resilience, acceptable 20ms overhead)
 - Cloud aggregation: Overhead is irrelevant, always use Bulyan for maximum security
@@ -335,18 +364,21 @@ Based on 775 experimental runs across 5 thesis objectives:
 ### Threat Model Considerations
 
 **High-Risk Environments (>10% expected adversaries):**
+
 - MUST use Bulyan or Median (FedAvg will fail)
 - Consider disabling personalization (poisoned local data risk)
 - Enable DP if data sensitivity is high
 - Accept 20-30ms overhead as necessary security cost
 
 **Moderate-Risk Environments (5-10% expected adversaries):**
+
 - Use Median (good balance of security and overhead)
 - Enable personalization with validation checks
 - Enable DP for sensitive networks
 - Overhead budget: 12-15ms
 
 **Low-Risk Environments (<5% expected adversaries):**
+
 - Median or FedAvg acceptable
 - Full personalization recommended
 - DP optional based on privacy requirements
@@ -354,13 +386,13 @@ Based on 775 experimental runs across 5 thesis objectives:
 
 ### Cost-Benefit Summary
 
-| Feature | Detection Gain | Overhead | When to Use |
-|---------|---------------|----------|-------------|
-| Bulyan | +67% vs FedAvg under attack | 20ms | High-risk networks |
-| Median | +64% vs FedAvg under attack | 12ms | Moderate-risk networks |
-| Personalization | +6.4% mean gain | Local compute only | All networks (benign periods) |
-| Differential Privacy | -2.0% accuracy cost | Minimal | Sensitive data networks |
-| FedProx | -0.92% (worse than FedAvg) | Minimal | Not recommended |
+| Feature              | Detection Gain              | Overhead           | When to Use                   |
+| -------------------- | --------------------------- | ------------------ | ----------------------------- |
+| Bulyan               | +67% vs FedAvg under attack | 20ms               | High-risk networks            |
+| Median               | +64% vs FedAvg under attack | 12ms               | Moderate-risk networks        |
+| Personalization      | +6.4% mean gain             | Local compute only | All networks (benign periods) |
+| Differential Privacy | -2.0% accuracy cost         | Minimal            | Sensitive data networks       |
+| FedProx              | -0.92% (worse than FedAvg)  | Minimal            | Not recommended               |
 
 ---
 

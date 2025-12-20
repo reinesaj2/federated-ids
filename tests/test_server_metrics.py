@@ -44,6 +44,10 @@ def test_server_metrics_csv_creation():
                 "pairwise_cosine_std",
                 "l2_dispersion_mean",
                 "l2_dispersion_std",
+                "global_macro_f1_val",
+                "global_macro_f1_test",
+                "n_val_total",
+                "n_test_total",
             ]
             assert headers == expected
 
@@ -94,6 +98,10 @@ def test_server_metrics_logging_complete_record():
                 "",
                 "",
                 "",  # Dispersion metrics empty
+                "",
+                "",
+                "",
+                "",
             ]
             assert row == expected_row
 
@@ -171,7 +179,27 @@ def test_server_metrics_with_none_values():
             row = next(reader)
 
             # None values should be empty strings in CSV
-            expected_row = ["1", "median", "2", "", "", "", "", "2.0", "0.5", "20.0", "2000.0", "", "", "", ""]  # Dispersion metrics empty
+            expected_row = [
+                "1",
+                "median",
+                "2",
+                "",
+                "",
+                "",
+                "",
+                "2.0",
+                "0.5",
+                "20.0",
+                "2000.0",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+            ]  # Dispersion metrics empty
             assert row == expected_row
 
 

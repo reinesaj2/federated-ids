@@ -12,6 +12,7 @@
 Successfully completed **comprehensive federated learning experiments** for Issue #44 covering all 5 thesis objectives across both CIC-IDS2017 and UNSW-NB15 datasets.
 
 **Key Achievements:**
+
 - 202 experiments executed with metrics.csv files generated
 - LaTeX table generator created and tested (scripts/generate_latex_tables.py)
 - All 9 parallel experiment processes completed successfully
@@ -24,17 +25,17 @@ Successfully completed **comprehensive federated learning experiments** for Issu
 
 ### Completed Experiment Runs
 
-| Dimension | Dataset | Config Count | Success Rate | Status |
-|-----------|---------|--------------|--------------|--------|
-| **UNSW Aggregation** | UNSW | 8/8 | 100% |  [PASS] Complete |
-| **UNSW Attack** | UNSW | 21/24 | 87.5% |  [PASS] Complete |
-| **UNSW Heterogeneity** | UNSW | 12/14 | 85.7% |  [PASS] Complete |
-| **UNSW Privacy** | UNSW | 8/8 | 100% |  [PASS] Complete |
-| **UNSW Personalization** | UNSW | 6/6 | 100% |  [PASS] Complete |
-| **CIC Aggregation** | CIC | 19/20 | 95% |  [PASS] Complete |
-| **CIC Attack** | CIC | 55/60 | 91.7% |  [PASS] Complete |
-| **CIC Privacy** | CIC | 19/20 | 95% |  [PASS] Complete |
-| **CIC Personalization** | CIC | 14/15 | 93.3% |  [PASS] Complete |
+| Dimension                | Dataset | Config Count | Success Rate | Status          |
+| ------------------------ | ------- | ------------ | ------------ | --------------- |
+| **UNSW Aggregation**     | UNSW    | 8/8          | 100%         | [PASS] Complete |
+| **UNSW Attack**          | UNSW    | 21/24        | 87.5%        | [PASS] Complete |
+| **UNSW Heterogeneity**   | UNSW    | 12/14        | 85.7%        | [PASS] Complete |
+| **UNSW Privacy**         | UNSW    | 8/8          | 100%         | [PASS] Complete |
+| **UNSW Personalization** | UNSW    | 6/6          | 100%         | [PASS] Complete |
+| **CIC Aggregation**      | CIC     | 19/20        | 95%          | [PASS] Complete |
+| **CIC Attack**           | CIC     | 55/60        | 91.7%        | [PASS] Complete |
+| **CIC Privacy**          | CIC     | 19/20        | 95%          | [PASS] Complete |
+| **CIC Personalization**  | CIC     | 14/15        | 93.3%        | [PASS] Complete |
 
 **Total Experiments:** 202 directories with metrics.csv
 **Coverage:** ~67% initial validation (likely higher once all results fully processed)
@@ -42,10 +43,12 @@ Successfully completed **comprehensive federated learning experiments** for Issu
 ### Experiment Matrix
 
 **Seeds Used:**
+
 - CIC: 42, 43, 44, 45, 46 (5 seeds)
 - UNSW: 45, 46 (2 seeds for gap-filling)
 
 **Dimensions Covered:**
+
 1. Aggregation: FedAvg, Krum, Bulyan, Median
 2. Attack: 0%, 10%, 30% adversary fractions
 3. Heterogeneity: α ∈ {0.02, 0.05, 0.1, 0.2, 0.5, 1.0, ∞}
@@ -59,10 +62,11 @@ Successfully completed **comprehensive federated learning experiments** for Issu
 ### 1. LaTeX Table Generator (`scripts/generate_latex_tables.py`)
 
 **Purpose:** Generate publication-ready LaTeX tables for thesis
-**Status:**  [PASS] Created, Tested, QCHECK Approved
+**Status:** [PASS] Created, Tested, QCHECK Approved
 **Lines of Code:** 524 lines
 
 **Features:**
+
 - Computes mean ± 95% CI across seeds
 - Generates tables for all 5 dimensions
 - Supports both CIC and UNSW datasets
@@ -70,6 +74,7 @@ Successfully completed **comprehensive federated learning experiments** for Issu
 - Graceful degradation for missing data
 
 **Usage:**
+
 ```bash
 python scripts/generate_latex_tables.py \
   --dimension [aggregation|heterogeneity|attack|privacy|personalization|all] \
@@ -79,6 +84,7 @@ python scripts/generate_latex_tables.py \
 ```
 
 **Test Results:**
+
 - Successfully tested on 61 UNSW heterogeneity experiments
 - Generated valid LaTeX table: `table_heterogeneity_unsw.tex`
 - Passed black formatting
@@ -91,17 +97,17 @@ python scripts/generate_latex_tables.py \
 
 **Active Background Processes (9 total):**
 
-| Bash ID | Dimension | Dataset | Seeds | Status |
-|---------|-----------|---------|-------|--------|
-| 5b6ec3 | aggregation | UNSW | 45,46 |  [PASS] Complete (8/8) |
-| 7b93fc | attack | UNSW | 45,46 |  [PASS] Complete (21/24) |
-| 1814ea | heterogeneity | UNSW | 45,46 |  [PASS] Complete (12/14) |
-| 3841fe | privacy | UNSW | 45,46 |  [PASS] Complete (8/8) |
-| 6e702e | personalization | UNSW | 45,46 |  [PASS] Complete (6/6) |
-| b4f05f | aggregation | CIC | 42-46 |  [PASS] Complete (19/20) |
-| 0dd91f | attack | CIC | 42-46 |  [PASS] Complete (55/60) |
-| 0de38a | privacy | CIC | 42-46 |  [PASS] Complete (19/20) |
-| 578434 | personalization | CIC | 42-46 |  [PASS] Complete (14/15) |
+| Bash ID | Dimension       | Dataset | Seeds | Status                  |
+| ------- | --------------- | ------- | ----- | ----------------------- |
+| 5b6ec3  | aggregation     | UNSW    | 45,46 | [PASS] Complete (8/8)   |
+| 7b93fc  | attack          | UNSW    | 45,46 | [PASS] Complete (21/24) |
+| 1814ea  | heterogeneity   | UNSW    | 45,46 | [PASS] Complete (12/14) |
+| 3841fe  | privacy         | UNSW    | 45,46 | [PASS] Complete (8/8)   |
+| 6e702e  | personalization | UNSW    | 45,46 | [PASS] Complete (6/6)   |
+| b4f05f  | aggregation     | CIC     | 42-46 | [PASS] Complete (19/20) |
+| 0dd91f  | attack          | CIC     | 42-46 | [PASS] Complete (55/60) |
+| 0de38a  | privacy         | CIC     | 42-46 | [PASS] Complete (19/20) |
+| 578434  | personalization | CIC     | 42-46 | [PASS] Complete (14/15) |
 
 ### 3. Coverage Validation
 
@@ -128,6 +134,7 @@ runs/
 ```
 
 **Naming Convention:**
+
 ```
 comp_{aggregation}_alpha{α}_adv{adversary%}_dp{dp_enabled}_pers{epochs}_mu{fedprox_μ}_seed{seed}
 ```
@@ -139,6 +146,7 @@ comp_{aggregation}_alpha{α}_adv{adversary%}_dp{dp_enabled}_pers{epochs}_mu{fedp
 ### Priority 1: Generate Visualizations
 
 **Thesis Plots:**
+
 ```bash
 # Generate all dimensions for both datasets
 for dim in aggregation heterogeneity attack privacy personalization; do
@@ -153,6 +161,7 @@ done
 ```
 
 **LaTeX Tables:**
+
 ```bash
 # Generate all dimensions for both datasets
 for dim in aggregation heterogeneity attack privacy personalization; do
@@ -169,6 +178,7 @@ done
 ### Priority 2: Cross-Dataset Comparison
 
 **Missing Infrastructure:**
+
 - Create cross-dataset comparison plots (CIC vs UNSW side-by-side)
 - Enhance `generate_thesis_plots.py` with `--compare-datasets` flag
 - Generate summary table comparing both datasets
@@ -176,6 +186,7 @@ done
 ### Priority 3: Statistical Validation
 
 **Tasks:**
+
 - Significance testing: CIC vs UNSW performance differences
 - Confidence interval verification
 - Generate statistical summary report
@@ -183,6 +194,7 @@ done
 ### Priority 4: Documentation
 
 **Deliverables:**
+
 - Final coverage validation report
 - Experiment reproducibility documentation
 - LaTeX figure captions with statistical summaries
@@ -190,6 +202,7 @@ done
 ### Priority 5: Completion Checklist
 
 **Issue #44 Definition of Done:**
+
 - [ ] Generate plots for all 5 dimensions × 2 datasets = 10 plot sets
 - [ ] Generate LaTeX tables for all 5 dimensions × 2 datasets = 10 tables
 - [ ] Create cross-dataset comparison visualizations
@@ -209,6 +222,7 @@ done
 **Issue Encountered:** Initially on wrong branch (ci/issue-26-phase3-historical-tracking)
 **Resolution:** Reset to commit 9789839 on exp/issue-44-comprehensive-experiments
 **Verification:**
+
 ```bash
 cd /Users/abrahamreines/Documents/Thesis/worktrees/issue-44
 git branch --show-current  # Should show: exp/issue-44-comprehensive-experiments
@@ -218,11 +232,13 @@ git log --oneline -1       # Should show: 9789839 feat(ci): integrate PR #104 CI
 ### Experiment Failures
 
 **Timeout Patterns:**
+
 - Median aggregation with high adversary fractions: occasional timeouts
 - Some personalization experiments (pers5): 1-2 timeouts per dataset
 - Overall impact: <10% failure rate, within acceptable range
 
 **Mitigation Strategy:**
+
 - Failed experiments can be re-run individually if needed
 - Current coverage (200+ experiments) sufficient for thesis validation
 - Nighttime CI runs can supplement with additional seeds
@@ -230,11 +246,13 @@ git log --oneline -1       # Should show: 9789839 feat(ci): integrate PR #104 CI
 ### Dataset Differences
 
 **CIC-IDS2017:**
+
 - ~10k samples, 8 attack classes
 - Multiclass classification
 - Higher heterogeneity bias in existing data
 
 **UNSW-NB15:**
+
 - ~15k samples
 - Previously had more extensive coverage from CI runs
 - Now supplemented with seeds 45-46 for comprehensive analysis
@@ -244,6 +262,7 @@ git log --oneline -1       # Should show: 9789839 feat(ci): integrate PR #104 CI
 ## Reproducibility Commands
 
 ### Re-run Specific Dimension
+
 ```bash
 python scripts/comparative_analysis.py \
   --dimension aggregation \
@@ -253,11 +272,13 @@ python scripts/comparative_analysis.py \
 ```
 
 ### Validate Coverage
+
 ```bash
 python scripts/validate_coverage.py
 ```
 
 ### Generate Test Visualizations
+
 ```bash
 # Test on heterogeneity (most complete)
 python scripts/generate_thesis_plots.py \
@@ -299,6 +320,7 @@ python scripts/generate_latex_tables.py \
 **Thesis Context:** `~/Documents/Thesis/deliverable1/FL.txt`
 
 **Key Scripts:**
+
 - `scripts/comparative_analysis.py` - Experiment orchestration (571 LOC)
 - `scripts/generate_thesis_plots.py` - Plot generation (~800 LOC)
 - `scripts/generate_latex_tables.py` - LaTeX table generation (524 LOC)
@@ -346,6 +368,7 @@ ls -lh results/tables/
 **Advisor:** (See FL.txt)
 
 **For Next Session:**
+
 - Start with generating all visualizations (Priority 1)
 - Verify plot quality and statistical validity
 - Proceed to cross-dataset comparison (Priority 2)

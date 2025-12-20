@@ -59,11 +59,13 @@ def load_round_data():
                 continue
 
             for _, row in df.iterrows():
-                all_data.append({
-                    **config,
-                    "round": row["round"],
-                    "f1": row["macro_f1_after"],
-                })
+                all_data.append(
+                    {
+                        **config,
+                        "round": row["round"],
+                        "f1": row["macro_f1_after"],
+                    }
+                )
         except Exception:
             pass
 
@@ -100,10 +102,14 @@ def plot_convergence_analysis(df: pd.DataFrame, output_path: Path):
         if len(subset) == 0:
             continue
 
-        round_summary = subset.groupby("round").agg(
-            f1_mean=("f1", "mean"),
-            f1_sem=("f1", "sem"),
-        ).reset_index()
+        round_summary = (
+            subset.groupby("round")
+            .agg(
+                f1_mean=("f1", "mean"),
+                f1_sem=("f1", "sem"),
+            )
+            .reset_index()
+        )
 
         ax1.plot(
             round_summary["round"],
@@ -148,11 +154,15 @@ def plot_convergence_analysis(df: pd.DataFrame, output_path: Path):
         convergence_data.append({"alpha": alpha, "seed": seed, "rounds_to_90": r90})
 
     conv_df = pd.DataFrame(convergence_data)
-    conv_summary = conv_df.groupby("alpha").agg(
-        r90_mean=("rounds_to_90", "mean"),
-        r90_sem=("rounds_to_90", "sem"),
-        n=("rounds_to_90", "count"),
-    ).reset_index()
+    conv_summary = (
+        conv_df.groupby("alpha")
+        .agg(
+            r90_mean=("rounds_to_90", "mean"),
+            r90_sem=("rounds_to_90", "sem"),
+            n=("rounds_to_90", "count"),
+        )
+        .reset_index()
+    )
 
     ax2.errorbar(
         conv_summary["alpha"],
@@ -200,12 +210,14 @@ def plot_convergence_analysis(df: pd.DataFrame, output_path: Path):
         late = subset[subset["round"] == subset["round"].max()]["f1"].mean()
 
         if not np.isnan(early):
-            early_late_data.append({
-                "alpha": alpha,
-                "early_f1": early,
-                "late_f1": late,
-                "gap": late - early,
-            })
+            early_late_data.append(
+                {
+                    "alpha": alpha,
+                    "early_f1": early,
+                    "late_f1": late,
+                    "gap": late - early,
+                }
+            )
 
     el_df = pd.DataFrame(early_late_data)
 
@@ -213,8 +225,8 @@ def plot_convergence_analysis(df: pd.DataFrame, output_path: Path):
         x = np.arange(len(el_df))
         width = 0.35
 
-        ax3.bar(x - width/2, el_df["early_f1"], width, label="Round 3", color="#1f77b4")
-        ax3.bar(x + width/2, el_df["late_f1"], width, label="Final Round", color="#2ca02c")
+        ax3.bar(x - width / 2, el_df["early_f1"], width, label="Round 3", color="#1f77b4")
+        ax3.bar(x + width / 2, el_df["late_f1"], width, label="Final Round", color="#2ca02c")
 
         ax3.set_xticks(x)
         ax3.set_xticklabels([f"$\\alpha$={a}" for a in el_df["alpha"]])
@@ -229,18 +241,20 @@ def plot_convergence_analysis(df: pd.DataFrame, output_path: Path):
 
     extreme_alpha = 0.02
     fedavg_extreme = fedavg[np.isclose(fedavg["alpha"], extreme_alpha, rtol=0.1)]
-    fedprox_extreme = df[(df["aggregation"] == "FedProx") & 
-                         np.isclose(df["alpha"], extreme_alpha, rtol=0.1)]
+    fedprox_extreme = df[(df["aggregation"] == "FedProx") & np.isclose(df["alpha"], extreme_alpha, rtol=0.1)]
 
-    for agg_df, label, color in [(fedavg_extreme, "FedAvg", "#1f77b4"), 
-                                  (fedprox_extreme, "FedProx", "#ff7f0e")]:
+    for agg_df, label, color in [(fedavg_extreme, "FedAvg", "#1f77b4"), (fedprox_extreme, "FedProx", "#ff7f0e")]:
         if len(agg_df) == 0:
             continue
 
-        round_summary = agg_df.groupby("round").agg(
-            f1_mean=("f1", "mean"),
-            f1_sem=("f1", "sem"),
-        ).reset_index()
+        round_summary = (
+            agg_df.groupby("round")
+            .agg(
+                f1_mean=("f1", "mean"),
+                f1_sem=("f1", "sem"),
+            )
+            .reset_index()
+        )
 
         ax4.plot(
             round_summary["round"],

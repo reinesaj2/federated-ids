@@ -12,6 +12,7 @@
 Our FedProx findings **DO NOT contradict** Li et al. MLSys 2020. Instead, we reveal a **previously undiscovered failure mode** of FedProx specific to **highly imbalanced classification tasks**. Li et al. were correct for their experimental domain (balanced classification using accuracy); we discovered FedProx fails catastrophically in a domain they never tested (imbalanced security tasks using macro-F1).
 
 **Key Distinction:**
+
 - Li et al.: FedProx improves accuracy on balanced tasks (MNIST, FEMNIST)
 - Our Work: FedProx degrades macro-F1 on imbalanced tasks (IDS with 90% class imbalance)
 - Resolution: Both findings are correct - different domains, different metrics, complementary insights
@@ -26,18 +27,19 @@ Our FedProx findings **DO NOT contradict** Li et al. MLSys 2020. Instead, we rev
 
 **Experimental Scope:**
 
-| Aspect | Li et al. (2020) |
-|--------|------------------|
-| Datasets | MNIST, FEMNIST, Sent140, Shakespeare, Synthetic |
-| Tasks | Image classification, sentiment analysis, text generation |
-| Class Distribution | Relatively balanced (10 classes MNIST, ~62 characters FEMNIST) |
-| Primary Metric | Test Accuracy |
-| Mu Values | {0.001, 0.01, 0.1, 0.5, 1.0} |
-| Key Finding | FedProx improves accuracy by 22% on average in heterogeneous settings |
-| Imbalance Level | Low (no dataset with 90%+ majority class) |
-| Heterogeneity Modeling | Pathological splits (2 digits per client for MNIST) |
+| Aspect                 | Li et al. (2020)                                                      |
+| ---------------------- | --------------------------------------------------------------------- |
+| Datasets               | MNIST, FEMNIST, Sent140, Shakespeare, Synthetic                       |
+| Tasks                  | Image classification, sentiment analysis, text generation             |
+| Class Distribution     | Relatively balanced (10 classes MNIST, ~62 characters FEMNIST)        |
+| Primary Metric         | Test Accuracy                                                         |
+| Mu Values              | {0.001, 0.01, 0.1, 0.5, 1.0}                                          |
+| Key Finding            | FedProx improves accuracy by 22% on average in heterogeneous settings |
+| Imbalance Level        | Low (no dataset with 90%+ majority class)                             |
+| Heterogeneity Modeling | Pathological splits (2 digits per client for MNIST)                   |
 
 **References:**
+
 - Paper: https://proceedings.mlsys.org/paper_files/paper/2020/file/1f5fe83998a09396ebe6477d9475ba0c-Paper.pdf
 - Code: https://github.com/litian96/FedProx
 - ArXiv: https://arxiv.org/abs/1812.06127
@@ -48,21 +50,22 @@ Our FedProx findings **DO NOT contradict** Li et al. MLSys 2020. Instead, we rev
 
 **Our Scope:**
 
-| Aspect | Our Work (2025) |
-|--------|-----------------|
-| Dataset | Edge-IIoTset (IoT network intrusion) |
-| Task | Intrusion detection (security-critical, highly imbalanced multiclass) |
-| Class Distribution | Extremely imbalanced: 90% normal traffic, 10% attacks (15 classes) |
-| Primary Metric | Macro-F1 (appropriate for imbalanced data) AND accuracy |
-| Mu Values | {0.0, 0.01, 0.05, 0.1} |
-| Key Finding | FedProx degrades macro-F1 by up to 30% under high heterogeneity (alpha=0.05) |
-| Imbalance Level | Extreme (90%+ majority class, minority classes <1% each) |
-| Heterogeneity Modeling | Dirichlet partitioning with alpha in {0.05, 0.1, 0.2, 0.5, 1.0} |
+| Aspect                 | Our Work (2025)                                                              |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| Dataset                | Edge-IIoTset (IoT network intrusion)                                         |
+| Task                   | Intrusion detection (security-critical, highly imbalanced multiclass)        |
+| Class Distribution     | Extremely imbalanced: 90% normal traffic, 10% attacks (15 classes)           |
+| Primary Metric         | Macro-F1 (appropriate for imbalanced data) AND accuracy                      |
+| Mu Values              | {0.0, 0.01, 0.05, 0.1}                                                       |
+| Key Finding            | FedProx degrades macro-F1 by up to 30% under high heterogeneity (alpha=0.05) |
+| Imbalance Level        | Extreme (90%+ majority class, minority classes <1% each)                     |
+| Heterogeneity Modeling | Dirichlet partitioning with alpha in {0.05, 0.1, 0.2, 0.5, 1.0}              |
 
 **Evidence Location:**
+
 - docs/OBJECTIVE_2_INVESTIGATION_SUMMARY.md (complete analysis)
 - docs/NEURIPS_READINESS_ANALYSIS.md (publication assessment)
-- runs/dsedge-iiotset-nightly_comp_fedprox* (105 experiments)
+- runs/dsedge-iiotset-nightly_comp_fedprox\* (105 experiments)
 
 ---
 
@@ -104,11 +107,13 @@ Alpha | FedAvg L2 | FedProx L2 (mu=0.1) | Reduction Factor
 We verified our FedProx implementation matches the original paper (OBJECTIVE_2_INVESTIGATION_SUMMARY.md:44-66):
 
 **Formula from Li et al.:**
+
 ```
 h_k(w; w^t) = F_k(w) + (mu/2) * ||w - w_global||^2
 ```
 
 **Our Implementation:**
+
 ```python
 if fedprox_mu > 0.0 and global_tensors is not None:
     prox_term = torch.tensor(0.0, device=device)
@@ -137,6 +142,7 @@ Alpha | FedAvg F1 | FedProx F1 (mu=0.1) | Degradation | Effect Size
 ```
 
 **Statistical Properties:**
+
 - Effect sizes: Cohen's d >> 1.0 (very large practical significance)
 - Reproducibility: 5 seeds per configuration, tight confidence intervals
 - Consistency: Degradation observed across all heterogeneity levels
@@ -205,18 +211,19 @@ Total Learning| +0.2726 | +0.1788 | FedProx learns 35% slower
 
 From OBJECTIVE_2_INVESTIGATION_SUMMARY.md:312-321:
 
-| Aspect | Image Classification (Li et al.) | Intrusion Detection (Our Work) |
-|--------|----------------------------------|-------------------------------|
-| Feature Distribution | Homogeneous (pixels, edges, textures) | Heterogeneous (packet headers, flows, protocols) |
-| Pattern Transferability | High (cats look similar everywhere) | Low (attacks vary by network topology, services) |
-| Local Specialization Need | Harmful (overfitting to local images) | Essential (network-specific attack signatures) |
-| Regularization Effect | Beneficial (reduces overfitting) | Harmful (prevents adaptation to local threats) |
-| Class Balance | Relatively balanced (10 classes ~equal) | Extremely imbalanced (90% normal, 15 classes) |
-| Optimal mu | Higher (0.01-1.0) | Lower (0.0-0.01 only) |
+| Aspect                    | Image Classification (Li et al.)        | Intrusion Detection (Our Work)                   |
+| ------------------------- | --------------------------------------- | ------------------------------------------------ |
+| Feature Distribution      | Homogeneous (pixels, edges, textures)   | Heterogeneous (packet headers, flows, protocols) |
+| Pattern Transferability   | High (cats look similar everywhere)     | Low (attacks vary by network topology, services) |
+| Local Specialization Need | Harmful (overfitting to local images)   | Essential (network-specific attack signatures)   |
+| Regularization Effect     | Beneficial (reduces overfitting)        | Harmful (prevents adaptation to local threats)   |
+| Class Balance             | Relatively balanced (10 classes ~equal) | Extremely imbalanced (90% normal, 15 classes)    |
+| Optimal mu                | Higher (0.01-1.0)                       | Lower (0.0-0.01 only)                            |
 
 ### The Over-Regularization Hypothesis
 
 **Claim:** FedProx's proximal regularization, beneficial for balanced tasks, becomes harmful when:
+
 1. Classes are highly imbalanced (90%+ majority)
 2. Local specialization is required (network-specific attacks)
 3. Global model is biased (dominated by majority class)
@@ -236,6 +243,7 @@ Net gradient: Has reduced component along local optimum (attacks not learned)
 **Suggested Theoretical Work (from NEURIPS_READINESS_ANALYSIS.md:101-116):**
 
 Derive bound showing when FedProx fails:
+
 ```
 Proposition: Under extreme heterogeneity (alpha approaches 0) and class imbalance (p_majority > 0.9),
 FedProx with mu > mu_crit suffers from gradient conflict where the net gradient has
@@ -347,6 +355,7 @@ guidance: mu <= 0.01 is safe for IDS, mu >= 0.05 is dangerous.
 **Expected Objection:** "You contradict Li et al. - how can FedProx both help and hurt?"
 
 **Response:**
+
 ```
 We do not contradict Li et al. (2020). Their findings on balanced image
 classification tasks using accuracy are correct and reproducible. We extend
@@ -376,6 +385,7 @@ Alpha=0.2, Mu=0.1  |   -12.3%    |      > 1.0         | Large
 ```
 
 **Properties:**
+
 - Not borderline statistical differences
 - Massive, practically significant degradation (>20% in severe cases)
 - Consistent across all heterogeneity levels
@@ -398,6 +408,7 @@ Training rounds        | 15-20 | Per experiment
 **For Publication (from NEURIPS_READINESS_ANALYSIS.md:71-88):**
 
 Needs:
+
 - Increase seeds: 5 to 10 (add seeds 47-51)
 - Add statistical tests: Welch's t-test, p-values, Cohen's d
 - Add second dataset: CIC-IDS2017 to show generality
@@ -435,7 +446,7 @@ Needs:
 
 1. **Add statistical significance testing**
    - Compute Welch's t-tests for all FedAvg vs FedProx comparisons
-   - Report p-values with significance markers (*, **, ***)
+   - Report p-values with significance markers (\*, **, \***)
    - Compute Cohen's d effect sizes
    - Status: Not yet implemented
 
@@ -534,7 +545,7 @@ previously documented in federated learning literature.
 2. docs/OBJECTIVE_2_INVESTIGATION_SUMMARY.md - Complete FedProx investigation
 3. docs/NEURIPS_READINESS_ANALYSIS.md - Publication readiness assessment
 4. docs/THESIS_PLOTS_EXPLAINED.md - Visual analysis guide
-5. runs/dsedge-iiotset-nightly_comp_fedprox* - 105 experimental runs
+5. runs/dsedge-iiotset-nightly_comp_fedprox\* - 105 experimental runs
 
 ### Related Literature (FL+IDS Using Accuracy)
 

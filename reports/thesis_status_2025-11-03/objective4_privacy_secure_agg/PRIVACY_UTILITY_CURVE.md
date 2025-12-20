@@ -13,11 +13,13 @@ This addresses **Research Objective 4** from FL.txt: "Maintain utility while int
 ### Privacy Budget: ε (Epsilon)
 
 The privacy budget `ε` quantifies the privacy guarantee provided by differential privacy:
+
 - **Lower ε → Stronger privacy** (more noise added to gradients)
 - **Higher ε → Weaker privacy** (less noise, closer to non-private baseline)
 - **ε → ∞ → No privacy** (baseline FedAvg without DP)
 
 **Computation**: Uses **Rényi Differential Privacy (RDP)** accounting via Opacus `RDPAccountant`:
+
 ```python
 from privacy_accounting import compute_epsilon
 
@@ -30,6 +32,7 @@ epsilon = compute_epsilon(
 ```
 
 **References**:
+
 - Mironov (2017): Rényi Differential Privacy
 - Abadi et al. (2016): Deep Learning with Differential Privacy
 - McMahan et al. (2017): Learning Differentially Private Language Models
@@ -37,6 +40,7 @@ epsilon = compute_epsilon(
 ### Utility: Macro-F1
 
 Model performance measured by **macro-averaged F1 score** across all attack classes:
+
 - Computed from client-level metrics (averaged across all clients)
 - Aggregated across multiple seeds (5 seeds per configuration)
 - Reported with **95% confidence intervals**
@@ -53,6 +57,7 @@ Model performance measured by **macro-averaged F1 score** across all attack clas
 **Baseline**: Horizontal dashed line showing non-DP performance (ε → ∞)
 
 **Interpretation**:
+
 - Points **above baseline**: Unlikely (DP typically degrades performance)
 - Points **near baseline**: Good privacy-utility tradeoff
 - Points **far below baseline**: High privacy cost
@@ -76,6 +81,7 @@ Model performance measured by **macro-averaged F1 score** across all attack clas
 **Location**: `results/comparative_analysis/<dataset>/privacy_utility_curve.{png,pdf}`
 
 **Formats**:
+
 - PNG: 300 DPI, publication-ready
 - PDF: Vector graphics for LaTeX inclusion
 
@@ -84,6 +90,7 @@ Model performance measured by **macro-averaged F1 score** across all attack clas
 **Location**: `results/comparative_analysis/<dataset>/privacy_utility_curve.csv`
 
 **Columns**:
+
 - `epsilon`: Privacy budget (computed via RDP accountant)
 - `macro_f1_mean`: Mean macro-F1 across seeds
 - `ci_lower`: Lower bound of 95% CI
@@ -97,6 +104,7 @@ Model performance measured by **macro-averaged F1 score** across all attack clas
 ### 3. Logged Metadata in summary.json
 
 Each DP experiment logs the following fields:
+
 - `dp_epsilon`: Formal privacy budget (RDP-computed)
 - `dp_delta`: Target δ for (ε, δ)-DP (default: 1e-5)
 - `dp_sigma`: Noise multiplier (Gaussian stddev)
@@ -111,12 +119,14 @@ Each DP experiment logs the following fields:
 ### DP Parameters (Issue #44 Expanded Grids)
 
 **Noise Multipliers** (σ):
+
 - 0.0 (baseline, no DP)
 - 0.5 (weak privacy)
 - 1.0 (moderate privacy)
 - 1.5 (strong privacy)
 
 **Fixed Parameters**:
+
 - δ = 1e-5 (standard for DP literature)
 - Clipping norm = 1.0 (gradient clipping threshold)
 - Sample rate = 1.0 (full-batch aggregation per round)
@@ -128,12 +138,12 @@ Each DP experiment logs the following fields:
 
 For 20 FL rounds with δ=1e-5:
 
-| σ (Noise) | Approximate ε | Privacy Level |
-|-----------|---------------|---------------|
+| σ (Noise) | Approximate ε | Privacy Level   |
+| --------- | ------------- | --------------- |
 | 0.0       | ∞             | None (baseline) |
-| 0.5       | ~20-30        | Weak |
-| 1.0       | ~5-10         | Moderate |
-| 1.5       | ~2-4          | Strong |
+| 0.5       | ~20-30        | Weak            |
+| 1.0       | ~5-10         | Moderate        |
+| 1.5       | ~2-4          | Strong          |
 
 ---
 
@@ -193,14 +203,17 @@ cat results/comparative_analysis/unsw/privacy_utility_curve.csv
 ### For Thesis Results Section
 
 **Good Result** (achievable tradeoff):
+
 - At ε = 5 (moderate privacy), macro-F1 drops by ≤ 10% relative to baseline
 - Example: Baseline F1 = 0.90, DP (ε=5) F1 = 0.82 → 8.9% degradation
 
 **Acceptable Result** (slight degradation):
+
 - At ε = 10 (weak privacy), macro-F1 drops by ≤ 5%
 - Example: Baseline F1 = 0.90, DP (ε=10) F1 = 0.86 → 4.4% degradation
 
 **Poor Result** (high privacy cost):
+
 - At ε = 2 (strong privacy), macro-F1 drops by > 20%
 - Example: Baseline F1 = 0.90, DP (ε=2) F1 = 0.70 → 22% degradation
 
@@ -209,6 +222,7 @@ cat results/comparative_analysis/unsw/privacy_utility_curve.csv
 **Question**: "Why is differential privacy important for federated IDS?"
 
 **Answer**:
+
 - IDS data contains sensitive network traffic patterns
 - DP prevents reconstruction attacks on individual client datasets
 - Formal privacy guarantees (ε, δ) provide mathematical provability
@@ -217,6 +231,7 @@ cat results/comparative_analysis/unsw/privacy_utility_curve.csv
 **Question**: "What privacy level do you recommend for production?"
 
 **Answer**:
+
 - For CIC-IDS2017 with macro-F1 baseline ≈ 0.90:
   - **ε = 5 (σ=1.0)**: Moderate privacy, ≤10% F1 degradation, **recommended**
   - **ε = 10 (σ=0.5)**: Weak privacy, ≤5% F1 degradation, acceptable for less sensitive data
@@ -229,11 +244,13 @@ cat results/comparative_analysis/unsw/privacy_utility_curve.csv
 ### Why RDP Accountant?
 
 **Advantages over basic DP composition**:
+
 - **Tighter bounds**: More accurate privacy accounting for multiple rounds
 - **Standard in FL**: Used by Google's TensorFlow Privacy, Meta's Opacus
 - **Peer-reviewed**: Mironov (2017) theoretical foundation
 
 **Alternative**: Zhu et al. (2019) analytical accountant for FedAvg
+
 - Not implemented (requires custom accounting per aggregation method)
 - RDP is aggregation-agnostic and works with FedAvg, Krum, Bulyan, Median
 
@@ -271,5 +288,5 @@ cat results/comparative_analysis/unsw/privacy_utility_curve.csv
 
 ---
 
-*Documentation generated as part of Issue #59 acceptance criteria.*
-*Last updated: 2025-10-21*
+_Documentation generated as part of Issue #59 acceptance criteria._
+_Last updated: 2025-10-21_

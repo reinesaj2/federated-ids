@@ -147,15 +147,16 @@ def main() -> None:
             if len(results) == 0:
                 return None, {}
 
-            # Convert client parameters to numpy lists per client
             client_weights: List[List[np.ndarray]] = []
             sample_counts: List[int] = []
             ordered_client_ids: List[str] = []
+            client_metrics: List[dict] = []
             for client_proxy, fit_res in results:
                 ordered_client_ids.append(client_proxy.cid)
                 nds = parameters_to_ndarrays(fit_res.parameters)
                 client_weights.append(nds)
                 sample_counts.append(int(fit_res.num_examples))
+                client_metrics.append(fit_res.metrics if fit_res.metrics else {})
 
             if self.secure_aggregation_enabled:
                 round_seeds = self.secure_round_seeds.pop(rnd, {})
@@ -214,7 +215,49 @@ def main() -> None:
             except Exception:
                 pass
 
-            # Log metrics
+            global_macro_f1_val = None
+            global_macro_f1_test = None
+            n_val_total = None
+            n_test_total = None
+            try:
+                val_f1s = []
+                val_ns = []
+                test_f1s = []
+                test_ns = []
+                for m in client_metrics:
+                    f1_val = m.get("macro_f1_val")
+                    n_val = m.get("n_val_samples")
+                    f1_test = m.get("macro_f1_test")
+                    n_test = m.get("n_test_samples")
+                    if f1_val is not None and n_val is not None and n_val > 0:
+                        val_f1s.append(float(f1_val))
+                        val_ns.append(int(n_val))
+                    if f1_test is not None and n_test is not None and n_test > 0:
+                        test_f1s.append(float(f1_test))
+                        test_ns.append(int(n_test))
+
+                if val_f1s and val_ns:
+                    n_val_total = sum(val_ns)
+                    global_macro_f1_val = sum(f * n for f, n in zip(val_f1s, val_ns)) / max(n_val_total, 1)
+                if test_f1s and test_ns:
+                    n_test_total = sum(test_ns)
+                    global_macro_f1_test = sum(f * n for f, n in zip(test_f1s, test_ns)) / max(n_test_total, 1)
+
+                if global_macro_f1_val is not None or global_macro_f1_test is not None:
+                    logger.info(
+                        "global_metrics",
+                        extra={
+                            "round": rnd,
+                            "global_macro_f1_val": global_macro_f1_val,
+                            "global_macro_f1_test": global_macro_f1_test,
+                            "n_val_total": n_val_total,
+                            "n_test_total": n_test_total,
+                        },
+                    )
+            except Exception:
+                pass
+
+            # Log metrics (including global temporal validation metrics)
             metrics_logger.log_round_metrics(
                 round_num=rnd,
                 agg_method=agg_method,
@@ -231,10 +274,17 @@ def main() -> None:
                 pairwise_cosine_std=(float(_np.array(pairwise_cos).std()) if pairwise_cos else None),
                 l2_dispersion_mean=(float(sum(l2_disp) / len(l2_disp)) if l2_disp else None),
                 l2_dispersion_std=(float(_np.array(l2_disp).std()) if l2_disp else None),
+                global_macro_f1_val=global_macro_f1_val,
+                global_macro_f1_test=global_macro_f1_test,
+                n_val_total=n_val_total,
+                n_test_total=n_test_total,
             )
 
             parameters = ndarrays_to_parameters(aggregated)
-            metrics = {}
+            metrics = {
+                "global_macro_f1_val": global_macro_f1_val,
+                "global_macro_f1_test": global_macro_f1_test,
+            }
             return parameters, metrics
 
         def _estimate_benign_mean(self, client_weights: List[List[np.ndarray]]) -> List[np.ndarray]:

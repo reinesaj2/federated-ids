@@ -2,25 +2,25 @@ name: Edge-IIoTset Nightly Comprehensive
 
 on:
   schedule:
-    - cron: "0 2 * * *" # 2 AM UTC daily
+    - cron: '0 2 * * *' # 2 AM UTC daily
   push:
-    branches: ["main", "exp/iiot-experiments"]
+    branches: ['main', 'exp/iiot-experiments']
   workflow_dispatch:
     inputs:
       dimensions:
-        description: "Dimensions to run (comma-separated: aggregation,heterogeneity,attack,privacy,personalization,heterogeneity_fedprox,all)"
+        description: 'Dimensions to run (comma-separated: aggregation,heterogeneity,attack,privacy,personalization,heterogeneity_fedprox,all)'
         required: false
-        default: "all"
+        default: 'all'
         type: string
       num_clients:
-        description: "Number of clients"
+        description: 'Number of clients'
         required: false
-        default: "5"
+        default: '5'
         type: string
       num_rounds:
-        description: "Number of rounds"
+        description: 'Number of rounds'
         required: false
-        default: "20"
+        default: '20'
         type: string
 
 permissions:
@@ -50,7 +50,7 @@ jobs:
           ]
 
     env:
-      D2_EXTENDED_METRICS: "1"
+      D2_EXTENDED_METRICS: '1'
 
     steps:
       - name: Determine dimension filter

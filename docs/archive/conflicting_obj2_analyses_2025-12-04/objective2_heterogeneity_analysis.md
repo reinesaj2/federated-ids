@@ -10,12 +10,12 @@
 
 Objective 2 (Heterogeneity/Non-IID data handling) shows a **robust null result** across all tested dimensions for the IIoT dataset. This finding is consistent across all three datasets (UNSW, CIC, IIoT) and represents a scientifically valuable contribution.
 
-| Dimension | Result | p-value | Cohen's d | Verdict |
-|-----------|--------|---------|-----------|---------|
-| Final Accuracy | NO EFFECT | 0.94 | 0.006 | NULL |
-| Convergence Speed | NO EFFECT | 0.51 | -0.19 | NULL |
-| Early Performance | MINIMAL | - | - | NULL |
-| FedProx Benefit | +2.5% max | - | - | NEGLIGIBLE |
+| Dimension         | Result    | p-value | Cohen's d | Verdict    |
+| ----------------- | --------- | ------- | --------- | ---------- |
+| Final Accuracy    | NO EFFECT | 0.94    | 0.006     | NULL       |
+| Convergence Speed | NO EFFECT | 0.51    | -0.19     | NULL       |
+| Early Performance | MINIMAL   | -       | -         | NULL       |
+| FedProx Benefit   | +2.5% max | -       | -         | NEGLIGIBLE |
 
 ---
 
@@ -23,15 +23,15 @@ Objective 2 (Heterogeneity/Non-IID data handling) shows a **robust null result**
 
 ### Heterogeneity-Relevant Runs (adv=0, dp=0, pers=0)
 
-| Alpha | Mu=0.0 | Mu=0.01 | Mu=0.05 | Mu=0.1 | Status |
-|-------|--------|---------|---------|--------|--------|
-| 0.02 | 228 | 48 | 48 | 48 | COMPLETE |
-| 0.05 | 179 | 30 | 30 | 30 | COMPLETE |
-| 0.1 | 164 | 24 | 24 | 24 | LOW |
-| 0.2 | 156 | 30 | 30 | 30 | COMPLETE |
-| 0.5 | 763 | 48 | 18 | 18 | LOW |
-| 1.0 | 453 | 0 | 0 | 0 | MISSING FedProx |
-| inf | 17 | 0 | 0 | 0 | Baseline only |
+| Alpha | Mu=0.0 | Mu=0.01 | Mu=0.05 | Mu=0.1 | Status          |
+| ----- | ------ | ------- | ------- | ------ | --------------- |
+| 0.02  | 228    | 48      | 48      | 48     | COMPLETE        |
+| 0.05  | 179    | 30      | 30      | 30     | COMPLETE        |
+| 0.1   | 164    | 24      | 24      | 24     | LOW             |
+| 0.2   | 156    | 30      | 30      | 30     | COMPLETE        |
+| 0.5   | 763    | 48      | 18      | 18     | LOW             |
+| 1.0   | 453    | 0       | 0       | 0      | MISSING FedProx |
+| inf   | 17     | 0       | 0       | 0      | Baseline only   |
 
 ---
 
@@ -53,18 +53,18 @@ Cohen's d: 0.006 (NEGLIGIBLE)
 ### 2. Convergence Speed Analysis
 
 | Alpha | Final F1 | Rounds to 90% | Rounds to 95% | Rounds to 99% |
-|-------|----------|---------------|---------------|---------------|
-| 0.02 | 0.7114 | 5.2 | 9.8 | 14.3 |
-| 0.05 | 0.7020 | 4.7 | 9.6 | 13.7 |
-| 0.1 | 0.6995 | 5.0 | 10.2 | 15.2 |
-| 0.5 | 0.6732 | 4.2 | 7.5 | 13.5 |
-| 1.0 | 0.7144 | 5.3 | 10.4 | 14.8 |
+| ----- | -------- | ------------- | ------------- | ------------- |
+| 0.02  | 0.7114   | 5.2           | 9.8           | 14.3          |
+| 0.05  | 0.7020   | 4.7           | 9.6           | 13.7          |
+| 0.1   | 0.6995   | 5.0           | 10.2          | 15.2          |
+| 0.5   | 0.6732   | 4.2           | 7.5           | 13.5          |
+| 1.0   | 0.7144   | 5.3           | 10.4          | 14.8          |
 
 ```
 Statistical Test (Rounds to 95% F1):
   IID:     10.4 +/- 3.5 rounds (n=72)
   Non-IID: 9.8 +/- 2.5 rounds (n=20)
-  
+
   Difference: -0.6 rounds (Non-IID slightly FASTER)
   p-value: 0.5092 (NOT significant)
   Cohen's d: -0.185 (NEGLIGIBLE)
@@ -74,24 +74,25 @@ Statistical Test (Rounds to 95% F1):
 
 ### 3. FedProx Effect at Extreme Non-IID (alpha=0.02)
 
-| FedProx mu | F1 | Improvement vs FedAvg | p-value |
-|------------|-----|----------------------|---------|
-| 0.0 (FedAvg) | 0.7059 | baseline | - |
-| 0.01 | 0.7023 | -0.36% | 0.49 |
-| 0.05 | 0.7066 | +0.07% | 0.89 |
-| 0.1 | 0.7033 | -0.26% | 0.61 |
+| FedProx mu   | F1     | Improvement vs FedAvg | p-value |
+| ------------ | ------ | --------------------- | ------- |
+| 0.0 (FedAvg) | 0.7059 | baseline              | -       |
+| 0.01         | 0.7023 | -0.36%                | 0.49    |
+| 0.05         | 0.7066 | +0.07%                | 0.89    |
+| 0.1          | 0.7033 | -0.26%                | 0.61    |
 
 **Interpretation:** FedProx provides NO benefit at extreme non-IID. Some mu values actually hurt performance.
 
 ### 4. Best FedProx Improvements (Any Alpha)
 
-| Alpha | Mu | FedAvg F1 | FedProx F1 | Improvement | N |
-|-------|-----|-----------|------------|-------------|---|
-| 0.5 | 0.05 | 0.6681 | 0.6935 | +2.54% | 18 |
-| 0.5 | 0.1 | 0.6681 | 0.6880 | +2.00% | 18 |
-| 0.5 | 0.01 | 0.6681 | 0.6774 | +0.93% | 48 |
+| Alpha | Mu   | FedAvg F1 | FedProx F1 | Improvement | N   |
+| ----- | ---- | --------- | ---------- | ----------- | --- |
+| 0.5   | 0.05 | 0.6681    | 0.6935     | +2.54%      | 18  |
+| 0.5   | 0.1  | 0.6681    | 0.6880     | +2.00%      | 18  |
+| 0.5   | 0.01 | 0.6681    | 0.6774     | +0.93%      | 48  |
 
 **Interpretation:** Best case is +2.54% improvement at alpha=0.5, mu=0.05. However:
+
 - Sample size is small (n=18)
 - Effect is not consistent across configs
 - Most configs show no improvement or regression
@@ -119,17 +120,20 @@ Statistical Test (Rounds to 95% F1):
 **Publication Angle:** "On the Natural Robustness of Federated IDS to Non-IID Data"
 
 **Key Arguments:**
+
 1. Consistent null result across 3 diverse IDS datasets
 2. Theoretical basis: attack signatures are universal
 3. Practical implication: simpler FL systems work for IDS
 4. Community value: prevents wasted research effort
 
 **Required Work:**
+
 - Cross-dataset comparison analysis (data exists)
 - Statistical power analysis
 - Theoretical explanation writeup
 
 **Target Venues:**
+
 - FL-ICML Workshop, NeurIPS FL Workshop
 - ACSAC, RAID (short papers)
 - Negative results tracks
@@ -144,13 +148,15 @@ Statistical Test (Rounds to 95% F1):
 **New Experiments Required:**
 
 #### Priority 1: Fill Grid Gaps (38 runs)
+
 ```
 alpha=0.1, mu=[0.01, 0.05, 0.1], seeds=[42-46]  # 15 runs
-alpha=0.5, mu=[0.05, 0.1], seeds=[43-46]        # 8 runs  
+alpha=0.5, mu=[0.05, 0.1], seeds=[43-46]        # 8 runs
 alpha=1.0, mu=[0.01, 0.05, 0.1], seeds=[42-46]  # 15 runs
 ```
 
 #### Priority 2: Extreme Alpha (40 runs)
+
 ```
 alpha=0.005, mu=[0.0, 0.01, 0.05, 0.1], seeds=[42-46]  # 20 runs
 alpha=0.01, mu=[0.0, 0.01, 0.05, 0.1], seeds=[42-46]   # 20 runs
@@ -204,11 +210,11 @@ done
 
 ## Cross-Dataset Comparison
 
-| Dataset | IID F1 | Non-IID F1 | p-value | Cohen's d |
-|---------|--------|------------|---------|-----------|
-| **UNSW** | 0.9998 | 0.9998 | 0.83 | 0.07 |
-| **CIC** | 0.7243 | 0.7455 | 0.57 | -0.24 |
-| **IIoT** | 0.7062 | 0.7059 | 0.94 | 0.006 |
+| Dataset  | IID F1 | Non-IID F1 | p-value | Cohen's d |
+| -------- | ------ | ---------- | ------- | --------- |
+| **UNSW** | 0.9998 | 0.9998     | 0.83    | 0.07      |
+| **CIC**  | 0.7243 | 0.7455     | 0.57    | -0.24     |
+| **IIoT** | 0.7062 | 0.7059     | 0.94    | 0.006     |
 
 **All three datasets show null results for heterogeneity effect.**
 

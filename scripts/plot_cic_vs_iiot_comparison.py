@@ -145,8 +145,8 @@ def load_cross_dataset_data() -> pd.DataFrame:
             continue
 
     df = pd.DataFrame(data)
-    iiot_loaded = len(df[df['dataset']=='Edge-IIoTset'])
-    cic_loaded = len(df[df['dataset']=='CIC-IDS2017'])
+    iiot_loaded = len(df[df['dataset'] == 'Edge-IIoTset'])
+    cic_loaded = len(df[df['dataset'] == 'CIC-IDS2017'])
 
     print(f"\nSuccessfully loaded {len(df)} runs total:")
     print(f"  - CIC-IDS2017: {cic_loaded} runs")
@@ -163,11 +163,7 @@ def load_cross_dataset_data() -> pd.DataFrame:
 def plot_obj1_attack_resilience_comparison(df: pd.DataFrame):
     """Compare robust aggregation performance under Byzantine attacks."""
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
-    fig.suptitle(
-        "Objective 1: Attack Resilience - CIC-IDS2017 vs Edge-IIoTset",
-        fontsize=16,
-        fontweight="bold"
-    )
+    fig.suptitle("Objective 1: Attack Resilience - CIC-IDS2017 vs Edge-IIoTset", fontsize=16, fontweight="bold")
 
     colors = {
         "FedAvg": "#1f77b4",
@@ -184,18 +180,17 @@ def plot_obj1_attack_resilience_comparison(df: pd.DataFrame):
         dataset_df = df[(df["dataset"] == dataset) & (df["aggregation"].isin(agg_order))]
 
         if dataset_df.empty:
-            ax.text(0.5, 0.5, f"No data for {dataset}",
-                   ha="center", va="center", transform=ax.transAxes)
+            ax.text(0.5, 0.5, f"No data for {dataset}", ha="center", va="center", transform=ax.transAxes)
             continue
 
         # Plot each aggregation method
         for agg in agg_order:
             agg_data = dataset_df[dataset_df["aggregation"] == agg]
-            summary = agg_data.groupby("adv_pct").agg(
-                mean_f1=("final_f1", "mean"),
-                std_f1=("final_f1", "std"),
-                count=("final_f1", "count")
-            ).reset_index()
+            summary = (
+                agg_data.groupby("adv_pct")
+                .agg(mean_f1=("final_f1", "mean"), std_f1=("final_f1", "std"), count=("final_f1", "count"))
+                .reset_index()
+            )
 
             if summary.empty:
                 continue
@@ -203,13 +198,10 @@ def plot_obj1_attack_resilience_comparison(df: pd.DataFrame):
             # Calculate 95% confidence intervals
             summary["ci"] = 1.96 * summary["std_f1"] / np.sqrt(summary["count"])
 
-            ax.plot(summary["adv_pct"], summary["mean_f1"],
-                   marker="o", label=agg, color=colors.get(agg),
-                   linewidth=2, markersize=8)
-            ax.fill_between(summary["adv_pct"],
-                          summary["mean_f1"] - summary["ci"],
-                          summary["mean_f1"] + summary["ci"],
-                          alpha=0.2, color=colors.get(agg))
+            ax.plot(summary["adv_pct"], summary["mean_f1"], marker="o", label=agg, color=colors.get(agg), linewidth=2, markersize=8)
+            ax.fill_between(
+                summary["adv_pct"], summary["mean_f1"] - summary["ci"], summary["mean_f1"] + summary["ci"], alpha=0.2, color=colors.get(agg)
+            )
 
         ax.set_xlabel("Adversary Percentage (%)", fontsize=12)
         ax.set_ylabel("Macro-F1 Score", fontsize=12)
@@ -229,41 +221,35 @@ def plot_obj1_attack_resilience_comparison(df: pd.DataFrame):
 def plot_obj2_heterogeneity_comparison(df: pd.DataFrame):
     """Compare performance across heterogeneity levels (alpha values)."""
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
-    fig.suptitle(
-        "Objective 2: Heterogeneity Resilience - CIC-IDS2017 vs Edge-IIoTset",
-        fontsize=16,
-        fontweight="bold"
-    )
+    fig.suptitle("Objective 2: Heterogeneity Resilience - CIC-IDS2017 vs Edge-IIoTset", fontsize=16, fontweight="bold")
 
     datasets = ["CIC-IDS2017", "Edge-IIoTset"]
 
     for idx, dataset in enumerate(datasets):
         ax = axes[idx]
         dataset_df = df[
-            (df["dataset"] == dataset) &
-            (df["aggregation"] == "FedAvg") &
-            (df["adv_pct"] == 0) &
-            (df["mu"] == 0.0) &
-            (df["alpha"] < float("inf"))
+            (df["dataset"] == dataset)
+            & (df["aggregation"] == "FedAvg")
+            & (df["adv_pct"] == 0)
+            & (df["mu"] == 0.0)
+            & (df["alpha"] < float("inf"))
         ]
 
         if dataset_df.empty:
-            ax.text(0.5, 0.5, f"No data for {dataset}",
-                   ha="center", va="center", transform=ax.transAxes)
+            ax.text(0.5, 0.5, f"No data for {dataset}", ha="center", va="center", transform=ax.transAxes)
             continue
 
-        summary = dataset_df.groupby("alpha").agg(
-            mean_f1=("final_f1", "mean"),
-            std_f1=("final_f1", "std"),
-            count=("final_f1", "count")
-        ).reset_index()
+        summary = (
+            dataset_df.groupby("alpha")
+            .agg(mean_f1=("final_f1", "mean"), std_f1=("final_f1", "std"), count=("final_f1", "count"))
+            .reset_index()
+        )
 
         summary["ci"] = 1.96 * summary["std_f1"] / np.sqrt(summary["count"])
 
-        ax.errorbar(summary["alpha"], summary["mean_f1"],
-                   yerr=summary["ci"], marker="o",
-                   linewidth=2, markersize=8, capsize=5,
-                   label="FedAvg")
+        ax.errorbar(
+            summary["alpha"], summary["mean_f1"], yerr=summary["ci"], marker="o", linewidth=2, markersize=8, capsize=5, label="FedAvg"
+        )
 
         ax.set_xlabel("Alpha (heterogeneity parameter)", fontsize=12)
         ax.set_ylabel("Macro-F1 Score", fontsize=12)
@@ -284,19 +270,11 @@ def plot_obj2_heterogeneity_comparison(df: pd.DataFrame):
 def plot_baseline_performance_comparison(df: pd.DataFrame):
     """Compare baseline performance characteristics across datasets."""
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-    fig.suptitle(
-        "Baseline Performance Comparison: CIC-IDS2017 vs Edge-IIoTset",
-        fontsize=16,
-        fontweight="bold"
-    )
+    fig.suptitle("Baseline Performance Comparison: CIC-IDS2017 vs Edge-IIoTset", fontsize=16, fontweight="bold")
 
     # Filter for benign baseline conditions
     baseline_df = df[
-        (df["adv_pct"] == 0) &
-        (df["dp"] == 0) &
-        (df["pers_epochs"] == 0) &
-        (df["mu"] == 0.0) &
-        (df["aggregation"] == "FedAvg")
+        (df["adv_pct"] == 0) & (df["dp"] == 0) & (df["pers_epochs"] == 0) & (df["mu"] == 0.0) & (df["aggregation"] == "FedAvg")
     ]
 
     # Panel A: F1 Distribution by Dataset
@@ -338,14 +316,9 @@ def plot_baseline_performance_comparison(df: pd.DataFrame):
     for dataset in ["CIC-IDS2017", "Edge-IIoTset"]:
         data = baseline_df[baseline_df["dataset"] == dataset]["final_f1"]
         if not data.empty:
-            table_data.append([
-                dataset,
-                f"{data.mean():.4f}",
-                f"{data.std():.4f}",
-                f"{data.min():.4f}",
-                f"{data.max():.4f}",
-                f"{len(data)}"
-            ])
+            table_data.append(
+                [dataset, f"{data.mean():.4f}", f"{data.std():.4f}", f"{data.min():.4f}", f"{data.max():.4f}", f"{len(data)}"]
+            )
 
     if table_data:
         table = ax.table(
@@ -353,7 +326,7 @@ def plot_baseline_performance_comparison(df: pd.DataFrame):
             colLabels=["Dataset", "Mean F1", "Std F1", "Min F1", "Max F1", "N"],
             cellLoc="center",
             loc="center",
-            colWidths=[0.2, 0.15, 0.15, 0.15, 0.15, 0.1]
+            colWidths=[0.2, 0.15, 0.15, 0.15, 0.15, 0.1],
         )
         table.auto_set_font_size(False)
         table.set_fontsize(10)
@@ -366,8 +339,7 @@ def plot_baseline_performance_comparison(df: pd.DataFrame):
         dataset_df = baseline_df[baseline_df["dataset"] == dataset]
         if not dataset_df.empty:
             counts = dataset_df.groupby("alpha").size()
-            ax.plot(counts.index, counts.values, marker="o",
-                   label=dataset, linewidth=2, markersize=8)
+            ax.plot(counts.index, counts.values, marker="o", label=dataset, linewidth=2, markersize=8)
     ax.set_xlabel("Alpha (heterogeneity)", fontsize=12)
     ax.set_ylabel("Number of Experiments", fontsize=12)
     ax.set_title("Sample Size Distribution", fontsize=14)
@@ -386,11 +358,7 @@ def plot_baseline_performance_comparison(df: pd.DataFrame):
 def plot_aggregation_heatmap_comparison(df: pd.DataFrame):
     """Create heatmap comparing aggregation performance across datasets."""
     fig, axes = plt.subplots(1, 2, figsize=(18, 6))
-    fig.suptitle(
-        "Aggregation Method Performance Heatmap: CIC vs IIOT",
-        fontsize=16,
-        fontweight="bold"
-    )
+    fig.suptitle("Aggregation Method Performance Heatmap: CIC vs IIOT", fontsize=16, fontweight="bold")
 
     agg_order = ["FedAvg", "Krum", "Bulyan", "Median"]
     adv_levels = [0, 10, 20, 30]
@@ -399,23 +367,13 @@ def plot_aggregation_heatmap_comparison(df: pd.DataFrame):
         ax = axes[idx]
 
         # Create pivot table
-        dataset_df = df[
-            (df["dataset"] == dataset) &
-            (df["aggregation"].isin(agg_order)) &
-            (df["adv_pct"].isin(adv_levels))
-        ]
+        dataset_df = df[(df["dataset"] == dataset) & (df["aggregation"].isin(agg_order)) & (df["adv_pct"].isin(adv_levels))]
 
         if dataset_df.empty:
-            ax.text(0.5, 0.5, f"No data for {dataset}",
-                   ha="center", va="center", transform=ax.transAxes)
+            ax.text(0.5, 0.5, f"No data for {dataset}", ha="center", va="center", transform=ax.transAxes)
             continue
 
-        pivot = dataset_df.pivot_table(
-            values="final_f1",
-            index="aggregation",
-            columns="adv_pct",
-            aggfunc="mean"
-        )
+        pivot = dataset_df.pivot_table(values="final_f1", index="aggregation", columns="adv_pct", aggfunc="mean")
 
         # Reindex to ensure consistent ordering
         pivot = pivot.reindex(agg_order)
@@ -425,8 +383,7 @@ def plot_aggregation_heatmap_comparison(df: pd.DataFrame):
             pivot = pivot[available_levels]
 
         # Create heatmap
-        sns.heatmap(pivot, annot=True, fmt=".3f", cmap="RdYlGn",
-                   vmin=0, vmax=1.0, ax=ax, cbar_kws={"label": "Macro-F1"})
+        sns.heatmap(pivot, annot=True, fmt=".3f", cmap="RdYlGn", vmin=0, vmax=1.0, ax=ax, cbar_kws={"label": "Macro-F1"})
         ax.set_title(f"{dataset}", fontsize=14, fontweight="bold")
         ax.set_xlabel("Adversary Percentage (%)", fontsize=12)
         ax.set_ylabel("Aggregation Method", fontsize=12)
@@ -478,10 +435,8 @@ def generate_statistical_comparison_report(df: pd.DataFrame):
     report_lines.append("-" * 80)
 
     # Compare benign baselines between datasets
-    baseline_cic = df[(df["dataset"] == "CIC-IDS2017") & (df["adv_pct"] == 0) &
-                      (df["aggregation"] == "FedAvg")]["final_f1"]
-    baseline_iiot = df[(df["dataset"] == "Edge-IIoTset") & (df["adv_pct"] == 0) &
-                       (df["aggregation"] == "FedAvg")]["final_f1"]
+    baseline_cic = df[(df["dataset"] == "CIC-IDS2017") & (df["adv_pct"] == 0) & (df["aggregation"] == "FedAvg")]["final_f1"]
+    baseline_iiot = df[(df["dataset"] == "Edge-IIoTset") & (df["adv_pct"] == 0) & (df["aggregation"] == "FedAvg")]["final_f1"]
 
     if len(baseline_cic) > 0 and len(baseline_iiot) > 0:
         t_stat, p_value = stats.ttest_ind(baseline_cic, baseline_iiot)

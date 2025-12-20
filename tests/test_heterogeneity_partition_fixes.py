@@ -213,6 +213,4 @@ def test_long_tail_feasible_with_minimums():
         shard_labels = labels[shard]
         for class_idx in range(len(counts)):
             count = np.sum(shard_labels == class_idx)
-            assert count >= MIN_SAMPLES_PER_CLASS, (
-                f"Client {client_id} class {class_idx} has {count} < {MIN_SAMPLES_PER_CLASS}"
-            )
+            assert count >= MIN_SAMPLES_PER_CLASS, f"Client {client_id} class {class_idx} has {count} < {MIN_SAMPLES_PER_CLASS}"

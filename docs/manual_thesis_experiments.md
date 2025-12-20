@@ -1,6 +1,7 @@
 # Manual Thesis Experiments - Full Edge-IIoTSet Dataset
 
 **System Configuration:**
+
 - CPU: 10 cores
 - RAM: 32 GB
 - Workers per experiment: 6 (conservative to avoid crashes)
@@ -30,6 +31,7 @@ Attack resilience: Experiments 10-13 (Byzantine attacks with different aggregati
 ## DIMENSION 1: AGGREGATION (4 experiments)
 
 ### Baseline Parameters
+
 - alpha: 1.0 (homogeneous data distribution)
 - adversary_fraction: 0.0 (no Byzantine attackers)
 - dp_noise: 0.0 (no differential privacy)
@@ -37,6 +39,7 @@ Attack resilience: Experiments 10-13 (Byzantine attacks with different aggregati
 - seed: 42
 
 ### Experiment 1: FedAvg (Baseline)
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -52,6 +55,7 @@ echo "Experiment 1 PID: $!"
 ```
 
 **Monitoring:**
+
 ```bash
 tail -f logs/exp01_aggregation_fedavg.log
 ps aux | grep run_experiments_optimized
@@ -62,6 +66,7 @@ ps aux | grep run_experiments_optimized
 ---
 
 ### Experiment 2: Krum
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -81,6 +86,7 @@ echo "Experiment 2 PID: $!"
 ---
 
 ### Experiment 3: Bulyan
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -102,6 +108,7 @@ echo "Experiment 3 PID: $!"
 ---
 
 ### Experiment 4: Median
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -123,6 +130,7 @@ echo "Experiment 4 PID: $!"
 ## DIMENSION 2: HETEROGENEITY (5 experiments)
 
 ### Baseline Parameters
+
 - aggregation: fedavg
 - adversary_fraction: 0.0
 - dp_noise: 0.0
@@ -134,6 +142,7 @@ echo "Experiment 4 PID: $!"
 ---
 
 ### Experiment 5: Alpha = 0.02 (Highly Non-IID)
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -153,6 +162,7 @@ echo "Experiment 5 PID: $!"
 ---
 
 ### Experiment 6: Alpha = 0.1
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -172,6 +182,7 @@ echo "Experiment 6 PID: $!"
 ---
 
 ### Experiment 7: Alpha = 0.5
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -191,6 +202,7 @@ echo "Experiment 7 PID: $!"
 ---
 
 ### Experiment 8: Alpha = 1.0
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -210,6 +222,7 @@ echo "Experiment 8 PID: $!"
 ---
 
 ### Experiment 9: Alpha = inf (IID / Uniform Distribution)
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -231,6 +244,7 @@ echo "Experiment 9 PID: $!"
 ## DIMENSION 3: ATTACK RESILIENCE (4 experiments)
 
 ### Baseline Parameters
+
 - alpha: 1.0
 - dp_noise: 0.0
 - personalization_epochs: 0
@@ -243,6 +257,7 @@ echo "Experiment 9 PID: $!"
 ---
 
 ### Experiment 10: FedAvg + 10% Adversaries
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -263,6 +278,7 @@ echo "Experiment 10 PID: $!"
 ---
 
 ### Experiment 11: Krum + 10% Adversaries
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -283,6 +299,7 @@ echo "Experiment 11 PID: $!"
 ---
 
 ### Experiment 12: Median + 10% Adversaries
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -303,6 +320,7 @@ echo "Experiment 12 PID: $!"
 ---
 
 ### Experiment 13: FedAvg + 30% Adversaries
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -325,6 +343,7 @@ echo "Experiment 13 PID: $!"
 ## DIMENSION 4: PRIVACY (4 experiments)
 
 ### Baseline Parameters
+
 - aggregation: fedavg
 - alpha: 1.0
 - adversary_fraction: 0.0
@@ -336,6 +355,7 @@ echo "Experiment 13 PID: $!"
 ---
 
 ### Experiment 14: DP Noise = 0.3 (Low Privacy)
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -355,6 +375,7 @@ echo "Experiment 14 PID: $!"
 ---
 
 ### Experiment 15: DP Noise = 0.5 (Medium Privacy)
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -374,6 +395,7 @@ echo "Experiment 15 PID: $!"
 ---
 
 ### Experiment 16: DP Noise = 1.0 (High Privacy)
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -393,6 +415,7 @@ echo "Experiment 16 PID: $!"
 ---
 
 ### Experiment 17: DP Noise = 2.0 (Very High Privacy)
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -414,6 +437,7 @@ echo "Experiment 17 PID: $!"
 ## DIMENSION 5: PERSONALIZATION (3 experiments)
 
 ### Baseline Parameters
+
 - aggregation: fedavg
 - alpha: 1.0
 - adversary_fraction: 0.0
@@ -425,6 +449,7 @@ echo "Experiment 17 PID: $!"
 ---
 
 ### Experiment 18: No Personalization (Baseline - Already covered in Exp 1)
+
 **Note:** This is the same as Experiment 1 (FedAvg baseline). No need to re-run.
 
 **Expected Output:** `runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed42/metrics.csv`
@@ -432,6 +457,7 @@ echo "Experiment 17 PID: $!"
 ---
 
 ### Experiment 19: Personalization = 3 Epochs
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -451,6 +477,7 @@ echo "Experiment 19 PID: $!"
 ---
 
 ### Experiment 20: Personalization = 5 Epochs
+
 ```bash
 cd ~/Documents/Thesis/worktrees/iiot-experiments && \
 nohup .venv/bin/python scripts/run_experiments_optimized.py \
@@ -472,11 +499,13 @@ echo "Experiment 20 PID: $!"
 ## Monitoring Commands
 
 ### Check Running Processes
+
 ```bash
 ps aux | grep run_experiments_optimized
 ```
 
 ### Check System Resources
+
 ```bash
 # CPU and Memory
 top -l 1 | grep -E "CPU|PhysMem"
@@ -486,16 +515,19 @@ df -h ~/Documents/Thesis/worktrees/iiot-experiments/runs
 ```
 
 ### Count Completed Experiments
+
 ```bash
 find ~/Documents/Thesis/worktrees/iiot-experiments/runs -name "metrics.csv" -type f | wc -l
 ```
 
 ### View Latest Log
+
 ```bash
 tail -f logs/exp<NUMBER>_*.log
 ```
 
 ### Kill Stuck Process
+
 ```bash
 pkill -f run_experiments_optimized
 ```
@@ -511,6 +543,7 @@ echo "exp_num,dimension,strategy,alpha,adversary_fraction,dp_noise,personalizati
 ```
 
 After each experiment completes, append a row:
+
 ```bash
 echo "1,aggregation,fedavg,1.0,0.0,0.0,0,2025-11-17 15:30,2025-11-17 17:45,SUCCESS,runs/dsedge-iiotset-full_comp_fedavg_alpha1.0_adv0_dp0_pers0_mu0.0_seed42/metrics.csv" >> docs/thesis_experiment_tracker.csv
 ```

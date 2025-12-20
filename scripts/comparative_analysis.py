@@ -38,6 +38,7 @@ DATASET_DEFAULT_PATHS = {
     "edge-iiotset-quick": "data/edge-iiotset/edge_iiotset_quick.csv",
     "edge-iiotset-nightly": "data/edge-iiotset/edge_iiotset_nightly.csv",
     "edge-iiotset-full": "data/edge-iiotset/edge_iiotset_full.csv",
+    "hybrid": "data/hybrid/hybrid_ids_dataset_full.csv.gz",
 }
 
 
@@ -57,6 +58,7 @@ class ExperimentConfig:
     fedprox_mu: float = 0.0
     dataset: str = "unsw"
     data_path: str = "data/unsw/UNSW_NB15_training-set.csv"
+    temporal_validation: bool = False
     client_datasets: Optional[List[str]] = None
     client_data_paths: Optional[List[str]] = None
 
@@ -403,6 +405,91 @@ class ComparisonMatrix:
                             fedprox_mu=mu,
                         )
                         configs.append(config)
+        return configs
+
+    def _generate_hybrid_configs(self) -> List[ExperimentConfig]:
+        """Generate configs for hybrid cross-source federated learning.
+
+        Tests FedProx vs FedAvg when heterogeneity comes from domain shift
+        (different source datasets per client) rather than just label skew.
+
+        Uses source_aware partitioning: 3 clients per source dataset (9 total).
+        Within each source, Dirichlet partitioning creates label heterogeneity.
+
+        Note: Uses 5 seeds (vs 10 in other dimensions) to limit total configs
+        to 40, enabling efficient 17-node cluster parallelism (40 jobs / 17 nodes
+        = ~2.4 waves). This provides sufficient statistical power while fitting
+        within reasonable compute time (~1 hour total).
+        """
+        configs = []
+        fedprox_mus = [0.0, 0.01, 0.05, 0.1]
+        alpha_values = [0.5, 1.0]
+
+        for seed in self.seeds[:5]:
+            for alpha in alpha_values:
+                for mu in fedprox_mus:
+                    base = self._base_config(seed)
+                    base["alpha"] = alpha
+                    base["fedprox_mu"] = mu
+                    if mu > 0:
+                        base["aggregation"] = "fedprox"
+                    else:
+                        base["aggregation"] = "fedavg"
+                    configs.append(ExperimentConfig(**base))
+        return configs
+
+    def _generate_combined_robustness_configs(self) -> List[ExperimentConfig]:
+        """Generate configs for robust aggregation with FedProx under attack."""
+        configs = []
+        aggregations = ["krum", "bulyan"]
+        fedprox_mus = [0.01, 0.1]
+        alpha_values = [0.1, 0.5, 1.0, float("inf")]
+        adversary_fractions = [0.0, 0.1, 0.2, 0.3]
+
+        for aggregation in aggregations:
+            for fedprox_mu in fedprox_mus:
+                for alpha in alpha_values:
+                    for adversary_fraction in adversary_fractions:
+                        for seed in self.seeds:
+                            config = self._create_config(
+                                self._base_config(seed),
+                                aggregation=aggregation,
+                                fedprox_mu=fedprox_mu,
+                                alpha=alpha,
+                                adversary_fraction=adversary_fraction,
+                            )
+                            try:
+                                validate_bulyan_byzantine_resilience(
+                                    config.aggregation,
+                                    config.adversary_fraction,
+                                    config.num_clients,
+                                )
+                            except ValueError:
+                                continue
+                            configs.append(config)
+
+        return configs
+
+    def _generate_attack_fedprox_configs(self) -> List[ExperimentConfig]:
+        """Generate configs for FedProx under attack."""
+        configs = []
+        fedprox_mus = [0.01, 0.05, 0.1]
+        alpha_values = [0.1, 0.5, 1.0, float("inf")]
+        adversary_fractions = [0.1, 0.2, 0.3]
+
+        for fedprox_mu in fedprox_mus:
+            for alpha in alpha_values:
+                for adversary_fraction in adversary_fractions:
+                    for seed in self.seeds:
+                        configs.append(
+                            self._create_config(
+                                self._base_config(seed),
+                                aggregation="fedprox",
+                                fedprox_mu=fedprox_mu,
+                                alpha=alpha,
+                                adversary_fraction=adversary_fraction,
+                            )
+                        )
 
         return configs
 
@@ -416,16 +503,14 @@ class ComparisonMatrix:
                         for pers in self.personalization_epochs:
                             for seed in self.seeds:
                                 configs.append(
-                                    ExperimentConfig(
+                                    self._create_config(
+                                        self._base_config(seed),
                                         aggregation=agg,
                                         alpha=alpha,
                                         adversary_fraction=adv_frac,
                                         dp_enabled=dp_config["enabled"],
                                         dp_noise_multiplier=dp_config["noise"],
                                         personalization_epochs=pers,
-                                        num_clients=self.num_clients,
-                                        num_rounds=self.num_rounds,
-                                        seed=seed,
                                     )
                                 )
         return configs
@@ -439,6 +524,8 @@ class ComparisonMatrix:
                 - 'heterogeneity': Compare IID vs Non-IID
                 - 'heterogeneity_fedprox': Compare FedProx across heterogeneity levels
                 - 'attack': Compare attack resilience
+                - 'combined_robustness': Compare robust aggregation with FedProx under attack
+                - 'attack_fedprox': Compare FedProx under attack
                 - 'privacy': Compare privacy-utility tradeoff
                 - 'personalization': Compare personalization benefit
                 - 'mixed': Mixed 2-dataset (CIC + UNSW)
@@ -453,10 +540,13 @@ class ComparisonMatrix:
             "heterogeneity": self._generate_heterogeneity_configs,
             "heterogeneity_fedprox": self._generate_heterogeneity_fedprox_configs,
             "attack": self._generate_attack_configs,
+            "combined_robustness": self._generate_combined_robustness_configs,
+            "attack_fedprox": self._generate_attack_fedprox_configs,
             "privacy": self._generate_privacy_configs,
             "personalization": self._generate_personalization_configs,
             "mixed": self._generate_mixed_configs,
             "mixed_silo_3dataset": self._generate_mixed_silo_3dataset_configs,
+            "hybrid": self._generate_hybrid_configs,
         }
 
         if filter_dimension is None:
@@ -642,6 +732,9 @@ def run_federated_experiment(
                     str(run_dir),
                 ]
 
+                if config.temporal_validation:
+                    client_cmd.append("--temporal_validation")
+
                 if config.dp_enabled:
                     client_cmd.extend(
                         [
@@ -697,10 +790,13 @@ def main():
             "heterogeneity",
             "heterogeneity_fedprox",
             "attack",
+            "combined_robustness",
+            "attack_fedprox",
             "privacy",
             "personalization",
             "mixed",
             "mixed_silo_3dataset",
+            "hybrid",
             "full",
         ],
         default="aggregation",
@@ -744,9 +840,9 @@ def main():
     parser.add_argument(
         "--dataset",
         type=str,
-        choices=["unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full"],
+        choices=["unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full", "hybrid"],
         default="unsw",
-        help="Dataset to use (unsw=UNSW-NB15, cic=CIC-IDS2017, edge-iiotset-quick/nightly/full=Edge-IIoTset 2022)",
+        help="Dataset to use (unsw=UNSW-NB15, cic=CIC-IDS2017, edge-iiotset-*=Edge-IIoTset 2022, hybrid=fused dataset)",
     )
     parser.add_argument(
         "--data_path",
@@ -800,6 +896,11 @@ def main():
         default=1,
         help="Total number of splits when dividing experiment configs across jobs.",
     )
+    parser.add_argument(
+        "--temporal_validation",
+        action="store_true",
+        help="Enable temporal validation protocol (70/15/15 train/val/test split).",
+    )
 
     args = parser.parse_args()
 
@@ -814,6 +915,7 @@ def main():
         "edge-iiotset-quick": "data/edge-iiotset/edge_iiotset_quick.csv",
         "edge-iiotset-nightly": "data/edge-iiotset/edge_iiotset_nightly.csv",
         "edge-iiotset-full": "data/edge-iiotset/edge_iiotset_full.csv",
+        "hybrid": "data/hybrid/hybrid_ids_dataset_full.csv.gz",
     }
     data_path = args.data_path if args.data_path else dataset_paths[args.dataset]
 
@@ -848,6 +950,11 @@ def main():
         raise ValueError("--split-index must satisfy 0 <= split_index < split_total")
 
     configs = matrix.generate_configs(filter_dimension=None if args.dimension == "full" else args.dimension)
+
+    if args.temporal_validation:
+        for config in configs:
+            config.temporal_validation = True
+
     if args.split_total > 1:
         configs = configs[args.split_index :: args.split_total]
 

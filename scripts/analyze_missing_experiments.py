@@ -22,6 +22,7 @@ ATTACK_LEVELS = {
 # Heterogeneity experiments (adv=0% only)
 HETEROGENEITY_ALPHAS = [0.02, 0.05, 0.1, 0.2, 0.5, 1.0, float('inf')]
 
+
 def parse_run_name(run_name: str) -> dict:
     """Extract experiment parameters from run directory name."""
     if "p0b1bacd1" not in run_name:
@@ -76,12 +77,14 @@ def main():
             for seed in SEEDS:
                 key = (agg, adv)
                 if seed not in existing.get(key, set()):
-                    missing.append({
-                        "aggregation": agg,
-                        "alpha": 0.5,
-                        "adv_pct": adv,
-                        "seed": seed,
-                    })
+                    missing.append(
+                        {
+                            "aggregation": agg,
+                            "alpha": 0.5,
+                            "adv_pct": adv,
+                            "seed": seed,
+                        }
+                    )
 
     # Print summary
     print("=" * 80)

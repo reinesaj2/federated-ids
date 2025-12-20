@@ -114,15 +114,17 @@ def collect_fedprox_data():
             final_data = client_df[client_df["round"] == final_round]
 
             for _, row in final_data.iterrows():
-                all_data.append({
-                    "aggregation": config["aggregation"],
-                    "alpha": config["alpha"],
-                    "mu": config["mu"],
-                    "seed": config["seed"],
-                    "client_id": row["client_id"],
-                    "round": row["round"],
-                    "f1": row["macro_f1_after"],
-                })
+                all_data.append(
+                    {
+                        "aggregation": config["aggregation"],
+                        "alpha": config["alpha"],
+                        "mu": config["mu"],
+                        "seed": config["seed"],
+                        "client_id": row["client_id"],
+                        "round": row["round"],
+                        "f1": row["macro_f1_after"],
+                    }
+                )
 
     return pd.DataFrame(all_data)
 
@@ -149,21 +151,18 @@ def plot_fedprox_degradation(df: pd.DataFrame):
     print(f"Mu values: {mu_values}")
 
     colors_mu = {
-        0.0: "#1f77b4",     # FedAvg - blue
-        0.01: "#2ca02c",    # weak mu - green
-        0.05: "#ff7f0e",    # medium mu - orange
-        0.1: "#d62728",     # strong mu - red
+        0.0: "#1f77b4",  # FedAvg - blue
+        0.01: "#2ca02c",  # weak mu - green
+        0.05: "#ff7f0e",  # medium mu - orange
+        0.1: "#d62728",  # strong mu - red
     }
 
     # Panel 1: F1 vs Alpha for different mu values (main finding)
     ax1 = fig.add_subplot(gs[0, :2])
 
-    summary = df.groupby(["alpha", "mu"]).agg(
-        f1_mean=("f1", "mean"),
-        f1_sem=("f1", "sem"),
-        f1_std=("f1", "std"),
-        n=("f1", "count")
-    ).reset_index()
+    summary = (
+        df.groupby(["alpha", "mu"]).agg(f1_mean=("f1", "mean"), f1_sem=("f1", "sem"), f1_std=("f1", "std"), n=("f1", "count")).reset_index()
+    )
 
     for mu in mu_values:
         subset = summary[summary["mu"] == mu].sort_values("alpha")
@@ -318,11 +317,7 @@ def plot_seed_spread(df: pd.DataFrame, output_dir: Path) -> None:
     sns.set_theme(style="whitegrid", context="paper", font_scale=1.0)
     plt.rcParams["font.family"] = "serif"
 
-    per_seed = (
-        df.groupby(["alpha", "mu", "aggregation", "seed"])
-        .agg(f1_mean=("f1", "mean"))
-        .reset_index()
-    )
+    per_seed = df.groupby(["alpha", "mu", "aggregation", "seed"]).agg(f1_mean=("f1", "mean")).reset_index()
 
     alpha_values = sorted([a for a in per_seed["alpha"].unique() if np.isfinite(a)])
     mu_values = sorted(per_seed["mu"].unique())
@@ -334,9 +329,7 @@ def plot_seed_spread(df: pd.DataFrame, output_dir: Path) -> None:
         0.1: "#d62728",
     }
 
-    fig, axes = plt.subplots(
-        1, len(alpha_values), figsize=(3.4 * len(alpha_values), 5), sharey=True
-    )
+    fig, axes = plt.subplots(1, len(alpha_values), figsize=(3.4 * len(alpha_values), 5), sharey=True)
     if len(alpha_values) == 1:
         axes = [axes]
 
@@ -361,12 +354,7 @@ def plot_seed_spread(df: pd.DataFrame, output_dir: Path) -> None:
             legend=False,
         )
 
-        summary = (
-            alpha_data.groupby("mu")["f1_mean"]
-            .agg(["mean", "sem"])
-            .reindex(mu_values)
-            .reset_index()
-        )
+        summary = alpha_data.groupby("mu")["f1_mean"].agg(["mean", "sem"]).reindex(mu_values).reset_index()
         ax.errorbar(
             x=np.arange(len(mu_values)),
             y=summary["mean"],
@@ -388,10 +376,7 @@ def plot_seed_spread(df: pd.DataFrame, output_dir: Path) -> None:
     axes[0].set_ylabel("Final Macro-F1")
     fig.suptitle("Seed-level Macro-F1 by α and μ", fontsize=16, fontweight="bold", y=1.02)
 
-    handles = [
-        Line2D([], [], marker="o", color=colors_mu.get(mu, "#333"), linestyle="", markersize=8, label=f"μ={mu}")
-        for mu in mu_values
-    ]
+    handles = [Line2D([], [], marker="o", color=colors_mu.get(mu, "#333"), linestyle="", markersize=8, label=f"μ={mu}") for mu in mu_values]
     fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 1.08), ncol=len(mu_values), frameon=False)
 
     fig.tight_layout(rect=[0, 0, 1, 0.96])

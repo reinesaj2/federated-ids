@@ -84,9 +84,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override individual client subprocess wait timeout (defaults to experiment timeout when unset)",
     )
-    parser.add_argument(
-        "--s3-sync-prefix", type=str, default=None, help="S3 prefix to sync run artifacts to (e.g., s3://bucket/edge)"
-    )
+    parser.add_argument("--s3-sync-prefix", type=str, default=None, help="S3 prefix to sync run artifacts to (e.g., s3://bucket/edge)")
     return parser
 
 

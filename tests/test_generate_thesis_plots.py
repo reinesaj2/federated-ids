@@ -2,7 +2,6 @@
 """Unit tests for generate_thesis_plots.py"""
 
 import json
-import math
 import os
 import tempfile
 from pathlib import Path
@@ -363,7 +362,7 @@ def test_privacy_utility_curve_outputs(tmp_path, dp_noise):
     assert pytest.approx(baseline_row["macro_f1_mean"], rel=1e-3) == 0.89
 
 
-def test_privacy_curve_includes_dataset_and_infinite_baseline(tmp_path):
+def test_privacy_curve_includes_dataset_and_missing_baseline_epsilon(tmp_path):
     dp_df = pd.DataFrame(
         {
             "epsilon": [1.0, 2.0],
@@ -394,7 +393,7 @@ def test_privacy_curve_includes_dataset_and_infinite_baseline(tmp_path):
 
     baseline_rows = summary_df[summary_df["is_baseline"] == 1]
     assert not baseline_rows.empty
-    assert baseline_rows["epsilon"].apply(math.isinf).all()
+    assert baseline_rows["epsilon"].isna().all()
 
     assert (summary_df["ci_lower"] >= 0.0).all()
     assert (summary_df["ci_upper"] <= 1.0).all()

@@ -44,6 +44,10 @@ class ServerMetricsLogger:
                 "pairwise_cosine_std",
                 "l2_dispersion_mean",
                 "l2_dispersion_std",
+                "global_macro_f1_val",
+                "global_macro_f1_test",
+                "n_val_total",
+                "n_test_total",
             ]
             with open(self.csv_path, 'w', newline='') as f:
                 writer = csv.writer(f)
@@ -66,6 +70,10 @@ class ServerMetricsLogger:
         pairwise_cosine_std: float | None = None,
         l2_dispersion_mean: float | None = None,
         l2_dispersion_std: float | None = None,
+        global_macro_f1_val: float | None = None,
+        global_macro_f1_test: float | None = None,
+        n_val_total: int | None = None,
+        n_test_total: int | None = None,
     ) -> None:
         """Log metrics for a single federated learning round."""
         row = [
@@ -84,6 +92,10 @@ class ServerMetricsLogger:
             str(pairwise_cosine_std) if pairwise_cosine_std is not None else "",
             str(l2_dispersion_mean) if l2_dispersion_mean is not None else "",
             str(l2_dispersion_std) if l2_dispersion_std is not None else "",
+            str(global_macro_f1_val) if global_macro_f1_val is not None else "",
+            str(global_macro_f1_test) if global_macro_f1_test is not None else "",
+            str(n_val_total) if n_val_total is not None else "",
+            str(n_test_total) if n_test_total is not None else "",
         ]
 
         with open(self.csv_path, 'a', newline='') as f:

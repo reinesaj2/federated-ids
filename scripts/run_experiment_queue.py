@@ -63,14 +63,22 @@ def run_single_experiment(exp: dict) -> bool:
     cmd = [
         "python",
         "scripts/comparative_analysis.py",
-        "--dimension", dimension,
-        "--dataset", "edge-iiotset-nightly",
-        "--aggregation-methods", agg,
-        "--alpha-values", alpha_str,
-        "--adversary-fractions", str(adv_frac),
-        "--seeds", str(seed),
-        "--num_clients", "11" if adv_frac > 0 else "6",  # 11 for attacks, 6 for benign
-        "--num_rounds", "20",
+        "--dimension",
+        dimension,
+        "--dataset",
+        "edge-iiotset-nightly",
+        "--aggregation-methods",
+        agg,
+        "--alpha-values",
+        alpha_str,
+        "--adversary-fractions",
+        str(adv_frac),
+        "--seeds",
+        str(seed),
+        "--num_clients",
+        "11" if adv_frac > 0 else "6",  # 11 for attacks, 6 for benign
+        "--num_rounds",
+        "20",
     ]
 
     # Add personalization epochs if needed

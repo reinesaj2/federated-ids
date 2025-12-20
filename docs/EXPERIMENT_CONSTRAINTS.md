@@ -23,14 +23,17 @@ All three were attempted but immediately failed with the same constraint violati
 **Bulyan's Byzantine Resilience Requirement**: n ≥ 4f + 3
 
 Where:
+
 - n = total number of clients
 - f = number of Byzantine (adversarial) clients
 
 **Our Configuration**:
+
 - n = 11 clients
 - 30% adversaries = 3 Byzantine clients (f = 3)
 
 **Constraint Check**:
+
 - Required: n ≥ 4(3) + 3 = **15 clients**
 - Actual: **11 clients**
 - Result: **VIOLATION** (11 < 15)
@@ -44,6 +47,7 @@ Bulyan combines Krum with coordinate-wise median aggregation to achieve Byzantin
 3. Aggregating using coordinate-wise median
 
 For this to work safely, the algorithm requires enough honest clients to:
+
 - Outnumber Byzantine clients by a sufficient margin
 - Ensure the median computation is not dominated by adversarial values
 - Maintain statistical guarantees about convergence
@@ -70,6 +74,7 @@ Our 30% adversary setting (f=3) exceeds this limit.
 ### Attack Dimension Experiments
 
 The attack dimension explores Byzantine robustness with:
+
 - Aggregation methods: FedAvg, Krum, Bulyan, Median
 - Adversary fractions: 0%, 10%, 30%
 - Seeds: 42, 43, 44
@@ -82,12 +87,12 @@ The attack dimension explores Byzantine robustness with:
 ### Complete Experiment Breakdown
 
 | Dimension       | Unique Experiments |
-|-----------------|-------------------|
-| Aggregation     | 12                |
-| Heterogeneity   | 9                 |
-| Attack          | 36                |
-| Privacy         | 6                 |
-| Personalization | 6                 |
+| --------------- | ------------------ |
+| Aggregation     | 12                 |
+| Heterogeneity   | 9                  |
+| Attack          | 36                 |
+| Privacy         | 6                  |
+| Personalization | 6                  |
 
 **Note**: Some experiments appear in multiple dimensions but are counted once by unique preset name.
 
@@ -111,6 +116,7 @@ This error is correctly raised by the Bulyan implementation in `robust_aggregati
 ### For Current Thesis
 
 Accept 54 achievable experiments as the complete dataset:
+
 - 50 already completed (92.6%)
 - 4 currently running (IID + DP experiments)
 - 3 documented as mathematically impossible
@@ -120,14 +126,17 @@ Upon completion of the 4 running experiments, the thesis will have **100% of ach
 ### For Future Work
 
 **Option 1: Increase Client Count**
+
 - Use n=15 clients to safely support f=3 (30% adversaries)
 - Allows full 0%/10%/30% adversary exploration
 
 **Option 2: Reduce Adversary Fraction**
+
 - Replace 30% with 20% adversaries (f=2, within safe limit)
 - Maintains n=11 clients
 
 **Option 3: Remove Bulyan from High-Adversary Scenarios**
+
 - Keep Bulyan for 0% and 10% adversary experiments
 - Use Krum/Median for 30% adversary scenarios
 
@@ -136,11 +145,13 @@ Upon completion of the 4 running experiments, the thesis will have **100% of ach
 ### Primary Literature
 
 **Bulyan Algorithm**:
+
 - El Mhamdi, E. M., Guerraoui, R., & Rouault, S. (2018). "The Hidden Vulnerability of Distributed Learning in Byzantium." In Proceedings of the 35th International Conference on Machine Learning (ICML 2018), pp. 3521-3530.
 - Paper URL: http://proceedings.mlr.press/v80/mhamdi18a/mhamdi18a.pdf
 - Establishes the **n ≥ 4f+3** requirement for Bulyan's two-phase aggregation
 
 **Krum Algorithm** (for comparison):
+
 - Blanchard, P., El Mhamdi, E. M., Guerraoui, R., & Stainer, J. (2017). "Machine Learning with Adversaries: Byzantine Tolerant Gradient Descent." In Advances in Neural Information Processing Systems (NIPS 2017), pp. 119-129.
 - Paper URL: https://arxiv.org/abs/1703.02757
 - Establishes the **n ≥ 2f+3** requirement for Krum
@@ -148,11 +159,13 @@ Upon completion of the 4 running experiments, the thesis will have **100% of ach
 ### Context in Byzantine Fault Tolerance
 
 The 4f+3 bound is **specific to Bulyan** and not a standard Byzantine consensus threshold. Standard BFT protocols use:
+
 - **3f+1**: Standard PBFT (requires quorum of 2f+1)
 - **2f+1**: With trusted hardware components
 - **5f+1**: Fast Byzantine consensus (2-step latency)
 
 Bulyan's stricter 4f+3 requirement arises from its two-phase design:
+
 1. Phase 1: Apply Krum (requires n ≥ 2f+3) to select θ = n-2f gradients
 2. Phase 2: Compute coordinate-wise median of selected gradients
 

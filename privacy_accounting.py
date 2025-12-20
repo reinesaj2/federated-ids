@@ -33,6 +33,7 @@ def _load_opacus():
     try:
         from opacus.accountants.rdp import RDPAccountant as _RDPAccountant
         from opacus.accountants.utils import get_noise_multiplier as _get_noise_multiplier
+
         return _RDPAccountant, _get_noise_multiplier
     except Exception as exc:  # pragma: no cover - defensive fallback path
         logger.warning("Opacus import failed (%s); using analytic DP fallback", exc)
@@ -69,6 +70,7 @@ class _AnalyticAccountant:
     def reset(self) -> None:
         self._steps.clear()
 
+
 def compute_epsilon(
     noise_multiplier: float,
     delta: float,
@@ -86,7 +88,6 @@ def compute_epsilon(
 
     Returns:
         Epsilon privacy budget consumed
-
     Example:
         >>> epsilon = compute_epsilon(noise_multiplier=1.0, delta=1e-5, num_steps=10)
         >>> print(f"Privacy guarantee: (ε={epsilon:.2f}, δ=1e-5)")
@@ -168,7 +169,6 @@ class DPAccountant:
         ...     epsilon = accountant.get_epsilon()
         ...     print(f"Round {round_num}: ε={epsilon:.2f}")
     """
-
     def __init__(self, delta: float = 1e-5) -> None:
         """
         Initialize privacy accountant.
@@ -222,7 +222,6 @@ class DPAccountant:
         """
         self.accountant = RDPAccountant() if self._using_opacus else _AnalyticAccountant(self.delta)
         self._total_steps = 0
-
     def get_privacy_summary(self) -> dict[str, float | int]:
         """
         Get summary of current privacy state.

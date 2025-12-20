@@ -24,6 +24,7 @@ H1: FedProx regularization strength significantly affects convergence metrics, w
 ### 2.1 Experimental Design
 
 **Design Type**: 3x3x3 factorial design
+
 - **Factor 1**: Data heterogeneity (alpha values: 0.1, 0.5, 1.0)
 - **Factor 2**: FedProx regularization (mu values: 0.01, 0.1, 1.0)
 - **Factor 3**: Random seeds (42, 43, 44)
@@ -54,10 +55,12 @@ H1: FedProx regularization strength significantly affects convergence metrics, w
 ### 2.5 Metrics
 
 **Primary Metrics**:
+
 - Cosine similarity to benign model (convergence indicator)
 - L2 distance to benign model (alignment measure)
 
 **Secondary Metrics**:
+
 - Training time per round
 - Weight norm evolution
 - Client-side accuracy and loss
@@ -77,14 +80,16 @@ python scripts/generate_thesis_plots.py --dimension heterogeneity_fedprox
 ### 3.2 Experimental Matrix
 
 The experiment matrix consists of:
+
 - **3 heterogeneity levels**: Alpha values [0.1, 0.5, 1.0]
-- **3 FedProx strengths**: Mu values [0.01, 0.1, 1.0]  
+- **3 FedProx strengths**: Mu values [0.01, 0.1, 1.0]
 - **3 random seeds**: [42, 43, 44]
 - **Total experiments**: 27
 
 ### 3.3 Expected Analysis
 
 The automated pipeline will generate:
+
 - Convergence curves showing cosine similarity and L2 distance evolution
 - Statistical analysis comparing FedProx effectiveness across heterogeneity levels
 - Performance metrics including training time and convergence rate
@@ -92,6 +97,7 @@ The automated pipeline will generate:
 ### 3.3 Client-Side Metrics
 
 Sample analysis from Alpha=1.0, Mu=0.01 experiment:
+
 - Epochs completed per round: 1.0
 - Learning rate: 0.01
 - Weight norm evolution: 10.25 → 10.35
@@ -152,6 +158,7 @@ Sample analysis from Alpha=1.0, Mu=0.01 experiment:
 ### 6.1 Experiment Configuration
 
 All experiments were configured using the comparative analysis framework with the following parameters:
+
 - Server: `--fedprox_mu` argument for parameter passing
 - Client: FedProx proximal term implementation
 - Configuration: JSON serialization for reproducibility
@@ -159,6 +166,7 @@ All experiments were configured using the comparative analysis framework with th
 ### 6.2 Data Storage
 
 Each experiment generated:
+
 - `config.json`: Complete experiment parameters
 - `metrics.csv`: Server-side aggregation metrics (20 rounds)
 - `client_*_metrics.csv`: Per-client training metrics

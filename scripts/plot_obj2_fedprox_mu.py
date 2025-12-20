@@ -121,19 +121,22 @@ def plot_fedprox_mu(fedprox_df: pd.DataFrame, fedavg_df: pd.DataFrame, output_pa
     # Panel A: F1 vs Mu (all data)
     ax1 = axes[0, 0]
 
-    mu_summary = fedprox_df.groupby("mu").agg(
-        f1_mean=("final_f1", "mean"),
-        f1_sem=("final_f1", "sem"),
-        n=("final_f1", "count"),
-    ).reset_index()
+    mu_summary = (
+        fedprox_df.groupby("mu")
+        .agg(
+            f1_mean=("final_f1", "mean"),
+            f1_sem=("final_f1", "sem"),
+            n=("final_f1", "count"),
+        )
+        .reset_index()
+    )
 
     # Add FedAvg baseline
     fedavg_mean = fedavg_df["final_f1"].mean()
     fedavg_sem = fedavg_df["final_f1"].sem()
 
     ax1.axhline(fedavg_mean, color="gray", linestyle="--", alpha=0.7, label="FedAvg baseline")
-    ax1.axhspan(fedavg_mean - 1.96*fedavg_sem, fedavg_mean + 1.96*fedavg_sem, 
-                color="gray", alpha=0.1)
+    ax1.axhspan(fedavg_mean - 1.96 * fedavg_sem, fedavg_mean + 1.96 * fedavg_sem, color="gray", alpha=0.1)
 
     ax1.errorbar(
         mu_summary["mu"],
@@ -156,8 +159,7 @@ def plot_fedprox_mu(fedprox_df: pd.DataFrame, fedavg_df: pd.DataFrame, output_pa
 
     # Add sample sizes
     for _, row in mu_summary.iterrows():
-        ax1.annotate(f"n={int(row['n'])}", xy=(row["mu"], row["f1_mean"] + 0.02),
-                     ha="center", fontsize=8, rotation=45)
+        ax1.annotate(f"n={int(row['n'])}", xy=(row["mu"], row["f1_mean"] + 0.02), ha="center", fontsize=8, rotation=45)
 
     # Panel B: Mu effect at different alpha levels
     ax2 = axes[0, 1]
@@ -196,17 +198,19 @@ def plot_fedprox_mu(fedprox_df: pd.DataFrame, fedavg_df: pd.DataFrame, output_pa
             mu_perf = subset.groupby("mu")["final_f1"].mean()
             best_mu = mu_perf.idxmax()
             best_f1 = mu_perf.max()
-            
+
             # Compare to mu=0 (essentially FedAvg behavior)
             mu0_f1 = mu_perf.get(0.0, np.nan)
-            
-            best_mu_data.append({
-                "alpha": alpha,
-                "best_mu": best_mu,
-                "best_f1": best_f1,
-                "mu0_f1": mu0_f1,
-                "gain": (best_f1 - mu0_f1) * 100 if not np.isnan(mu0_f1) else 0,
-            })
+
+            best_mu_data.append(
+                {
+                    "alpha": alpha,
+                    "best_mu": best_mu,
+                    "best_f1": best_f1,
+                    "mu0_f1": mu0_f1,
+                    "gain": (best_f1 - mu0_f1) * 100 if not np.isnan(mu0_f1) else 0,
+                }
+            )
 
     best_df = pd.DataFrame(best_mu_data)
 
@@ -246,8 +250,11 @@ def plot_fedprox_mu(fedprox_df: pd.DataFrame, fedavg_df: pd.DataFrame, output_pa
     summary_text += f"\nFedAvg baseline: F1={fedavg_mean:.4f}\n\n"
 
     # ANOVA test
-    groups = [fedprox_df[fedprox_df["mu"] == mu]["final_f1"].values 
-              for mu in fedprox_df["mu"].unique() if len(fedprox_df[fedprox_df["mu"] == mu]) > 2]
+    groups = [
+        fedprox_df[fedprox_df["mu"] == mu]["final_f1"].values
+        for mu in fedprox_df["mu"].unique()
+        if len(fedprox_df[fedprox_df["mu"] == mu]) > 2
+    ]
     if len(groups) >= 2:
         f_stat, p_val = stats.f_oneway(*groups)
         summary_text += "ANOVA across mu values:\n"
@@ -264,9 +271,16 @@ def plot_fedprox_mu(fedprox_df: pd.DataFrame, fedavg_df: pd.DataFrame, output_pa
     summary_text += "performance across all tested\n"
     summary_text += "heterogeneity levels."
 
-    ax4.text(0.05, 0.95, summary_text, transform=ax4.transAxes, fontsize=10,
-             verticalalignment="top", fontfamily="monospace",
-             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8))
+    ax4.text(
+        0.05,
+        0.95,
+        summary_text,
+        transform=ax4.transAxes,
+        fontsize=10,
+        verticalalignment="top",
+        fontfamily="monospace",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
+    )
     ax4.axis("off")
     ax4.set_title("D) Statistical Summary", fontweight="bold")
 

@@ -132,19 +132,21 @@ def load_personalization_data(runs_dir: Path) -> pd.DataFrame:
                 pers_f1 = float(pers_f1)
                 gain = pers_f1 - global_f1
 
-                all_data.append({
-                    "dataset": config.get("dataset", "unknown"),
-                    "aggregation": config.get("aggregation", "unknown"),
-                    "alpha": config.get("alpha", 1.0),
-                    "adv_pct": config.get("adv_pct", 0),
-                    "pers_epochs": config.get("pers_epochs", 0),
-                    "seed": config.get("seed", 42),
-                    "client_id": client_id,
-                    "global_f1": global_f1,
-                    "personalized_f1": pers_f1,
-                    "personalization_gain": gain,
-                    "exp_dir": exp_dir.name,
-                })
+                all_data.append(
+                    {
+                        "dataset": config.get("dataset", "unknown"),
+                        "aggregation": config.get("aggregation", "unknown"),
+                        "alpha": config.get("alpha", 1.0),
+                        "adv_pct": config.get("adv_pct", 0),
+                        "pers_epochs": config.get("pers_epochs", 0),
+                        "seed": config.get("seed", 42),
+                        "client_id": client_id,
+                        "global_f1": global_f1,
+                        "personalized_f1": pers_f1,
+                        "personalization_gain": gain,
+                        "exp_dir": exp_dir.name,
+                    }
+                )
             except Exception as e:
                 print(f"Warning: Error processing {client_csv}: {e}")
                 continue
@@ -206,8 +208,7 @@ def plot_personalization_gains(df: pd.DataFrame, output_dir: Path) -> None:
     gs = fig.add_gridspec(3, 3, hspace=0.35, wspace=0.35)
 
     fig.suptitle(
-        "IIoT Personalization Gains Analysis - Benign Setting (Adv=0%)\n"
-        "Thesis Objective 3",
+        "IIoT Personalization Gains Analysis - Benign Setting (Adv=0%)\n" "Thesis Objective 3",
         fontsize=15,
         fontweight="bold",
     )
@@ -255,23 +256,22 @@ def plot_gains_by_config(df: pd.DataFrame, ax: plt.Axes) -> None:
         if len(values) == 0:
             continue
         mean, ci_lower, ci_upper = compute_confidence_interval(values, confidence=0.95)
-        ci_data.append({
-            "alpha": row["alpha"],
-            "adv_pct": row["adv_pct"],
-            "pers_epochs": row["pers_epochs"],
-            "mean": mean,
-            "ci_lower": ci_lower,
-            "ci_upper": ci_upper,
-            "n": len(values),
-        })
+        ci_data.append(
+            {
+                "alpha": row["alpha"],
+                "adv_pct": row["adv_pct"],
+                "pers_epochs": row["pers_epochs"],
+                "mean": mean,
+                "ci_lower": ci_lower,
+                "ci_upper": ci_upper,
+                "n": len(values),
+            }
+        )
 
     config_df = pd.DataFrame(ci_data)
 
     # Create labels
-    config_df["config"] = config_df.apply(
-        lambda r: f"α={r['alpha']:.1f}\nAdv={r['adv_pct']}%\nEp={r['pers_epochs']}",
-        axis=1
-    )
+    config_df["config"] = config_df.apply(lambda r: f"α={r['alpha']:.1f}\nAdv={r['adv_pct']}%\nEp={r['pers_epochs']}", axis=1)
 
     # Sort by epochs (to group similar configs), then by mean gain
     config_df = config_df.sort_values(["pers_epochs", "mean"], ascending=[True, False])
@@ -321,12 +321,14 @@ def plot_gains_by_config(df: pd.DataFrame, ax: plt.Axes) -> None:
         "See attack resilience analysis for adversarial performance."
     )
     ax.text(
-        0.98, 0.02, warning_text,
+        0.98,
+        0.02,
+        warning_text,
         transform=ax.transAxes,
         fontsize=8,
         va='bottom',
         ha='right',
-        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5, edgecolor='orange', linewidth=2)
+        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5, edgecolor='orange', linewidth=2),
     )
 
 
@@ -399,9 +401,7 @@ def plot_global_vs_personalized(df: pd.DataFrame, ax: plt.Axes) -> None:
         df_plot = df.sort_values("personalization_gain")
 
     df_plot = df_plot.copy()
-    df_plot["client_label"] = (
-        df_plot["exp_dir"].str[:20] + "_c" + df_plot["client_id"].astype(str)
-    )
+    df_plot["client_label"] = df_plot["exp_dir"].str[:20] + "_c" + df_plot["client_id"].astype(str)
 
     x_pos = np.arange(len(df_plot))
     width = 0.35
@@ -423,9 +423,9 @@ def plot_global_vs_personalized(df: pd.DataFrame, ax: plt.Axes) -> None:
         color="forestgreen",
     )
 
-    ax.set_xticks(x_pos[::max(1, len(df_plot) // 20)])
+    ax.set_xticks(x_pos[:: max(1, len(df_plot) // 20)])
     ax.set_xticklabels(
-        df_plot["client_label"].iloc[::max(1, len(df_plot) // 20)],
+        df_plot["client_label"].iloc[:: max(1, len(df_plot) // 20)],
         rotation=90,
         ha="right",
         fontsize=6,

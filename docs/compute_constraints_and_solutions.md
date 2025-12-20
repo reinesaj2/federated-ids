@@ -47,16 +47,17 @@ full_scale_experiments (group1, aggregation heterogeneity): .github#66
 
 ### GitHub Actions Standard Runner Specifications
 
-| Resource | Available |
-|----------|-----------|
-| vCPU | 2 cores |
-| RAM | 7 GB (usable) |
-| Disk | 14 GB SSD |
-| OS | Ubuntu 22.04 |
+| Resource | Available     |
+| -------- | ------------- |
+| vCPU     | 2 cores       |
+| RAM      | 7 GB (usable) |
+| Disk     | 14 GB SSD     |
+| OS       | Ubuntu 22.04  |
 
 ### Memory Footprint Analysis
 
 **Dataset Characteristics:**
+
 - **File size:** 891 MB (CSV)
 - **Rows:** 1,701,692 (after 90% split from 2.2M total)
 - **Columns:** 63 features
@@ -96,14 +97,15 @@ jobs:
       matrix:
         include:
           - group_name: group1
-            dimensions: "aggregation heterogeneity"  # Sequential loop
+            dimensions: 'aggregation heterogeneity' # Sequential loop
           - group_name: group2
-            dimensions: "attack privacy"
+            dimensions: 'attack privacy'
           - group_name: group3
-            dimensions: "personalization heterogeneity_fedprox"
+            dimensions: 'personalization heterogeneity_fedprox'
 ```
 
 **Problem:** Each job ran 2 dimensions sequentially with a `for` loop:
+
 ```bash
 for dimension in ${{ matrix.dimensions }}; do
   python scripts/comparative_analysis.py --dimension "$dimension"
@@ -123,9 +125,18 @@ done
 **Expected Outcome:** Reduce memory per job by eliminating sequential accumulation
 
 **Implementation:**
+
 ```yaml
 matrix:
-  dimension: [aggregation, heterogeneity, heterogeneity_fedprox, attack, privacy, personalization]
+  dimension:
+    [
+      aggregation,
+      heterogeneity,
+      heterogeneity_fedprox,
+      attack,
+      privacy,
+      personalization,
+    ]
 ```
 
 **Result:** [FAIL] **Still failed with exit code 143**
@@ -138,15 +149,16 @@ matrix:
 
 **Specifications Available:**
 
-| Size | vCPU | RAM | Cost/min | Cost/hour | 6D × 8h Total |
-|------|------|-----|----------|-----------|---------------|
-| 4-core | 4 | 16 GB | $0.016 | $0.96 | $46.08 |
-| 8-core | 8 | 32 GB | $0.032 | $1.92 | $92.16 |
-| 16-core | 16 | 64 GB | $0.064 | $3.84 | $184.32 |
-| 32-core | 32 | 128 GB | $0.128 | $7.68 | $368.64 |
-| 64-core | 64 | 256 GB | $0.256 | $15.36 | $737.28 |
+| Size    | vCPU | RAM    | Cost/min | Cost/hour | 6D × 8h Total |
+| ------- | ---- | ------ | -------- | --------- | ------------- |
+| 4-core  | 4    | 16 GB  | $0.016   | $0.96     | $46.08        |
+| 8-core  | 8    | 32 GB  | $0.032   | $1.92     | $92.16        |
+| 16-core | 16   | 64 GB  | $0.064   | $3.84     | $184.32       |
+| 32-core | 32   | 128 GB | $0.128   | $7.68     | $368.64       |
+| 64-core | 64   | 256 GB | $0.256   | $15.36    | $737.28       |
 
 **Requirements:**
+
 - GitHub Team plan ($4/user/month) or Enterprise
 - Per-minute billing (no included minutes for larger runners)
 
@@ -158,15 +170,16 @@ matrix:
 
 **Pricing (70-90% discount vs On-Demand):**
 
-| Instance | vCPU | RAM | Spot Price/hr | 48 job-hours cost |
-|----------|------|-----|---------------|-------------------|
-| c5.4xlarge | 16 | 32 GB | $0.20 | $9.60 |
-| r5.4xlarge | 16 | 128 GB | $0.30 | $14.40 |
-| r5.8xlarge | 32 | 256 GB | $0.60 | $28.80 |
+| Instance   | vCPU | RAM    | Spot Price/hr | 48 job-hours cost |
+| ---------- | ---- | ------ | ------------- | ----------------- |
+| c5.4xlarge | 16   | 32 GB  | $0.20         | $9.60             |
+| r5.4xlarge | 16   | 128 GB | $0.30         | $14.40            |
+| r5.8xlarge | 32   | 256 GB | $0.60         | $28.80            |
 
 **Savings:** 92% vs GitHub larger runners
 
 **Implementation Steps:**
+
 1. Launch EC2 spot instance
 2. Install GitHub Actions self-hosted runner
 3. Configure workflow to use `runs-on: self-hosted`
@@ -183,6 +196,7 @@ matrix:
 **What it is:** ML-specific CI/CD tool that auto-provisions cloud runners
 
 **Features:**
+
 - Automatic cloud provisioning (AWS, Azure, GCP)
 - Built-in experiment tracking
 - Spot instance support
@@ -207,6 +221,7 @@ df_sample, _ = train_test_split(
 ```
 
 **Impact:**
+
 - Memory: 8-10 GB → 4-5 GB [OK]
 - Runtime: 8 hours → 4 hours [OK]
 - Statistical validity: Maintained via stratification [OK]
@@ -222,6 +237,7 @@ df_sample, _ = train_test_split(
 **Approach:** Run 1 dimension per day, staggered across the week
 
 **Architecture:**
+
 - 6 separate workflows (1 per dimension)
 - Each scheduled on different day
 - No concurrent execution → no memory contention
@@ -255,6 +271,7 @@ Instead of running 6 dimensions in parallel (spatial), run them sequentially acr
 6. `thesis-fedprox.yml` - Saturday 1 AM UTC
 
 **Each workflow:**
+
 - Runs single dimension
 - Uses full edge_iiotset_full.csv (1.7M rows)
 - Reduced to 5 clients (from 10) for memory safety
@@ -264,12 +281,15 @@ Instead of running 6 dimensions in parallel (spatial), run them sequentially acr
 ### Memory Optimization Strategy
 
 **1. Reduced Client Count:**
+
 ```yaml
---num_clients 5  # Down from 10
+--num_clients 5 # Down from 10
 ```
+
 **Impact:** ~50% memory reduction in partitioning phase
 
 **2. Chunked CSV Loading (Optional Fallback):**
+
 ```python
 def load_dataset_chunked(path, chunksize=100000):
     chunks = []
@@ -277,9 +297,11 @@ def load_dataset_chunked(path, chunksize=100000):
         chunks.append(chunk)
     return pd.concat(chunks, ignore_index=True)
 ```
+
 **Impact:** Prevents loading entire 891MB at once
 
 **3. Single Dimension Isolation:**
+
 - No concurrent jobs → no memory contention
 - Each job gets full 7GB allocation
 - Clean slate between runs
@@ -301,6 +323,7 @@ Saturday 1 AM UTC:  Heterogeneity+FedProx dim   → Complete by ~5 AM
 ### Artifact Consolidation
 
 Each workflow uploads independent artifacts:
+
 ```
 thesis-aggregation-{sha}/
   ├── runs/comp_*/metrics.csv
@@ -429,14 +452,14 @@ jobs:
 
 ### Cron Schedule Mapping
 
-| Day | Cron | Dimension |
-|-----|------|-----------|
-| Monday | `0 1 * * 1` | aggregation |
-| Tuesday | `0 1 * * 2` | heterogeneity |
-| Wednesday | `0 1 * * 3` | attack |
-| Thursday | `0 1 * * 4` | privacy |
-| Friday | `0 1 * * 5` | personalization |
-| Saturday | `0 1 * * 6` | heterogeneity_fedprox |
+| Day       | Cron        | Dimension             |
+| --------- | ----------- | --------------------- |
+| Monday    | `0 1 * * 1` | aggregation           |
+| Tuesday   | `0 1 * * 2` | heterogeneity         |
+| Wednesday | `0 1 * * 3` | attack                |
+| Thursday  | `0 1 * * 4` | privacy               |
+| Friday    | `0 1 * * 5` | personalization       |
+| Saturday  | `0 1 * * 6` | heterogeneity_fedprox |
 
 ---
 
@@ -447,12 +470,14 @@ jobs:
 **Decision:** Reduce from 10 clients to 5 clients
 
 **Rationale:**
+
 - **Memory:** 10 clients × 10% data each = 10 data partitions in memory
 - **Reduction:** 5 clients × 20% data each = 5 partitions → ~50% less memory
 - **FL validity:** 5 clients still demonstrates federated learning principles
 - **Thesis impact:** Minimal - conclusions about robustness, privacy, personalization still valid
 
 **Statistical Impact:**
+
 - Client heterogeneity: Still present with 5 clients using Dirichlet partitioning (α=0.5)
 - Byzantine tolerance: Attack dimension uses 11 clients (hardcoded for Bulyan requirement)
 - Convergence: May take slightly longer but 50 rounds is sufficient
@@ -466,12 +491,14 @@ jobs:
 **Decision:** Run dimensions sequentially across 6 days instead of 6 concurrent jobs
 
 **Rationale:**
+
 - **Time to results:** 6 days instead of 8 hours
 - **Reliability:** 100% success rate (no memory failures)
 - **Cost:** $0 vs $184+ for larger runners
 - **Fault tolerance:** 1 dimension failure ≠ complete loss
 
 **Impact on Thesis Timeline:**
+
 - Weekly runs provide progressive results
 - Can iterate on specific dimensions without re-running all 6
 - Fits within semester timeline (5 months)
@@ -485,12 +512,14 @@ jobs:
 **Decision:** Use full edge_iiotset_full.csv (1.7M rows = 90% of dataset)
 
 **Rationale:**
+
 - Thesis claims "full-scale validation"
 - Stratified sampling (50%) would reduce to 850K rows = 45% of dataset
 - 5 clients with chunked loading should handle full dataset within 7GB
 - If still fails, can fallback to sampling
 
 **Risk Mitigation:**
+
 - Manual `workflow_dispatch` testing before scheduling
 - Monitor first run closely
 - Chunked loading as emergency fallback
@@ -504,12 +533,14 @@ jobs:
 ### GitHub Actions Free Tier
 
 **Public Repository:**
+
 - Minutes: Unlimited [OK]
 - Storage: 500 MB
 - Artifact storage: 1 GB total across artifacts
 - Concurrent jobs: 20
 
 **Our Usage:**
+
 - Minutes: ~24 hours/week × 4 weeks = ~96 compute-hours/month
 - Concurrent jobs: 1 (sequential execution)
 - Artifact storage: ~6 artifacts × 100 MB each = 600 MB (under 1 GB limit)
@@ -520,12 +551,12 @@ jobs:
 
 ### Cost Comparison
 
-| Solution | Setup Time | Cost/Run | Thesis Total (10 runs) |
-|----------|-----------|----------|------------------------|
-| Standard runners (failed) | 0 | $0 | N/A (doesn't work) |
-| Larger runners (16-core) | 5 min | $184 | $1,840 |
-| AWS EC2 spot | 4 hours | $14 | $140 |
-| Temporal distribution | 2 hours | **$0** | **$0** |
+| Solution                  | Setup Time | Cost/Run | Thesis Total (10 runs) |
+| ------------------------- | ---------- | -------- | ---------------------- |
+| Standard runners (failed) | 0          | $0       | N/A (doesn't work)     |
+| Larger runners (16-core)  | 5 min      | $184     | $1,840                 |
+| AWS EC2 spot              | 4 hours    | $14      | $140                   |
+| Temporal distribution     | 2 hours    | **$0**   | **$0**                 |
 
 **Total Savings:** $1,840 (vs larger runners) or $140 (vs AWS)
 
@@ -565,10 +596,11 @@ def load_edge_iiotset_full_chunked(
 **Option 2: Reduce Rounds (50 → 30)**
 
 ```yaml
---num_rounds 30  # Down from 50
+--num_rounds 30 # Down from 50
 ```
 
 **Impact:**
+
 - Faster execution (3 hours instead of 4)
 - Reduced memory in training loop
 - Still sufficient for convergence in most dimensions
@@ -611,6 +643,7 @@ df_sample, _ = train_test_split(df, train_size=0.7, stratify=df['Attack_type'])
 ```
 
 **Benefits:**
+
 - Identify exact memory bottleneck
 - Validate that 5 clients + chunked loading stays under 7GB
 - Data-driven optimization decisions
@@ -637,15 +670,18 @@ df_sample, _ = train_test_split(df, train_size=0.7, stratify=df['Attack_type'])
 ## References
 
 ### GitHub Actions Documentation
+
 - [Larger runners reference](https://docs.github.com/en/actions/reference/runners/larger-runners)
 - [Self-hosted runners](https://docs.github.com/en/actions/hosting-your-own-runners)
 - [Usage limits](https://docs.github.com/en/actions/learn-github-actions/usage-limits-billing-and-administration)
 
 ### Related Issues
+
 - Exit code 143 debugging: GitHub Actions run #19348987144
 - Memory profiling: Local testing with `/usr/bin/time -v python ...`
 
 ### Decision Log
+
 - **Nov 13, 2025:** Identified exit code 143 in full-scale workflow
 - **Nov 14, 2025:** Attempted parallelism split (3 jobs → 6 jobs)
 - **Nov 14, 2025:** Researched larger runners, AWS solutions
@@ -665,11 +701,13 @@ The temporal distribution architecture solves the compute constraint problem by:
 5. [OK] **Enabling incremental progress** - Results available daily
 
 **Trade-offs accepted:**
+
 - 6 days for full results (vs 8 hours)
 - 5 clients instead of 10
 - Manual artifact consolidation
 
 **Next steps:**
+
 1. Implement 6 workflow files
 2. Test single dimension via `workflow_dispatch`
 3. Schedule weekly runs

@@ -25,12 +25,14 @@
 This runbook enables running **single Flower configurations** on a laptop with conservative resource settings. Unlike AWS or CI environments that run 10-20 workers in parallel, this approach uses **1 worker** to prevent memory exhaustion and thermal throttling.
 
 **Use Cases:**
+
 - Quick validation of experiment logic changes
 - Debugging preprocessing or aggregation issues
 - Testing new strategies before full AWS deployment
 - Offline development without cloud dependencies
 
 **Key Constraints:**
+
 - Memory: Recommend 16GB RAM minimum for `full` tier; 8GB for `nightly` tier
 - CPU: Expect thermal throttling on long runs; keep laptop plugged in and well-ventilated
 - Runtime: Full tier configs can take 2-6 hours per config on laptop CPUs
@@ -41,12 +43,12 @@ This runbook enables running **single Flower configurations** on a laptop with c
 
 ### System Requirements
 
-| Resource | Minimum | Recommended |
-|----------|---------|-------------|
-| RAM | 8 GB | 16 GB |
-| Free Disk | 5 GB | 10 GB |
-| CPU Cores | 2 | 4+ |
-| OS | macOS 10.15+ / Ubuntu 20.04+ | Latest |
+| Resource  | Minimum                      | Recommended |
+| --------- | ---------------------------- | ----------- |
+| RAM       | 8 GB                         | 16 GB       |
+| Free Disk | 5 GB                         | 10 GB       |
+| CPU Cores | 2                            | 4+          |
+| OS        | macOS 10.15+ / Ubuntu 20.04+ | Latest      |
 
 ### Software Dependencies
 
@@ -90,6 +92,7 @@ ls -lh data/edge-iiotset/
 ```
 
 Expected output:
+
 ```
 edge_iiotset_quick.csv    (~26 MB)
 edge_iiotset_nightly.csv  (~262 MB)
@@ -129,15 +132,15 @@ python scripts/run_experiments_optimized.py \
 
 ### Parameter Reference
 
-| Parameter | Options | Description |
-|-----------|---------|-------------|
-| `--dimension` | `aggregation`, `heterogeneity`, `attack`, `privacy`, `personalization` | Thesis objective dimension |
-| `--dataset` | `edge-iiotset-quick`, `edge-iiotset-nightly`, `edge-iiotset-full` | Dataset tier |
-| `--dataset-type` | `full` | Dataset type (always `full` for edge-iiotset) |
-| `--workers` | `1` | Number of parallel workers (ALWAYS 1 for laptop) |
-| `--strategy` | `fedavg`, `krum`, `bulyan`, `median` | Aggregation strategy |
-| `--seed` | `42`, `43`, `44`, `45`, `46` | Random seed for reproducibility |
-| `--client-timeout-sec` | `7200` | Max seconds per client (2 hours recommended) |
+| Parameter              | Options                                                                | Description                                      |
+| ---------------------- | ---------------------------------------------------------------------- | ------------------------------------------------ |
+| `--dimension`          | `aggregation`, `heterogeneity`, `attack`, `privacy`, `personalization` | Thesis objective dimension                       |
+| `--dataset`            | `edge-iiotset-quick`, `edge-iiotset-nightly`, `edge-iiotset-full`      | Dataset tier                                     |
+| `--dataset-type`       | `full`                                                                 | Dataset type (always `full` for edge-iiotset)    |
+| `--workers`            | `1`                                                                    | Number of parallel workers (ALWAYS 1 for laptop) |
+| `--strategy`           | `fedavg`, `krum`, `bulyan`, `median`                                   | Aggregation strategy                             |
+| `--seed`               | `42`, `43`, `44`, `45`, `46`                                           | Random seed for reproducibility                  |
+| `--client-timeout-sec` | `7200`                                                                 | Max seconds per client (2 hours recommended)     |
 
 ### Example: Aggregation Dimension, Krum Strategy, Seed 42
 
@@ -229,6 +232,7 @@ Press `Ctrl+C` to stop tailing (process continues running).
 ### Check System Resources
 
 **CPU and Memory:**
+
 ```bash
 top
 ```
@@ -236,6 +240,7 @@ top
 Look for `python` process consuming CPU/memory.
 
 **Disk Space:**
+
 ```bash
 df -h .
 ```
@@ -259,6 +264,7 @@ tail -20 runs/<preset_name>/server.log
 ```
 
 **Success Criteria:**
+
 - `metrics.csv` has `num_rounds + 1` rows (header + 1 per round)
 - Server log shows "aggregate_fit" messages for all rounds
 - No Python tracebacks in log file
@@ -285,11 +291,11 @@ aggregation,bulyan,42,nightly,2025-11-17 17:15,,,,,RUNNING,
 ```markdown
 ## Laptop Run Log
 
-| Dimension | Strategy | Seed | Tier | Started | Finished | Runtime | Status | Notes |
-|-----------|----------|------|------|---------|----------|---------|--------|-------|
-| aggregation | krum | 42 | nightly | 14:30 | 15:45 | 75 min | SUCCESS | Baseline |
-| aggregation | fedavg | 42 | nightly | 16:00 | 17:10 | 70 min | SUCCESS | |
-| aggregation | bulyan | 42 | nightly | 17:15 | - | - | RUNNING | |
+| Dimension   | Strategy | Seed | Tier    | Started | Finished | Runtime | Status  | Notes    |
+| ----------- | -------- | ---- | ------- | ------- | -------- | ------- | ------- | -------- |
+| aggregation | krum     | 42   | nightly | 14:30   | 15:45    | 75 min  | SUCCESS | Baseline |
+| aggregation | fedavg   | 42   | nightly | 16:00   | 17:10    | 70 min  | SUCCESS |          |
+| aggregation | bulyan   | 42   | nightly | 17:15   | -        | -       | RUNNING |          |
 ```
 
 ---
@@ -301,6 +307,7 @@ aggregation,bulyan,42,nightly,2025-11-17 17:15,,,,,RUNNING,
 **Cause:** Laptop ran out of RAM.
 
 **Solutions:**
+
 1. Use smaller tier: Switch from `full` to `nightly` or `quick`
 2. Close other applications to free memory
 3. Add swap space (Linux) or increase swap (macOS)
@@ -311,6 +318,7 @@ aggregation,bulyan,42,nightly,2025-11-17 17:15,,,,,RUNNING,
 **Cause:** System sent termination signal, likely due to resource pressure.
 
 **Solutions:**
+
 1. Ensure laptop is plugged in (prevents sleep/hibernation)
 2. Disable sleep mode during run
 3. Check system logs for OOM killer activity
@@ -320,6 +328,7 @@ aggregation,bulyan,42,nightly,2025-11-17 17:15,,,,,RUNNING,
 **Cause:** CPU overheating, clock speed reduced.
 
 **Solutions:**
+
 1. Elevate laptop for better airflow
 2. Use laptop cooling pad
 3. Run during cooler times (evening)
@@ -332,6 +341,7 @@ aggregation,bulyan,42,nightly,2025-11-17 17:15,,,,,RUNNING,
 **Cause:** Previous experiment still running or crashed without cleanup.
 
 **Solution:**
+
 ```bash
 # Find process using port
 lsof -i :8080
@@ -348,6 +358,7 @@ pkill -9 python
 **Error:** `FileNotFoundError: data/edge-iiotset/edge_iiotset_full.csv`
 
 **Solution:**
+
 ```bash
 # Verify symlink
 ls -la data/edge-iiotset
@@ -363,6 +374,7 @@ aws s3 cp s3://thesis-data-iiot-20251114/datasets/edge_iiotset_full.csv data/edg
 **Cause:** Virtual environment not activated or dependencies not installed.
 
 **Solution:**
+
 ```bash
 source .venv/bin/activate
 pip install -r requirements.txt

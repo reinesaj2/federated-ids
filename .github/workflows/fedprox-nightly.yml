@@ -2,7 +2,7 @@
 name: FedProx Nightly Comparison
 'on':
   schedule:
-    - cron: 0 2 * * *  # 2 AM UTC daily
+    - cron: 0 2 * * * # 2 AM UTC daily
   workflow_dispatch:
     inputs:
       alpha_values:
@@ -48,137 +48,137 @@ jobs:
         include:
           - alpha: 0.05
             mu: 0.0
-            seed_chunk: "0 1"
+            seed_chunk: '0 1'
             timeout: 90
             priority: high
           - alpha: 0.05
             mu: 0.01
-            seed_chunk: "0 1"
+            seed_chunk: '0 1'
             timeout: 120
             priority: high
           - alpha: 0.05
             mu: 0.1
-            seed_chunk: "0 1"
+            seed_chunk: '0 1'
             timeout: 150
             priority: high
           - alpha: 0.1
             mu: 0.0
-            seed_chunk: "0 1"
+            seed_chunk: '0 1'
             timeout: 90
             priority: high
           - alpha: 0.1
             mu: 0.01
-            seed_chunk: "0 1"
+            seed_chunk: '0 1'
             timeout: 120
             priority: high
           - alpha: 0.1
             mu: 0.1
-            seed_chunk: "0 1"
+            seed_chunk: '0 1'
             timeout: 150
             priority: high
           - alpha: 0.5
             mu: 0.0
-            seed_chunk: "0 1"
+            seed_chunk: '0 1'
             timeout: 120
             priority: medium
           - alpha: 0.5
             mu: 0.01
-            seed_chunk: "0 1"
+            seed_chunk: '0 1'
             timeout: 150
             priority: medium
           - alpha: 0.5
             mu: 0.1
-            seed_chunk: "0 1"
+            seed_chunk: '0 1'
             timeout: 180
             priority: medium
           - alpha: 0.05
             mu: 0.0
-            seed_chunk: "2 3"
+            seed_chunk: '2 3'
             timeout: 90
             priority: high
           - alpha: 0.05
             mu: 0.01
-            seed_chunk: "2 3"
+            seed_chunk: '2 3'
             timeout: 120
             priority: high
           - alpha: 0.05
             mu: 0.1
-            seed_chunk: "2 3"
+            seed_chunk: '2 3'
             timeout: 150
             priority: high
           - alpha: 0.1
             mu: 0.0
-            seed_chunk: "2 3"
+            seed_chunk: '2 3'
             timeout: 90
             priority: high
           - alpha: 0.1
             mu: 0.01
-            seed_chunk: "2 3"
+            seed_chunk: '2 3'
             timeout: 120
             priority: high
           - alpha: 0.1
             mu: 0.1
-            seed_chunk: "2 3"
+            seed_chunk: '2 3'
             timeout: 150
             priority: high
           - alpha: 0.5
             mu: 0.0
-            seed_chunk: "2 3"
+            seed_chunk: '2 3'
             timeout: 120
             priority: medium
           - alpha: 0.5
             mu: 0.01
-            seed_chunk: "2 3"
+            seed_chunk: '2 3'
             timeout: 150
             priority: medium
           - alpha: 0.5
             mu: 0.1
-            seed_chunk: "2 3"
+            seed_chunk: '2 3'
             timeout: 180
             priority: medium
           - alpha: 0.05
             mu: 0.0
-            seed_chunk: "4"
+            seed_chunk: '4'
             timeout: 90
             priority: high
           - alpha: 0.05
             mu: 0.01
-            seed_chunk: "4"
+            seed_chunk: '4'
             timeout: 120
             priority: high
           - alpha: 0.05
             mu: 0.1
-            seed_chunk: "4"
+            seed_chunk: '4'
             timeout: 150
             priority: high
           - alpha: 0.1
             mu: 0.0
-            seed_chunk: "4"
+            seed_chunk: '4'
             timeout: 90
             priority: high
           - alpha: 0.1
             mu: 0.01
-            seed_chunk: "4"
+            seed_chunk: '4'
             timeout: 120
             priority: high
           - alpha: 0.1
             mu: 0.1
-            seed_chunk: "4"
+            seed_chunk: '4'
             timeout: 150
             priority: high
           - alpha: 0.5
             mu: 0.0
-            seed_chunk: "4"
+            seed_chunk: '4'
             timeout: 120
             priority: medium
           - alpha: 0.5
             mu: 0.01
-            seed_chunk: "4"
+            seed_chunk: '4'
             timeout: 150
             priority: medium
           - alpha: 0.5
             mu: 0.1
-            seed_chunk: "4"
+            seed_chunk: '4'
             timeout: 180
             priority: medium
     env:

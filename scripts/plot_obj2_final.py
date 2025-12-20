@@ -90,11 +90,9 @@ def plot_heterogeneity_resilience(df: pd.DataFrame, output_path: Path):
     # Panel A: FedAvg stability across heterogeneity
     ax1 = axes[0, 0]
     fedavg = benign[benign["aggregation"] == "FedAvg"]
-    fedavg_summary = fedavg.groupby("alpha").agg(
-        f1_mean=("final_f1", "mean"),
-        f1_sem=("final_f1", "sem"),
-        n=("final_f1", "count")
-    ).reset_index()
+    fedavg_summary = (
+        fedavg.groupby("alpha").agg(f1_mean=("final_f1", "mean"), f1_sem=("final_f1", "sem"), n=("final_f1", "count")).reset_index()
+    )
     fedavg_summary = fedavg_summary[fedavg_summary["alpha"] < 100].sort_values("alpha")
 
     ax1.errorbar(
@@ -146,27 +144,29 @@ def plot_heterogeneity_resilience(df: pd.DataFrame, output_path: Path):
         fp = fedprox[fedprox["alpha"] == alpha]["final_f1"]
         if len(fa) >= 3 and len(fp) >= 3:
             t, p = stats.ttest_ind(fp, fa)
-            comparison_data.append({
-                "alpha": alpha,
-                "FedAvg": fa.mean(),
-                "FedAvg_sem": fa.sem(),
-                "FedProx": fp.mean(),
-                "FedProx_sem": fp.sem(),
-                "diff": fp.mean() - fa.mean(),
-                "p_value": p,
-            })
+            comparison_data.append(
+                {
+                    "alpha": alpha,
+                    "FedAvg": fa.mean(),
+                    "FedAvg_sem": fa.sem(),
+                    "FedProx": fp.mean(),
+                    "FedProx_sem": fp.sem(),
+                    "diff": fp.mean() - fa.mean(),
+                    "p_value": p,
+                }
+            )
 
     comp_df = pd.DataFrame(comparison_data)
 
     x = np.arange(len(comp_df))
     width = 0.35
 
-    bars1 = ax2.bar(x - width/2, comp_df["FedAvg"], width, 
-                    yerr=1.96*comp_df["FedAvg_sem"],
-                    label="FedAvg", color=colors["FedAvg"], capsize=3)
-    bars2 = ax2.bar(x + width/2, comp_df["FedProx"], width,
-                    yerr=1.96*comp_df["FedProx_sem"],
-                    label="FedProx", color=colors["FedProx"], capsize=3)
+    bars1 = ax2.bar(
+        x - width / 2, comp_df["FedAvg"], width, yerr=1.96 * comp_df["FedAvg_sem"], label="FedAvg", color=colors["FedAvg"], capsize=3
+    )
+    bars2 = ax2.bar(
+        x + width / 2, comp_df["FedProx"], width, yerr=1.96 * comp_df["FedProx_sem"], label="FedProx", color=colors["FedProx"], capsize=3
+    )
 
     # Mark significant differences
     for i, row in comp_df.iterrows():
@@ -196,18 +196,20 @@ def plot_heterogeneity_resilience(df: pd.DataFrame, output_path: Path):
     # Panel C: All aggregators at IID (alpha=1.0)
     ax3 = axes[1, 0]
     iid = benign[benign["alpha"] == 1.0]
-    
+
     agg_order = ["FedAvg", "FedProx", "Krum", "Bulyan", "Median"]
     iid_data = []
     for agg in agg_order:
         subset = iid[iid["aggregation"] == agg]
         if len(subset) > 0:
-            iid_data.append({
-                "aggregation": agg,
-                "f1_mean": subset["final_f1"].mean(),
-                "f1_sem": subset["final_f1"].sem(),
-                "n": len(subset),
-            })
+            iid_data.append(
+                {
+                    "aggregation": agg,
+                    "f1_mean": subset["final_f1"].mean(),
+                    "f1_sem": subset["final_f1"].sem(),
+                    "n": len(subset),
+                }
+            )
 
     iid_df = pd.DataFrame(iid_data)
 
@@ -246,12 +248,14 @@ def plot_heterogeneity_resilience(df: pd.DataFrame, output_path: Path):
     for agg in agg_order:
         subset = noniid[noniid["aggregation"] == agg]
         if len(subset) > 0:
-            noniid_data.append({
-                "aggregation": agg,
-                "f1_mean": subset["final_f1"].mean(),
-                "f1_sem": subset["final_f1"].sem(),
-                "n": len(subset),
-            })
+            noniid_data.append(
+                {
+                    "aggregation": agg,
+                    "f1_mean": subset["final_f1"].mean(),
+                    "f1_sem": subset["final_f1"].sem(),
+                    "n": len(subset),
+                }
+            )
 
     noniid_df = pd.DataFrame(noniid_data)
 
@@ -274,7 +278,7 @@ def plot_heterogeneity_resilience(df: pd.DataFrame, output_path: Path):
     for i, row in noniid_df.iterrows():
         ax4.annotate(
             f"n={row['n']}",
-            xy=(i, row["f1_mean"] + 1.96*row["f1_sem"] + 0.01),
+            xy=(i, row["f1_mean"] + 1.96 * row["f1_sem"] + 0.01),
             ha="center",
             fontsize=9,
         )
