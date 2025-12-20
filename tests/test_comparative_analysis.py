@@ -667,3 +667,115 @@ def test_mixed_config_defaults():
     assert config.get_client_dataset(5) == "unsw"
     assert config.get_client_data_path(0) == "data/unsw/path.csv"
     assert config.get_client_data_path(5) == "data/unsw/path.csv"
+
+
+def test_mixed_silo_3dataset_config_generation():
+    """Test 3-dataset mixed-silo configuration generation (Issue #128).
+
+    Tests configuration for 12 clients across CIC, UNSW, and Edge-IIoTset
+    with multiple aggregation methods, FedProx, and Byzantine adversaries.
+    """
+    matrix = ComparisonMatrix(
+        aggregation_methods=["fedavg", "krum", "bulyan", "median"],
+        seeds=[42, 43],
+        num_clients=12,
+    )
+    configs = matrix.generate_configs(filter_dimension="mixed_silo_3dataset")
+
+    # Expected: 4 agg × 3 mu × 3 adv × 2 seeds = 72 configs
+    assert len(configs) == 72
+
+    # Check all configs have 12 clients
+    for config in configs:
+        assert config.num_clients == 12
+        assert config.dataset == "mixed_silo_3dataset"
+
+    # Check client dataset assignments (4 CIC + 4 UNSW + 4 Edge-IIoT)
+    sample_config = configs[0]
+    assert sample_config.client_datasets is not None
+    assert len(sample_config.client_datasets) == 12
+
+    # First 4 should be CIC
+    assert sample_config.client_datasets[0] == "cic"
+    assert sample_config.client_datasets[3] == "cic"
+
+    # Next 4 should be UNSW
+    assert sample_config.client_datasets[4] == "unsw"
+    assert sample_config.client_datasets[7] == "unsw"
+
+    # Last 4 should be Edge-IIoTset
+    assert sample_config.client_datasets[8] == "edge-iiotset-quick"
+    assert sample_config.client_datasets[11] == "edge-iiotset-quick"
+
+    # Verify client_data_paths match
+    assert sample_config.client_data_paths is not None
+    assert len(sample_config.client_data_paths) == 12
+    assert "cic" in sample_config.client_data_paths[0]
+    assert "unsw" in sample_config.client_data_paths[4].lower()
+    assert "edge" in sample_config.client_data_paths[8].lower()
+
+    # Check adversary fractions (should be 0.0, 0.1, 0.2 - NOT 0.3 due to Bulyan)
+    adversary_fractions = {c.adversary_fraction for c in configs}
+    assert adversary_fractions == {0.0, 0.1, 0.2}
+    assert 0.3 not in adversary_fractions  # Violates Bulyan constraint
+
+    # Check FedProx mu values
+    mu_values = {c.fedprox_mu for c in configs}
+    assert mu_values == {0.0, 0.01, 0.1}
+
+    # Check aggregation methods
+    aggregations = {c.aggregation for c in configs}
+    assert aggregations == {"fedavg", "krum", "bulyan", "median"}
+
+
+def test_mixed_silo_3dataset_bulyan_constraint():
+    """Test that Bulyan Byzantine constraint is respected for 12-client setup.
+
+    Bulyan requires n >= 4f + 3. With 12 clients:
+    - 20% adversaries: f=2.4 → 2, requires n >= 11 ✓
+    - 30% adversaries: f=3.6 → 4, requires n >= 19 ✗ (VIOLATION)
+
+    Configuration should cap adversaries at 20%.
+    """
+    matrix = ComparisonMatrix(
+        aggregation_methods=["bulyan"],
+        seeds=[42],
+        num_clients=12,
+    )
+    configs = matrix.generate_configs(filter_dimension="mixed_silo_3dataset")
+
+    # All Bulyan configs with 12 clients
+    for config in configs:
+        if config.aggregation == "bulyan":
+            f = int(config.adversary_fraction * config.num_clients)
+            required_n = 4 * f + 3
+            assert config.num_clients >= required_n, (
+                f"Bulyan constraint violated: n={config.num_clients}, " f"f={f}, required n >= {required_n}"
+            )
+
+
+def test_mixed_silo_3dataset_client_assignment():
+    """Test per-client dataset assignment using get_client_dataset().
+
+    Validates that client ID mapping correctly retrieves dataset names
+    and paths for the 4+4+4 split across CIC, UNSW, Edge-IIoTset.
+    """
+    matrix = ComparisonMatrix(seeds=[42], num_clients=12)
+    configs = matrix.generate_configs(filter_dimension="mixed_silo_3dataset")
+
+    config = configs[0]
+
+    # CIC clients (0-3)
+    for client_id in range(4):
+        assert config.get_client_dataset(client_id) == "cic"
+        assert "cic" in config.get_client_data_path(client_id)
+
+    # UNSW clients (4-7)
+    for client_id in range(4, 8):
+        assert config.get_client_dataset(client_id) == "unsw"
+        assert "unsw" in config.get_client_data_path(client_id).lower()
+
+    # Edge-IIoTset clients (8-11)
+    for client_id in range(8, 12):
+        assert config.get_client_dataset(client_id) == "edge-iiotset-quick"
+        assert "edge" in config.get_client_data_path(client_id).lower()

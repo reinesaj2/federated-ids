@@ -345,6 +345,67 @@ class ComparisonMatrix:
 
         return configs
 
+    def _generate_mixed_silo_3dataset_configs(self) -> List[ExperimentConfig]:
+        """Generate configs for 3-dataset mixed-silo federation (Issue #128).
+
+        12 clients: 4 CIC-IDS2017 + 4 UNSW-NB15 + 4 Edge-IIoTset
+        - Aggregators: FedAvg, Krum, Bulyan, Median
+        - Heterogeneity: FedProx (mu=0.0, 0.01, 0.1) vs FedAvg
+        - Byzantine resilience: 0%, 10%, 20% adversarial clients
+          (20% cap to respect Bulyan constraint n >= 4f + 3 for 12 clients)
+
+        Research contribution: Demonstrates robust aggregation + FedProx
+        can unify models across organizational silos using incompatible
+        IDS datasets.
+
+        Returns:
+            List of experiment configurations for cluster execution.
+
+        References:
+            Issue #128: https://github.com/reinesaj2/federated-ids/issues/128
+            Bulyan constraint: n >= 4f + 3 (El Mhamdi et al. 2018)
+        """
+        configs = []
+
+        # Dataset paths
+        cic_path = "data/cic/cic_ids2017_multiclass.csv"
+        unsw_path = "data/unsw/UNSW_NB15_training-set.csv"
+        edge_path = "data/edge-iiotset/edge_iiotset_quick.csv"
+
+        # 12 clients: 4 CIC + 4 UNSW + 4 Edge-IIoTset
+        client_datasets = ["cic"] * 4 + ["unsw"] * 4 + ["edge-iiotset-quick"] * 4
+        client_data_paths = [cic_path] * 4 + [unsw_path] * 4 + [edge_path] * 4
+
+        # Adversary fractions: capped at 20% for Bulyan constraint
+        # With 12 clients: f=2.4 → 2 adversaries, requires n >= 11 ✓
+        # (30% would require 19 clients: f=3.6 → 4, n >= 19)
+        adversary_fractions = [0.0, 0.1, 0.2]
+
+        # FedProx mu values
+        fedprox_mu_values = [0.0, 0.01, 0.1]
+
+        # Generate full experimental matrix
+        for agg in self.aggregation_methods:
+            for mu in fedprox_mu_values:
+                for adv_frac in adversary_fractions:
+                    for seed in self.seeds:
+                        base = self._base_config(seed)
+
+                        config = self._create_config(
+                            base,
+                            aggregation=agg,
+                            alpha=DEFAULT_ALPHA_NON_IID,  # 0.5 moderate non-IID
+                            dataset="mixed_silo_3dataset",
+                            client_datasets=client_datasets,
+                            client_data_paths=client_data_paths,
+                            num_clients=12,
+                            adversary_fraction=adv_frac,
+                            fedprox_mu=mu,
+                        )
+                        configs.append(config)
+
+        return configs
+
     def _generate_full_factorial_configs(self) -> List[ExperimentConfig]:
         """Generate full factorial experiment matrix (WARNING: very large)."""
         configs = []
@@ -380,6 +441,8 @@ class ComparisonMatrix:
                 - 'attack': Compare attack resilience
                 - 'privacy': Compare privacy-utility tradeoff
                 - 'personalization': Compare personalization benefit
+                - 'mixed': Mixed 2-dataset (CIC + UNSW)
+                - 'mixed_silo_3dataset': Mixed 3-dataset (CIC + UNSW + Edge-IIoTset)
                 - None: Full factorial (all combinations)
 
         Returns:
@@ -393,6 +456,7 @@ class ComparisonMatrix:
             "privacy": self._generate_privacy_configs,
             "personalization": self._generate_personalization_configs,
             "mixed": self._generate_mixed_configs,
+            "mixed_silo_3dataset": self._generate_mixed_silo_3dataset_configs,
         }
 
         if filter_dimension is None:
@@ -636,6 +700,7 @@ def main():
             "privacy",
             "personalization",
             "mixed",
+            "mixed_silo_3dataset",
             "full",
         ],
         default="aggregation",
