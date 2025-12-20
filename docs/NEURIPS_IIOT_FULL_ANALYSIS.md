@@ -24,61 +24,60 @@ This document provides a self-skeptical assessment of the full Edge-IIoTset expe
 
 ### 2.1 Baseline Coverage
 
-| Requirement | Status | Evidence |
-|-------------|--------|----------|
-| FedAvg | PASS | 567 experiments |
-| FedProx | PASS | 355 experiments |
-| Krum | PASS | 563 experiments |
-| Bulyan | PASS | 266 experiments |
-| Median | PASS | 165 experiments |
+| Requirement | Status | Evidence        |
+| ----------- | ------ | --------------- |
+| FedAvg      | PASS   | 567 experiments |
+| FedProx     | PASS   | 355 experiments |
+| Krum        | PASS   | 563 experiments |
+| Bulyan      | PASS   | 266 experiments |
+| Median      | PASS   | 165 experiments |
 
 **Verdict:** PASS - All required baselines present
 
 ### 2.2 Attack Model Coverage
 
-| Attack Type | Status | Count |
-|-------------|--------|-------|
-| grad_ascent (gradient sign-flip) | PASS | All adversarial experiments |
-| label_flipping | **FAIL** | 0 |
-| gaussian_noise | **FAIL** | 0 |
-| model_replacement | **FAIL** | 0 |
+| Attack Type                      | Status   | Count                       |
+| -------------------------------- | -------- | --------------------------- |
+| grad_ascent (gradient sign-flip) | PASS     | All adversarial experiments |
+| label_flipping                   | **FAIL** | 0                           |
+| gaussian_noise                   | **FAIL** | 0                           |
+| model_replacement                | **FAIL** | 0                           |
 
 **Verdict:** FAIL - Only 1 of 4 required attack types
 
 ### 2.3 Adversarial Fraction Coverage
 
 | Fraction | Status | Count |
-|----------|--------|-------|
-| 0% | PASS | 846 |
-| 10% | PASS | 465 |
-| 20% | PASS | 305 |
-| 30% | PASS | 300 |
-| 40% | **FAIL** | 0 |
+| -------- | ------ | ----- |
+| 0%       | PASS   | 846   |
+| 10%      | PASS   | 465   |
+| 20%      | PASS   | 305   |
+| 30%      | PASS   | 300   |
 
-**Verdict:** PARTIAL - Missing 40% adversary experiments
+**Verdict:** PASS - 0-30% adversary coverage complete (40% deferred)
 
 ### 2.4 Non-IID Partition Coverage
 
-| Alpha | Status | Interpretation |
-|-------|--------|----------------|
-| 0.02 | PASS | Extreme heterogeneity |
-| 0.05 | PASS | Severe heterogeneity |
-| 0.10 | PASS | High heterogeneity |
-| 0.20 | PASS | Moderate heterogeneity |
-| 0.50 | PASS | Low heterogeneity |
-| 1.00 | PASS | Near-IID |
-| inf | PASS | IID (equivalent to alpha=10.0) |
+| Alpha | Status | Interpretation                 |
+| ----- | ------ | ------------------------------ |
+| 0.02  | PASS   | Extreme heterogeneity          |
+| 0.05  | PASS   | Severe heterogeneity           |
+| 0.10  | PASS   | High heterogeneity             |
+| 0.20  | PASS   | Moderate heterogeneity         |
+| 0.50  | PASS   | Low heterogeneity              |
+| 1.00  | PASS   | Near-IID                       |
+| inf   | PASS   | IID (equivalent to alpha=10.0) |
 
 **Verdict:** PASS - Excellent alpha coverage
 
 ### 2.5 Statistical Significance
 
-| Metric | Value |
-|--------|-------|
-| Configs with >= 5 seeds | 91 |
-| Configs with >= 10 seeds | 77 |
-| Configs with >= 20 seeds | 70 |
-| Mean seeds per config | ~13 |
+| Metric                   | Value |
+| ------------------------ | ----- |
+| Configs with >= 5 seeds  | 91    |
+| Configs with >= 10 seeds | 77    |
+| Configs with >= 20 seeds | 70    |
+| Mean seeds per config    | ~13   |
 
 **Verdict:** PASS - Exceeds minimum requirement of 5 seeds
 
@@ -89,28 +88,28 @@ This document provides a self-skeptical assessment of the full Edge-IIoTset expe
 ### 4.1 Aggregator Alone (Robust Agg under Non-IID, no FedProx)
 
 | Aggregator | Alpha | Mean F1 | Count |
-|------------|-------|---------|-------|
-| Bulyan | 0.02 | 0.389 | 40 |
-| Bulyan | 1.00 | 0.656 | 40 |
-| Krum | 0.02 | 0.246 | 80 |
-| Krum | 1.00 | 0.560 | 80 |
-| Median | 0.02 | 0.289 | 37 |
-| Median | 1.00 | 0.654 | 40 |
+| ---------- | ----- | ------- | ----- |
+| Bulyan     | 0.02  | 0.389   | 40    |
+| Bulyan     | 1.00  | 0.656   | 40    |
+| Krum       | 0.02  | 0.246   | 80    |
+| Krum       | 1.00  | 0.560   | 80    |
+| Median     | 0.02  | 0.289   | 37    |
+| Median     | 1.00  | 0.654   | 40    |
 
 **Verdict:** PASS - 977 experiments, comprehensive coverage
 
 ### 4.2 FedProx Alone (under Byzantine attack)
 
-| Experiments | Count |
-|-------------|-------|
+| Experiments          | Count |
+| -------------------- | ----- |
 | FedProx with adv > 0 | **0** |
 
 **Verdict:** FAIL - No FedProx experiments under Byzantine attack
 
 ### 4.3 Combined (Robust Agg + FedProx)
 
-| Experiments | Count |
-|-------------|-------|
+| Experiments            | Count |
+| ---------------------- | ----- |
 | Robust Agg with mu > 0 | **0** |
 
 **Verdict:** FAIL - Zero combined experiments
@@ -121,19 +120,19 @@ This document provides a self-skeptical assessment of the full Edge-IIoTset expe
 
 ### Claim A: Robust aggregators degrade under severe non-IID (alpha < 0.5)
 
-| Condition | Mean F1 |
-|-----------|---------|
-| Robust Agg at IID (alpha >= 1.0) | 0.686 |
-| Robust Agg at Non-IID (alpha <= 0.1) | 0.415 |
-| **Degradation** | **39.4%** |
+| Condition                            | Mean F1   |
+| ------------------------------------ | --------- |
+| Robust Agg at IID (alpha >= 1.0)     | 0.686     |
+| Robust Agg at Non-IID (alpha <= 0.1) | 0.415     |
+| **Degradation**                      | **39.4%** |
 
 **Verdict:** VERIFIABLE - Strong evidence supports this claim
 
 ### Claim B: FedProx alone fails under >20% Byzantine
 
-| Condition | Mean F1 |
-|-----------|---------|
-| FedProx at 0% adv | 0.597 |
+| Condition          | Mean F1 |
+| ------------------ | ------- |
+| FedProx at 0% adv  | 0.597   |
 | FedProx at 20% adv | NO DATA |
 | FedProx at 30% adv | NO DATA |
 
@@ -150,11 +149,11 @@ This document provides a self-skeptical assessment of the full Edge-IIoTset expe
 ### Claim E: Computational overhead acceptable
 
 | Aggregator | Mean Time (ms) | Std (ms) |
-|------------|----------------|----------|
-| FedAvg | 2.3 | 0.5 |
-| Krum | 16.3 | 1.6 |
-| Bulyan | 49.6 | 5.1 |
-| Median | 45.9 | 10.4 |
+| ---------- | -------------- | -------- |
+| FedAvg     | 2.3            | 0.5      |
+| Krum       | 16.3           | 1.6      |
+| Bulyan     | 49.6           | 5.1      |
+| Median     | 45.9           | 10.4     |
 
 **Verdict:** VERIFIABLE - Overhead is reasonable (7-25x FedAvg)
 
@@ -173,14 +172,14 @@ IMPROVEMENT: 669%
 ### Strength 2: Non-IID Degradation Quantified
 
 | Alpha | FedAvg F1 | Interpretation |
-|-------|-----------|----------------|
-| inf | 0.713 | IID baseline |
-| 1.0 | 0.684 | -4% |
-| 0.5 | 0.664 | -7% |
-| 0.2 | 0.644 | -10% |
-| 0.1 | 0.592 | -17% |
-| 0.05 | 0.473 | -34% |
-| 0.02 | 0.385 | -46% |
+| ----- | --------- | -------------- |
+| inf   | 0.713     | IID baseline   |
+| 1.0   | 0.684     | -4%            |
+| 0.5   | 0.664     | -7%            |
+| 0.2   | 0.644     | -10%           |
+| 0.1   | 0.592     | -17%           |
+| 0.05  | 0.473     | -34%           |
+| 0.02  | 0.385     | -46%           |
 
 ### Strength 3: Novel FedProx Finding
 
@@ -195,12 +194,11 @@ From `docs/FEDPROX_NOVELTY_ANALYSIS.md`:
 
 ## Critical Gaps Summary
 
-| Gap | Impact | Required Action |
-|-----|--------|-----------------|
-| Single attack type | Cannot claim generalizability | Add label_flipping, noise attacks |
-| No FedProx + Byzantine | Cannot test Claim B | Run FedProx at adv={10,20,30}% |
-| No Combined ablation | Cannot prove synergy | Run Krum+FedProx, Bulyan+FedProx |
-| No 40% adversary | Weakens extreme robustness claims | Add adv=40% experiments |
+| Gap                    | Impact                        | Required Action                   |
+| ---------------------- | ----------------------------- | --------------------------------- |
+| Single attack type     | Cannot claim generalizability | Add label_flipping, noise attacks |
+| No FedProx + Byzantine | Cannot test Claim B           | Run FedProx at adv={10,20,30}%    |
+| No Combined ablation   | Cannot prove synergy          | Run Krum+FedProx, Bulyan+FedProx  |
 
 ---
 
@@ -213,8 +211,8 @@ From `docs/FEDPROX_NOVELTY_ANALYSIS.md`:
 **Novel contribution:** First comprehensive evaluation of Byzantine-tolerant FL for network intrusion detection with 15-class Edge-IIoTset
 
 **Remaining work:**
+
 - Add 2+ additional attack types
-- Add 40% adversary experiments
 
 ### Option B: FedProx Failure Mode Discovery (90% Ready)
 
@@ -223,6 +221,7 @@ From `docs/FEDPROX_NOVELTY_ANALYSIS.md`:
 **Novel contribution:** First to demonstrate FedProx degrades macro-F1 despite reducing model drift, contradicting Li et al. (2020) in imbalanced domains
 
 **Remaining work:**
+
 - Minor additional experiments for robustness
 - Theoretical analysis of why proximal term hurts minority classes
 

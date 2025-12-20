@@ -331,6 +331,61 @@ class ComparisonMatrix:
                     configs.append(ExperimentConfig(**base))
         return configs
 
+    def _generate_combined_robustness_configs(self) -> List[ExperimentConfig]:
+        """Generate configs for robust aggregation with FedProx under attack."""
+        configs = []
+        aggregations = ["krum", "bulyan"]
+        fedprox_mus = [0.01, 0.1]
+        alpha_values = [0.1, 0.5, 1.0, float("inf")]
+        adversary_fractions = [0.0, 0.1, 0.2, 0.3]
+
+        for aggregation in aggregations:
+            for fedprox_mu in fedprox_mus:
+                for alpha in alpha_values:
+                    for adversary_fraction in adversary_fractions:
+                        for seed in self.seeds:
+                            config = self._create_config(
+                                self._base_config(seed),
+                                aggregation=aggregation,
+                                fedprox_mu=fedprox_mu,
+                                alpha=alpha,
+                                adversary_fraction=adversary_fraction,
+                            )
+                            try:
+                                validate_bulyan_byzantine_resilience(
+                                    config.aggregation,
+                                    config.adversary_fraction,
+                                    config.num_clients,
+                                )
+                            except ValueError:
+                                continue
+                            configs.append(config)
+
+        return configs
+
+    def _generate_attack_fedprox_configs(self) -> List[ExperimentConfig]:
+        """Generate configs for FedProx under attack."""
+        configs = []
+        fedprox_mus = [0.01, 0.05, 0.1]
+        alpha_values = [0.1, 0.5, 1.0, float("inf")]
+        adversary_fractions = [0.1, 0.2, 0.3]
+
+        for fedprox_mu in fedprox_mus:
+            for alpha in alpha_values:
+                for adversary_fraction in adversary_fractions:
+                    for seed in self.seeds:
+                        configs.append(
+                            self._create_config(
+                                self._base_config(seed),
+                                aggregation="fedprox",
+                                fedprox_mu=fedprox_mu,
+                                alpha=alpha,
+                                adversary_fraction=adversary_fraction,
+                            )
+                        )
+
+        return configs
+
     def _generate_full_factorial_configs(self) -> List[ExperimentConfig]:
         """Generate full factorial experiment matrix (WARNING: very large)."""
         configs = []
@@ -362,6 +417,8 @@ class ComparisonMatrix:
                 - 'heterogeneity': Compare IID vs Non-IID
                 - 'heterogeneity_fedprox': Compare FedProx across heterogeneity levels
                 - 'attack': Compare attack resilience
+                - 'combined_robustness': Compare robust aggregation with FedProx under attack
+                - 'attack_fedprox': Compare FedProx under attack
                 - 'privacy': Compare privacy-utility tradeoff
                 - 'personalization': Compare personalization benefit
                 - None: Full factorial (all combinations)
@@ -374,6 +431,8 @@ class ComparisonMatrix:
             "heterogeneity": self._generate_heterogeneity_configs,
             "heterogeneity_fedprox": self._generate_heterogeneity_fedprox_configs,
             "attack": self._generate_attack_configs,
+            "combined_robustness": self._generate_combined_robustness_configs,
+            "attack_fedprox": self._generate_attack_fedprox_configs,
             "privacy": self._generate_privacy_configs,
             "personalization": self._generate_personalization_configs,
             "hybrid": self._generate_hybrid_configs,
@@ -615,6 +674,8 @@ def main():
             "heterogeneity",
             "heterogeneity_fedprox",
             "attack",
+            "combined_robustness",
+            "attack_fedprox",
             "privacy",
             "personalization",
             "hybrid",
