@@ -581,7 +581,7 @@ def _render_privacy_curve(dp_df: pd.DataFrame, baseline_df: pd.DataFrame, output
 
             ci_lower = float(np.clip(ci_lower, 0.0, 1.0))
             ci_upper = float(np.clip(ci_upper, 0.0, 1.0))
-            epsilon_val = float(subset["epsilon"].iloc[0]) if "epsilon" in subset.columns else float("inf")
+            epsilon_val = float("nan")
 
             baseline_row = {
                 "dataset": dataset,
