@@ -656,6 +656,75 @@ def test_comparison_matrix_heterogeneity_fedprox_preset_names():
         assert "seed42" in preset
 
 
+def test_comparison_matrix_combined_robustness_dimension():
+    """Test matrix generation for combined robustness dimension."""
+    aggregations = ["krum", "bulyan"]
+    fedprox_mus = [0.01, 0.1]
+    alpha_values = [0.1, 0.5, 1.0, float("inf")]
+    adversary_fractions = [0.0, 0.1, 0.2, 0.3]
+    seeds = [42]
+    num_clients = 10
+
+    matrix = ComparisonMatrix(
+        aggregation_methods=aggregations,
+        alpha_values=alpha_values,
+        fedprox_mu_values=fedprox_mus,
+        adversary_fractions=adversary_fractions,
+        seeds=seeds,
+        num_clients=num_clients,
+    )
+
+    configs = matrix.generate_configs(filter_dimension="combined_robustness")
+
+    invalid_bulyan_adv = [
+        adv for adv in adversary_fractions if num_clients < 4 * int(adv * num_clients) + 3
+    ]
+    invalid_bulyan_count = len(fedprox_mus) * len(alpha_values) * len(invalid_bulyan_adv) * len(seeds)
+    expected_count = (
+        len(aggregations) * len(fedprox_mus) * len(alpha_values) * len(adversary_fractions) * len(seeds)
+        - invalid_bulyan_count
+    )
+
+    assert len(configs) == expected_count
+    assert {config.aggregation for config in configs} == set(aggregations)
+    assert {config.fedprox_mu for config in configs} == set(fedprox_mus)
+    assert {config.alpha for config in configs} == set(alpha_values)
+    assert {config.adversary_fraction for config in configs} == set(adversary_fractions)
+    assert all(config.personalization_epochs == 0 for config in configs)
+    assert all(config.dp_enabled is False for config in configs)
+    assert all(config.fedprox_mu > 0 for config in configs)
+
+    for config in configs:
+        if config.aggregation == "bulyan":
+            assert config.adversary_fraction not in invalid_bulyan_adv
+
+
+def test_comparison_matrix_attack_fedprox_dimension():
+    """Test matrix generation for FedProx under attack dimension."""
+    fedprox_mus = [0.01, 0.05, 0.1]
+    alpha_values = [0.1, 0.5, 1.0, float("inf")]
+    adversary_fractions = [0.1, 0.2, 0.3]
+    seeds = [42, 43]
+
+    matrix = ComparisonMatrix(
+        alpha_values=alpha_values,
+        fedprox_mu_values=fedprox_mus,
+        adversary_fractions=adversary_fractions,
+        seeds=seeds,
+    )
+
+    configs = matrix.generate_configs(filter_dimension="attack_fedprox")
+
+    expected_count = len(fedprox_mus) * len(alpha_values) * len(adversary_fractions) * len(seeds)
+    assert len(configs) == expected_count
+    assert {config.aggregation for config in configs} == {"fedprox"}
+    assert {config.fedprox_mu for config in configs} == set(fedprox_mus)
+    assert {config.alpha for config in configs} == set(alpha_values)
+    assert {config.adversary_fraction for config in configs} == set(adversary_fractions)
+    assert all(config.personalization_epochs == 0 for config in configs)
+    assert all(config.dp_enabled is False for config in configs)
+
+
 def test_comparison_matrix_heterogeneity_fedprox_invalid_dimension():
     """Test that invalid dimension still raises ValueError."""
     matrix = ComparisonMatrix()

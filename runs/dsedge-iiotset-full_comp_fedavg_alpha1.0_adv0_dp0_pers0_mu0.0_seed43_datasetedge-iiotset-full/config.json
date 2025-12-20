@@ -5,10 +5,11 @@
   "dp_enabled": false,
   "dp_noise_multiplier": 0.0,
   "personalization_epochs": 0,
-  "num_clients": 6,
-  "num_rounds": 15,
+  "num_clients": 10,
+  "num_rounds": 20,
   "seed": 43,
   "fedprox_mu": 0.0,
   "dataset": "edge-iiotset-full",
-  "data_path": "data/edge-iiotset/edge_iiotset_full.csv"
+  "data_path": "data/edge-iiotset/edge_iiotset_full.csv",
+  "temporal_validation": false
 }
