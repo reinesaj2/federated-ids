@@ -68,6 +68,38 @@ def test_partition_outputs_have_same_feature_dimension_across_clients():
     assert num_classes_global == len(_np.unique(df["label"]))
 
 
+def test_prepare_partitions_supports_minority_class_below_client_count():
+    num_clients = 5
+    majority_count = 20
+    minority_count = 3
+    total_samples = majority_count + minority_count
+    alpha = 0.1
+    seed = 7
+    label_col = "label"
+    majority_label = 0
+    minority_label = 1
+
+    df = pd.DataFrame(
+        {
+            "num1": np.arange(total_samples, dtype=float),
+            label_col: [majority_label] * majority_count + [minority_label] * minority_count,
+        }
+    )
+
+    _, X_parts, y_parts, num_classes_global = prepare_partitions_from_dataframe(
+        df=df,
+        label_col=label_col,
+        partition_strategy="dirichlet",
+        num_clients=num_clients,
+        seed=seed,
+        alpha=alpha,
+    )
+
+    assert len(X_parts) == num_clients
+    assert sum(len(y) for y in y_parts) == total_samples
+    assert num_classes_global == 2
+
+
 def test_dirichlet_partition_index_coverage_and_disjointness():
     labels = np.array([0] * 50 + [1] * 50)
     shards = dirichlet_partition(labels=labels, num_clients=3, alpha=0.1, seed=77)

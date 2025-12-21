@@ -318,6 +318,13 @@ def dirichlet_partition(
     labels = np.asarray(labels)
     num_classes = int(labels.max()) + 1
 
+    if min_samples_per_class == 0:
+        for _ in range(MAX_PARTITION_ATTEMPTS):
+            candidate = _attempt_dirichlet_partition_single(labels, num_clients, alpha, rng)
+            if all(len(shard) > 0 for shard in candidate):
+                return candidate
+        return iid_partition(len(labels), num_clients, seed)
+
     # Feasibility check: each class must have enough samples to meet the floor.
     class_counts = np.bincount(labels, minlength=num_classes)
     required_per_class = num_clients * min_samples_per_class
@@ -1112,7 +1119,17 @@ def prepare_partitions_from_dataframe(
     if partition_strategy == "iid":
         shards = iid_partition(num_samples=len(df), num_clients=num_clients, seed=seed)
     elif partition_strategy == "dirichlet":
-        shards = dirichlet_partition(labels=y_all, num_clients=num_clients, alpha=alpha, seed=seed)
+        class_counts = np.bincount(y_all, minlength=num_classes_global)
+        min_class_count = int(class_counts.min()) if class_counts.size else 0
+        per_client_floor = min_class_count // num_clients if num_clients > 0 else 0
+        effective_min_samples = min(MIN_SAMPLES_PER_CLASS, per_client_floor)
+        shards = dirichlet_partition(
+            labels=y_all,
+            num_clients=num_clients,
+            alpha=alpha,
+            seed=seed,
+            min_samples_per_class=effective_min_samples,
+        )
     elif partition_strategy == "protocol":
         if not protocol_col or protocol_col not in df.columns:
             raise ValueError("protocol partition requires a valid protocol_col present in dataframe")
