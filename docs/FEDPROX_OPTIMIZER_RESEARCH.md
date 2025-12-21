@@ -23,9 +23,11 @@ Three parallel research agents conducted comprehensive searches:
 ### Optimizer Specification
 
 **Direct Quote:**
+
 > "In order to draw a fair comparison with FedAvg, we employ SGD as a local solver for FedProx"
 
 **Key Points:**
+
 - SGD is used for BOTH FedAvg (mu=0) and FedProx (mu>0)
 - Reason stated: "fair comparison" - NOT technical incompatibility
 - Paper emphasizes flexibility: "Device k uses its local solver of choice to approximately minimize the objective"
@@ -33,16 +35,19 @@ Three parallel research agents conducted comprehensive searches:
 ### Hyperparameters
 
 **Learning Rates (dataset-specific):**
+
 - MNIST: 0.03
 - FEMNIST: 0.003
 - Shakespeare: 0.8
 - Sent140: 0.3
 
 **Proximal Term (mu):**
+
 - Tested values: {0.001, 0.01, 0.1, 1}
 - Best mu values vary by dataset: 1, 1, 1, 0.001, and 0.01
 
 **Adaptive mu Strategy:**
+
 - "Increase mu by 0.1 whenever the loss increases and decrease it by 0.1 whenever the loss decreases for 5 consecutive rounds"
 - Initialize to mu=1 for IID data, mu=0 for non-IID datasets
 
@@ -51,6 +56,7 @@ Three parallel research agents conducted comprehensive searches:
 ### Theoretical Foundation
 
 The FedProx local subproblem:
+
 ```
 h_k(w; w^t) = F_k(w) + (mu/2)||w - w^t||^2
 ```
@@ -66,11 +72,13 @@ Where the proximal term `(mu/2)||w - w^t||^2` prevents large parameter deviation
 **Repository:** https://github.com/litian96/FedProx
 
 **Optimizer Implementation:**
+
 - File: `/flearn/optimizer/pgd.py` (PerturbedGradientDescent)
 - Type: Custom TensorFlow optimizer
 - Update rule: `var_update = state_ops.assign_sub(var, lr_t*(grad + mu_t*(var-vstar)))`
 
 **Configuration:**
+
 - Learning Rate: 0.01 (in run scripts)
 - Mu: 0 (must be set via command line)
 - Momentum: NOT USED (custom optimizer)
@@ -83,11 +91,13 @@ Where the proximal term `(mu/2)||w - w^t||^2` prevents large parameter deviation
 **Repository:** https://github.com/JYWa/FedNova
 
 **Optimizer Implementation:**
+
 - File: `/distoptim/FedProx.py`
 - Type: Custom PyTorch optimizer extending `torch.optim.Optimizer`
 - Proximal term added to gradient: `d_p.add_(self.mu, p.data - param_state['old_init'])`
 
 **Default Parameters:**
+
 ```python
 optimizer = FedProx(model.parameters(),
                     lr=0.1,
@@ -104,9 +114,11 @@ optimizer = FedProx(model.parameters(),
 **Repository:** https://github.com/ki-ljl/FedProx-PyTorch
 
 **Optimizer Implementation:**
+
 - File: `client.py`
 - Type: Standard PyTorch optimizers (Adam OR SGD)
 - Proximal term added to loss:
+
 ```python
 proximal_term = 0.0
 for w, w_t in zip(model.parameters(), global_model.parameters()):
@@ -117,6 +129,7 @@ loss = loss_function(y_pred, label) + (args.mu / 2) * proximal_term
 **Configurations:**
 
 For Adam:
+
 ```python
 optimizer = torch.optim.Adam(model.parameters(),
                              lr=lr,
@@ -124,6 +137,7 @@ optimizer = torch.optim.Adam(model.parameters(),
 ```
 
 For SGD:
+
 ```python
 optimizer = torch.optim.SGD(model.parameters(),
                             lr=lr,
@@ -138,6 +152,7 @@ optimizer = torch.optim.SGD(model.parameters(),
 **Repository:** https://github.com/c-gabri/Federated-Learning-PyTorch
 
 **Default Configuration:**
+
 - Optimizer: 'sgd'
 - Arguments: 'lr=0.01,momentum=0,weight_decay=4e-4'
 - Mu: 0 (set via --mu flag for FedProx)
@@ -149,11 +164,13 @@ optimizer = torch.optim.SGD(model.parameters(),
 ### Popular Framework Implementations
 
 #### Flower Framework
+
 - Uses "SGD with proximal term" per baseline documentation
 - Focuses on proximal term modification rather than prescribing specific optimizer
 - Strategy allows flexible optimizer configuration
 
 #### TensorFlow Federated
+
 - API: `build_weighted_fed_prox`
 - Allows flexible `client_optimizer_fn` parameter
 - Default server optimizer: SGD with learning rate 1.0
@@ -163,11 +180,13 @@ optimizer = torch.optim.SGD(model.parameters(),
 #### Empirical Studies
 
 **Adaptive Optimizers Can Outperform SGD:**
+
 - Research shows "FedProx+Adam achieves the highest test accuracy and faster convergence speed" on FEMNIST dataset
 - Adaptive optimizers (Adam, Adagrad, Yogi) can "significantly improve the performance of federated learning"
 - For Transformer models: "Local SGD is still significantly worse than Local AdamW"
 
 **No Universal Winner:**
+
 - "The answers to which optimizer performs best highly vary depending on the setting"
 - "No single algorithm works best across different performance metrics"
 - SGD requires extensive hyperparameter tuning (grid-searching 11-13 step sizes)
@@ -175,29 +194,32 @@ optimizer = torch.optim.SGD(model.parameters(),
 ### Known Implementation Issues
 
 #### A. Momentum Buffer Management
+
 - "Less accurate gradients at the end of local training count for more in the cumulative momentum, making the aggregated momentum biased and suboptimal"
 - For Adam/RMSProp: "There exists an implicit momentum bias in the preconditioner"
 - Server-side aggregation of optimizer states adds complexity
 
 #### B. Proximal Term Bugs
+
 - Flower PR #1513 fixed bug where "The FedProx proximal term always evaluated to 0"
 - PyTorch forum discussions reveal implementations missing the mu coefficient
 - GitHub Issue #6 on official repo showed confusion about proximal term implementation
 
 #### C. Optimizer State Management
+
 - PySyft Issue #3507: "Adam and other stateful optimizers do not work on federated models"
 - Correction techniques are "hard to fundamentally solve for stochastic optimizers, such as SGDM, Adam, AdaGrad"
 
 ## Summary of Reference Implementations
 
-| Implementation | Optimizer | Momentum | Weight Decay | Switches on mu? |
-|---|---|---|---|---|
-| Original (TensorFlow) | Custom SGD | N/A | N/A | No |
-| FedNova (PyTorch) | Custom SGD | 0.0 | 1e-4 | No |
-| ki-ljl (PyTorch) | Adam OR SGD | 0.9 (SGD) / N/A (Adam) | 1e-4 | No |
-| c-gabri (PyTorch) | SGD | 0.0 | 4e-4 | No |
-| Flower Framework | Configurable | Configurable | Configurable | No |
-| TensorFlow Federated | Configurable | Configurable | Configurable | No |
+| Implementation        | Optimizer    | Momentum               | Weight Decay | Switches on mu? |
+| --------------------- | ------------ | ---------------------- | ------------ | --------------- |
+| Original (TensorFlow) | Custom SGD   | N/A                    | N/A          | No              |
+| FedNova (PyTorch)     | Custom SGD   | 0.0                    | 1e-4         | No              |
+| ki-ljl (PyTorch)      | Adam OR SGD  | 0.9 (SGD) / N/A (Adam) | 1e-4         | No              |
+| c-gabri (PyTorch)     | SGD          | 0.0                    | 4e-4         | No              |
+| Flower Framework      | Configurable | Configurable           | Configurable | No              |
+| TensorFlow Federated  | Configurable | Configurable           | Configurable | No              |
 
 **Universal Finding:** ZERO implementations switch optimizers based on mu value.
 
@@ -221,34 +243,42 @@ def _create_optimizer(parameters, lr, weight_decay, fedprox_mu):
 ### Issues Identified
 
 #### 1. Automatic Optimizer Switching
+
 **Problem:** Switches from AdamW to SGD when mu > 0.
 
 **Why This Is Wrong:**
+
 - No reference implementation does this
 - Breaks hyperparameter consistency within experiments
 - Not supported by Li et al. paper (they use SGD for BOTH mu=0 and mu>0)
 - Contradicts research showing FedProx+Adam can outperform FedProx+SGD
 
 #### 2. Weight Decay Zeroing
+
 **Problem:** Sets `weight_decay=0.0` when mu > 0.
 
 **Why This Is Wrong:**
+
 - Most reference implementations use weight_decay=1e-4 for both FedAvg and FedProx
 - Not specified in Li et al. paper
 - Changes regularization behavior unexpectedly
 
 #### 3. Codebase Inconsistency
+
 **Problem:** Rest of codebase is tuned for AdamW.
 
 **Impact:**
+
 - Existing experiments used AdamW with tuned learning rates
 - Switching to SGD invalidates prior hyperparameter tuning
 - Would require re-tuning all learning rates for fair comparison
 
 #### 4. Misinterpretation of Paper
+
 **Problem:** Comment states "FedProx uses SGD per Li et al."
 
 **Correction:**
+
 - Paper says: "To draw a fair comparison with FedAvg, we employ SGD"
 - This means: use SGD for BOTH FedAvg and FedProx (consistent optimizer)
 - Does NOT mean: switch to SGD only when mu > 0
@@ -258,11 +288,13 @@ def _create_optimizer(parameters, lr, weight_decay, fedprox_mu):
 ### Why Proximal Term Works with Any Optimizer
 
 The FedProx objective:
+
 ```
 min_w { F_k(w) + (mu/2)||w - w^t||^2 }
 ```
 
 Gradient:
+
 ```
 ∇[F_k(w) + (mu/2)||w - w^t||^2] = ∇F_k(w) + mu(w - w^t)
 ```
@@ -270,6 +302,7 @@ Gradient:
 **Key Insight:** The proximal term contributes an additive term to the gradient. Any gradient-based optimizer can process this modified gradient.
 
 **Implementation Approaches:**
+
 1. **Add to loss** (most common): `loss = F_k(w) + (mu/2)||w - w^t||^2`
 2. **Add to gradient** (custom optimizer): `grad = ∇F_k(w) + mu(w - w^t)`
 
@@ -278,12 +311,14 @@ Both approaches work with any base optimizer (SGD, Adam, AdamW, etc.).
 ### When Adam/AdamW May Be Preferred
 
 **Advantages:**
+
 - Adaptive learning rates per parameter
 - Often faster convergence on complex architectures
 - Less sensitive to learning rate tuning
 - Better for heterogeneous data distributions
 
 **Research Evidence:**
+
 - "FedProx+Adam achieves highest test accuracy" on FEMNIST
 - "Local AdamW" significantly better than "Local SGD" for Transformers
 
@@ -292,12 +327,14 @@ Both approaches work with any base optimizer (SGD, Adam, AdamW, etc.).
 ### Option 1: Use AdamW for All Cases (RECOMMENDED)
 
 **Rationale:**
+
 - Maintains consistency with existing codebase
 - Supported by research showing Adam can outperform SGD with FedProx
 - Minimal code changes required
 - No need to re-tune hyperparameters
 
 **Implementation:**
+
 ```python
 def train_epoch(..., fedprox_mu=0.0, ...):
     # Always use AdamW
@@ -316,17 +353,20 @@ def train_epoch(..., fedprox_mu=0.0, ...):
 ### Option 2: Use SGD for All Cases
 
 **Rationale:**
+
 - Exact match to Li et al. original paper
 - Simpler optimizer state (no momentum buffers in federated setting)
 - Potentially easier to analyze theoretically
 
 **Challenges:**
+
 - Requires re-tuning ALL learning rates
 - May require momentum tuning (0.0 vs 0.9)
 - Disruptive to existing experiments
 - May reduce performance on complex architectures
 
 **Implementation:**
+
 ```python
 def train_epoch(..., fedprox_mu=0.0, ...):
     # Always use SGD
@@ -341,11 +381,13 @@ def train_epoch(..., fedprox_mu=0.0, ...):
 ### Option 3: Make Optimizer Configurable
 
 **Rationale:**
+
 - Maximum flexibility for experiments
 - Can compare SGD vs AdamW performance
 - Avoids hard-coding optimizer choice
 
 **Implementation:**
+
 ```python
 def _create_optimizer(parameters, lr, weight_decay, optimizer_type='adamw'):
     if optimizer_type == 'sgd':
@@ -378,27 +420,32 @@ The research definitively shows that:
 ## References
 
 ### Primary Sources
+
 - Li, T., Sahu, A. K., Zaheer, M., Sanjabi, M., Talwalkar, A., & Smith, V. (2020). Federated optimization in heterogeneous networks. Proceedings of Machine Learning and Systems, 2, 429-450.
 - FedProx Paper (arXiv): https://arxiv.org/abs/1812.06127
 - FedProx Paper (MLSys 2020): https://proceedings.mlsys.org/paper_files/paper/2020/file/1f5fe83998a09396ebe6477d9475ba0c-Paper.pdf
 
 ### Reference Implementations
+
 - Official FedProx (TensorFlow): https://github.com/litian96/FedProx
 - FedNova (PyTorch): https://github.com/JYWa/FedNova
 - ki-ljl FedProx-PyTorch: https://github.com/ki-ljl/FedProx-PyTorch
 - c-gabri Federated-Learning-PyTorch: https://github.com/c-gabri/Federated-Learning-PyTorch
 
 ### Framework Implementations
+
 - Flower FedProx Baseline: https://flower.ai/docs/baselines/fedprox.html
 - Flower FedProx Strategy: https://flower.ai/docs/framework/ref-api/flwr.server.strategy.FedProx.html
 - TensorFlow Federated: https://www.tensorflow.org/federated/api_docs/python/tff/learning/algorithms/build_weighted_fed_prox
 
 ### Research Papers
+
 - Reddi, S., Charles, Z., Zaheer, M., et al. (2021). Adaptive federated optimization. ICLR 2021. https://arxiv.org/pdf/2003.00295
 - Wang, J., et al. (2024). An empirical study of efficiency and privacy of federated learning algorithms. https://arxiv.org/html/2312.15375v1
 - Marfoq, O., et al. (2024). Not all federated learning algorithms are created equal. https://arxiv.org/html/2403.17287v1
 
 ### GitHub Issues and Discussions
+
 - FedProx Issue #6: Proximal term implementation: https://github.com/litian96/FedProx/issues/6
 - Flower PR #1513: FedProx MNIST baseline: https://github.com/adap/flower/pull/1513
 - PyTorch Forum: FedProx loss implementation: https://discuss.pytorch.org/t/help-fedprox-loss-implementation/93375

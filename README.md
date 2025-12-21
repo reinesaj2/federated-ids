@@ -441,6 +441,7 @@ python scripts/prepare_unsw_sample.py \
 Edge‑IIoTset (2022) is integrated with three tiers and dedicated preprocessing fixes to keep memory in check.
 
 Tiers (materialized by `scripts/setup_real_datasets.py` if present, or by the sample prep script below):
+
 - `edge-iiotset-quick` (~50k rows, CI smoke)
 - `edge-iiotset-nightly` (~500k rows, scheduled runs)
 - `edge-iiotset-full` (~1.7M rows, full thesis runs)
@@ -462,6 +463,7 @@ python scripts/plot_metrics.py --run_dir runs --output_dir runs/plots_edge_quick
 ```
 
 Notes:
+
 - Preprocessing drops high-cardinality identifier columns to avoid OOM (see `docs/EDGE_IIOTSET_PREPROCESSING_FIX.md`).
 - For full-scale runs, use chunked loader via `scripts/setup_real_datasets.py` or the prep script above; ensure enough RAM/disk.
 

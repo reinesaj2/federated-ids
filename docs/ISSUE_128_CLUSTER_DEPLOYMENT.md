@@ -36,6 +36,7 @@ This guide provides complete instructions for deploying **Issue #128** experimen
 ### 1. Cluster Access
 
 **Off-campus**: Use SSH jump host via `stu.cs.jmu.edu`
+
 ```bash
 # Configure SSH jump host in ~/.ssh/config
 Host jmu-cluster
@@ -45,6 +46,7 @@ Host jmu-cluster
 ```
 
 **On-campus**: Direct SSH
+
 ```bash
 ssh <your-eid>@login02.cluster.cs.jmu.edu
 ```
@@ -75,6 +77,7 @@ scp data/edge-iiotset/edge_iiotset_quick.csv \
 ```
 
 **Dataset sizes**:
+
 - CIC: ~3.5 MB (9,971 samples)
 - UNSW: ~20 MB (82,332 samples)
 - Edge-IIoTset quick: ~26 MB (50,000 samples)
@@ -117,6 +120,7 @@ sbatch scripts/cluster/sbatch_mixed_silo_3dataset.sh
 ```
 
 **Output**:
+
 ```
 Submitted batch job 174500
 ```
@@ -135,6 +139,7 @@ watch -n 5 'squeue -u $USER'
 ```
 
 **Job states**:
+
 - `PD`: Pending (waiting for resources)
 - `R`: Running
 - `CG`: Completing
@@ -160,13 +165,13 @@ scancel -u $USER
 The sbatch script splits 360 configs across **6 array tasks**:
 
 | Task ID | Split Index | Configs | Estimated Runtime |
-|---------|-------------|---------|-------------------|
-| 0 | 0/6 | 60 | 15-20 hours |
-| 1 | 1/6 | 60 | 15-20 hours |
-| 2 | 2/6 | 60 | 15-20 hours |
-| 3 | 3/6 | 60 | 15-20 hours |
-| 4 | 4/6 | 60 | 15-20 hours |
-| 5 | 5/6 | 60 | 15-20 hours |
+| ------- | ----------- | ------- | ----------------- |
+| 0       | 0/6         | 60      | 15-20 hours       |
+| 1       | 1/6         | 60      | 15-20 hours       |
+| 2       | 2/6         | 60      | 15-20 hours       |
+| 3       | 3/6         | 60      | 15-20 hours       |
+| 4       | 4/6         | 60      | 15-20 hours       |
+| 5       | 5/6         | 60      | 15-20 hours       |
 
 **Parallelization**: All 6 tasks run simultaneously (subject to cluster availability).
 
@@ -256,6 +261,7 @@ python scripts/generate_thesis_plots.py \
 **Cause**: Cluster resource contention
 
 **Solution**:
+
 ```bash
 # Check queue status
 squeue
@@ -272,6 +278,7 @@ sbatch --array=0-2 scripts/cluster/sbatch_mixed_silo_3dataset.sh  # 3 tasks inst
 **Cause**: 12 clients × dataset size exceeds 8 GB
 
 **Solution**:
+
 ```bash
 # Edit sbatch script to increase memory
 #SBATCH --mem=16G  # Double memory allocation
@@ -284,6 +291,7 @@ sbatch --array=0-2 scripts/cluster/sbatch_mixed_silo_3dataset.sh  # 3 tasks inst
 **Cause**: Missing dataset files in scratch
 
 **Solution**:
+
 ```bash
 # Verify files exist
 ssh jmu-cluster "ls -lh /scratch/$USER/federated-ids-128/datasets/cic/"
@@ -296,6 +304,7 @@ ssh jmu-cluster "ls -lh /scratch/$USER/federated-ids-128/datasets/cic/"
 **Cause**: Missing Python dependencies
 
 **Solution**:
+
 ```bash
 # On cluster
 cd /scratch/$USER/federated-ids-128/repo
@@ -310,6 +319,7 @@ pip install -r requirements.txt
 **Cause**: Too many logs or metrics files
 
 **Solution**:
+
 ```bash
 # Check quota
 df -h /scratch/$USER
@@ -371,6 +381,7 @@ du -sh /scratch/$USER/federated-ids-128/*
 ### Metrics Files
 
 Each experiment generates:
+
 - `metrics.csv`: Server-side metrics (accuracy, loss, aggregation stats)
 - `client_*_metrics.csv`: Per-client metrics (local loss, gradients, DP stats)
 - `config.json`: Experiment configuration

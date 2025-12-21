@@ -800,6 +800,9 @@ def load_cic_ids2017(csv_path: str, use_multiclass: bool = True) -> tuple[pd.Dat
     # Normalize negative/benign label naming to BENIGN for consistency
     df[label_col] = df[label_col].astype(str).str.strip().str.upper()
     df[label_col] = df[label_col].replace({"NORMAL": "BENIGN"})
+    numeric_cols = [c for c in df.select_dtypes(include=[np.number]).columns if c != label_col]
+    if numeric_cols:
+        df[numeric_cols] = df[numeric_cols].astype(np.float32)
 
     if not use_multiclass:
         df[label_col] = _collapse_labels_to_binary(df[label_col])

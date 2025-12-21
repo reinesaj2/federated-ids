@@ -148,6 +148,32 @@ def test_load_cic_ids2017_drops_infinite_rows(tmp_path):
     assert label_col == "Label"
 
 
+def test_load_cic_ids2017_downcasts_numeric_columns_to_float32(tmp_path):
+    flow_durations = [1.0, 2.0]
+    dst_ports = [80, 443]
+    labels = ["BENIGN", "ATTACK"]
+    df = pd.DataFrame(
+        {
+            "Flow Duration": flow_durations,
+            "Dst Port": dst_ports,
+            "Label": labels,
+        }
+    )
+    csv_path = tmp_path / "cic_numeric.csv"
+    df.to_csv(csv_path, index=False)
+
+    loaded_df, label_col, _ = load_cic_ids2017(str(csv_path))
+
+    expected_dtypes = {
+        "Flow Duration": np.dtype("float32"),
+        "Dst Port": np.dtype("float32"),
+    }
+    actual_dtypes = {col: loaded_df[col].dtype for col in expected_dtypes}
+
+    assert label_col == "Label"
+    assert actual_dtypes == expected_dtypes
+
+
 def test_load_unsw_nb15_binary_classification_maps_numeric_labels(tmp_path):
     benign_label = 0
     attack_label = 1

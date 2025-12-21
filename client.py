@@ -1072,9 +1072,7 @@ class TorchClient(fl.client.NumPyClient):
         return loss, num_examples, {"accuracy": acc}
 
 
-def main() -> None:
-    configure_logging()
-    logger = get_logger("client")
+def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Flower client for Federated IDS demo")
     parser.add_argument("--server_address", type=str, default="127.0.0.1:8080")
     parser.add_argument(
@@ -1137,7 +1135,7 @@ def main() -> None:
         "--adversary_mode",
         type=str,
         default="none",
-        choices=["none", "label_flip", "grad_ascent"],
+        choices=["none", "label_flip", "grad_ascent", "sign_flip_topk", "targeted_label"],
         help="Adversarial client behavior for robustness smoke tests",
     )
     parser.add_argument("--local_epochs", type=int, default=1)
@@ -1231,6 +1229,13 @@ def main() -> None:
         default="./logs",
         help="Directory for metrics logging",
     )
+    return parser
+
+
+def main() -> None:
+    configure_logging()
+    logger = get_logger("client")
+    parser = build_arg_parser()
     args = parser.parse_args()
 
     set_global_seed(args.seed)

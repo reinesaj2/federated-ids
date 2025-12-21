@@ -31,16 +31,17 @@
 | **Total (P0+P2)**                        | **480**  |                   |
 
 ---
+
 ## Scope Note: Cross-Silo, Hybrid, and CIC Parity
 
 This runbook covers **Edge-IIoTset full-dataset NeurIPS gap closure only**. It does **not** include mixed-silo cross-dataset experiments (Issue #128) or the hybrid dataset sweep.
 
 ### Additional Required Work (Not Included in 420)
 
-| Objective Area                              | Source Doc                             | Required Jobs | Optional Jobs | Notes |
-| ------------------------------------------- | -------------------------------------- | ------------: | ------------: | ----- |
-| Mixed-silo 3-dataset federation (Issue #128) | `docs/ISSUE_128_CLUSTER_DEPLOYMENT.md` | 360           | 0             | 4 aggregators × 3 μ × 3 adv × 10 seeds |
-| Hybrid dataset NeurIPS sweep                | `docs/HYBRID_RUNBOOK.md`               | 1400          | 320           | Optional = hybrid robustness extension |
+| Objective Area                               | Source Doc                             | Required Jobs | Optional Jobs | Notes                                  |
+| -------------------------------------------- | -------------------------------------- | ------------: | ------------: | -------------------------------------- |
+| Mixed-silo 3-dataset federation (Issue #128) | `docs/ISSUE_128_CLUSTER_DEPLOYMENT.md` |           360 |             0 | 4 aggregators × 3 μ × 3 adv × 10 seeds |
+| Hybrid dataset NeurIPS sweep                 | `docs/HYBRID_RUNBOOK.md`               |          1400 |           320 | Optional = hybrid robustness extension |
 
 ### CIC Full-Scale Parity Requirement
 

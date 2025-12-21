@@ -10,6 +10,7 @@
 All 16 validation experiments completed successfully. The AdamW-based FedProx implementation (always using AdamW optimizer regardless of mu value) produces **functionally equivalent results** to the previous implementation. The proximal term is working correctly and the optimizer change did NOT break FedProx functionality.
 
 **Key Finding:** Random seed variance (±0.07 F1) dominates small differences from proximal term strength (±0.01 F1), indicating that:
+
 1. The optimizer change is valid and maintains FedProx correctness
 2. FedProx shows minimal impact on this particular task/dataset
 3. Results are highly sensitive to random initialization
@@ -17,6 +18,7 @@ All 16 validation experiments completed successfully. The AdamW-based FedProx im
 ## Experimental Design
 
 ### Phase 1: IID Baseline Validation (alpha=1.0)
+
 Tests FedProx with homogeneous data distribution.
 
 - **Baseline (mu=0.0)**: F1=0.7059
@@ -27,21 +29,25 @@ Tests FedProx with homogeneous data distribution.
 **Conclusion:** No significant improvement from proximal term on IID data (expected behavior).
 
 ### Phase 2: High Non-IID Validation (alpha=0.1) - PRIMARY
+
 Tests FedProx with highly heterogeneous data distribution (primary thesis question).
 
 **Seed 42:**
+
 - **Baseline (mu=0.0)**: F1=0.6189
 - **Weak FedProx (mu=0.01)**: F1=0.6173 (-0.0016)
 - **Moderate FedProx (mu=0.1)**: F1=0.6179 (-0.0010)
 - **Strong FedProx (mu=1.0)**: F1=0.6197 (+0.0008)
 
 **Cross-seed variance (mu=0.0):**
+
 - Seed 42: F1=0.6189
 - Seed 43: F1=0.4917
 - Seed 44: F1=0.5068
 - Mean: 0.5391, Std: 0.0695
 
 **Cross-seed variance (mu=0.1):**
+
 - Seed 42: F1=0.6179
 - Seed 43: F1=0.4707
 - Seed 44: F1=0.5563
@@ -50,6 +56,7 @@ Tests FedProx with highly heterogeneous data distribution (primary thesis questi
 **Conclusion:** Proximal term differences (±0.001) are negligible compared to seed variance (±0.07). FedProx shows minimal benefit on this task.
 
 ### Phase 3: Moderate Non-IID Validation (alpha=0.5)
+
 Tests FedProx across heterogeneity spectrum.
 
 - **Baseline (mu=0.0)**: F1=0.6919
@@ -60,6 +67,7 @@ Tests FedProx across heterogeneity spectrum.
 **Conclusion:** Slight degradation from proximal term on moderate non-IID data.
 
 ### Phase 4: Statistical Significance Replications
+
 Validates consistency across random seeds for high non-IID case.
 
 **Results:** High variance across seeds (std=0.07) confirms that random initialization dominates other factors.
@@ -67,16 +75,19 @@ Validates consistency across random seeds for high non-IID case.
 ## Comparison to Previous Implementation
 
 **Previous Implementation (PR #181 - INCORRECT):**
+
 - Switched from AdamW to SGD when mu > 0
 - Set weight_decay=0.0 for FedProx
 - Not supported by any reference implementation
 
 **Current Implementation (Fixed):**
+
 - Always uses AdamW for all mu values
 - Maintains consistent weight_decay
 - Aligns with research showing adaptive optimizers work with FedProx
 
 **Impact of Change:**
+
 - No significant degradation in F1 scores
 - Proximal term still functions correctly (regularizes parameter drift)
 - Results are stable and reproducible
@@ -84,19 +95,25 @@ Validates consistency across random seeds for high non-IID case.
 ## Technical Validation
 
 ### 1. Proximal Term Functionality
+
 The proximal term `(mu/2)||w - w_global||²` is working correctly:
+
 - Metrics show L2 distance to global model is tracked
 - Parameter drift is regularized when mu > 0
 - Implementation matches reference implementations
 
 ### 2. Optimizer Compatibility
+
 AdamW works correctly with FedProx proximal term:
+
 - Proximal gradient is computed and added to loss
 - Optimizer processes the modified gradient correctly
 - No numerical instabilities observed
 
 ### 3. Reproducibility
+
 Results are consistent across:
+
 - Sequential execution (16 experiments, one at a time)
 - Different parameter combinations
 - Multiple random seeds (high variance expected)
