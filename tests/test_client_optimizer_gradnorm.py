@@ -12,8 +12,9 @@ import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from client import SimpleNet, create_adamw_optimizer, train_epoch
+from client import SimpleNet, create_adamw_optimizer, get_parameters, train_epoch
 from client_metrics import ClientMetricsLogger
+from models.per_dataset_encoder import PerDatasetEncoderConfig, PerDatasetEncoderNet
 
 
 def test_create_adamw_optimizer_returns_adamw():
@@ -140,6 +141,49 @@ def test_client_metrics_logger_logs_grad_norm():
         logged_grad_norm = float(values[grad_norm_idx])
 
         assert logged_grad_norm == grad_norm_value
+
+
+def test_train_epoch_with_fedprox_ignores_batchnorm_buffers():
+    num_features = 6
+    num_classes = 2
+    num_samples = 20
+    batch_size = 4
+    learning_rate = 0.001
+    weight_decay = 1e-4
+    fedprox_mu = 0.1
+    random_seed = 123
+
+    torch.manual_seed(random_seed)
+    model = PerDatasetEncoderNet(
+        PerDatasetEncoderConfig(
+            dataset_name="cic",
+            input_dim=num_features,
+            num_classes=num_classes,
+            encoder_hidden=[4],
+            latent_dim=3,
+            shared_hidden=[2],
+            dropout=0.0,
+        )
+    )
+    device = torch.device("cpu")
+
+    x_train = torch.randn(num_samples, num_features)
+    y_train = torch.randint(0, num_classes, (num_samples,))
+    train_dataset = TensorDataset(x_train, y_train)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+
+    global_params = get_parameters(model)
+    loss = train_epoch(
+        model=model,
+        loader=train_loader,
+        device=device,
+        lr=learning_rate,
+        global_params=global_params,
+        fedprox_mu=fedprox_mu,
+        weight_decay=weight_decay,
+    )
+
+    assert isinstance(loss, float) and loss > 0.0
 
 
 def test_train_epoch_grad_norm_accumulation():
