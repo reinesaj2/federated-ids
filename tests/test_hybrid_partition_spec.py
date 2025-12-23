@@ -241,8 +241,21 @@ class TestSourceAwarePartition:
             fallback_warnings = [warning for warning in w if "Falling back to IID" in str(warning.message)]
             assert len(fallback_warnings) >= 1
 
+    def test_handles_single_source(self) -> None:
+        """Should work with only one source dataset."""
+        source_labels = ["cic"] * 100
+        attack_labels = [i % 7 for i in range(100)]
+
+        shards = source_aware_partition(source_labels, attack_labels, clients_per_source=3, alpha=0.5, seed=42)
+
+        assert len(shards) == 3
+        assert sum(len(s) for s in shards) == 100
+
 
 def test_prepare_partitions_source_strategy_isolates_sources() -> None:
+    seed = 42
+    num_clients = 3
+    alpha = 0.5
     df = pd.DataFrame(
         {
             "duration": [1.0, 2.0, 1.5, 2.5, 1.2, 2.2],
@@ -257,9 +270,9 @@ def test_prepare_partitions_source_strategy_isolates_sources() -> None:
         df=df,
         label_col="attack_class",
         partition_strategy="source",
-        num_clients=3,
-        seed=42,
-        alpha=0.5,
+        num_clients=num_clients,
+        seed=seed,
+        alpha=alpha,
         source_col="source_dataset",
     )
 
@@ -275,13 +288,3 @@ def test_prepare_partitions_source_strategy_isolates_sources() -> None:
         assert values.size == 1
         shard_values.append(values[0])
     assert len(set(shard_values)) == 3
-
-    def test_handles_single_source(self) -> None:
-        """Should work with only one source dataset."""
-        source_labels = ["cic"] * 100
-        attack_labels = [i % 7 for i in range(100)]
-
-        shards = source_aware_partition(source_labels, attack_labels, clients_per_source=3, alpha=0.5, seed=42)
-
-        assert len(shards) == 3
-        assert sum(len(s) for s in shards) == 100
