@@ -702,6 +702,9 @@ def run_federated_experiment(
                 # Get client-specific dataset config
                 client_dataset = config.get_client_dataset(client_id)
                 client_data_path = config.get_client_data_path(client_id)
+                partition_strategy = "dirichlet"
+                if client_dataset == "hybrid":
+                    partition_strategy = "source"
 
                 client_cmd = [
                     "python",
@@ -713,7 +716,7 @@ def run_federated_experiment(
                     "--data_path",
                     client_data_path,
                     "--partition_strategy",
-                    "dirichlet",  # Always use Dirichlet; alpha controls heterogeneity
+                    partition_strategy,
                     "--alpha",
                     str(config.alpha),
                     "--num_clients",

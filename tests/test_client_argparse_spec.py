@@ -24,3 +24,17 @@ def test_build_arg_parser_accepts_adversary_modes(attack_mode: str) -> None:
     args = parser.parse_args(["--adversary_mode", attack_mode])
 
     assert args.adversary_mode == attack_mode
+
+
+def test_build_arg_parser_accepts_hybrid_dataset() -> None:
+    parser = client.build_arg_parser()
+    args = parser.parse_args(["--dataset", "hybrid"])
+
+    assert args.dataset == "hybrid"
+
+
+def test_build_arg_parser_accepts_source_partition_strategy() -> None:
+    parser = client.build_arg_parser()
+    args = parser.parse_args(["--partition_strategy", "source"])
+
+    assert args.partition_strategy == "source"

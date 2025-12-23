@@ -133,6 +133,14 @@ The hybrid dataset is designed for federated learning experiments:
 
 3. **Attack Coverage**: Unified taxonomy enables consistent evaluation across diverse attack scenarios
 
+### Client Usage
+
+Run a hybrid client with source-aware partitioning:
+
+```bash
+python client.py --dataset hybrid --data_path data/hybrid/hybrid_ids_dataset_full.csv.gz --partition_strategy source
+```
+
 ### Example: Dirichlet Partitioning with Source Awareness
 
 ```python
