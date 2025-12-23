@@ -16,7 +16,9 @@ import pytest
 
 from data_preprocessing import (
     MIN_SAMPLES_PER_CLASS,
+    infer_feature_columns,
     load_hybrid_dataset,
+    prepare_partitions_from_dataframe,
     source_aware_partition,
 )
 
@@ -248,3 +250,41 @@ class TestSourceAwarePartition:
 
         assert len(shards) == 3
         assert sum(len(s) for s in shards) == 100
+
+
+def test_prepare_partitions_source_strategy_isolates_sources() -> None:
+    seed = 42
+    num_clients = 3
+    alpha = 0.5
+    df = pd.DataFrame(
+        {
+            "duration": [1.0, 2.0, 1.5, 2.5, 1.2, 2.2],
+            "source_id": [0, 0, 1, 1, 2, 2],
+            "source_dataset": ["cic", "cic", "unsw", "unsw", "iiot", "iiot"],
+            "attack_class": [0, 1, 0, 1, 0, 1],
+            "attack_label_original": ["BENIGN", "DOS", "BENIGN", "DOS", "BENIGN", "DOS"],
+        }
+    )
+
+    _pre, X_parts, _y_parts, num_classes = prepare_partitions_from_dataframe(
+        df=df,
+        label_col="attack_class",
+        partition_strategy="source",
+        num_clients=num_clients,
+        seed=seed,
+        alpha=alpha,
+        source_col="source_dataset",
+    )
+
+    assert num_classes == 2
+    assert len(X_parts) == 3
+
+    numeric_cols, _ = infer_feature_columns(df, "attack_class", drop_cols=[])
+    source_idx = numeric_cols.index("source_id")
+    shard_values = []
+    for shard in X_parts:
+        shard_matrix = shard.toarray() if hasattr(shard, "toarray") else shard
+        values = np.unique(np.round(shard_matrix[:, source_idx], 6))
+        assert values.size == 1
+        shard_values.append(values[0])
+    assert len(set(shard_values)) == 3

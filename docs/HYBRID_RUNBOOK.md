@@ -39,7 +39,7 @@ Expected: `passes_minimum_checks=true` and audit JSON at `data/hybrid/hybrid_ids
 Hybrid runs assume the client can load the hybrid dataset and partition it in a source-aware way. If your branch does not yet support:
 
 - `--dataset hybrid` in `client.py`, and
-- source-aware partitioning using the `source_dataset` column,
+- source-aware partitioning using the `source_dataset` column (`--partition_strategy source`),
 
 enable those first before launching the sweep.
 

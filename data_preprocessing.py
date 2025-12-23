@@ -1108,6 +1108,7 @@ def prepare_partitions_from_dataframe(
     protocol_col: str | None = None,
     leakage_safe: bool = False,
     protocol_mapping: dict[str, int] | None = None,
+    source_col: str | None = None,
 ) -> tuple[ColumnTransformer, list[np.ndarray], list[np.ndarray], int]:
     # Drop default identifiers/time proxies if leakage_safe
     drop_cols = DEFAULT_DROP_COLS if leakage_safe else None
@@ -1138,6 +1139,24 @@ def prepare_partitions_from_dataframe(
             num_clients=num_clients,
             seed=seed,
             protocol_mapping=protocol_mapping,
+        )
+    elif partition_strategy == "source":
+        if not source_col or source_col not in df.columns:
+            raise ValueError("source partition requires a valid source_col present in dataframe")
+        source_labels = df[source_col].astype(str).tolist()
+        unique_sources = sorted(set(source_labels))
+        if not unique_sources:
+            raise ValueError("source partition requires at least one source label")
+        if num_clients % len(unique_sources) != 0:
+            raise ValueError("source partition requires num_clients divisible by number of sources")
+        clients_per_source = num_clients // len(unique_sources)
+        shards = source_aware_partition(
+            source_labels=source_labels,
+            attack_labels=y_all,
+            clients_per_source=clients_per_source,
+            alpha=alpha,
+            seed=seed,
+            min_samples_per_class=MIN_SAMPLES_PER_CLASS,
         )
     else:
         raise ValueError(f"Unknown partition_strategy: {partition_strategy}")

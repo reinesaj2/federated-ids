@@ -24,6 +24,7 @@ from data_preprocessing import (
     load_unsw_nb15,
     load_cic_ids2017,
     load_edge_iiotset,
+    load_hybrid_dataset,
     prepare_partitions_from_dataframe,
     numpy_to_loaders,
     numpy_to_temporal_train_val_test_loaders,
@@ -1091,7 +1092,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--dataset",
         type=str,
         default="synthetic",
-        choices=["synthetic", "unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full"],
+        choices=["synthetic", "unsw", "cic", "edge-iiotset-quick", "edge-iiotset-nightly", "edge-iiotset-full", "hybrid"],
     )
     parser.add_argument(
         "--model_arch",
@@ -1111,7 +1112,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--partition_strategy",
         type=str,
         default="iid",
-        choices=["iid", "dirichlet", "protocol"],
+        choices=["iid", "dirichlet", "protocol", "source"],
     )
     parser.add_argument("--num_clients", type=int, default=2)
     parser.add_argument("--client_id", type=int, default=0, help="Client index in [0, num_clients)")
@@ -1266,6 +1267,7 @@ def main() -> None:
     class_names: list[str] = []
     protocol_mapping: dict[str, int] | None = None
     model_metadata: dict[str, str | int] = {}
+    source_col: str | None = None
 
     val_loader = None
     if args.dataset == "synthetic":
@@ -1290,13 +1292,17 @@ def main() -> None:
         )
     else:
         if not args.data_path:
-            raise SystemExit("--data_path is required for dataset unsw/cic/edge-iiotset")
+            raise SystemExit("--data_path is required for dataset unsw/cic/edge-iiotset/hybrid")
         if args.dataset == "unsw":
             df, label_col, proto_col = load_unsw_nb15(args.data_path, use_multiclass=not args.binary_classification)
         elif args.dataset == "cic":
             df, label_col, proto_col = load_cic_ids2017(args.data_path, use_multiclass=not args.binary_classification)
         elif args.dataset.startswith("edge-iiotset"):
             df, label_col, proto_col = load_edge_iiotset(args.data_path, use_multiclass=not args.binary_classification)
+        elif args.dataset == "hybrid":
+            df, label_col, proto_col, source_col = load_hybrid_dataset(args.data_path)
+            if args.binary_classification:
+                df[label_col] = df[label_col].apply(lambda value: "BENIGN" if int(value) == 0 else "ATTACK")
         else:
             raise SystemExit(f"Unknown dataset: {args.dataset}")
         chosen_proto_col = args.protocol_col or (proto_col or "")
@@ -1319,16 +1325,20 @@ def main() -> None:
                 if normalized_idx < 0 or normalized_idx >= args.num_clients:
                     raise SystemExit(f"protocol mapping client id {normalized_idx} must be in [0, {args.num_clients})")
                 protocol_mapping[normalized_proto] = normalized_idx
+        partition_strategy = args.partition_strategy
+        if args.dataset == "hybrid" and args.partition_strategy in {"iid", "dirichlet"}:
+            partition_strategy = "source"
         pre, X_parts, y_parts, num_classes_global = prepare_partitions_from_dataframe(
             df=df,
             label_col=label_col,
-            partition_strategy=args.partition_strategy,
+            partition_strategy=partition_strategy,
             num_clients=args.num_clients,
             seed=args.seed,
             alpha=args.alpha,
             protocol_col=chosen_proto_col if chosen_proto_col else None,
             leakage_safe=bool(args.leakage_safe),
             protocol_mapping=protocol_mapping,
+            source_col=source_col,
         )
         if args.client_id < 0 or args.client_id >= len(X_parts):
             raise SystemExit(f"client_id must be in [0, {len(X_parts)})")
