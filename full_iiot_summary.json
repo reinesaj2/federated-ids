@@ -1,0 +1,40 @@
+{
+  "total_experiments": 2871,
+  "high_performers_95": 0,
+  "high_performers_90": 0,
+  "best_macro_f1": 0.761787083514781,
+  "mean_macro_f1": 0.41300948029823215,
+  "std_macro_f1": 0.21719909485533803,
+  "aggregators": {
+    "bulyan": {
+      "count": 391,
+      "mean_f1": 0.5726970410442415,
+      "max_f1": 0.7262270726455017,
+      "high_performers_95": 0
+    },
+    "fedavg": {
+      "count": 629,
+      "mean_f1": 0.2646307138221144,
+      "max_f1": 0.7256766875732434,
+      "high_performers_95": 0
+    },
+    "fedprox": {
+      "count": 389,
+      "mean_f1": 0.2997468624346491,
+      "max_f1": 0.761787083514781,
+      "high_performers_95": 0
+    },
+    "krum": {
+      "count": 812,
+      "mean_f1": 0.43606682621772597,
+      "max_f1": 0.721967065764919,
+      "high_performers_95": 0
+    },
+    "median": {
+      "count": 650,
+      "mean_f1": 0.4995156361814527,
+      "max_f1": 0.7320510815401773,
+      "high_performers_95": 0
+    }
+  }
+}
