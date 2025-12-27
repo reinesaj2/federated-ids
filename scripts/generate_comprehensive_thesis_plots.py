@@ -54,6 +54,12 @@ COLORS = {
 }
 
 
+def _add_legend_if_labels(ax: plt.Axes, **kwargs: object) -> None:
+    handles, _ = ax.get_legend_handles_labels()
+    if handles:
+        ax.legend(**kwargs)
+
+
 def get_max_attack_level_for_aggregator(agg: str) -> int:
     """
     Get maximum attack level for aggregator based on Byzantine resilience constraints.
@@ -191,7 +197,7 @@ def plot_robustness_l2_vs_attack(df: pd.DataFrame, ax: plt.Axes):
     ax.set_xlabel("Adversary Percentage (%)", fontsize=11)
     ax.set_ylabel("L2 Distance to Benign Mean", fontsize=11)
     ax.set_title("Robustness: Distance from Poisoned Consensus", fontsize=12, fontweight="bold")
-    ax.legend(loc="best")
+    _add_legend_if_labels(ax, loc="best")
     ax.grid(True, alpha=0.3)
     ax.axhline(y=0, color="black", linestyle=":", linewidth=1, alpha=0.5)
 
@@ -226,7 +232,7 @@ def plot_utility_vs_attack(df: pd.DataFrame, ax: plt.Axes):
     ax.set_xlabel("Adversary Percentage (%)", fontsize=11)
     ax.set_ylabel("Final Macro F1 Score", fontsize=11)
     ax.set_title("Utility Under Attack", fontsize=12, fontweight="bold")
-    ax.legend(loc="best")
+    _add_legend_if_labels(ax, loc="best")
     ax.grid(True, alpha=0.3)
     ax.set_ylim([0, 1.0])
 
@@ -252,7 +258,7 @@ def plot_convergence_trajectories(df: pd.DataFrame, ax: plt.Axes):
     ax.set_xlabel("Communication Round", fontsize=10)
     ax.set_ylabel("Macro F1 Score", fontsize=10)
     ax.set_title("Convergence Under Max Attack", fontsize=11, fontweight="bold")
-    ax.legend(loc="best", fontsize=8)
+    _add_legend_if_labels(ax, loc="best", fontsize=8)
     ax.grid(True, alpha=0.3)
     ax.text(
         0.98,
@@ -350,7 +356,7 @@ def plot_robustness_utility_tradeoff(df: pd.DataFrame, ax: plt.Axes):
     ax.set_xlabel("L2 Distance (Robustness →)", fontsize=10)
     ax.set_ylabel("Final F1 Score (Utility →)", fontsize=10)
     ax.set_title("Robustness-Utility Tradeoff", fontsize=11, fontweight="bold")
-    ax.legend(loc="best", fontsize=8)
+    _add_legend_if_labels(ax, loc="best", fontsize=8)
     ax.grid(True, alpha=0.3)
 
     # Add colorbar
@@ -431,7 +437,7 @@ def plot_aggregator_performance_bars(df: pd.DataFrame, ax: plt.Axes):
     ax.set_title("Performance Comparison Across Attack Intensities (95% CI)", fontsize=12, fontweight="bold")
     ax.set_xticks(x + width * (len(all_attack_levels) - 1) / 2)
     ax.set_xticklabels(["FedAvg", "Krum", "Bulyan", "Median"])
-    ax.legend(loc="best")
+    _add_legend_if_labels(ax, loc="best")
     ax.grid(axis="y", alpha=0.3)
     ax.set_ylim([0, 1.0])
     ax.text(
@@ -522,7 +528,7 @@ def plot_f1_vs_alpha(df: pd.DataFrame, ax: plt.Axes):
     ax.set_ylabel("Final Macro F1 Score", fontsize=11)
     ax.set_title("Performance vs Data Heterogeneity (Benign)", fontsize=12, fontweight="bold")
     ax.set_xscale("log")
-    ax.legend(loc="best")
+    _add_legend_if_labels(ax, loc="best")
     ax.grid(True, alpha=0.3)
     ax.axvline(x=1.0, color="gray", linestyle=":", label="IID threshold")
 
@@ -564,7 +570,7 @@ def plot_convergence_speed(df: pd.DataFrame, ax: plt.Axes):
     ax.set_ylabel("Rounds to 90% Final F1", fontsize=10)
     ax.set_title("Convergence Speed", fontsize=11, fontweight="bold")
     ax.set_xscale("log")
-    ax.legend(loc="best", fontsize=8)
+    _add_legend_if_labels(ax, loc="best", fontsize=8)
     ax.grid(True, alpha=0.3)
 
 
@@ -593,7 +599,7 @@ def plot_drift_by_alpha(df: pd.DataFrame, ax: plt.Axes):
     ax.set_ylabel("Final L2 Dispersion", fontsize=10)
     ax.set_title("Client Model Drift", fontsize=11, fontweight="bold")
     ax.set_xscale("log")
-    ax.legend(loc="best", fontsize=8)
+    _add_legend_if_labels(ax, loc="best", fontsize=8)
     ax.grid(True, alpha=0.3)
 
 
@@ -652,7 +658,7 @@ def plot_iid_vs_noniid(df: pd.DataFrame, ax: plt.Axes):
     ax.set_title("IID vs Non-IID Performance", fontsize=11, fontweight="bold")
     ax.set_xticks(x + width / 2)
     ax.set_xticklabels(["FedAvg", "Krum", "Bulyan", "Median"])
-    ax.legend(loc="best", fontsize=8)
+    _add_legend_if_labels(ax, loc="best", fontsize=8)
     ax.grid(axis="y", alpha=0.3)
 
 
@@ -676,7 +682,7 @@ def plot_alpha_convergence_trajectories(df: pd.DataFrame, ax: plt.Axes):
     ax.set_xlabel("Communication Round", fontsize=11)
     ax.set_ylabel("Macro F1 Score", fontsize=11)
     ax.set_title("FedAvg Convergence Under Different Heterogeneity Levels", fontsize=12, fontweight="bold")
-    ax.legend(loc="best")
+    _add_legend_if_labels(ax, loc="best")
     ax.grid(True, alpha=0.3)
 
 
@@ -750,7 +756,7 @@ def plot_gain_vs_adversary(df: pd.DataFrame, ax: plt.Axes):
     ax.set_ylabel("Mean Personalization Gain (ΔF1)", fontsize=11)
     ax.set_title("Personalization Benefit vs Attack Intensity", fontsize=12, fontweight="bold")
     ax.axhline(y=0, color="black", linestyle=":", linewidth=1.5, label="Break-even")
-    ax.legend(loc="best")
+    _add_legend_if_labels(ax, loc="best")
     ax.grid(True, alpha=0.3)
 
 
@@ -780,7 +786,7 @@ def plot_gain_vs_heterogeneity(df: pd.DataFrame, ax: plt.Axes):
     ax.set_title("Gain vs Heterogeneity", fontsize=11, fontweight="bold")
     ax.set_xscale("log")
     ax.axhline(y=0, color="black", linestyle=":", linewidth=1)
-    ax.legend(loc="best", fontsize=8)
+    _add_legend_if_labels(ax, loc="best", fontsize=8)
     ax.grid(True, alpha=0.3)
 
 
@@ -807,7 +813,7 @@ def plot_gain_by_epochs(df: pd.DataFrame, ax: plt.Axes):
     ax.set_xlabel("Personalization Epochs", fontsize=10)
     ax.set_ylabel("Mean Gain (ΔF1)", fontsize=10)
     ax.set_title("Gain by Training Duration", fontsize=11, fontweight="bold")
-    ax.legend(loc="best", fontsize=8)
+    _add_legend_if_labels(ax, loc="best", fontsize=8)
     ax.grid(True, alpha=0.3)
 
 
@@ -840,7 +846,7 @@ def plot_personalization_risk(df: pd.DataFrame, ax: plt.Axes):
     ax.set_xlabel("Adversary %", fontsize=10)
     ax.set_ylabel("Client Distribution (%)", fontsize=10)
     ax.set_title("Personalization Risk Profile", fontsize=11, fontweight="bold")
-    ax.legend(loc="best", fontsize=8)
+    _add_legend_if_labels(ax, loc="best", fontsize=8)
     ax.set_ylim([0, 100])
     ax.grid(axis="y", alpha=0.3)
 
@@ -894,7 +900,7 @@ def plot_before_after_comparison(df: pd.DataFrame, ax: plt.Axes):
     ax.set_xlabel("Global Model F1 (Before)", fontsize=11)
     ax.set_ylabel("Personalized Model F1 (After)", fontsize=11)
     ax.set_title("Personalization Impact: Before vs After (Benign Conditions)", fontsize=12, fontweight="bold")
-    ax.legend(loc="best")
+    _add_legend_if_labels(ax, loc="best")
     ax.grid(True, alpha=0.3)
     ax.set_aspect('equal')
 
@@ -983,7 +989,7 @@ def plot_time_vs_attack(df: pd.DataFrame, ax: plt.Axes):
     ax.set_xlabel("Adversary %", fontsize=10)
     ax.set_ylabel("Mean Time (ms)", fontsize=10)
     ax.set_title("Overhead vs Attack Level", fontsize=11, fontweight="bold")
-    ax.legend(loc="best", fontsize=8)
+    _add_legend_if_labels(ax, loc="best", fontsize=8)
     ax.set_yscale("log")
     ax.grid(True, alpha=0.3)
 
@@ -1014,7 +1020,7 @@ def plot_time_vs_alpha(df: pd.DataFrame, ax: plt.Axes):
     ax.set_title("Overhead vs Heterogeneity", fontsize=11, fontweight="bold")
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.legend(loc="best", fontsize=8)
+    _add_legend_if_labels(ax, loc="best", fontsize=8)
     ax.grid(True, alpha=0.3)
 
 
@@ -1040,7 +1046,7 @@ def plot_cost_benefit(df: pd.DataFrame, ax: plt.Axes):
     ax.set_ylabel("F1 Score Under Max Attack", fontsize=11)
     ax.set_title("Cost-Benefit Tradeoff: Computational Cost vs Security", fontsize=12, fontweight="bold")
     ax.set_xscale("log")
-    ax.legend(loc="best")
+    _add_legend_if_labels(ax, loc="best")
     ax.grid(True, alpha=0.3)
     ax.text(
         0.02,
@@ -1081,7 +1087,7 @@ def plot_overhead_comparison(df: pd.DataFrame, ax: plt.Axes):
     ax.set_ylabel("Relative Overhead (× FedAvg)", fontsize=10)
     ax.set_title("Overhead Multiplier", fontsize=11, fontweight="bold")
     ax.axhline(y=1, color="black", linestyle="--", linewidth=1, label="FedAvg Baseline")
-    ax.legend(loc="best", fontsize=8)
+    _add_legend_if_labels(ax, loc="best", fontsize=8)
     ax.grid(axis="y", alpha=0.3)
 
 
@@ -1113,7 +1119,7 @@ def plot_cumulative_time(df: pd.DataFrame, ax: plt.Axes):
     ax.set_xlabel("Communication Round", fontsize=11)
     ax.set_ylabel("Cumulative Aggregation Time (ms)", fontsize=11)
     ax.set_title("Total Computational Cost Over Training (α=0.5, Benign)", fontsize=12, fontweight="bold")
-    ax.legend(loc="best")
+    _add_legend_if_labels(ax, loc="best")
     ax.grid(True, alpha=0.3)
 
 

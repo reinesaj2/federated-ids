@@ -259,8 +259,9 @@ def test_ensure_minimum_samples_raises_when_insufficient_runs(tmp_path: Path) ->
         )
     ]
 
-    with pytest.raises(ValueError, match="alpha=0.1 mu=0.0 algorithm=FedAvg"):
-        ensure_minimum_samples(runs, minimum=5)
+    with pytest.warns(UserWarning, match="Under-sampled config"):
+        with pytest.raises(ValueError, match="alpha=0.1 mu=0.0 algorithm=FedAvg"):
+            ensure_minimum_samples(runs, minimum=5)
 
 
 def test_compute_paired_statistics_uses_statistical_utils(tmp_path: Path) -> None:

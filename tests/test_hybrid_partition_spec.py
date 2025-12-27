@@ -22,6 +22,9 @@ from data_preprocessing import (
     source_aware_partition,
 )
 
+ATTACK_CLASSES = 7
+SAMPLES_PER_SOURCE = 105
+
 
 class TestLoadHybridDataset:
     """Tests for load_hybrid_dataset function."""
@@ -137,9 +140,9 @@ class TestSourceAwarePartition:
 
     def test_all_indices_covered_exactly_once(self) -> None:
         """Every input index should appear exactly once across all shards."""
-        n_samples = 300
-        source_labels = ["cic"] * 100 + ["unsw"] * 100 + ["iiot"] * 100
-        attack_labels = [i % 7 for i in range(n_samples)]
+        n_samples = SAMPLES_PER_SOURCE * 3
+        source_labels = ["cic"] * SAMPLES_PER_SOURCE + ["unsw"] * SAMPLES_PER_SOURCE + ["iiot"] * SAMPLES_PER_SOURCE
+        attack_labels = [i % ATTACK_CLASSES for i in range(n_samples)]
 
         shards = source_aware_partition(source_labels, attack_labels, clients_per_source=3, alpha=0.5, seed=42)
 
@@ -151,8 +154,8 @@ class TestSourceAwarePartition:
 
     def test_no_overlap_between_shards(self) -> None:
         """No index should appear in multiple shards."""
-        source_labels = ["cic"] * 100 + ["unsw"] * 100 + ["iiot"] * 100
-        attack_labels = [i % 7 for i in range(300)]
+        source_labels = ["cic"] * SAMPLES_PER_SOURCE + ["unsw"] * SAMPLES_PER_SOURCE + ["iiot"] * SAMPLES_PER_SOURCE
+        attack_labels = [i % ATTACK_CLASSES for i in range(SAMPLES_PER_SOURCE * 3)]
 
         shards = source_aware_partition(source_labels, attack_labels, clients_per_source=3, alpha=0.5, seed=42)
 
@@ -164,8 +167,8 @@ class TestSourceAwarePartition:
 
     def test_correct_number_of_clients(self) -> None:
         """Should produce num_sources * clients_per_source shards."""
-        source_labels = ["cic"] * 100 + ["unsw"] * 100 + ["iiot"] * 100
-        attack_labels = [i % 7 for i in range(300)]
+        source_labels = ["cic"] * SAMPLES_PER_SOURCE + ["unsw"] * SAMPLES_PER_SOURCE + ["iiot"] * SAMPLES_PER_SOURCE
+        attack_labels = [i % ATTACK_CLASSES for i in range(SAMPLES_PER_SOURCE * 3)]
 
         shards = source_aware_partition(source_labels, attack_labels, clients_per_source=3, alpha=0.5, seed=42)
 
@@ -173,8 +176,8 @@ class TestSourceAwarePartition:
 
     def test_respects_source_boundaries(self) -> None:
         """Clients should only contain indices from their assigned source."""
-        source_labels = ["cic"] * 100 + ["unsw"] * 100 + ["iiot"] * 100
-        attack_labels = [i % 7 for i in range(300)]
+        source_labels = ["cic"] * SAMPLES_PER_SOURCE + ["unsw"] * SAMPLES_PER_SOURCE + ["iiot"] * SAMPLES_PER_SOURCE
+        attack_labels = [i % ATTACK_CLASSES for i in range(SAMPLES_PER_SOURCE * 3)]
 
         shards = source_aware_partition(source_labels, attack_labels, clients_per_source=3, alpha=0.5, seed=42)
 
@@ -193,7 +196,7 @@ class TestSourceAwarePartition:
     def test_iid_partition_when_alpha_inf(self) -> None:
         """alpha=inf should use IID partitioning within each source."""
         source_labels = ["cic"] * 100 + ["unsw"] * 100
-        attack_labels = [i % 7 for i in range(200)]
+        attack_labels = [i % ATTACK_CLASSES for i in range(200)]
 
         shards = source_aware_partition(source_labels, attack_labels, clients_per_source=2, alpha=float("inf"), seed=42)
 
@@ -202,8 +205,8 @@ class TestSourceAwarePartition:
 
     def test_deterministic_with_same_seed(self) -> None:
         """Same seed should produce identical partitions."""
-        source_labels = ["cic"] * 100 + ["unsw"] * 100 + ["iiot"] * 100
-        attack_labels = [i % 7 for i in range(300)]
+        source_labels = ["cic"] * SAMPLES_PER_SOURCE + ["unsw"] * SAMPLES_PER_SOURCE + ["iiot"] * SAMPLES_PER_SOURCE
+        attack_labels = [i % ATTACK_CLASSES for i in range(SAMPLES_PER_SOURCE * 3)]
 
         shards1 = source_aware_partition(source_labels, attack_labels, clients_per_source=3, alpha=0.5, seed=42)
         shards2 = source_aware_partition(source_labels, attack_labels, clients_per_source=3, alpha=0.5, seed=42)
@@ -213,8 +216,8 @@ class TestSourceAwarePartition:
 
     def test_different_seeds_produce_different_partitions(self) -> None:
         """Different seeds should produce different partitions."""
-        source_labels = ["cic"] * 100 + ["unsw"] * 100 + ["iiot"] * 100
-        attack_labels = [i % 7 for i in range(300)]
+        source_labels = ["cic"] * SAMPLES_PER_SOURCE + ["unsw"] * SAMPLES_PER_SOURCE + ["iiot"] * SAMPLES_PER_SOURCE
+        attack_labels = [i % ATTACK_CLASSES for i in range(SAMPLES_PER_SOURCE * 3)]
 
         shards1 = source_aware_partition(source_labels, attack_labels, clients_per_source=3, alpha=0.5, seed=42)
         shards2 = source_aware_partition(source_labels, attack_labels, clients_per_source=3, alpha=0.5, seed=99)
@@ -243,19 +246,19 @@ class TestSourceAwarePartition:
 
     def test_handles_single_source(self) -> None:
         """Should work with only one source dataset."""
-        source_labels = ["cic"] * 100
-        attack_labels = [i % 7 for i in range(100)]
+        source_labels = ["cic"] * SAMPLES_PER_SOURCE
+        attack_labels = [i % ATTACK_CLASSES for i in range(SAMPLES_PER_SOURCE)]
 
         shards = source_aware_partition(source_labels, attack_labels, clients_per_source=3, alpha=0.5, seed=42)
 
         assert len(shards) == 3
-        assert sum(len(s) for s in shards) == 100
+        assert sum(len(s) for s in shards) == SAMPLES_PER_SOURCE
 
 
 def test_prepare_partitions_source_strategy_isolates_sources() -> None:
     seed = 42
     num_clients = 3
-    alpha = 0.5
+    alpha = float("inf")
     df = pd.DataFrame(
         {
             "duration": [1.0, 2.0, 1.5, 2.5, 1.2, 2.2],

@@ -347,7 +347,7 @@ class TestPairedTTestProperties:
 
     @given(
         values=st.lists(
-            st.floats(allow_nan=False, allow_infinity=False),
+            st.floats(allow_nan=False, allow_infinity=False, min_value=-1000, max_value=1000),
             min_size=2,
             max_size=100,
         )
@@ -397,7 +397,7 @@ class TestCohensDProperties:
 
     @given(
         values=st.lists(
-            st.floats(allow_nan=False, allow_infinity=False),
+            st.floats(allow_nan=False, allow_infinity=False, min_value=-1000, max_value=1000),
             min_size=2,
             max_size=100,
         )

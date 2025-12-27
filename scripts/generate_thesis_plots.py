@@ -846,6 +846,8 @@ def perform_statistical_tests(df: pd.DataFrame, group_col: str, metric_col: str)
 
     if len(group_data) < 2:
         return {"test": "insufficient_data", "p_value": None}
+    if any(len(g) < 2 for g in group_data):
+        return {"test": "insufficient_data", "p_value": None}
 
     # Check for precision issues across all groups
     all_values = np.concatenate(group_data) if group_data else np.array([])
@@ -1155,6 +1157,7 @@ def _render_l2_plot(ax, final_rounds: pd.DataFrame, available_methods: list) -> 
     ax.set_title("Model Drift (L2 Distance)")
     ax.set_xlabel("Aggregation Method")
     ax.set_ylabel("L2 Distance to Benign Mean")
+    ax.set_xticks(np.arange(len(available_methods)))
     ax.set_xticklabels([m.upper() for m in available_methods])
 
     y_min = l2_data_filtered["l2_to_benign_mean"].min()
@@ -1181,6 +1184,7 @@ def _render_cosine_plot(ax, final_rounds: pd.DataFrame, available_methods: list)
     ax.set_title("Model Alignment (Cosine Similarity)")
     ax.set_xlabel("Aggregation Method")
     ax.set_ylabel("Cosine Similarity")
+    ax.set_xticks(np.arange(len(available_methods)))
     ax.set_xticklabels([m.upper() for m in available_methods])
 
     return True

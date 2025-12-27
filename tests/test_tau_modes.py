@@ -88,8 +88,10 @@ def test_tau_edge_case_single_class():
     probs = np.random.rand(100)
 
     # Should return reasonable default without crashing
-    tau_low_fpr = select_threshold_tau(y_true, probs, "low_fpr", 0.10)
-    tau_max_f1 = select_threshold_tau(y_true, probs, "max_f1", 0.10)
+    with pytest.warns(UserWarning, match="No positive class found"):
+        tau_low_fpr = select_threshold_tau(y_true, probs, "low_fpr", 0.10)
+    with pytest.warns(UserWarning, match="No positive class found"):
+        tau_max_f1 = select_threshold_tau(y_true, probs, "max_f1", 0.10)
 
     assert 0 <= tau_low_fpr <= 1
     assert 0 <= tau_max_f1 <= 1

@@ -97,6 +97,19 @@ def paired_t_test(
             "n": n,
         }
 
+    diffs = arr1 - arr2
+    diff_std = float(diffs.std(ddof=1))
+    if diff_std == 0.0:
+        t_stat = float("inf") if mean_diff != 0.0 else 0.0
+        p_value = 0.0 if mean_diff != 0.0 else 1.0
+        return {
+            "t_stat": float(t_stat),
+            "p_value": float(p_value),
+            "mean_diff": mean_diff,
+            "pairs": n,
+            "n": n,
+        }
+
     t_stat, p_value = stats.ttest_rel(arr1, arr2)
     return {
         "t_stat": float(t_stat),
