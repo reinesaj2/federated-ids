@@ -461,6 +461,21 @@ To use GPU nodes:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ```
 
+### 8.5 Centralized Baseline (Encoder)
+
+Run the centralized encoder baseline on the cluster with the dedicated Slurm script:
+
+```bash
+cd /scratch/$USER/federated-ids
+sbatch scripts/slurm/centralized_baseline_encoder.sbatch
+```
+
+The script defaults to Edge-IIoTset full and writes outputs to:
+
+```
+/scratch/$USER/results/centralized_baseline/
+```
+
 ---
 
 ## 9. Known Issues and Workarounds

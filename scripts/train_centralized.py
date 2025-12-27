@@ -30,10 +30,17 @@ class SimpleNet(nn.Module):
         return self.net(x)
 
 
-def train(model: nn.Module, loader: DataLoader, device: torch.device, lr: float) -> float:
+def train(
+    model: nn.Module,
+    loader: DataLoader,
+    device: torch.device,
+    lr: float,
+    optimizer_cls: type[torch.optim.Optimizer],
+    weight_decay: float,
+) -> float:
     model.train()
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = optimizer_cls(model.parameters(), lr=lr, weight_decay=weight_decay)
     total_loss = 0.0
     n = 0
     for xb, yb in loader:
@@ -77,7 +84,23 @@ def evaluate_probs(model: nn.Module, loader: DataLoader, device: torch.device) -
     return avg_loss, all_probs, all_labels
 
 
-def main() -> None:
+def resolve_optimizer_config(
+    model_name: str, weight_decay: float | None
+) -> tuple[type[torch.optim.Optimizer], float]:
+    if model_name == "encoder":
+        optimizer_cls = torch.optim.AdamW
+        default_weight_decay = 1e-4
+    elif model_name == "simple":
+        optimizer_cls = torch.optim.Adam
+        default_weight_decay = 0.0
+    else:
+        raise ValueError(f"Unknown model: {model_name}")
+
+    resolved_weight_decay = default_weight_decay if weight_decay is None else weight_decay
+    return optimizer_cls, resolved_weight_decay
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Centralized baseline training")
     parser.add_argument(
         "--dataset",
@@ -89,18 +112,34 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--weight_decay", type=float, default=None)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--logdir", type=str, default="./logs")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="simple",
+        choices=["simple", "encoder"],
+        help="Model architecture: simple MLP or PerDatasetEncoderNet",
+    )
+    return parser
+
+
+def main() -> None:
+    parser = build_arg_parser()
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
 
     if args.dataset == "unsw":
         df, label_col, _ = load_unsw_nb15(args.data_path)
+        dataset_key = "unsw"
     elif args.dataset == "cic":
         df, label_col, _ = load_cic_ids2017(args.data_path)
+        dataset_key = "cic"
     elif args.dataset.startswith("edge-iiotset"):
         df, label_col, _ = load_edge_iiotset(args.data_path, use_multiclass=True)
+        dataset_key = "edge"
     else:
         raise ValueError(f"Unknown dataset: {args.dataset}")
 
@@ -113,10 +152,22 @@ def main() -> None:
     )
 
     device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
-    model = SimpleNet(num_features=num_features, num_classes=num_classes).to(device)
+    if args.model == "encoder":
+        from models.per_dataset_encoder import PerDatasetEncoderNet, get_default_encoder_config
+
+        config = get_default_encoder_config(
+            dataset_name=dataset_key,
+            input_dim=num_features,
+            num_classes=num_classes,
+        )
+        model = PerDatasetEncoderNet(config).to(device)
+    else:
+        model = SimpleNet(num_features=num_features, num_classes=num_classes).to(device)
+
+    optimizer_cls, weight_decay = resolve_optimizer_config(args.model, args.weight_decay)
 
     for _ in range(args.epochs):
-        train(model, train_loader, device, args.lr)
+        train(model, train_loader, device, args.lr, optimizer_cls, weight_decay)
 
     # Evaluate on val and test
     from sklearn.metrics import average_precision_score, f1_score, precision_recall_curve
