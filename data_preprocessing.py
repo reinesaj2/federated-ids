@@ -1009,6 +1009,7 @@ def load_hybrid_dataset(
             compression=compression,
             dtype=dtype_map,
             chunksize=200_000,
+            engine="python",
         )
         df = pd.concat(reader, ignore_index=True)
     else:
