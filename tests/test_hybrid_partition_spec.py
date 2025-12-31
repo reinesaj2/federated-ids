@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -174,6 +175,44 @@ class TestLoadHybridDataset:
         }
 
         assert dtype_map == expected_map
+
+    def test_large_file_uses_python_engine(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Large hybrid CSVs should use the python engine without low_memory."""
+        csv_path = tmp_path / "hybrid.csv"
+        df = pd.DataFrame(
+            {
+                "duration": [1.0, 2.0],
+                "source_dataset": ["cic", "unsw"],
+                "attack_class": [0, 1],
+                "attack_label_original": ["BENIGN", "DOS"],
+            }
+        )
+        df.to_csv(csv_path, index=False)
+
+        large_size_bytes = 200 * 1024 * 1024
+        real_stat = Path.stat
+
+        def fake_stat(self):
+            if self == csv_path:
+                return SimpleNamespace(st_size=large_size_bytes)
+            return real_stat(self)
+
+        monkeypatch.setattr(Path, "stat", fake_stat)
+
+        captured_kwargs: list[dict[str, object]] = []
+        real_read_csv = pd.read_csv
+
+        def spy_read_csv(*args, **kwargs):
+            captured_kwargs.append(kwargs)
+            return real_read_csv(*args, **kwargs)
+
+        monkeypatch.setattr(pd, "read_csv", spy_read_csv)
+
+        load_hybrid_dataset(csv_path)
+
+        chunk_kwargs = next(value for value in captured_kwargs if value.get("chunksize"))
+
+        assert (chunk_kwargs.get("engine"), "low_memory" in chunk_kwargs) == ("python", False)
 
 
 class TestSourceAwarePartition:
