@@ -189,6 +189,9 @@ class ComparisonMatrix:
     )
     personalization_epochs: List[int] = field(default_factory=lambda: [0, 3, 5])
     fedprox_mu_values: List[float] = field(default_factory=lambda: [0.0, 0.002, 0.005, 0.01, 0.02, 0.05, 0.08, 0.1, 0.2])
+    mixed_silo_alpha_values: Optional[List[float]] = None
+    mixed_silo_fedprox_mu_values: Optional[List[float]] = None
+    mixed_silo_adversary_fractions: Optional[List[float]] = None
     seeds: List[int] = field(default_factory=lambda: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51])
     num_clients: int = 6
     num_rounds: int = 15
@@ -374,68 +377,68 @@ class ComparisonMatrix:
         unsw_path = "data/unsw/UNSW_NB15_training-set.csv"
         edge_path = "data/edge-iiotset/edge_iiotset_quick.csv"
 
+        num_clients = 12
+
         # 12 clients: 4 CIC + 4 UNSW + 4 Edge-IIoTset
         client_datasets = ["cic"] * 4 + ["unsw"] * 4 + ["edge-iiotset-quick"] * 4
         client_data_paths = [cic_path] * 4 + [unsw_path] * 4 + [edge_path] * 4
 
-        # Adversary fractions: capped at 20% for Bulyan constraint
-        # With 12 clients: f=2.4 → 2 adversaries, requires n >= 11 ✓
-        # (30% would require 19 clients: f=3.6 → 4, n >= 19)
-        adversary_fractions = [0.0, 0.1, 0.2]
-
-        # FedProx mu values
-        fedprox_mu_values = [0.0, 0.01, 0.1]
+        alpha_values = self.mixed_silo_alpha_values or [DEFAULT_ALPHA_NON_IID]
+        fedprox_mu_values = self.mixed_silo_fedprox_mu_values or [0.0, 0.01, 0.1]
+        adversary_fractions = self.mixed_silo_adversary_fractions or [0.0, 0.1, 0.2]
+        safe_adversary_fractions = [
+            fraction
+            for fraction in adversary_fractions
+            if num_clients >= 4 * int(fraction * num_clients) + 3
+        ]
+        if not safe_adversary_fractions:
+            raise ValueError("No adversary fractions satisfy the Bulyan constraint for mixed-silo 3-dataset runs.")
 
         # Generate full experimental matrix
         for agg in self.aggregation_methods:
-            for mu in fedprox_mu_values:
-                for adv_frac in adversary_fractions:
-                    for seed in self.seeds:
-                        base = self._base_config(seed)
+            for alpha in alpha_values:
+                for mu in fedprox_mu_values:
+                    for adv_frac in safe_adversary_fractions:
+                        for seed in self.seeds:
+                            base = self._base_config(seed)
 
-                        config = self._create_config(
-                            base,
-                            aggregation=agg,
-                            alpha=DEFAULT_ALPHA_NON_IID,  # 0.5 moderate non-IID
-                            dataset="mixed_silo_3dataset",
-                            client_datasets=client_datasets,
-                            client_data_paths=client_data_paths,
-                            num_clients=12,
-                            adversary_fraction=adv_frac,
-                            fedprox_mu=mu,
-                        )
-                        configs.append(config)
+                            config = self._create_config(
+                                base,
+                                aggregation=agg,
+                                alpha=alpha,
+                                dataset="mixed_silo_3dataset",
+                                client_datasets=client_datasets,
+                                client_data_paths=client_data_paths,
+                                num_clients=num_clients,
+                                adversary_fraction=adv_frac,
+                                fedprox_mu=mu,
+                            )
+                            configs.append(config)
         return configs
 
     def _generate_hybrid_configs(self) -> List[ExperimentConfig]:
-        """Generate configs for hybrid cross-source federated learning.
-
-        Tests FedProx vs FedAvg when heterogeneity comes from domain shift
-        (different source datasets per client) rather than just label skew.
-
-        Uses source_aware partitioning: 3 clients per source dataset (9 total).
-        Within each source, Dirichlet partitioning creates label heterogeneity.
-
-        Note: Uses 5 seeds (vs 10 in other dimensions) to limit total configs
-        to 40, enabling efficient 17-node cluster parallelism (40 jobs / 17 nodes
-        = ~2.4 waves). This provides sufficient statistical power while fitting
-        within reasonable compute time (~1 hour total).
-        """
+        """Generate configs for hybrid cross-source federated learning."""
         configs = []
-        fedprox_mus = [0.0, 0.01, 0.05, 0.1]
-        alpha_values = [0.5, 1.0]
 
-        for seed in self.seeds[:5]:
-            for alpha in alpha_values:
-                for mu in fedprox_mus:
-                    base = self._base_config(seed)
-                    base["alpha"] = alpha
-                    base["fedprox_mu"] = mu
-                    if mu > 0:
-                        base["aggregation"] = "fedprox"
-                    else:
-                        base["aggregation"] = "fedavg"
-                    configs.append(ExperimentConfig(**base))
+        for aggregation in self.aggregation_methods:
+            for adversary_fraction in self.adversary_fractions:
+                try:
+                    validate_bulyan_byzantine_resilience(aggregation, adversary_fraction, self.num_clients)
+                except ValueError:
+                    continue
+                for alpha in self.alpha_values:
+                    for fedprox_mu in self.fedprox_mu_values:
+                        for seed in self.seeds:
+                            base = self._base_config(seed)
+                            configs.append(
+                                self._create_config(
+                                    base,
+                                    aggregation=aggregation,
+                                    alpha=alpha,
+                                    fedprox_mu=fedprox_mu,
+                                    adversary_fraction=adversary_fraction,
+                                )
+                            )
         return configs
 
     def _generate_combined_robustness_configs(self) -> List[ExperimentConfig]:
@@ -873,6 +876,21 @@ def main():
         help="Comma-separated list of adversary fractions to evaluate.",
     )
     parser.add_argument(
+        "--mixed-silo-alpha-values",
+        type=str,
+        help="Comma-separated list of alpha values for mixed_silo_3dataset runs.",
+    )
+    parser.add_argument(
+        "--mixed-silo-fedprox-mu-values",
+        type=str,
+        help="Comma-separated list of FedProx mu values for mixed_silo_3dataset runs.",
+    )
+    parser.add_argument(
+        "--mixed-silo-adversary-fractions",
+        type=str,
+        help="Comma-separated list of adversary fractions for mixed_silo_3dataset runs.",
+    )
+    parser.add_argument(
         "--dp-noise-multipliers",
         type=str,
         help="Comma-separated list of DP noise multipliers to evaluate.",
@@ -937,6 +955,20 @@ def main():
         matrix.fedprox_mu_values = [float(value.strip()) for value in args.fedprox_mu_values.split(",") if value.strip()]
     if args.adversary_fractions:
         matrix.adversary_fractions = [float(value.strip()) for value in args.adversary_fractions.split(",") if value.strip()]
+    if args.mixed_silo_alpha_values:
+        matrix.mixed_silo_alpha_values = [
+            float("inf") if value.strip().lower() in {"inf", "infinity"} else float(value.strip())
+            for value in args.mixed_silo_alpha_values.split(",")
+            if value.strip()
+        ]
+    if args.mixed_silo_fedprox_mu_values:
+        matrix.mixed_silo_fedprox_mu_values = [
+            float(value.strip()) for value in args.mixed_silo_fedprox_mu_values.split(",") if value.strip()
+        ]
+    if args.mixed_silo_adversary_fractions:
+        matrix.mixed_silo_adversary_fractions = [
+            float(value.strip()) for value in args.mixed_silo_adversary_fractions.split(",") if value.strip()
+        ]
     if args.dp_noise_multipliers:
         matrix.dp_configs = [
             {"enabled": float(value.strip()) > 0.0, "noise": float(value.strip())}

@@ -845,6 +845,105 @@ def test_mixed_silo_3dataset_config_generation():
     assert aggregations == {"fedavg", "krum", "bulyan", "median"}
 
 
+def test_mixed_silo_3dataset_respects_custom_grid():
+    aggregation_methods = ["fedavg", "krum"]
+    alpha_values = [0.1, 1.0]
+    fedprox_mu_values = [0.02, 0.2]
+    adversary_fractions = [0.05, 0.15]
+    seeds = [101, 102]
+    num_clients = 12
+
+    matrix = ComparisonMatrix(
+        aggregation_methods=aggregation_methods,
+        seeds=seeds,
+        num_clients=num_clients,
+        mixed_silo_alpha_values=alpha_values,
+        mixed_silo_fedprox_mu_values=fedprox_mu_values,
+        mixed_silo_adversary_fractions=adversary_fractions,
+    )
+    configs = matrix.generate_configs(filter_dimension="mixed_silo_3dataset")
+
+    expected_total = (
+        len(aggregation_methods)
+        * len(alpha_values)
+        * len(fedprox_mu_values)
+        * len(adversary_fractions)
+        * len(seeds)
+    )
+    assert len(configs) == expected_total
+    assert {c.alpha for c in configs} == set(alpha_values)
+    assert {c.fedprox_mu for c in configs} == set(fedprox_mu_values)
+    assert {c.adversary_fraction for c in configs} == set(adversary_fractions)
+
+
+def test_hybrid_respects_custom_grid():
+    aggregation_methods = ["fedavg", "krum", "bulyan", "median"]
+    alpha_values = [0.02, 0.05]
+    fedprox_mu_values = [0.01, 0.2]
+    adversary_fractions = [0.0, 0.1]
+    seeds = [60, 61]
+    num_clients = 12
+    num_rounds = 30
+    dataset = "hybrid"
+    data_path = "data/hybrid/hybrid_ids_dataset_full.csv.gz"
+
+    matrix = ComparisonMatrix(
+        aggregation_methods=aggregation_methods,
+        alpha_values=alpha_values,
+        fedprox_mu_values=fedprox_mu_values,
+        adversary_fractions=adversary_fractions,
+        seeds=seeds,
+        num_clients=num_clients,
+        num_rounds=num_rounds,
+        dataset=dataset,
+        data_path=data_path,
+    )
+    configs = matrix.generate_configs(filter_dimension="hybrid")
+
+    expected_total = (
+        len(aggregation_methods)
+        * len(alpha_values)
+        * len(fedprox_mu_values)
+        * len(adversary_fractions)
+        * len(seeds)
+    )
+    assert len(configs) == expected_total
+    assert {config.aggregation for config in configs} == set(aggregation_methods)
+    assert {config.alpha for config in configs} == set(alpha_values)
+    assert {config.fedprox_mu for config in configs} == set(fedprox_mu_values)
+    assert {config.adversary_fraction for config in configs} == set(adversary_fractions)
+    assert {config.seed for config in configs} == set(seeds)
+    assert {config.num_clients for config in configs} == {num_clients}
+    assert {config.num_rounds for config in configs} == {num_rounds}
+    assert {config.dataset for config in configs} == {dataset}
+    assert {config.data_path for config in configs} == {data_path}
+
+
+def test_hybrid_filters_invalid_bulyan_fractions():
+    aggregation_methods = ["bulyan"]
+    alpha_values = [0.5]
+    fedprox_mu_values = [0.01]
+    adversary_fractions = [0.2, 0.3]
+    seeds = [60]
+    num_clients = 12
+    dataset = "hybrid"
+    data_path = "data/hybrid/hybrid_ids_dataset_full.csv.gz"
+
+    matrix = ComparisonMatrix(
+        aggregation_methods=aggregation_methods,
+        alpha_values=alpha_values,
+        fedprox_mu_values=fedprox_mu_values,
+        adversary_fractions=adversary_fractions,
+        seeds=seeds,
+        num_clients=num_clients,
+        dataset=dataset,
+        data_path=data_path,
+    )
+    configs = matrix.generate_configs(filter_dimension="hybrid")
+
+    assert {config.adversary_fraction for config in configs} == {0.2}
+
+
 def test_mixed_silo_3dataset_bulyan_constraint():
     """Test that Bulyan Byzantine constraint is respected for 12-client setup.
 
