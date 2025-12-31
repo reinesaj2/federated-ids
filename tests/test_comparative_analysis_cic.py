@@ -134,8 +134,8 @@ def test_experiment_config_to_preset_name_includes_dataset():
     preset_unsw = config_unsw.to_preset_name()
     preset_cic = config_cic.to_preset_name()
 
-    assert preset_unsw.startswith("dsunsw_")
-    assert preset_cic.startswith("dscic_")
+    assert preset_unsw.startswith("unsw_")
+    assert preset_cic.startswith("cic_")
     assert "comp_fedavg" in preset_unsw
     assert "comp_fedavg" in preset_cic
     assert preset_unsw != preset_cic

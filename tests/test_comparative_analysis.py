@@ -35,7 +35,7 @@ def test_experiment_config_preset_name():
     )
 
     preset = config.to_preset_name()
-    assert preset.startswith("dsunsw_")
+    assert preset.startswith("unsw_")
     assert "fedavg" in preset
     assert "alpha1.0" in preset
     assert "adv0" in preset
@@ -61,7 +61,8 @@ def test_experiment_config_preset_name_includes_dataset_for_non_unsw():
 
     preset = config.to_preset_name()
     assert "comp_fedavg" in preset
-    assert "datasetcic" in preset
+    assert preset.startswith("cic_")
+    assert "datasetcic" not in preset
     assert "seed7" in preset
 
 

@@ -84,7 +84,7 @@ class ExperimentConfig:
     def _dataset_component(self) -> str:
         """Return filesystem-safe dataset token for preset naming."""
         dataset_label = (self.dataset or "custom").replace("/", "-")
-        component = f"ds{dataset_label}"
+        component = dataset_label
 
         normalized_path = None
         if self.data_path:
@@ -118,8 +118,6 @@ class ExperimentConfig:
                 f"seed{self.seed}",
             ]
         )
-        if self.dataset != "unsw":
-            parts.append(f"dataset{self.dataset.lower()}")
         return "_".join(parts)
 
 
