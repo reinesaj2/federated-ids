@@ -24,7 +24,7 @@ export PYTHONUNBUFFERED=1
 mkdir -p "$MPLCONFIGDIR" "/scratch/${USER}/results/hybrid_3dataset_1500"
 cd "/scratch/${USER}/federated-ids-hybrid-1500"
 
-NUM_CLIENTS=12
+NUM_CLIENTS=3
 NUM_ROUNDS=30
 AGGREGATION_METHODS="fedavg,krum,bulyan,median"
 ALPHA_VALUES="0.02,0.05,0.1,0.5,1.0"
@@ -46,7 +46,7 @@ echo "==========================================================================
 echo "Job ID: ${SLURM_JOB_ID}"
 echo "Array: ${SLURM_ARRAY_JOB_ID:-na}_${SLURM_ARRAY_TASK_ID:-na} (${SPLIT_INDEX}/${SPLIT_TOTAL})"
 echo "Node: ${SLURMD_NODENAME}"
-echo "Clients: ${NUM_CLIENTS} (4 per source: CIC, UNSW, IIoT)"
+echo "Clients: ${NUM_CLIENTS} (1 per source: CIC, UNSW, IIoT)"
 echo "Rounds: ${NUM_ROUNDS}"
 echo "Aggregations: ${AGGREGATION_METHODS}"
 echo "Alphas (within-source): ${ALPHA_VALUES}"
