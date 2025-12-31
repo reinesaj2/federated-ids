@@ -985,12 +985,30 @@ def load_hybrid_dataset(
     """
     path = Path(csv_path)
     compression = "gzip" if path.suffix == ".gz" else None
-    df = pd.read_csv(str(path), low_memory=False, nrows=max_samples, compression=compression)
-    df.columns = [col.strip() if isinstance(col, str) else col for col in df.columns]
-    df = df.replace([np.inf, -np.inf], np.nan)
+    header_df = pd.read_csv(str(path), nrows=0, compression=compression)
+    raw_columns = list(header_df.columns)
+    normalized_columns = [col.strip() if isinstance(col, str) else col for col in raw_columns]
 
     label_col = "attack_class"
     source_col = "source_dataset"
+
+    string_cols = {source_col, "attack_label_original"}
+    dtype_map = {}
+    for raw_col, normalized in zip(raw_columns, normalized_columns):
+        if normalized in string_cols:
+            dtype_map[raw_col] = "string"
+        else:
+            dtype_map[raw_col] = np.float32
+
+    df = pd.read_csv(
+        str(path),
+        low_memory=False,
+        nrows=max_samples,
+        compression=compression,
+        dtype=dtype_map,
+    )
+    df.columns = normalized_columns
+    df = df.replace([np.inf, -np.inf], np.nan)
 
     if label_col not in df.columns:
         raise ValueError(f"Expected label column '{label_col}' not found. Available: {list(df.columns)}")

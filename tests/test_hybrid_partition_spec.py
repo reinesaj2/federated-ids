@@ -134,6 +134,47 @@ class TestLoadHybridDataset:
         assert result_df["duration"].isna().sum() == 0
         assert result_df["duration"].iloc[1] == 0.0
 
+    def test_load_uses_dtype_map_for_memory_safety(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Hybrid loader should pass an explicit dtype map to pandas."""
+        csv_path = tmp_path / "hybrid.csv"
+        duration_values = [1.0, 2.0]
+        packet_values = [10.0, 20.0]
+        source_values = ["cic", "unsw"]
+        attack_values = [0, 1]
+        label_values = ["BENIGN", "DOS"]
+        df = pd.DataFrame(
+            {
+                "duration": duration_values,
+                "fwd_packets": packet_values,
+                "source_dataset": source_values,
+                "attack_class": attack_values,
+                "attack_label_original": label_values,
+            }
+        )
+        df.to_csv(csv_path, index=False)
+
+        captured_dtypes: list[dict[str, object] | None] = []
+        real_read_csv = pd.read_csv
+
+        def spy_read_csv(*args, **kwargs):
+            captured_dtypes.append(kwargs.get("dtype"))
+            return real_read_csv(*args, **kwargs)
+
+        monkeypatch.setattr(pd, "read_csv", spy_read_csv)
+
+        load_hybrid_dataset(csv_path)
+
+        dtype_map = next(value for value in captured_dtypes if isinstance(value, dict))
+        expected_map = {
+            "duration": np.float32,
+            "fwd_packets": np.float32,
+            "source_dataset": "string",
+            "attack_class": np.float32,
+            "attack_label_original": "string",
+        }
+
+        assert dtype_map == expected_map
+
 
 class TestSourceAwarePartition:
     """Tests for source_aware_partition function."""
