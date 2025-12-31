@@ -1005,7 +1005,6 @@ def load_hybrid_dataset(
     if use_chunks:
         reader = pd.read_csv(
             str(path),
-            low_memory=False,
             compression=compression,
             dtype=dtype_map,
             chunksize=200_000,
