@@ -1,44 +1,103 @@
-# FedProx Heterogeneity Matrix Documentation
+# Federated IDS Documentation
 
-## Overview
+This directory contains comprehensive documentation for the Federated Intrusion Detection System research project.
 
-This directory contains documentation for the FedProx heterogeneity matrix experiments implemented in Issue #86. The experiments evaluate FedProx algorithm effectiveness across varying levels of data heterogeneity in federated learning.
+## Table of Contents
 
-## Files
+### Cross-Dataset Comparison (CIC-IDS2017 vs Edge-IIoTset)
 
-- `fedprox_heterogeneity_experiment_report.md`: Complete experimental methodology and setup documentation
-- `README.md`: This file
+- [CIC_VS_IIOT_COMPREHENSIVE_COMPARISON.md](CIC_VS_IIOT_COMPREHENSIVE_COMPARISON.md) - Complete comparison of both datasets including performance metrics, class distributions, and key findings
+- [ATTACK_CLASS_FEATURE_ANALYSIS.md](ATTACK_CLASS_FEATURE_ANALYSIS.md) - Detailed feature importance analysis for top 5 attack classes in each dataset
+- [DATASET_STATISTICAL_ANALYSIS.md](DATASET_STATISTICAL_ANALYSIS.md) - Statistical analysis including Shannon entropy, imbalance ratios, and ML implications
+- [FEDERATED_LEARNING_PERFORMANCE_ANALYSIS.md](FEDERATED_LEARNING_PERFORMANCE_ANALYSIS.md) - FL performance analysis across aggregation methods, adversary fractions, and heterogeneity levels
 
-## Important Notes
+### Dataset-Specific Documentation
 
-**DO NOT manually generate CSV files or statistical data.** All experimental data should be generated using the automated pipeline:
+- [FULL_IIOT_COMPREHENSIVE_ANALYSIS.md](FULL_IIOT_COMPREHENSIVE_ANALYSIS.md) - Deep analysis of Edge-IIoTset full dataset experiments
+- [IIOT_RESULTS_SUMMARY.md](IIOT_RESULTS_SUMMARY.md) - Summary of IIOT experimental results
+- [edge_iiotset_integration.md](edge_iiotset_integration.md) - Edge-IIoTset dataset integration guide
+- [edge_iiotset_full_strategy.md](edge_iiotset_full_strategy.md) - Strategy for full IIOT dataset experiments
+
+### Federated Learning Algorithms
+
+- [FEDPROX_NOVELTY_ANALYSIS.md](FEDPROX_NOVELTY_ANALYSIS.md) - FedProx algorithm analysis and novelty assessment
+- [FEDPROX_OPTIMIZER_RESEARCH.md](FEDPROX_OPTIMIZER_RESEARCH.md) - FedProx optimizer implementation research
+- [FEDPROX_VALIDATION_RESULTS.md](FEDPROX_VALIDATION_RESULTS.md) - Validation results for FedProx implementation
+- [FEDPROX_VS_FEDAVG_FINDINGS.md](FEDPROX_VS_FEDAVG_FINDINGS.md) - Comparative findings between FedProx and FedAvg
+
+### Experimental Design
+
+- [experiment_checklist.md](experiment_checklist.md) - Comprehensive experiment checklist
+- [manual_thesis_experiments.md](manual_thesis_experiments.md) - Manual experiment execution guide
+- [EXPERIMENT_CONSTRAINTS.md](EXPERIMENT_CONSTRAINTS.md) - Experimental design constraints
+- [ALPHA_FEASIBILITY_ANALYSIS.md](ALPHA_FEASIBILITY_ANALYSIS.md) - Alpha parameter feasibility analysis
+- [BULYAN_CONSTRAINT_RESOLUTION.md](BULYAN_CONSTRAINT_RESOLUTION.md) - Bulyan aggregation constraints
+
+### Cluster and Infrastructure
+
+- [CLUSTER_ARCHITECTURE.md](CLUSTER_ARCHITECTURE.md) - Cluster architecture documentation
+- [CLUSTER_RUNS_ANALYSIS.md](CLUSTER_RUNS_ANALYSIS.md) - Analysis of cluster experiment runs
+- [JMU_CS470_CLUSTER_RUNBOOK.md](JMU_CS470_CLUSTER_RUNBOOK.md) - JMU CS470 cluster runbook
+- [ISSUE_128_CLUSTER_DEPLOYMENT.md](ISSUE_128_CLUSTER_DEPLOYMENT.md) - Cluster deployment for Issue #128
+
+### Privacy and Security
+
+- [PRIVACY_UTILITY_CURVE.md](PRIVACY_UTILITY_CURVE.md) - Privacy-utility tradeoff analysis
+- [DP_MERGE_SUMMARY.md](DP_MERGE_SUMMARY.md) - Differential privacy merge summary
+- [threat_model.md](threat_model.md) - Threat model documentation
+
+### Thesis and Publication
+
+- [THESIS_PLOTS_EXPLAINED.md](THESIS_PLOTS_EXPLAINED.md) - Explanation of thesis plots
+- [cross_dataset_publishability_analysis.md](cross_dataset_publishability_analysis.md) - Publishability analysis
+- [NEURIPS_FINAL_RUNBOOK.md](NEURIPS_FINAL_RUNBOOK.md) - NeurIPS submission runbook
+- [NEURIPS_IIOT_FULL_ANALYSIS.md](NEURIPS_IIOT_FULL_ANALYSIS.md) - IIOT analysis for NeurIPS
+
+### Technical References
+
+- [TEMPORAL_VALIDATION_PROTOCOL.md](TEMPORAL_VALIDATION_PROTOCOL.md) - Temporal validation methodology
+- [TEMPORAL_VALIDATION_RUNBOOK.md](TEMPORAL_VALIDATION_RUNBOOK.md) - Temporal validation runbook
+- [gradient_clipping_theory.md](gradient_clipping_theory.md) - Gradient clipping theory
+- [compute_constraints_and_solutions.md](compute_constraints_and_solutions.md) - Compute constraints and solutions
+
+## Quick Reference
+
+### Key Findings Summary
+
+| Metric | CIC-IDS2017 | Edge-IIoTset |
+|--------|-------------|--------------|
+| Mean Macro-F1 | 0.177 | 0.432 |
+| Effective Classes | 2.16 / 15 | 13.07 / 15 |
+| Imbalance Ratio | 206,645:1 | 1,621:1 |
+| Best Aggregation | Bulyan | Bulyan |
+
+### Running Experiments
 
 ```bash
-# Run the FedProx heterogeneity experiments
-python scripts/comparative_analysis.py --dimension heterogeneity_fedprox
+# Run comparative analysis
+python scripts/comparative_analysis.py --dimension heterogeneity
 
-# Generate analysis plots and statistics
-python scripts/generate_thesis_plots.py --dimension heterogeneity_fedprox
+# Generate thesis plots
+python scripts/generate_thesis_plots.py --dimension all
+
+# Run cross-dataset comparison
+python scripts/plot_cic_vs_iiot_comparison.py
 ```
 
-## CI Integration
+### Data Locations
 
-The CI workflow has been updated to include the `heterogeneity_fedprox` dimension. When merged to main, the nightly comparative analysis will automatically run the FedProx experiments.
+- Experimental runs: `runs/`
+- Generated plots: `plots/`
+- Raw datasets: `data/`
 
-## Experimental Matrix
+## Document Standards
 
-- **Heterogeneity levels**: 3 (alpha = 0.1, 0.5, 1.0)
-- **FedProx strengths**: 3 (mu = 0.01, 0.1, 1.0)
-- **Random seeds**: 3 (42, 43, 44)
-- **Total experiments**: 27
+All documentation follows these conventions:
+- No emojis (professional formatting)
+- Markdown tables for structured data
+- Code blocks for commands and file paths
+- Clear section headers with table of contents
 
-## Data Integrity
+## Last Updated
 
-All experimental data is stored in the `runs/` directory with the following structure:
-
-- `runs/comp_fedavg_alpha{alpha}_adv0_dp0_pers0_mu{mu}_seed{seed}/`
-  - `config.json`: Experiment parameters
-  - `metrics.csv`: Server-side aggregation metrics
-  - `client_*_metrics.csv`: Per-client training metrics
-  - `server.log`: Server execution logs
-  - `client_*.log`: Per-client execution logs
+2024-12-31 - Added comprehensive CIC vs IIOT comparison documentation
