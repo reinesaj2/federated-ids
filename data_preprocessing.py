@@ -1000,13 +1000,25 @@ def load_hybrid_dataset(
         else:
             dtype_map[raw_col] = np.float32
 
-    df = pd.read_csv(
-        str(path),
-        low_memory=False,
-        nrows=max_samples,
-        compression=compression,
-        dtype=dtype_map,
-    )
+    file_size = path.stat().st_size if path.exists() else 0
+    use_chunks = max_samples is None and file_size >= 100 * 1024 * 1024
+    if use_chunks:
+        reader = pd.read_csv(
+            str(path),
+            low_memory=False,
+            compression=compression,
+            dtype=dtype_map,
+            chunksize=200_000,
+        )
+        df = pd.concat(reader, ignore_index=True)
+    else:
+        df = pd.read_csv(
+            str(path),
+            low_memory=False,
+            nrows=max_samples,
+            compression=compression,
+            dtype=dtype_map,
+        )
     df.columns = normalized_columns
     df = df.replace([np.inf, -np.inf], np.nan)
 
