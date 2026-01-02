@@ -988,6 +988,8 @@ def load_hybrid_dataset(
     header_df = pd.read_csv(str(path), nrows=0, compression=compression)
     raw_columns = list(header_df.columns)
     normalized_columns = [col.strip() if isinstance(col, str) else col for col in raw_columns]
+    sample_rows = 1000 if max_samples is None else min(max_samples, 1000)
+    sample_df = pd.read_csv(str(path), nrows=sample_rows, compression=compression)
 
     label_col = "attack_class"
     source_col = "source_dataset"
@@ -997,8 +999,10 @@ def load_hybrid_dataset(
     for raw_col, normalized in zip(raw_columns, normalized_columns):
         if normalized in string_cols:
             dtype_map[raw_col] = "string"
-        else:
+        elif pd.api.types.is_numeric_dtype(sample_df.get(raw_col, pd.Series(dtype="float64"))):
             dtype_map[raw_col] = np.float32
+        else:
+            dtype_map[raw_col] = "string"
 
     file_size = path.stat().st_size if path.exists() else 0
     use_chunks = max_samples is None and file_size >= 100 * 1024 * 1024
@@ -1029,7 +1033,12 @@ def load_hybrid_dataset(
 
     metadata_cols = [source_col, label_col, "attack_label_original"]
     feature_cols = [c for c in df.columns if c not in metadata_cols]
-    df[feature_cols] = df[feature_cols].fillna(0).astype(np.float32)
+    numeric_cols = [c for c in feature_cols if pd.api.types.is_numeric_dtype(df[c])]
+    string_feature_cols = [c for c in feature_cols if c not in numeric_cols]
+    if numeric_cols:
+        df[numeric_cols] = df[numeric_cols].fillna(0).astype(np.float32)
+    if string_feature_cols:
+        df[string_feature_cols] = df[string_feature_cols].fillna("").astype("string")
     df = df.dropna(subset=[label_col]).reset_index(drop=True)
 
     return df, label_col, None, source_col

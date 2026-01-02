@@ -135,6 +135,26 @@ class TestLoadHybridDataset:
         assert result_df["duration"].isna().sum() == 0
         assert result_df["duration"].iloc[1] == 0.0
 
+    def test_preserves_string_feature_columns(self, tmp_path: Path) -> None:
+        """String feature columns should remain string typed."""
+        csv_path = tmp_path / "hybrid.csv"
+        service_values = ["http", "dns"]
+        df = pd.DataFrame(
+            {
+                "duration": [1.0, 2.0],
+                "service": service_values,
+                "source_dataset": ["cic", "unsw"],
+                "attack_class": [0, 1],
+                "attack_label_original": ["BENIGN", "DOS"],
+            }
+        )
+        df.to_csv(csv_path, index=False)
+
+        result_df, _, _, _ = load_hybrid_dataset(csv_path)
+
+        assert result_df["service"].dtype == "string"
+        assert result_df["service"].tolist() == service_values
+
     def test_load_uses_dtype_map_for_memory_safety(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Hybrid loader should pass an explicit dtype map to pandas."""
         csv_path = tmp_path / "hybrid.csv"
