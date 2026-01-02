@@ -437,7 +437,11 @@ def protocol_partition(
 def infer_feature_columns(df: pd.DataFrame, label_col: str, drop_cols: list[str] | None = None) -> tuple[list[str], list[str]]:
     drop_cols = drop_cols or []
     feature_df = df.drop(columns=[label_col] + drop_cols, errors="ignore")
-    categorical_cols = [c for c in feature_df.columns if feature_df[c].dtype == "object" or str(feature_df[c].dtype).startswith("category")]
+    categorical_cols = []
+    for col in feature_df.columns:
+        dtype = feature_df[col].dtype
+        if pd.api.types.is_object_dtype(dtype) or pd.api.types.is_string_dtype(dtype) or isinstance(dtype, pd.CategoricalDtype):
+            categorical_cols.append(col)
     numeric_cols = [c for c in feature_df.columns if c not in categorical_cols]
     return numeric_cols, categorical_cols
 

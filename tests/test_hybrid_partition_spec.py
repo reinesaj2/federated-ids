@@ -354,7 +354,6 @@ class TestSourceAwarePartition:
         assert len(shards) == 3
         assert sum(len(s) for s in shards) == SAMPLES_PER_SOURCE
 
-
 def test_prepare_partitions_source_strategy_isolates_sources() -> None:
     seed = 42
     num_clients = 3
@@ -391,3 +390,18 @@ def test_prepare_partitions_source_strategy_isolates_sources() -> None:
         assert values.size == 1
         shard_values.append(values[0])
     assert len(set(shard_values)) == 3
+
+
+def test_infer_feature_columns_treats_string_dtype_as_categorical() -> None:
+    df = pd.DataFrame(
+        {
+            "duration": [1.0, 2.0],
+            "source_dataset": pd.Series(["cic", "unsw"], dtype="string"),
+            "attack_class": [0, 1],
+        }
+    )
+
+    numeric_cols, categorical_cols = infer_feature_columns(df, "attack_class", drop_cols=[])
+
+    assert "source_dataset" in categorical_cols
+    assert "duration" in numeric_cols
