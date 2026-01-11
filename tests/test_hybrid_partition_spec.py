@@ -212,10 +212,10 @@ class TestLoadHybridDataset:
         large_size_bytes = 200 * 1024 * 1024
         real_stat = Path.stat
 
-        def fake_stat(self):
+        def fake_stat(self, *, follow_symlinks: bool = True):
             if self == csv_path:
                 return SimpleNamespace(st_size=large_size_bytes)
-            return real_stat(self)
+            return real_stat(self, follow_symlinks=follow_symlinks)
 
         monkeypatch.setattr(Path, "stat", fake_stat)
 

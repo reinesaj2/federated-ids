@@ -227,6 +227,47 @@ def test_load_unsw_nb15_binary_classification_maps_numeric_labels(tmp_path):
     assert (loaded_df[label_col] == "BENIGN").sum() == labels.count(benign_label)
 
 
+def test_load_unsw_nb15_prefers_attack_label_for_multiclass(tmp_path):
+    attack_labels = ["Normal", "Fuzzers", "Normal"]
+    binary_labels = [0, 1, 0]
+    df = pd.DataFrame(
+        {
+            "dur": [1.0, 2.0, 3.0],
+            "attack_label": attack_labels,
+            "binary_label": binary_labels,
+            "proto": ["tcp", "udp", "tcp"],
+        }
+    )
+    csv_path = tmp_path / "unsw_attack_label.csv"
+    df.to_csv(csv_path, index=False)
+
+    loaded_df, label_col, _ = load_unsw_nb15(str(csv_path), use_multiclass=True)
+
+    assert label_col == "attack_label"
+    assert set(loaded_df[label_col].unique()) == {"BENIGN", "FUZZERS"}
+
+
+def test_load_unsw_nb15_uses_binary_label_for_binary_classification(tmp_path):
+    attack_labels = ["Normal", "Fuzzers", "Normal"]
+    binary_labels = [0, 1, 0]
+    df = pd.DataFrame(
+        {
+            "dur": [1.0, 2.0, 3.0],
+            "attack_label": attack_labels,
+            "binary_label": binary_labels,
+            "proto": ["tcp", "udp", "tcp"],
+        }
+    )
+    csv_path = tmp_path / "unsw_binary_label.csv"
+    df.to_csv(csv_path, index=False)
+
+    loaded_df, label_col, _ = load_unsw_nb15(str(csv_path), use_multiclass=False)
+
+    assert label_col == "binary_label"
+    assert set(loaded_df[label_col].unique()) == {"BENIGN", "ATTACK"}
+    assert (loaded_df[label_col] == "BENIGN").sum() == binary_labels.count(0)
+
+
 def test_load_cic_ids2017_binary_classification_collapses_attack_labels(tmp_path):
     benign_label = "BENIGN"
     normal_label = "Normal"
@@ -247,6 +288,49 @@ def test_load_cic_ids2017_binary_classification_collapses_attack_labels(tmp_path
     assert label_col == "Label"
     assert set(loaded_df[label_col].unique()) == {"BENIGN", "ATTACK"}
     assert (loaded_df[label_col] == "BENIGN").sum() == 2
+
+
+def test_numpy_to_loaders_single_sample_dense():
+    batch_size = 4
+    seed = 123
+    first_feature = 1.0
+    second_feature = 2.0
+    label_value = 1
+    X = np.array([[first_feature, second_feature]], dtype=np.float32)
+    y = np.array([label_value], dtype=np.int64)
+
+    train_loader, test_loader = numpy_to_loaders(X, y, batch_size=batch_size, seed=seed)
+
+    train_x, train_y = next(iter(train_loader))
+    test_x, test_y = next(iter(test_loader))
+
+    expected_x = torch.tensor([[first_feature, second_feature]], dtype=torch.float32)
+    expected_y = torch.tensor([label_value], dtype=torch.long)
+
+    assert torch.equal(train_x, expected_x) and torch.equal(train_y, expected_y)
+    assert torch.equal(test_x, expected_x) and torch.equal(test_y, expected_y)
+
+
+def test_numpy_to_loaders_single_sample_sparse():
+    batch_size = 2
+    seed = 7
+    first_feature = 1.25
+    second_feature = -3.5
+    label_value = 0
+    X_dense = np.array([[first_feature, second_feature]], dtype=np.float32)
+    X_sparse = sp.csr_matrix(X_dense)
+    y = np.array([label_value], dtype=np.int64)
+
+    train_loader, test_loader = numpy_to_loaders(X_sparse, y, batch_size=batch_size, seed=seed)
+
+    train_x, train_y = next(iter(train_loader))
+    test_x, test_y = next(iter(test_loader))
+
+    expected_x = torch.tensor(X_dense, dtype=torch.float32)
+    expected_y = torch.tensor([label_value], dtype=torch.long)
+
+    assert torch.equal(train_x, expected_x) and torch.equal(train_y, expected_y)
+    assert torch.equal(test_x, expected_x) and torch.equal(test_y, expected_y)
 def test_numpy_to_loaders_supports_sparse_feature_matrix(monkeypatch):
     monkeypatch.setenv("OHE_SPARSE", "1")
 

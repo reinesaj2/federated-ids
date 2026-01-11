@@ -537,13 +537,24 @@ def numpy_to_loaders(
     test_size: float = 0.2,
 ) -> tuple[DataLoader, DataLoader]:
     # Defensive guard: handle empty shards gracefully
-    if X.shape[0] == 0 or y.size == 0:
+    n_samples = X.shape[0]
+    if n_samples == 0 or y.size == 0:
         # Return dummy loaders with minimal tensors
         dummy_X = torch.zeros((1, X.shape[1] if X.size > 0 else 1), dtype=torch.float32)
         dummy_y = torch.zeros((1,), dtype=torch.long)
         dummy_ds = TensorDataset(dummy_X, dummy_y)
         dummy_loader = DataLoader(dummy_ds, batch_size=batch_size, shuffle=False)
         return dummy_loader, dummy_loader
+    if n_samples < 2:
+        if sp is not None and sp.issparse(X):
+            X_dense = X.toarray().astype(np.float32, copy=False)
+        else:
+            X_dense = X.astype(np.float32, copy=False)
+        y_dense = y.astype(np.int64, copy=False)
+        single_ds = TensorDataset(torch.from_numpy(X_dense), torch.from_numpy(y_dense))
+        train_loader = DataLoader(single_ds, batch_size=batch_size, shuffle=True)
+        test_loader = DataLoader(single_ds, batch_size=batch_size, shuffle=False)
+        return train_loader, test_loader
 
     if sp is not None and sp.issparse(X):
         row_indices = np.arange(X.shape[0], dtype=np.int64)
@@ -767,15 +778,16 @@ def load_unsw_nb15(csv_path: str, use_multiclass: bool = True) -> tuple[pd.DataF
     df.columns = [col.strip() if isinstance(col, str) else col for col in df.columns]
     df = df.replace([np.inf, -np.inf], np.nan)
     # Standardize: some versions use 'Label' with 'Normal'/'Attack' or binary 0/1
-    candidate_labels = [
-        "label",
-        "Label",
-        "class",
-        "Class",
-    ]
+    candidate_labels = (
+        ["attack_label", "label", "Label", "class", "Class"]
+        if use_multiclass
+        else ["binary_label", "label", "Label", "class", "Class"]
+    )
     label_col = next((c for c in candidate_labels if c in df.columns), None)
     if label_col is None:
-        raise ValueError("Could not find label column in UNSW-NB15. Tried: 'label', 'Label', 'class', 'Class'")
+        raise ValueError(
+            "Could not find label column in UNSW-NB15. Tried: 'attack_label', 'binary_label', 'label', 'Label', 'class', 'Class'"
+        )
     # Normalize negative/benign label naming to BENIGN for consistency
     df[label_col] = df[label_col].astype(str).str.strip().str.upper()
     df[label_col] = df[label_col].replace({"NORMAL": "BENIGN"})
