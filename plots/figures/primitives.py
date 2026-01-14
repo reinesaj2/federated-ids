@@ -80,6 +80,10 @@ def plot_bar_comparison(
                 ha="center",
                 fontsize=8,
             )
+    if labels:
+        for bar, label in zip(bars, labels):
+            bar.set_label(label)
+        ax.legend(loc="best")
 
 
 def plot_grouped_bars(

@@ -176,7 +176,7 @@ def main(argv: list[str] | None = None) -> int:
     chapter4_parser.set_defaults(func=cmd_chapter4)
 
     objective_parser = subparsers.add_parser("objective", help="Generate objective-specific figures")
-    objective_parser.add_argument("--objective", "-obj", type=int, required=True, help="Objective number (1-4)")
+    objective_parser.add_argument("--objective", "-obj", type=int, required=True, help="Objective number (1-3)")
     objective_parser.add_argument("--data", "-d", required=True, help="Path to data CSV or experiment directory")
     objective_parser.add_argument("--output", "-o", default="results/plots/objectives", help="Output directory")
     objective_parser.add_argument("--formats", help="Output formats (default: png,pdf)")

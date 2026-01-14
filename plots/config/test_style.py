@@ -46,11 +46,16 @@ class TestPlotStyle:
 
     def test_apply_modifies_rcparams(self):
         style = PlotStyle(font_size=14, dpi=200)
-        original_font_size = plt.rcParams["font.size"]
-        style.apply()
-        assert plt.rcParams["font.size"] == 14
-        assert plt.rcParams["figure.dpi"] == 200
-        plt.rcParams["font.size"] = original_font_size
+        original = {
+            "font.size": plt.rcParams["font.size"],
+            "figure.dpi": plt.rcParams["figure.dpi"],
+        }
+        try:
+            style.apply()
+            assert (plt.rcParams["font.size"], plt.rcParams["figure.dpi"]) == (14, 200)
+        finally:
+            for key, value in original.items():
+                plt.rcParams[key] = value
 
     def test_custom_palette_selection(self):
         style = PlotStyle(palette="vibrant")
@@ -67,12 +72,26 @@ class TestThesisStyle:
 
     def test_thesis_style_apply_sets_grid(self):
         style = ThesisStyle()
-        style.apply()
-        assert plt.rcParams["axes.grid"] is True
-        assert plt.rcParams["grid.alpha"] == style.grid_alpha
+        original = {
+            "axes.grid": plt.rcParams["axes.grid"],
+            "grid.alpha": plt.rcParams["grid.alpha"],
+        }
+        try:
+            style.apply()
+            assert (plt.rcParams["axes.grid"], plt.rcParams["grid.alpha"]) == (True, style.grid_alpha)
+        finally:
+            for key, value in original.items():
+                plt.rcParams[key] = value
 
     def test_thesis_style_removes_top_right_spines(self):
         style = ThesisStyle()
-        style.apply()
-        assert plt.rcParams["axes.spines.top"] is False
-        assert plt.rcParams["axes.spines.right"] is False
+        original = {
+            "axes.spines.top": plt.rcParams["axes.spines.top"],
+            "axes.spines.right": plt.rcParams["axes.spines.right"],
+        }
+        try:
+            style.apply()
+            assert (plt.rcParams["axes.spines.top"], plt.rcParams["axes.spines.right"]) == (False, False)
+        finally:
+            for key, value in original.items():
+                plt.rcParams[key] = value
