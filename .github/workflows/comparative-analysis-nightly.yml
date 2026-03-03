@@ -241,7 +241,7 @@ jobs:
         run: pip install pandas matplotlib seaborn numpy scipy
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: comparative-artifacts
 
@@ -296,7 +296,7 @@ jobs:
           python-version: '3.13'
 
       - name: Download consolidated results
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: thesis-plots-summary-${{ github.sha }}
           path: thesis-summary
