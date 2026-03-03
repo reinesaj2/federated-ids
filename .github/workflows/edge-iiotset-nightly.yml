@@ -228,7 +228,7 @@ jobs:
             echo "SUCCESS: Adequate experiment completion rate"
           fi
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: steps.dimension_filter.outputs.should_run == 'true'
         with:
           name: edge-iiotset-nightly-${{ matrix.dimension }}-${{ github.sha }}
@@ -303,7 +303,7 @@ jobs:
           done
 
       - name: Upload consolidated results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: edge-iiotset-thesis-plots-summary-${{ github.sha }}
