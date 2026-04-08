@@ -16,13 +16,14 @@ import argparse
 import errno
 import hashlib
 import json
+import os
 import socket
 import subprocess
 import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 
 # Default baseline values for controlled experiments
@@ -587,6 +588,51 @@ def find_available_port(start_port: int = 18080, max_attempts: int = 100) -> int
     raise RuntimeError(f"Could not find available port in range {start_port}-{start_port + max_attempts}")
 
 
+def remove_stale_run_artifacts(run_dir: Path) -> List[str]:
+    """Remove rerun artifacts that can mask fresh experiment failures."""
+    removed_files = []
+    for pattern in ("metrics.csv", "server.log", "client_*.log", "client_*_metrics.csv"):
+        for artifact_path in sorted(run_dir.glob(pattern)):
+            artifact_path.unlink(missing_ok=True)
+            removed_files.append(artifact_path.name)
+    return removed_files
+
+
+def count_metrics_rows(metrics_file: Path) -> int:
+    """Count data rows in metrics.csv, excluding the header."""
+    if not metrics_file.exists():
+        return 0
+    with open(metrics_file) as metrics_handle:
+        return max(sum(1 for _ in metrics_handle) - 1, 0)
+
+
+def get_client_start_delay_seconds() -> float:
+    """Return the configured stagger between client launches."""
+    return max(float(os.environ.get("FEDIDS_CLIENT_START_DELAY_SECONDS", "0")), 0.0)
+
+
+def wait_for_client_processes(client_procs: List[Tuple[int, subprocess.Popen]], timeout: int, poll_interval: float = 1.0) -> None:
+    """Wait until all clients finish or fail fast on the first non-zero exit."""
+    pending_procs = list(client_procs)
+    deadline = time.monotonic() + timeout
+
+    while pending_procs:
+        next_pending_procs = []
+        for client_id, proc in pending_procs:
+            exit_code = proc.poll()
+            if exit_code is None:
+                next_pending_procs.append((client_id, proc))
+                continue
+            if exit_code != 0:
+                raise RuntimeError(f"Client process {client_id} exited with code {exit_code}")
+        if not next_pending_procs:
+            return
+        if time.monotonic() >= deadline:
+            raise RuntimeError("Client process timed out")
+        time.sleep(min(poll_interval, max(deadline - time.monotonic(), 0.0)))
+        pending_procs = next_pending_procs
+
+
 @contextmanager
 def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int = 600):
     """Context manager for subprocess with proper cleanup.
@@ -606,12 +652,9 @@ def managed_subprocess(cmd: List[str], log_file: Path, cwd: Path, timeout: int =
             proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=cwd)
         yield proc
     finally:
-        if proc is not None:
-            try:
-                proc.wait(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
+        if proc is not None and proc.poll() is None:
+            proc.kill()
+            proc.wait()
 
 
 def run_federated_experiment(
@@ -638,6 +681,7 @@ def run_federated_experiment(
     preset = config.to_preset_name()
     run_dir = base_dir / "runs" / preset
     run_dir.mkdir(parents=True, exist_ok=True)
+    remove_stale_run_artifacts(run_dir)
 
     # Save config metadata
     config_path = run_dir / "config.json"
@@ -680,7 +724,8 @@ def run_federated_experiment(
     if config.adversary_fraction > 0:
         server_cmd.extend(["--byzantine_f", str(num_adversaries)])
 
-    client_procs = []
+    client_procs: List[Tuple[int, subprocess.Popen]] = []
+    client_start_delay_seconds = get_client_start_delay_seconds()
     try:
         # Start server with managed subprocess
         with managed_subprocess(server_cmd, server_log, base_dir, timeout=server_timeout) as server_proc:
@@ -750,33 +795,35 @@ def run_federated_experiment(
 
                 with open(client_log, "w") as log:
                     proc = subprocess.Popen(client_cmd, stdout=log, stderr=subprocess.STDOUT, cwd=base_dir)
-                    client_procs.append(proc)
+                    client_procs.append((client_id, proc))
+                if client_start_delay_seconds > 0 and client_id < (config.num_clients - 1):
+                    time.sleep(client_start_delay_seconds)
 
-            # Wait for all clients to complete with timeout
-            for proc in client_procs:
-                try:
-                    proc.wait(timeout=client_timeout)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                    raise RuntimeError("Client process timed out")
+            wait_for_client_processes(client_procs, timeout=client_timeout)
 
-            # Server will complete after all clients finish
-            server_exit_code = server_proc.returncode
+            try:
+                server_exit_code = server_proc.wait(timeout=server_timeout)
+            except subprocess.TimeoutExpired as exc:
+                raise RuntimeError("Server process timed out") from exc
+            if server_exit_code != 0:
+                raise RuntimeError(f"Server process exited with code {server_exit_code}")
 
     finally:
         # Ensure all client processes are terminated
-        for proc in client_procs:
+        for _, proc in client_procs:
             if proc.poll() is None:  # Still running
                 proc.kill()
                 proc.wait()
 
     # Collect results
     metrics_file = run_dir / "metrics.csv"
+    metrics_rows = count_metrics_rows(metrics_file)
     results = {
         "preset": preset,
         "config": asdict(config),
         "run_dir": str(run_dir),
-        "metrics_exist": metrics_file.exists(),
+        "metrics_exist": metrics_rows > 0,
+        "metrics_rows": metrics_rows,
         "server_exit_code": server_exit_code,
         "port": port,
     }

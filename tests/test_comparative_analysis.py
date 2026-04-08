@@ -4,6 +4,8 @@ Tests for comparative analysis framework.
 """
 
 import json
+import subprocess
+import sys
 
 import numpy as np
 import pandas as pd
@@ -13,8 +15,12 @@ from scripts.comparative_analysis import (
     ATTACK_AGGREGATIONS,
     ComparisonMatrix,
     ExperimentConfig,
+    count_metrics_rows,
     find_available_port,
+    get_client_start_delay_seconds,
     is_port_available,
+    remove_stale_run_artifacts,
+    wait_for_client_processes,
 )
 from scripts.generate_thesis_plots import perform_statistical_tests
 from scripts.plot_metrics_utils import compute_confidence_interval
@@ -388,6 +394,62 @@ def test_find_available_port_exhaustion():
     # Try to find port with 0 attempts - should raise
     with pytest.raises(RuntimeError, match="Could not find available port"):
         find_available_port(start_port=8080, max_attempts=0)
+
+
+def test_remove_stale_run_artifacts_removes_only_rerun_outputs(tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+
+    preserved_file = run_dir / "config.json"
+    preserved_file.write_text("{}")
+    expected_removed_files = {
+        "metrics.csv": "round,macro_f1\n1,0.5\n",
+        "server.log": "server started\n",
+        "client_0.log": "client started\n",
+        "client_0_metrics.csv": "epoch,loss\n1,0.1\n",
+    }
+    for file_name, file_contents in expected_removed_files.items():
+        (run_dir / file_name).write_text(file_contents)
+
+    removed_files = remove_stale_run_artifacts(run_dir)
+
+    assert set(removed_files) == set(expected_removed_files)
+    assert preserved_file.exists()
+
+
+def test_count_metrics_rows_ignores_header_and_missing_file(tmp_path):
+    metrics_file = tmp_path / "metrics.csv"
+    metrics_file.write_text("round,macro_f1\n1,0.5\n2,0.6\n")
+
+    assert count_metrics_rows(metrics_file) == 2
+    assert count_metrics_rows(tmp_path / "missing.csv") == 0
+
+
+def test_wait_for_client_processes_fails_fast_on_nonzero_exit():
+    client_procs = [
+        (0, subprocess.Popen([sys.executable, "-c", "import time; time.sleep(1)"])),
+        (1, subprocess.Popen([sys.executable, "-c", "import sys; sys.exit(7)"])),
+    ]
+
+    try:
+        with pytest.raises(RuntimeError, match="Client process 1 exited with code 7"):
+            wait_for_client_processes(client_procs, timeout=1, poll_interval=0.01)
+    finally:
+        for _, proc in client_procs:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+
+
+def test_get_client_start_delay_seconds_uses_non_negative_env_value(monkeypatch):
+    monkeypatch.setenv("FEDIDS_CLIENT_START_DELAY_SECONDS", "2.5")
+    assert get_client_start_delay_seconds() == 2.5
+
+    monkeypatch.setenv("FEDIDS_CLIENT_START_DELAY_SECONDS", "-4")
+    assert get_client_start_delay_seconds() == 0.0
+
+    monkeypatch.delenv("FEDIDS_CLIENT_START_DELAY_SECONDS", raising=False)
+    assert get_client_start_delay_seconds() == 0.0
 
 
 def test_compute_confidence_interval():
