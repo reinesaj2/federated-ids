@@ -488,10 +488,22 @@ def build_coverage_tables(canonical_runs: pd.DataFrame) -> tuple[pd.DataFrame, p
         & (evidence["fedprox_mu"] == 0.0)
         & (evidence["dataset"].isin(CORE_DATASETS))
     ]
-    heterogeneity_cov = summarize_coverage(heterogeneity_df, "heterogeneity_fedavg", ["dataset", "alpha"])
+    heterogeneity_cov = summarize_coverage(
+        heterogeneity_df,
+        "heterogeneity_fedavg",
+        ["dataset", "aggregation", "alpha"],
+    )
 
-    fedprox_df = evidence[(evidence["fedprox_mu"] > 0.0) & (evidence["adv_percent"] == 0.0) & (evidence["dataset"].isin(CORE_DATASETS))]
-    fedprox_cov = summarize_coverage(fedprox_df, "fedprox_nonzero_mu", ["dataset", "alpha", "fedprox_mu"])
+    fedprox_df = evidence[
+        (evidence["fedprox_mu"] > 0.0)
+        & (evidence["adv_percent"] == 0.0)
+        & (evidence["dataset"].isin(CORE_DATASETS))
+    ]
+    fedprox_cov = summarize_coverage(
+        fedprox_df,
+        "fedprox_nonzero_mu",
+        ["dataset", "aggregation", "alpha", "fedprox_mu"],
+    )
 
     coverage_all = pd.concat(
         [baseline_cov, attack_collapsed_cov, attack_mode_cov, heterogeneity_cov, fedprox_cov],
@@ -614,7 +626,7 @@ def build_claim_ledger(gap_inventory: pd.DataFrame) -> pd.DataFrame:
         ),
         ClaimSpec(
             claim_id="C2",
-            description="FedAvg performance changes across heterogeneity levels in core datasets.",
+            description="FedAvg heterogeneity response is dataset-dependent across the core datasets.",
             slice_name="heterogeneity_fedavg",
             min_grade="B",
             min_fraction=0.7,

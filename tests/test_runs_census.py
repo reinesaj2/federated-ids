@@ -182,3 +182,51 @@ def test_run_pipeline_writes_expected_artifacts(tmp_path: Path) -> None:
 
     assert expected_files.issubset({path.name for path in output_dir.iterdir()})
     assert summary["runs_registry_rows"] == 2
+
+
+def test_run_pipeline_preserves_heterogeneity_cells_in_gap_inventory(tmp_path: Path) -> None:
+    runs_dir = tmp_path / "runs"
+    runs_dir.mkdir()
+
+    metrics = pd.DataFrame(
+        {
+            "round": [1, 2, 3],
+            "global_macro_f1_test": [0.21, 0.24, 0.27],
+            "n_test_total": [100, 100, 100],
+        }
+    )
+
+    for seed in [42, 43, 44]:
+        config = {
+            "dataset": "cic",
+            "aggregation": "fedavg",
+            "alpha": 0.02,
+            "adversary_fraction": 0.0,
+            "fedprox_mu": 0.0,
+            "dp_enabled": False,
+            "dp_noise_multiplier": 0.0,
+            "personalization_epochs": 0,
+            "num_clients": 10,
+            "num_rounds": 3,
+            "seed": seed,
+        }
+        _write_run(
+            runs_dir,
+            f"comp_fedavg_alpha0.02_seed{seed}",
+            config,
+            metrics,
+        )
+
+    output_dir = tmp_path / "out"
+    run_pipeline(runs_dir=runs_dir, output_dir=output_dir, write_parquet=False)
+
+    gap_inventory = pd.read_csv(output_dir / "gap_inventory.csv")
+    heterogeneity_cell = gap_inventory[
+        (gap_inventory["slice"] == "heterogeneity_fedavg")
+        & (gap_inventory["dataset"] == "cic")
+        & (gap_inventory["aggregation"] == "fedavg")
+        & (gap_inventory["alpha"] == 0.02)
+    ]
+
+    assert len(heterogeneity_cell) == 1
+    assert heterogeneity_cell.iloc[0]["cell_status"] == "exploratory_only"
