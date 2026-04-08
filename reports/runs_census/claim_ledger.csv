@@ -1,4 +1,0 @@
-claim_id,description,slice,required_cells,claim_eligible_cells,exploratory_cells,missing_cells,support_level
-C1,Robust aggregation improves resilience over FedAvg under adversarial participation.,attack_alpha0.5_collapsed,36,30,0,6,directional
-C2,FedAvg performance changes across heterogeneity levels in core datasets.,heterogeneity_fedavg,21,0,0,21,unsupported
-C3,IID benign baseline supports cross-aggregator comparison in core datasets.,baseline_iid,12,12,0,0,supported

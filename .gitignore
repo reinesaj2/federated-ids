@@ -18,6 +18,10 @@ __pycache__/
 /runs_buggy_*/
 /runs_incomplete_*/
 /results/
+/reports/publication/
+/reports/runs_census/*.csv
+experiment_queue.json
+experimental_results.tar.gz
 mu_star_selection.json
 nohup.out
 *.out
