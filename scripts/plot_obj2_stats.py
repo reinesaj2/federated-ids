@@ -2,12 +2,15 @@
 """
 Objective 2 statistical visuals: significance tests and per-class F1.
 
-Outputs:
+Outputs per dataset:
 - obj2_fedprox_seed_significance.png/pdf
 - obj2_fedprox_perclass_heatmap.png/pdf
 - obj2_fedprox_stats.csv (Welch t-tests, Cohen's d)
+
+Supports per-dataset plot generation via --dataset argument.
 """
 
+import argparse
 import ast
 import json
 import math
@@ -22,8 +25,10 @@ import seaborn as sns
 from matplotlib.lines import Line2D
 from scipy import stats
 
+from plot_config import DATASET_CONFIG, get_dataset_from_dirname
+
 RUNS_DIR = Path("runs")
-OUTPUT_DIR = Path("results/thesis_plots_package/objective2_heterogeneity")
+BASE_OUTPUT_DIR = Path("results/thesis_plots_package/objective2_heterogeneity")
 
 
 def parse_run_config(run_name: str) -> Dict:
@@ -111,11 +116,16 @@ def parse_class_metrics(row: pd.Series) -> Tuple[List[str], np.ndarray]:
     return names, np.array(f1_vals, dtype=float)
 
 
-def collect_data() -> pd.DataFrame:
+def collect_data(dataset: str | None = None) -> pd.DataFrame:
     records: List[Dict] = []
     for run_dir in RUNS_DIR.iterdir():
         if not run_dir.is_dir():
             continue
+
+        if dataset is not None:
+            detected = get_dataset_from_dirname(run_dir.name)
+            if detected != dataset:
+                continue
 
         config = parse_run_config(run_dir.name)
         if config["alpha"] is None or config["adversary"] != 0:
@@ -235,7 +245,7 @@ def compute_stats(per_seed: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def plot_seed_significance(per_seed: pd.DataFrame) -> None:
+def plot_seed_significance(per_seed: pd.DataFrame, output_dir: Path, dataset_label: str) -> None:
     sns.set_theme(style="whitegrid", context="paper", font_scale=1.0)
     plt.rcParams["font.family"] = "serif"
 
@@ -299,20 +309,20 @@ def plot_seed_significance(per_seed: pd.DataFrame) -> None:
         ax.grid(alpha=0.3)
 
     axes[0].set_ylabel("Final Macro-F1")
-    fig.suptitle("Seed-level Macro-F1 with FedProx/Bulyan Baselines", fontsize=16, fontweight="bold", y=1.02)
+    fig.suptitle(f"Seed-level Macro-F1 ({dataset_label})", fontsize=16, fontweight="bold", y=1.02)
 
     handles = [Line2D([], [], marker="o", color=color_map[a], linestyle="", markersize=8, label=a) for a in algo_order]
     fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 1.08), ncol=len(algo_order), frameon=False)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = OUTPUT_DIR / "obj2_fedprox_seed_significance.png"
+    out_path = output_dir / "obj2_fedprox_seed_significance.png"
     fig.savefig(out_path, dpi=300, bbox_inches="tight")
     fig.savefig(out_path.with_suffix(".pdf"), bbox_inches="tight")
     plt.close(fig)
+    print(f"  Saved: {out_path}")
 
 
-def plot_bulyan_vs_fedavg(per_seed: pd.DataFrame) -> None:
+def plot_bulyan_vs_fedavg(per_seed: pd.DataFrame, output_dir: Path, dataset_label: str) -> None:
     sns.set_theme(style="whitegrid", context="paper", font_scale=1.0)
     plt.rcParams["font.family"] = "serif"
 
@@ -364,20 +374,20 @@ def plot_bulyan_vs_fedavg(per_seed: pd.DataFrame) -> None:
         ax.grid(alpha=0.3)
 
     axes[0].set_ylabel("Final Macro-F1")
-    fig.suptitle("Bulyan vs FedAvg (Seed-level Macro-F1)", fontsize=15, fontweight="bold", y=1.04)
+    fig.suptitle(f"Bulyan vs FedAvg ({dataset_label})", fontsize=15, fontweight="bold", y=1.04)
 
     handles = [Line2D([], [], marker="o", color=color_map[a], linestyle="", markersize=8, label=a) for a in ["FedAvg", "Bulyan"]]
     fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 1.08), ncol=2, frameon=False)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = OUTPUT_DIR / "obj2_bulyan_vs_fedavg.png"
+    out_path = output_dir / "obj2_bulyan_vs_fedavg.png"
     fig.savefig(out_path, dpi=300, bbox_inches="tight")
     fig.savefig(out_path.with_suffix(".pdf"), bbox_inches="tight")
     plt.close(fig)
+    print(f"  Saved: {out_path}")
 
 
-def plot_per_class_heatmap(per_seed: pd.DataFrame) -> None:
+def plot_per_class_heatmap(per_seed: pd.DataFrame, output_dir: Path, dataset_label: str) -> None:
     sns.set_theme(style="whitegrid", context="paper", font_scale=1.0)
     plt.rcParams["font.family"] = "serif"
 
@@ -395,7 +405,6 @@ def plot_per_class_heatmap(per_seed: pd.DataFrame) -> None:
         subset = per_seed[(per_seed["aggregation"] == agg) & np.isclose(per_seed["mu"], mu) & np.isclose(per_seed["alpha"], target_alpha)]
         if subset.empty:
             continue
-        # average per-class across seeds
         stacked = np.stack(subset["f1_per_class_mean"].to_list())
         mean_vec = stacked.mean(axis=0)
         if not class_names:
@@ -404,6 +413,7 @@ def plot_per_class_heatmap(per_seed: pd.DataFrame) -> None:
         records.append({"algo": f"{agg} μ={mu}", "values": mean_vec})
 
     if not records or not class_names:
+        print(f"  No per-class data for {dataset_label}, skipping heatmap")
         return
 
     plot_rows: List[Dict] = []
@@ -427,42 +437,58 @@ def plot_per_class_heatmap(per_seed: pd.DataFrame) -> None:
         linewidths=0.5,
         linecolor="gray",
     )
-    ax.set_title("Per-class Macro-F1 at α=0.05 (Bulyan vs FedAvg vs FedProx)", fontsize=14, fontweight="bold")
+    ax.set_title(f"Per-class Macro-F1 at α=0.05 ({dataset_label})", fontsize=14, fontweight="bold")
     fig.tight_layout()
 
-    out_path = OUTPUT_DIR / "obj2_fedprox_perclass_heatmap.png"
+    out_path = output_dir / "obj2_fedprox_perclass_heatmap.png"
     fig.savefig(out_path, dpi=300, bbox_inches="tight")
     fig.savefig(out_path.with_suffix(".pdf"), bbox_inches="tight")
     plt.close(fig)
+    print(f"  Saved: {out_path}")
 
 
 def main() -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser(description="Generate Objective 2 statistical plots")
+    parser.add_argument(
+        "--dataset",
+        choices=["cic", "unsw", "iiot", "all"],
+        default="all",
+        help="Dataset to generate plots for (default: all)",
+    )
+    args = parser.parse_args()
 
-    print("Loading data from runs/ ...")
-    df = collect_data()
-    if df.empty:
-        print("No data found.")
-        return
+    datasets = ["cic", "unsw", "iiot"] if args.dataset == "all" else [args.dataset]
 
-    per_seed = aggregate_per_seed(df)
-    print(f"Aggregated seeds: {len(per_seed)} rows")
+    for dataset in datasets:
+        output_dir = BASE_OUTPUT_DIR / dataset
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    stats_df = compute_stats(per_seed)
-    stats_path = OUTPUT_DIR / "obj2_fedprox_stats.csv"
-    stats_df.to_csv(stats_path, index=False)
-    print(f"Saved stats: {stats_path}")
+        dataset_label = DATASET_CONFIG[dataset]["label"]
+        print(f"\nProcessing {dataset_label}...")
 
-    print("Plotting seed significance...")
-    plot_seed_significance(per_seed)
+        df = collect_data(dataset)
+        if df.empty:
+            print(f"  No data found for {dataset_label}, skipping")
+            continue
 
-    print("Plotting Bulyan vs FedAvg...")
-    plot_bulyan_vs_fedavg(per_seed)
+        per_seed = aggregate_per_seed(df)
+        print(f"  Aggregated seeds: {len(per_seed)} rows")
 
-    print("Plotting per-class heatmap...")
-    plot_per_class_heatmap(per_seed)
+        stats_df = compute_stats(per_seed)
+        stats_path = output_dir / "obj2_fedprox_stats.csv"
+        stats_df.to_csv(stats_path, index=False)
+        print(f"  Saved stats: {stats_path}")
 
-    print("Done.")
+        print("  Plotting seed significance...")
+        plot_seed_significance(per_seed, output_dir, dataset_label)
+
+        print("  Plotting Bulyan vs FedAvg...")
+        plot_bulyan_vs_fedavg(per_seed, output_dir, dataset_label)
+
+        print("  Plotting per-class heatmap...")
+        plot_per_class_heatmap(per_seed, output_dir, dataset_label)
+
+    print("\nDone.")
 
 
 if __name__ == "__main__":

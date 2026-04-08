@@ -244,3 +244,76 @@ def create_default_config(title: str = "Federated Learning Metrics") -> dict:
         "axes": {},
         "title": title,
     }
+
+
+DATASET_CONFIG = {
+    "cic": {
+        "label": "CIC-IDS2017",
+        "directory_patterns": ["cic_simple", "_datasetcic", "cic_comp", "dscic_"],
+    },
+    "unsw": {
+        "label": "UNSW-NB15",
+        "directory_patterns": ["unsw_simple", "_datasetunsw", "unsw_comp", "unsw_p"],
+    },
+    "iiot": {
+        "label": "Edge-IIoTset",
+        "directory_patterns": ["dsedge-iiotset", "edge-iiotset"],
+    },
+}
+
+
+def get_dataset_from_dirname(dirname: str) -> str | None:
+    """Identify dataset from run directory name using naming conventions only.
+
+    Returns None for bare comp_* directories whose dataset cannot be determined
+    from the name alone — use get_dataset_from_run_dir for those.
+    """
+    dirname_lower = dirname.lower()
+    if (
+        "_datasetcic" in dirname_lower
+        or dirname.startswith("cic_simple")
+        or dirname.startswith("cic_comp")
+        or dirname.startswith("dscic_")
+    ):
+        return "cic"
+    if (
+        "_datasetunsw" in dirname_lower
+        or dirname.startswith("unsw_simple")
+        or dirname.startswith("unsw_comp")
+        or dirname.startswith("unsw_p")
+    ):
+        return "unsw"
+    if "dsedge-iiotset" in dirname_lower or dirname.startswith("edge-iiotset"):
+        return "iiot"
+    return None
+
+
+def get_dataset_from_run_dir(run_dir) -> str | None:
+    """Identify dataset by checking directory name first, then config.json.
+
+    Use this instead of get_dataset_from_dirname when processing bare comp_*
+    directories whose dataset is not encoded in the name.
+    """
+    import json
+    from pathlib import Path
+
+    detected = get_dataset_from_dirname(Path(run_dir).name)
+    if detected is not None:
+        return detected
+
+    config_file = Path(run_dir) / "config.json"
+    if not config_file.exists():
+        return None
+    try:
+        with open(config_file) as f:
+            config = json.load(f)
+        dataset = str(config.get("dataset", config.get("data_source", ""))).lower()
+        if "cic" in dataset:
+            return "cic"
+        if "unsw" in dataset:
+            return "unsw"
+        if "iiot" in dataset or "edge" in dataset:
+            return "iiot"
+    except Exception:
+        pass
+    return None

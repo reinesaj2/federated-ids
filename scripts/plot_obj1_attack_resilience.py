@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Objective 1: Robust Aggregation - Attack Resilience in IIoT Federated IDS
+Objective 1: Robust Aggregation - Attack Resilience in Federated IDS
 
 Shows how Krum, Bulyan, and Median defend against Byzantine adversaries
 compared to standard FedAvg.
 
-Based on 85 attack experiments + benign baselines.
+Supports per-dataset plot generation via --dataset argument.
 """
 
+import argparse
 import re
 from pathlib import Path
 
@@ -16,16 +17,23 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from plot_config import DATASET_CONFIG, get_dataset_from_run_dir
+
 RUNS_DIR = Path("runs")
-OUTPUT_DIR = Path("thesis_plots_iiot")
+BASE_OUTPUT_DIR = Path("results/thesis_plots_package/objective1_robust_aggregation")
 
 
-def load_valid_data():
-    """Load all valid 15-class experiments."""
+def load_valid_data(dataset: str | None = None):
+    """Load valid experiments, optionally filtered by dataset."""
     data = []
     for run_dir in RUNS_DIR.iterdir():
         if not run_dir.is_dir():
             continue
+
+        if dataset is not None:
+            detected = get_dataset_from_run_dir(run_dir)
+            if detected != dataset:
+                continue
 
         config = {}
 
@@ -58,8 +66,6 @@ def load_valid_data():
         if client_file.exists():
             try:
                 df = pd.read_csv(client_file)
-                if df["n_classes"].iloc[0] != 15:
-                    continue
                 config["final_f1"] = df["macro_f1_after"].iloc[-1]
                 data.append(config)
             except Exception:
@@ -68,14 +74,14 @@ def load_valid_data():
     return pd.DataFrame(data)
 
 
-def plot_attack_resilience(df: pd.DataFrame, output_path: Path):
+def plot_attack_resilience(df: pd.DataFrame, output_path: Path, dataset_label: str):
     """Generate the 4-panel attack resilience figure."""
     sns.set_theme(style="whitegrid", context="paper", font_scale=1.2)
     plt.rcParams["font.family"] = "serif"
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 11))
     fig.suptitle(
-        "Objective 1: Robust Aggregation Defends Against Byzantine Adversaries",
+        f"Objective 1: Robust Aggregation ({dataset_label})",
         fontsize=16,
         fontweight="bold",
         y=0.98,
@@ -293,28 +299,45 @@ def plot_attack_resilience(df: pd.DataFrame, output_path: Path):
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.savefig(output_path.with_suffix(".pdf"), bbox_inches="tight")
     plt.close()
 
-    print(f"Saved: {output_path}")
+    print(f"  Saved: {output_path}")
+    print(f"  Saved: {output_path.with_suffix('.pdf')}")
 
 
 def main():
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser(description="Generate Objective 1 attack resilience plots")
+    parser.add_argument(
+        "--dataset",
+        choices=["cic", "unsw", "iiot", "all"],
+        default="all",
+        help="Dataset to generate plots for (default: all)",
+    )
+    args = parser.parse_args()
 
-    print("Loading valid 15-class experiments...")
-    df = load_valid_data()
+    datasets = ["cic", "unsw", "iiot"] if args.dataset == "all" else [args.dataset]
 
-    if df.empty:
-        print("No valid data found!")
-        return
+    for dataset in datasets:
+        output_dir = BASE_OUTPUT_DIR / dataset
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    attack_runs = len(df[df["adv_pct"] > 0])
-    print(f"Loaded {len(df)} valid experiments ({attack_runs} with adversaries)")
+        dataset_label = DATASET_CONFIG[dataset]["label"]
+        print(f"\nProcessing {dataset_label}...")
 
-    output_path = OUTPUT_DIR / "obj1_attack_resilience.png"
-    plot_attack_resilience(df, output_path)
+        df = load_valid_data(dataset)
 
-    print("Done!")
+        if df.empty:
+            print(f"  No data found for {dataset_label}, skipping")
+            continue
+
+        attack_runs = len(df[df["adv_pct"] > 0])
+        print(f"  Loaded {len(df)} experiments ({attack_runs} with adversaries)")
+
+        output_path = output_dir / "obj1_attack_resilience.png"
+        plot_attack_resilience(df, output_path, dataset_label)
+
+    print("\nDone!")
 
 
 if __name__ == "__main__":
