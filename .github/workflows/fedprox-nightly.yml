@@ -206,7 +206,7 @@ jobs:
           test -f "data/unsw/UNSW_NB15_training-set.csv"
           test -f "data/cic/cic_ids2017_multiclass.csv"
       - name: Install dependencies with retry
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -230,7 +230,7 @@ jobs:
           print('Dataset validation passed')
           "
       - name: FedProx Comparison (real UNSW) - optimized
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: ${{ matrix.timeout }}
           max_attempts: 2
