@@ -7,7 +7,7 @@ pandas==2.3.3
 scikit-learn==1.8.0
 
 # Networking / parsing
-scapy==2.6.1
+scapy==2.7.0
 
 # Crypto (for future robust/privacy features)
 pycryptodome==3.23.0
