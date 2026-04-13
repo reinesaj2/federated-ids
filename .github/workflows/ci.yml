@@ -321,7 +321,7 @@ jobs:
       - name: Install dependencies with retry
         env:
           PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -335,7 +335,7 @@ jobs:
         run: python scripts/setup_real_datasets.py --full-only
 
       - name: Full sweep (real-data 5c×20r) - ${{ matrix.scenario }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 200
           max_attempts: 2
